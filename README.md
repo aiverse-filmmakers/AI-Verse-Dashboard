@@ -16,7 +16,7 @@ The canonical OS remains Markdown, SQLite, runtime state, and the AI-Verse write
 6. **Omnichannel is an interface, not an authority.** Telegram, Discord, WhatsApp, and future clients receive the same scoped capabilities as the Web UI.
 7. **The Dashboard is not an IDE.** Claude Code, Codex, IDEs, terminals, and other agent harnesses remain valid primary execution environments.
 
-## Recommended architecture
+## Core architecture
 
 ```text
 Canonical AI-Verse OS
@@ -79,6 +79,7 @@ The Dashboard never mutates canonical state directly.
 
 - [September 2026 research](docs/RESEARCH-2026-09.md)
 - [Architecture blueprint](docs/ARCHITECTURE-BLUEPRINT.md)
+- [Reference adoption and fork plan](docs/REFERENCE-ADOPTION-MAP.md)
 
 The benchmark combines the strongest ideas from LifeOS Pulse, OpenClaw, OpenHands Agent Canvas, OpenFang, TenacitOS, Langfuse, Phoenix, and modern WebGL graph tooling.
 
