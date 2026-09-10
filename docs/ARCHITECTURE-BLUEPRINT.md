@@ -26,10 +26,11 @@ It is:
 - an observability surface for agents, jobs, subagents, tools, and health
 - a secure omnichannel gateway surface
 - a workspace-scoped knowledge visualizer
+- a connection surface for one or more compatible, strictly isolated AI-Verse OS installations
 
 The governing rule is:
 
-> **The Dashboard may own presentation state and disposable caches. It may not own domain truth.**
+> **The Dashboard may own presentation state, OS connection metadata, and disposable caches. It may not own domain truth.**
 
 ---
 
@@ -69,6 +70,64 @@ AI-Verse-Dashboard/
 
 The browser never receives arbitrary local paths and never opens SQLite itself.
 
+## Registered OS connection model
+
+The Gateway must not be permanently bound to one hard-coded AI-Verse OS root. It may register one or more compatible local AI-Verse OS installations selected explicitly by the user.
+
+Each registered installation receives a stable Dashboard-local `systemId` and connection record such as:
+
+```json
+{
+  "systemId": "aiverse-01",
+  "label": "AI-Verse OS",
+  "type": "ai-verse-os-v2",
+  "root": "/approved/local/path/to/AI-Verse-OS"
+}
+```
+
+The root is privileged Gateway configuration. Normal browser requests use `systemId`; they never provide or override arbitrary filesystem roots.
+
+The hierarchy is:
+
+```text
+Dashboard
+  |
+  +-- registered systemId
+       |
+       +-- workspaceId
+            |
+            +-- Brain / Memory / Bots / tasks / knowledge / runtime state
+```
+
+Multiple Dashboard windows or browser tabs may be open simultaneously. Each window or tab keeps its own selected `systemId` and `workspaceId`. One Dashboard may also expose several registered OS installations as switchable tabs or a system switcher.
+
+### Hard system isolation
+
+A registered OS installation is a complete context and authority boundary.
+
+The following must be scoped by `systemId` and must never leak implicitly between systems:
+
+- canonical filesystem roots
+- workspace registries
+- Brain state
+- Memory
+- Bot, Room, Thread, Task, Team Run, and approval state
+- chat history
+- provider conversation IDs
+- runtime/session IDs
+- automations and run history
+- WebSocket subscriptions
+- search and graph projections
+- logs and observability spans
+- Dashboard caches
+- access grants and channel/session scope
+
+Using the same provider or model for two registered systems does not create shared context. A runtime adapter must maintain separate provider conversations and runtime sessions for each `systemId`.
+
+Switching from system A to system B must restore only B's own state. Returning to A restores A's own state. No chat, memory, runtime context, or model conversation from A may be sent to B.
+
+System A must not read or mutate system B through normal operations. Any future cross-system artifact transfer must be a separate explicit export/import operation with its own authorization and provenance, not shared filesystem authority.
+
 ---
 
 # 3. Data flow: Query path vs Command path
@@ -78,7 +137,9 @@ The most important boundary is a strict separation between observing state and c
 ## Query path
 
 ```text
-Canonical AI-Verse workspace
+Registered AI-Verse OS selected by systemId
+        |
+Canonical workspace
 Markdown + canonical SQLite + runtime state
         |
         | read-only
@@ -100,31 +161,32 @@ Web UI / messaging clients / native clients
 ```text
 Web UI / Telegram / Discord / WhatsApp
         |
+        | systemId + optional workspaceId
         v
 Dashboard Gateway
         |
         | authenticated intent
         v
-AI-Verse OS command boundary
+Selected AI-Verse OS command boundary
         |
-        | validates workspace, policy and write contract
+        | validates system, workspace, policy and write contract
         v
 Canonical Markdown / SQLite / scheduler / agent runtime
         |
         | filesystem/runtime events
         v
-Dashboard projection refresh
+Dashboard projection refresh for that same systemId
 ```
 
 A successful command is not complete merely because the Gateway returned 200. The ideal UI model is:
 
 1. submit command
-2. OS acknowledges command
-3. OS performs canonical write/action
-4. read model observes the resulting canonical state
+2. selected OS acknowledges command
+3. selected OS performs canonical write/action
+4. read model observes the resulting canonical state in that same `systemId`
 5. UI reconciles to the new state
 
-This prevents the UI from lying about state before the OS actually committed it.
+This prevents the UI from lying about state before the OS actually committed it and prevents one system's command from reconciling against another system's state.
 
 ---
 
@@ -201,6 +263,7 @@ Example only:
   "type": "req",
   "id": "01J...",
   "method": "task.list",
+  "systemId": "aiverse-01",
   "workspaceId": "film-project-x",
   "params": {}
 }
@@ -211,6 +274,7 @@ Example only:
   "type": "res",
   "id": "01J...",
   "ok": true,
+  "systemId": "aiverse-01",
   "result": {},
   "observedAt": "2026-09-09T08:00:00Z",
   "sourceVersion": "..."
@@ -221,6 +285,7 @@ Example only:
 {
   "type": "event",
   "event": "task.updated",
+  "systemId": "aiverse-01",
   "workspaceId": "film-project-x",
   "seq": 18293,
   "observedAt": "2026-09-09T08:00:01Z",
@@ -233,17 +298,21 @@ Example only:
 - protocol version negotiated during handshake
 - Zod schemas for every method and event
 - generated/inferred TypeScript types
-- explicit `workspaceId` on every scoped operation
-- monotonic event sequence where practical
+- explicit `systemId` on every OS-bound operation and event
+- explicit `workspaceId` on every workspace-scoped operation
+- object identity, subscriptions, dedupe, and cache keys are namespaced by `systemId`
+- monotonic event sequence where practical within each system/event stream
 - event source and freshness metadata
 - bounded payload sizes
 - request cancellation for long queries
-- reconnect and resync semantics
+- reconnect and resync semantics that restore the selected system independently
 - capability discovery so older clients can gracefully hide unsupported controls
 
 ## Suggested query methods
 
 ```text
+system.list
+system.get
 system.info
 workspace.list
 workspace.get
@@ -267,9 +336,11 @@ graph.node
 source.preview
 ```
 
+System registration and removal are Dashboard-local connection-management operations. They alter only Dashboard-owned connection metadata and must not modify the registered OS itself.
+
 ## Suggested command methods
 
-These do not modify canonical state themselves. They forward to the core OS command boundary.
+These do not modify canonical state themselves. They forward to the selected core OS command boundary.
 
 ```text
 chat.send
@@ -286,7 +357,7 @@ initiative.activate
 inbox.resolve
 ```
 
-Each command should return a core command ID that can be traced through execution and eventual canonical-state change.
+Each command should return a core command ID that can be traced through execution and eventual canonical-state change in the same `systemId`.
 
 ---
 
@@ -307,35 +378,49 @@ GET /file?path=/Users/bogdan/AI-Verse/workspaces/x/STATE.md
 Good:
 
 ```text
-GET /api/workspaces/x/sources/state
+GET /api/systems/aiverse-01/workspaces/x/sources/state
 ```
 
-The server resolves `x` through the canonical workspace registry.
+The server resolves `systemId` through the Dashboard's approved connection registry and resolves `workspaceId` through that selected OS's canonical workspace registry.
 
-## Rule 2: Workspace registry defines allowed roots
+## Rule 2: System registry defines allowed OS roots, then workspace registry defines scope
 
-For every workspace, the Gateway receives or reads a canonical record like:
+A Dashboard-local connection record maps a stable `systemId` to one approved compatible OS root:
+
+```json
+{
+  "systemId": "aiverse-01",
+  "type": "ai-verse-os-v2",
+  "root": "/canonical/path/to/AI-Verse-OS"
+}
+```
+
+Within that selected OS, the Gateway receives or reads canonical workspace records such as:
 
 ```json
 {
   "id": "project-x",
-  "root": "/canonical/path/project-x",
-  "sqlite": ["/canonical/path/project-x/index.sqlite"]
+  "root": "/canonical/path/to/AI-Verse-OS/workspaces/project-x",
+  "sqlite": ["/canonical/path/to/AI-Verse-OS/runtime/indexes/project-x.sqlite"]
 }
 ```
 
-The client may send only `workspaceId`, never an arbitrary root.
+The client may send only registered `systemId` and appropriate `workspaceId`, never an arbitrary root. Two systems may contain identical workspace or object IDs without collision because Dashboard identity is namespaced by `systemId`.
 
 ## Rule 3: Resolve real paths server-side
 
 Before reading any file:
 
-1. resolve canonical workspace root
-2. resolve requested logical source to an absolute real path
-3. reject path traversal
-4. reject symlinks that escape the workspace
-5. apply file-type and size policy
-6. read only
+1. resolve the registered real OS root from `systemId`
+2. verify the connection is compatible and currently authorized
+3. resolve canonical workspace root inside that selected OS when workspace-scoped
+4. resolve requested logical source to an absolute real path
+5. reject path traversal
+6. reject symlinks that escape the selected system/workspace boundary
+7. apply file-type and size policy
+8. read only
+
+A request bound to system A must never fall back to or search system B when a source is missing.
 
 ## Rule 4: Markdown projection
 
@@ -360,7 +445,7 @@ Cache only the parsed projection in memory or the Dashboard cache directory.
 Recommended cache key:
 
 ```text
-workspaceId + relativePath + mtime + size
+systemId + workspaceId + relativePath + mtime + size
 ```
 
 For stronger invalidation, add a BLAKE3/content hash when the file changes.
@@ -377,6 +462,7 @@ For canonical SQLite databases:
 - do not create indexes
 - do not create dashboard tables
 - do not attach writable databases to the canonical connection
+- never attach or query canonical databases from a different `systemId` in the same scoped operation
 
 Be careful with `immutable=1`. It is appropriate only for a database that is genuinely immutable for the life of that connection. A live WAL database should use normal read-only mode so new committed state can be observed correctly.
 
@@ -396,7 +482,10 @@ Allowed cached data:
 - thumbnails
 - source mtimes/hashes
 - UI preferences
-- recently used workspace IDs
+- registered-system display metadata
+- recently used system and workspace IDs
+
+All OS-derived cache entries must be partitioned by `systemId` so switching systems cannot reuse another system's projection, search result, graph layout, chat/runtime state, or recent object identity.
 
 Forbidden cached data as authority:
 
@@ -409,7 +498,7 @@ Forbidden cached data as authority:
 - approval decisions
 - knowledge facts that do not exist in canonical state
 
-Deleting the Dashboard cache must never damage AI-Verse OS.
+Deleting the Dashboard cache must never damage any registered AI-Verse OS.
 
 ## Rule 7: Every panel displays provenance and freshness
 
@@ -417,6 +506,7 @@ Every projection should be able to report:
 
 ```json
 {
+  "systemId": "aiverse-01",
   "source": "workspace://project-x/STATE.md",
   "observedAt": "...",
   "sourceModifiedAt": "...",
@@ -434,6 +524,7 @@ If a source is missing, unreadable, stale, or malformed:
 - show unavailable or stale
 - do not silently substitute zero
 - do not infer that nothing is wrong
+- do not search another registered system for a substitute
 
 This is one of the best lessons from LifeOS Pulse.
 
@@ -464,12 +555,15 @@ Example:
     "channel": "web",
     "identity": "local-owner"
   },
+  "systemId": "aiverse-01",
   "workspaceId": "project-x",
   "command": "cron.create",
   "payload": {},
   "requestedAt": "..."
 }
 ```
+
+The Gateway resolves `systemId` to exactly one registered OS command boundary before forwarding the command. A command accepted for one system must never be rerouted to another system because of missing state, matching IDs, reconnect behavior, or adapter fallback.
 
 The core OS owns:
 
@@ -483,6 +577,7 @@ The core OS owns:
 
 The Dashboard owns:
 
+- system connection selection
 - request UX
 - progress visualization
 - approval UX
@@ -496,32 +591,35 @@ The Dashboard owns:
 
 This is the visual signature page.
 
-It should answer five questions in under five seconds:
+It should answer six questions in under five seconds:
 
-1. Which workspace am I in?
-2. What is the AI currently trying to achieve?
-3. What is actively running?
-4. What needs me?
-5. Is the system healthy?
+1. Which registered OS am I connected to?
+2. Which workspace am I in?
+3. What is the AI currently trying to achieve?
+4. What is actively running?
+5. What needs me?
+6. Is the system healthy?
 
 ### Recommended composition
 
 ```text
-+--------------------------------------------------------------+
-| Workspace Switcher        Global Search / Cmd-K     Presence |
-+--------------------------------------------------------------+
-| CURRENT FOCUS                                                 |
-| Initiative / objective / next important action                |
-+----------------------------+---------------------------------+
-| RUNNING                    | NEEDS YOU                        |
-| max 3 to 5 parent items    | approvals / blocked / questions |
-| compact child count        | max 3 to 5 items                |
-+----------------------------+---------------------------------+
-| 4Cs HEALTH STRIP                                             |
-+--------------------------------------------------------------+
-| RECENT SIGNALS / NEXT AUTOMATION / COST SNAPSHOT              |
-+--------------------------------------------------------------+
++--------------------------------------------------------------------------+
+| OS Switcher | Workspace Switcher     Global Search / Cmd-K     Presence |
++--------------------------------------------------------------------------+
+| CURRENT FOCUS                                                            |
+| Initiative / objective / next important action                           |
++--------------------------------+-----------------------------------------+
+| RUNNING                        | NEEDS YOU                               |
+| max 3 to 5 parent items        | approvals / blocked / questions        |
+| compact child count            | max 3 to 5 items                       |
++--------------------------------+-----------------------------------------+
+| 4Cs HEALTH STRIP                                                        |
++--------------------------------------------------------------------------+
+| RECENT SIGNALS / NEXT AUTOMATION / COST SNAPSHOT                         |
++--------------------------------------------------------------------------+
 ```
+
+The OS switcher may represent one or more registered installations. Selecting another system changes the entire context boundary, not just a visual filter. Multiple Dashboard windows/tabs may select different systems at the same time.
 
 Do not make this a 30-widget telemetry board.
 
@@ -530,7 +628,7 @@ Do not make this a 30-widget telemetry board.
 Capabilities:
 
 - talk to selected AI-Verse agent/runtime
-- selected workspace always visible
+- selected system and workspace always visible
 - model/runtime badge
 - live tool activity
 - stop/abort
@@ -540,6 +638,14 @@ Capabilities:
 - contextual drawer for task, source, approval, or graph node
 
 The composer should support both natural language and explicit commands.
+
+### Chat and provider-session isolation
+
+Each chat, provider conversation, and runtime session belongs to exactly one `systemId`.
+
+If the same provider and model are used in system A and system B, they must still use separate conversation/session state. Switching system tabs must not forward previous messages, summaries, hidden runtime context, memory, tool results, or provider conversation identifiers from the previous system.
+
+Returning to a previously selected system may restore that system's own conversation history and runtime session, but only from that system.
 
 ## C. Work
 
@@ -618,7 +724,7 @@ Show:
 - failure streak
 - run history
 
-Controls such as create, pause, resume, run now, or delete must call the core OS command boundary.
+Controls such as create, pause, resume, run now, or delete must call the selected core OS command boundary.
 
 ## F. Inbox
 
@@ -652,7 +758,7 @@ Routine successful completions should not fill the Inbox.
 
 The Dashboard should not define the meaning of the 4Cs.
 
-The OS should expose schema-driven health dimensions:
+The selected OS should expose schema-driven health dimensions:
 
 ```json
 {
@@ -670,7 +776,7 @@ The OS should expose schema-driven health dimensions:
 }
 ```
 
-The Dashboard renders whatever the OS declares.
+The Dashboard renders whatever the selected OS declares.
 
 This keeps the 4Cs doctrine canonical in AI-Verse OS and prevents Layer 5 from becoming a shadow specification.
 
@@ -686,7 +792,7 @@ This keeps the 4Cs doctrine canonical in AI-Verse OS and prevents Layer 5 from b
 
 ## H. Knowledge / Brain
 
-Workspace-scoped graph and semantic exploration.
+Workspace-scoped graph and semantic exploration inside the selected `systemId` only.
 
 Details in section 12.
 
@@ -713,6 +819,7 @@ Dashboard settings may own:
 - graph visual preferences
 - notification preferences
 - local Gateway connection
+- registered OS connection metadata and labels
 - channel connection metadata where the Dashboard Gateway is the canonical owner
 
 Core AI-Verse settings must be surfaced through core commands, not duplicated into Dashboard config.
@@ -727,6 +834,7 @@ Use three information horizons.
 
 Only:
 
+- selected system/workspace identity
 - current focus
 - 3 to 5 meaningful running items
 - 3 to 5 items needing attention
@@ -792,12 +900,12 @@ Create a runtime adapter interface:
 
 ```ts
 interface RuntimeAdapter {
-  capabilities(): Promise<RuntimeCapabilities>
-  listSessions(workspaceId: string): Promise<SessionSummary[]>
-  getSession(sessionId: string): Promise<Session>
-  send(sessionId: string, message: string): Promise<CommandAck>
-  abort(sessionId: string): Promise<void>
-  subscribe(sessionId: string): AsyncIterable<RuntimeEvent>
+  capabilities(systemId: string): Promise<RuntimeCapabilities>
+  listSessions(systemId: string, workspaceId: string): Promise<SessionSummary[]>
+  getSession(systemId: string, sessionId: string): Promise<Session>
+  send(systemId: string, sessionId: string, message: string): Promise<CommandAck>
+  abort(systemId: string, sessionId: string): Promise<void>
+  subscribe(systemId: string, sessionId: string): AsyncIterable<RuntimeEvent>
 }
 ```
 
@@ -811,6 +919,8 @@ Possible adapters:
 - generic CLI/JSONL
 
 The Dashboard converts provider-specific events into one AI-Verse runtime event model.
+
+Runtime adapters must treat `systemId` as an isolation boundary, not merely metadata. They may reuse provider credentials across systems when authorized, but must not reuse provider conversation IDs, hidden chat context, runtime sessions, tool result history, or model-side continuation state across different systems.
 
 ## Do not build a code editor
 
@@ -849,11 +959,13 @@ Telegram / Discord / WhatsApp
             v
  AI-Verse Dashboard Gateway
             |
+      systemId + ACL
+            |
             v
-    AI-Verse OS command API
+ Selected AI-Verse OS command API
 ```
 
-OpenClaw should receive only a narrow AI-Verse tool/API surface, not unrestricted access to the AI-Verse filesystem.
+OpenClaw should receive only a narrow AI-Verse tool/API surface, not unrestricted access to any AI-Verse filesystem.
 
 Later, native adapters can replace any channel independently.
 
@@ -906,18 +1018,19 @@ allowlist
 
 Avoid public/open DMs as a default.
 
-### Workspace ACL
+### System and workspace ACL
 
-Each authenticated identity is granted explicit workspace access:
+Each authenticated identity is granted explicit registered-system access first, then workspace access within that system:
 
 ```text
 Telegram user 123
-  -> Personal workspace: query + chat
-  -> Client-A workspace: query only
-  -> Client-B workspace: no access
+  -> System aiverse-01
+       -> Personal workspace: query + chat
+       -> Client-A workspace: query only
+  -> System aiverse-02: no access
 ```
 
-A channel conversation must never be able to switch to a workspace the sender is not authorized to access.
+A channel conversation must never be able to switch to a `systemId` or workspace the sender is not authorized to access.
 
 ### Action policy
 
@@ -940,19 +1053,22 @@ Store provider credentials in:
 
 Never write bot tokens, API keys, or WhatsApp secrets to workspace Markdown.
 
+Shared credentials do not imply shared provider conversations or shared OS context.
+
 ### Audit
 
 Every remote command should record:
 
 - channel
 - sender identity
+- systemId
 - workspace
 - command
 - timestamp
 - approval path
 - resulting core command ID
 
-The canonical audit event belongs to the core OS/runtime contract.
+The canonical audit event belongs to the selected core OS/runtime contract.
 
 ---
 
@@ -1027,7 +1143,7 @@ These are product budgets, not claims about renderer theoretical limits.
 
 - compute heavy layout in a Web Worker or server-side
 - freeze physics after stabilization
-- preserve layout coordinates in disposable Dashboard cache
+- preserve layout coordinates in disposable Dashboard cache partitioned by `systemId`
 - incrementally place new nodes rather than restarting the entire simulation
 
 ### Interaction
@@ -1053,6 +1169,7 @@ Example parameters:
 
 ```json
 {
+  "systemId": "aiverse-01",
   "workspaceId": "project-x",
   "seedIds": ["initiative:launch"],
   "depth": 1,
@@ -1090,7 +1207,7 @@ interface HealthDimension {
 
 Do not calculate the doctrinal meaning of a C inside React.
 
-The OS or a sanctioned read adapter should supply it.
+The selected OS or a sanctioned read adapter should supply it.
 
 ---
 
@@ -1111,6 +1228,7 @@ type InboxKind =
 
 interface InboxItem {
   id: string
+  systemId: string
   workspaceId: string
   kind: InboxKind
   severity: 'info' | 'warning' | 'critical'
@@ -1123,7 +1241,7 @@ interface InboxItem {
 }
 ```
 
-The Dashboard can merge multiple read-only sources into one Inbox projection, but resolving an item always calls the source-owning core command.
+The Dashboard can merge multiple read-only sources from the selected system into one Inbox projection, but resolving an item always calls the source-owning core command for that same `systemId`.
 
 ---
 
@@ -1143,6 +1261,7 @@ type WorkStatus =
 
 interface WorkItem {
   id: string
+  systemId: string
   workspaceId: string
   parentId?: string
   kind: 'initiative' | 'task' | 'subagent' | 'automation-run'
@@ -1157,7 +1276,7 @@ interface WorkItem {
 }
 ```
 
-The normalized model is a projection. The canonical task IDs and state remain in AI-Verse OS.
+The normalized model is a projection. The canonical task IDs and state remain in the selected AI-Verse OS. The pair `systemId + id` is the Dashboard identity boundary, so matching IDs in another system are unrelated objects.
 
 ---
 
@@ -1183,12 +1302,15 @@ cron.run
 
 Every span should be linkable to:
 
+- systemId
 - workspace
 - task/initiative
 - agent
 - runtime session
 - parent span
 - cost/tokens where applicable
+
+Trace/session identity must be partitioned by `systemId` so one system's logs or provider/runtime continuation state cannot appear in another system's timeline.
 
 This makes it possible to render a Langfuse/Phoenix-style trace without requiring either product.
 
@@ -1204,7 +1326,7 @@ Recommended visual principles:
 
 - dark-first but excellent light mode
 - high information density with restrained motion
-- large workspace identity
+- large system and workspace identity
 - clear status colors used semantically
 - subtle depth/glass only where it improves hierarchy
 - live glow/pulse only for genuinely active processes
@@ -1214,6 +1336,7 @@ Recommended visual principles:
 
 Core primitives:
 
+- system chip/switcher
 - workspace chip/switcher
 - status dot
 - health strip
@@ -1238,14 +1361,16 @@ Core primitives:
 
 ## Threat model priorities
 
-1. Cross-workspace data leak
-2. Messaging sender impersonation
-3. Arbitrary filesystem path reads
-4. Dashboard process gaining write access to canonical state
-5. Remote execution through a chat message
-6. Secret leakage in logs or UI
-7. Stale approval replay
-8. WebSocket hijack/cross-origin access
+1. Cross-system data or context leak
+2. Cross-workspace data leak within one system
+3. Messaging sender impersonation
+4. Arbitrary filesystem path reads
+5. Dashboard process gaining write access to canonical state
+6. Remote execution through a chat message
+7. Secret leakage in logs or UI
+8. Stale approval replay
+9. WebSocket hijack/cross-origin access
+10. Provider conversation/session reuse across systems
 
 ## Required controls
 
@@ -1253,8 +1378,13 @@ Core primitives:
 - authentication on every privileged connection
 - strict WebSocket origin checking
 - CSRF protection for HTTP mutations if cookies are used
-- explicit workspace ACL per connection/session
-- server-side workspace path resolution
+- explicit system ACL per connection/session
+- explicit workspace ACL within the selected system
+- server-side system root and workspace path resolution
+- one `systemId` bound to every OS-derived request/event/runtime session
+- provider conversation IDs and runtime continuation state partitioned by `systemId`
+- cache, search, graph, logs, subscriptions, and dedupe state partitioned by `systemId`
+- no fallback from one system to another when data is missing
 - rate limiting
 - attachment size/type limits
 - log redaction
@@ -1267,7 +1397,7 @@ Core primitives:
 
 ## Strong filesystem hardening
 
-If practical, run the Dashboard Gateway with OS-level read permission only on workspace roots.
+If practical, run the Dashboard Gateway with OS-level read permission only on registered OS roots.
 
 Examples:
 
@@ -1275,11 +1405,15 @@ Examples:
 - dedicated local user with filesystem ACLs
 - separate writable cache directory
 
-Then even a Dashboard bug cannot directly modify canonical state.
+Where stronger multi-user separation is required on a shared computer, OS-level user permissions or separately launched Gateway processes can provide an additional boundary beyond Dashboard `systemId` isolation.
+
+Then even a Dashboard bug cannot directly modify canonical state through its read path.
 
 ---
 
 # 19. Recommended build phases
+
+The original six-phase implementation plan remains intact. Multi-OS support is a foundational scoping rule added to Phase 1 and inherited by later phases, not a new phase or redesign.
 
 ## Phase 1: Read-only Control Room
 
@@ -1287,14 +1421,20 @@ Ship:
 
 - Vite/React shell
 - Gateway and protocol package
-- Workspace Switcher
+- Dashboard-local registered OS connection registry
+- compatible AI-Verse OS folder validation before registration
+- stable `systemId` for every registered OS
+- OS Switcher supporting multiple registered installations in one Dashboard
+- independent selected `systemId` and `workspaceId` per Dashboard window/tab
+- Workspace Switcher within the selected OS
 - Now page
 - 4Cs health projection
 - active initiatives/tasks read model
 - Inbox read model
-- live filesystem invalidation
-- read-only SQLite adapter
-- provenance/freshness metadata
+- live filesystem invalidation partitioned by system
+- read-only SQLite adapter partitioned by system
+- provenance/freshness metadata including `systemId`
+- isolation tests proving system A cannot read, resolve, cache, subscribe to, or collide with system B
 
 No mutation features until the core command boundary exists.
 
@@ -1305,6 +1445,8 @@ Ship:
 - chat
 - runtime adapter interface
 - Claude Code/Codex/ACP adapters as available
+- system-scoped chat history and provider conversation/session lifecycle
+- tests proving the same provider/model can serve several systems without sharing conversation or runtime context
 - live activity stream
 - task/subagent rail
 - Runs/Timeline
@@ -1329,7 +1471,7 @@ Ship OpenClaw bridge first:
 - Discord
 - WhatsApp
 - pairing state surfaced in Inbox
-- workspace ACLs
+- system and workspace ACLs
 - remote command risk policy
 
 Add native adapters later only when justified.
@@ -1363,7 +1505,7 @@ To preserve Layer 5 discipline, these belong elsewhere:
 
 ## AI-Verse OS core
 
-- canonical workspace registry
+- canonical workspace registry for each OS installation
 - canonical Markdown
 - canonical SQLite
 - task ledger
@@ -1389,12 +1531,16 @@ To preserve Layer 5 discipline, these belong elsewhere:
 
 ## AI-Verse Dashboard
 
+- registered OS connection metadata
+- active system/workspace selection per UI session/window
 - projection
 - interaction
 - realtime transport
 - visual control
 - user attention
 - channel presentation/ingress policy
+
+The Dashboard's connection registry may remember approved roots and labels, but it must not become a cross-system store for domain data, chat memory, Brain state, or canonical runtime state.
 
 ---
 
@@ -1435,9 +1581,9 @@ Testing
   playwright
 ```
 
-Do not add a database to the Dashboard repo by default.
+Do not add a domain database to the Dashboard repo by default.
 
-If local cache persistence becomes useful, use SQLite only under the Dashboard cache directory and explicitly label it disposable/derived.
+If local cache or connection-registry persistence becomes useful, use a small Dashboard-owned local store only under the Dashboard config/cache area and explicitly label OS-derived content disposable/derived. Registered root metadata is Dashboard configuration, not AI-Verse domain truth.
 
 ---
 
@@ -1447,22 +1593,30 @@ These should become architecture tests or CI checks where possible.
 
 1. Dashboard code never performs canonical workspace writes.
 2. Dashboard SQLite connections to canonical databases are read-only.
-3. A client cannot provide a raw path that escapes workspace policy.
-4. Every query is scoped to an authorized workspace.
-5. Every mutation goes through the AI-Verse OS command interface.
-6. Dashboard cache can be deleted safely.
-7. Missing data never silently renders as healthy/zero.
-8. Messaging senders are paired/allowlisted before access.
-9. High-risk commands require explicit policy/approval.
-10. Runtime adapters cannot bypass workspace isolation.
-11. The Dashboard remains useful even when AI-Verse agents run primarily in Claude Code, Codex, or another harness.
-12. 3D visualization is optional and never required to understand or operate the system.
+3. A client cannot provide a raw path that escapes registered-system or workspace policy.
+4. Every OS-derived operation is scoped to exactly one registered `systemId`.
+5. Every workspace operation is scoped to an authorized workspace inside that `systemId`.
+6. A request, cache lookup, WebSocket subscription, runtime adapter, or missing-data fallback for system A cannot read or resolve data from system B.
+7. System A cannot mutate system B through normal Dashboard commands.
+8. Dashboard cache can be deleted safely and OS-derived caches are partitioned by `systemId`.
+9. Matching workspace, task, Bot, conversation, or runtime IDs in two systems do not collide.
+10. Switching OS in one Dashboard restores only the selected system's own UI, chat, runtime, Memory, Brain, Bot, and projection state.
+11. Multiple Dashboard windows/tabs can select different systems concurrently without sharing scoped state.
+12. Provider credentials may be reused when authorized, but provider conversations, chat history, hidden runtime context, and continuation/session IDs may never be reused across different systems.
+13. Every mutation goes through the selected AI-Verse OS command interface.
+14. Missing data never silently renders as healthy/zero or causes a lookup in another system.
+15. Messaging senders are paired/allowlisted before access and are authorized for the requested `systemId` and workspace.
+16. High-risk commands require explicit policy/approval.
+17. Runtime adapters cannot bypass system or workspace isolation.
+18. The Dashboard remains useful even when AI-Verse agents run primarily in Claude Code, Codex, or another harness.
+19. 3D visualization is optional and never required to understand or operate the system.
+20. Cross-system sharing, if added later, must use an explicit export/import or transfer contract and never implicit shared context.
 
 ---
 
 # 23. Final architecture recommendation
 
-Build **AI-Verse Dashboard as a React/Vite Control Room plus a TypeScript local Gateway**.
+Build **AI-Verse Dashboard as a React/Vite Control Room plus a TypeScript local Gateway** that can register one or more compatible AI-Verse OS installations while preserving a complete context and authority boundary around each one.
 
 Borrow:
 
@@ -1473,6 +1627,8 @@ Borrow:
 - TenacitOS visual components where useful and license-compliant
 - WebGL graph techniques for a performant Brain view
 
+The multi-OS amendment does not change the research baseline or six-phase roadmap. It adds one missing scope above workspace: `systemId`.
+
 The decisive design principle is simple:
 
-> **AI-Verse Dashboard should make the OS visible and controllable without becoming the OS.**
+> **AI-Verse Dashboard should make one or more isolated AI-Verse OS installations visible and controllable without becoming the OS or allowing state to leak between them.**
