@@ -1,0 +1,10 @@
+{
+  "name": "@ai-verse/dashboard-protocol",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "description": "Versioned Gateway protocol: zod envelopes, systemId + workspaceId scoping, no raw roots.",
+  "dependencies": {
+    "zod": "^4.6.2"
+  }
+}
