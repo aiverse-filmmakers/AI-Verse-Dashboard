@@ -2,8 +2,8 @@
 
 **Updated:** 2026-09-12
 **Status:** Phase 2 IN PROGRESS
-**Implementation progress:** 10 tasks complete
-**Next:** Phase 2 Task 3
+**Implementation progress:** 11 tasks complete
+**Next:** Phase 2 Task 4
 
 This is the canonical task ledger for Dashboard, like Data's 41-task map.
 
@@ -23,7 +23,7 @@ This is the canonical task ledger for Dashboard, like Data's 41-task map.
 
 - [x] Phase 2 Task 1 - Chat + live screens slice — DONE 2026-09-12: packages/live/src (timeline, sessions, adapter) + chat/bots/runs panels + test/live-chat.test.ts 4/4, npm run check green (47/47 total)
 - [x] Phase 2 Task 2 - Agent + runs reads (session summaries, history, run filters, single-entry fetch) — DONE 2026-09-12: gateway agent.list/agent.sessions/run.list/run.get/run.logs + sessions summaries/recent/find + phase-2-live handshake + test/live-runs.test.ts 4/4, npm run check green (51/51 total)
-- [ ] Phase 2 Task 3 - Live activity stream (WS live events, task rail, tool grouping)
+- [x] Phase 2 Task 3 - Live activity stream (WS live events, task rail, tool grouping) — DONE 2026-09-12: packages/live/src/activity.ts (publishLive, groupToolsBySession) + test/live-activity.test.ts 2/2, npm run check green (53/53 total)
 - [ ] Phase 2 Task 4 - Runs timeline + terminal drawer (trace view, logs, cancel path)
 - [ ] Phase 2 Task 5 - Runtime adapters (Claude/Codex/ACP contract + one working adapter)
 - [ ] Phase 2 Task 6 - Phase 2 gate (full live story green)

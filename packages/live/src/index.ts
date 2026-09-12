@@ -11,3 +11,6 @@ export type { ChatSession, SessionStatus } from "./sessions.js";
 
 export { LocalEchoAdapter } from "./adapter.js";
 export type { RuntimeAdapter, RuntimeCapabilities, CommandAck } from "./adapter.js";
+
+export { publishLive, groupToolsBySession } from "./activity.js";
+export type { LiveEventName, LivePublish, ToolGroup } from "./activity.js";
