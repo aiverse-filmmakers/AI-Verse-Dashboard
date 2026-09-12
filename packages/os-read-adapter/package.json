@@ -1,0 +1,7 @@
+{
+  "name": "@ai-verse/dashboard-read-adapters",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only Markdown + SQLite projectors over registered OS roots. Disposable systemId-partitioned cache. No mutations."
+}

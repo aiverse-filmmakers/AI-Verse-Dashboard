@@ -2,8 +2,8 @@
 
 **Updated:** 2026-09-12
 **Status:** Phase 1 IN PROGRESS
-**Implementation progress:** 2 tasks complete
-**Next:** Task 3 - Read adapters
+**Implementation progress:** 3 tasks complete
+**Next:** Task 4 - Gateway query path
 
 This is the canonical task ledger for Dashboard, like Data's 41-task map.
 
@@ -11,7 +11,7 @@ This is the canonical task ledger for Dashboard, like Data's 41-task map.
 
 - [x] Task 1 - Protocol package (versioned envelope, systemId + workspaceId + panelId/presentation, Zod, no raw roots) — DONE 2026-09-12: packages/protocol/src (ids, methods, envelope) + test/protocol.test.ts 10/10; shell amendment: panelId slug + full/compact/hud; npm run check green
 - [x] Task 2 - OS registry + validation (compatible OS check, systemId map, per-window selection) — DONE 2026-09-12: packages/registry/src (validation, registry, selection) + test/registry.test.ts 5/5, npm run check green (14/14 total)
-- [ ] Task 3 - Read adapters (read-only Markdown + SQLite, disposable cache by systemId)
+- [x] Task 3 - Read adapters (read-only Markdown + SQLite, disposable cache by systemId) — DONE 2026-09-12: packages/os-read-adapter/src (path-resolve, markdown, sqlite, workspace, cache) + test/read-adapters.test.ts 6/6, npm run check green (21/21 total)
 - [ ] Task 4 - Gateway query path (localhost server + WS events, no fallback across systems)
 - [ ] Task 5 - Web shell (Vite/React, OS + workspace switchers, Now page)
 - [ ] Task 6 - Health + tasks + Inbox read models (4Cs, provenance, freshness)
