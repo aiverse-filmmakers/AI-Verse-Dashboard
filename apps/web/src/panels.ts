@@ -88,6 +88,13 @@ export class PanelRegistry {
 
 /** Phase 1 default read-only panels (shell §14: Now/Health/Work/Inbox). */
 export function defaultPhase1Panels(): PanelDefinition[] {
+  return phase2Panels().filter((p) =>
+    ["now", "health", "work", "inbox", "usage"].includes(p.id),
+  );
+}
+
+/** Phase 2 live panels: chat, bots, runs (shell §14 Phase 2). */
+export function phase2Panels(): PanelDefinition[] {
   return [
     {
       id: "now",
@@ -141,6 +148,37 @@ export function defaultPhase1Panels(): PanelDefinition[] {
       canPin: true,
       systemScoped: true,
       workspaceScoped: false,
+    },
+    {
+      id: "chat",
+      title: "Chat",
+      supportedPresentations: ["full", "compact"],
+      preferredPlacement: "center",
+      canFloat: true,
+      canDetach: true,
+      systemScoped: true,
+      workspaceScoped: true,
+    },
+    {
+      id: "bots",
+      title: "Bots",
+      supportedPresentations: ["full", "compact", "hud"],
+      preferredPlacement: "left",
+      canFloat: true,
+      canDetach: true,
+      canPin: true,
+      systemScoped: true,
+      workspaceScoped: true,
+    },
+    {
+      id: "runs",
+      title: "Runs",
+      supportedPresentations: ["full", "compact"],
+      preferredPlacement: "bottom",
+      canFloat: true,
+      canDetach: true,
+      systemScoped: true,
+      workspaceScoped: true,
     },
   ];
 }

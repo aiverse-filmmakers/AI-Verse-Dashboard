@@ -1,9 +1,9 @@
 # AI-Verse Dashboard Build Map
 
 **Updated:** 2026-09-12
-**Status:** Phase 1 COMPLETE
-**Implementation progress:** 8 tasks complete
-**Next:** Phase 2 (not started)
+**Status:** Phase 2 IN PROGRESS
+**Implementation progress:** 9 tasks complete
+**Next:** Phase 2 Task 2
 
 This is the canonical task ledger for Dashboard, like Data's 41-task map.
 
@@ -17,7 +17,12 @@ This is the canonical task ledger for Dashboard, like Data's 41-task map.
 - [x] Task 6 - Health + tasks + Inbox read models (4Cs, provenance, freshness) — DONE 2026-09-12: packages/read-models/src (health, work, inbox, now, workspace-sources) + gateway workspace.inbox.list/task.list + test/read-models.test.ts 5/5, npm run check green (34/34 total)
 - [x] Task 7 - Isolation + security tests (A vs B, traversal, symlink, byte-identical fixtures) — DONE 2026-09-12: test/isolation.test.ts 8/8, npm run check green (42/42 total)
 - [x] Task 8 - Phase 1 gate (full story green) — DONE 2026-09-12: test/phase1-gate.test.ts 1/1 (register -> read -> panels -> isolate -> shell, live gateway), npm run check green (43/43 total)
-- Phase 1 COMPLETE 8/8 100% — Next: Phase 2 (not started)
+- Phase 1 COMPLETE 8/8 100%
+
+## Phase 2 - Live agent control (in progress)
+
+- [x] Phase 2 Task 1 - Chat + live screens slice — DONE 2026-09-12: packages/live/src (timeline, sessions, adapter) + chat/bots/runs panels + test/live-chat.test.ts 4/4, npm run check green (47/47 total)
+- [ ] Phase 2 Task 2 - Next slice (per blueprint Phase 2)
 
 ## Phase 2-6 - Later (not started)
 
