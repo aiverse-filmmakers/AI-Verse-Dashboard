@@ -19,15 +19,41 @@ This is the canonical task ledger for Dashboard, like Data's 41-task map.
 - [x] Task 8 - Phase 1 gate (full story green) — DONE 2026-09-12: test/phase1-gate.test.ts 1/1 (register -> read -> panels -> isolate -> shell, live gateway), npm run check green (43/43 total)
 - Phase 1 COMPLETE 8/8 100%
 
-## Phase 2 - Live agent control (in progress)
+## Phase 2 - Live agent control (6 tasks)
 
 - [x] Phase 2 Task 1 - Chat + live screens slice — DONE 2026-09-12: packages/live/src (timeline, sessions, adapter) + chat/bots/runs panels + test/live-chat.test.ts 4/4, npm run check green (47/47 total)
 - [x] Phase 2 Task 2 - Agent + runs reads (session summaries, history, run filters, single-entry fetch) — DONE 2026-09-12: gateway agent.list/agent.sessions/run.list/run.get/run.logs + sessions summaries/recent/find + phase-2-live handshake + test/live-runs.test.ts 4/4, npm run check green (51/51 total)
-- [ ] Phase 2 Task 3 - Next slice (per blueprint Phase 2)
+- [ ] Phase 2 Task 3 - Live activity stream (WS live events, task rail, tool grouping)
+- [ ] Phase 2 Task 4 - Runs timeline + terminal drawer (trace view, logs, cancel path)
+- [ ] Phase 2 Task 5 - Runtime adapters (Claude/Codex/ACP contract + one working adapter)
+- [ ] Phase 2 Task 6 - Phase 2 gate (full live story green)
 
-## Phase 2-6 - Later (not started)
+## Phase 3 - Automations + approvals (4 tasks)
 
-Phase 2 live control, Phase 3 automations, Phase 4 channels, Phase 5 Brain graph, Phase 6 observability. Plus final desktop install (Mac + Windows) only when Bogdan says so.
+- [ ] Phase 3 Task 1 - Automations page (list, run history, create/pause/resume/run-now)
+- [ ] Phase 3 Task 2 - Approval inbox (cards, approve/deny, provenance, audit view)
+- [ ] Phase 3 Task 3 - Command audit visibility
+- [ ] Phase 3 Task 4 - Phase 3 gate (full automation story green)
+
+## Phase 4 - Omnichannel (3 tasks)
+
+- [ ] Phase 4 Task 1 - OpenClaw bridge (scoped tools, no direct file access)
+- [ ] Phase 4 Task 2 - Telegram/Discord/WhatsApp via bridge (pairing, ACLs, risk policy)
+- [ ] Phase 4 Task 3 - Phase 4 gate (channel story green)
+
+## Phase 5 - Brain graph (3 tasks)
+
+- [ ] Phase 5 Task 1 - Graph projection API (2D first, budgets, provenance panel)
+- [ ] Phase 5 Task 2 - 3D mode + clusters (LOD, layout cache, optional view)
+- [ ] Phase 5 Task 3 - Phase 5 gate (graph story green)
+
+## Phase 6 - Observability (3 tasks)
+
+- [ ] Phase 6 Task 1 - Trace tree + spans (OTEL-style model, token/cost overlays)
+- [ ] Phase 6 Task 2 - Usage views + exporters (Phoenix/Langfuse optional)
+- [ ] Phase 6 Task 3 - Phase 6 gate (final release green)
+
+Desktop install (Mac .dmg + Windows) is a planned FINAL step, ONLY on Bogdan approval. Never build early.
 
 ## Laws
 
