@@ -51,6 +51,7 @@ AI-Verse-Dashboard/
 |   +-- protocol/             # versioned request/response/event schemas
 |   +-- client/               # typed TypeScript SDK used by all UIs
 |   +-- ui/                   # reusable visual primitives
+|   +-- shell/                # panel registry, layout/window/preset contracts
 |   +-- os-read-adapter/      # read-only Markdown/SQLite projectors
 |   +-- runtime-adapters/     # Claude Code/Codex/ACP/OpenClaw adapters
 |   +-- channel-core/         # normalized channel contracts + policy
@@ -1355,6 +1356,53 @@ Core primitives:
 - right context rail
 - bottom log drawer
 
+## Modular shell composition contract
+
+The visual system must be implemented as host-independent panels rather than permanent page furniture.
+
+The authoritative detailed contract is in [MODULAR-DESKTOP-SHELL.md](MODULAR-DESKTOP-SHELL.md).
+
+The key rules are:
+
+- a panel may be docked, floated, detached, hidden, restored, or rendered in a compact presentation without changing its canonical data ownership
+- panel placement and saved layouts are Dashboard-owned presentation state only
+- every OS-derived panel remains explicitly scoped by `systemId` and, where applicable, `workspaceId`
+- a detached/popout/HUD panel does not gain broader filesystem, runtime, cache, provider-session, or command authority
+- panels consume the typed Dashboard client and must not bypass the Gateway
+- the initial Phase 1 layout may remain conventional, but components must not assume a permanent column/route position
+- responsive/mobile behavior is designed from Phase 1 rather than postponed as a later redesign
+- critical panels should be capable of full/compact presentation where useful; native HUD presentation is a later host capability, not a new data path
+
+The shell should support a View surface for panel visibility, reset, and saved layout presets. Future native wrapping may expose selected panels as separate application windows, including always-on-top HUDs, while keeping the same Gateway and isolation model.
+
+### Persistent Bots and Rooms
+
+When the selected OS exposes canonical Bot/Room/Thread state, the Dashboard should render those concepts as first-class surfaces rather than maintaining a second registry.
+
+Useful UI patterns include:
+
+- persistent Bot roster
+- visible Bot state such as idle, thinking, working, waiting, blocked, or done
+- Room/thread surfaces containing the relevant Bots, conversation, files/artifacts, permissions and execution trail
+- Bot/Room-scoped routines and automation events when exposed canonically
+- structured timeline objects for approvals, tasks, files, tool activity, handoffs and automations instead of forcing every event into prose
+
+### Runtime visibility
+
+For an agent runtime with a browser/computer surface, prefer progressive disclosure:
+
+1. status
+2. preview/context rail
+3. full takeover/intervention view
+
+The Dashboard should not encourage continuous babysitting of autonomous work.
+
+### Visual quality gate
+
+The design system must define reusable tokens, responsive breakpoints, component loading/empty/error/stale states, keyboard/focus behavior, reduced-motion behavior, and visual regression fixtures for critical surfaces.
+
+A frontend slice is not complete merely because it renders. It must pass desktop and narrow-width visual QC without breaking the existing accessibility or information-hierarchy rules.
+
 ---
 
 # 18. Security architecture
@@ -1435,8 +1483,14 @@ Ship:
 - read-only SQLite adapter partitioned by system
 - provenance/freshness metadata including `systemId`
 - isolation tests proving system A cannot read, resolve, cache, subscribe to, or collide with system B
+- panel registry and shell/layout abstraction
+- dockable panel host with visibility controls and resettable/savable presentation layout
+- full/compact panel presentation contract
+- responsive/mobile shell foundation
+- design tokens, component state rules, and visual QA fixtures
+- isolation tests covering multiple panel instances and popout/detached scopes
 
-No mutation features until the core command boundary exists.
+No mutation features until the core command boundary exists. Production native HUD windows are not required in Phase 1, but Phase 1 components must not be hard-coded in a way that requires rewriting them to support detachment later.
 
 ## Phase 2: Live agent control
 
@@ -1452,6 +1506,12 @@ Ship:
 - Runs/Timeline
 - terminal-style log drawer
 - cancel/abort through core command API
+- persistent Bots panel/roster when canonical Bot state is available
+- Rooms/thread surface when canonical Room/Thread state is available
+- heterogeneous Chat timeline for typed events and interactive objects
+- right-side preview/context rail
+- runtime Status -> Preview -> Takeover interaction model
+- detachable/popout support for appropriate live panels
 
 ## Phase 3: Automations and approvals
 
@@ -1462,6 +1522,9 @@ Ship:
 - create/pause/resume/run-now through core
 - approval Inbox
 - command audit visibility
+- Bot/Room-visible Routine/Automation events when canonical events support them
+- approval surfaces usable from full and compact attention panels
+- approval provenance showing target system/workspace/actor/connection when the selected OS exposes it
 
 ## Phase 4: Omnichannel
 
@@ -1628,6 +1691,8 @@ Borrow:
 - WebGL graph techniques for a performant Brain view
 
 The multi-OS amendment does not change the research baseline or six-phase roadmap. It adds one missing scope above workspace: `systemId`.
+
+The 2026-09-12 modular-shell amendment also preserves the six-phase roadmap. It changes the frontend composition contract so Phase 1 does not create a throwaway fixed dashboard that would later need to be rebuilt for docking, detachment, native HUDs, responsive/mobile use, persistent Bots, or Room surfaces.
 
 The decisive design principle is simple:
 
