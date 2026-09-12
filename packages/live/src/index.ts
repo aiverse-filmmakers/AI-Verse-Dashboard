@@ -17,3 +17,13 @@ export type { LiveEventName, LivePublish, ToolGroup } from "./activity.js";
 
 export { buildTrace, buildLogDrawer, copyLogLine, DRAWER_BUFFER_MAX } from "./runs.js";
 export type { SpanKind, TraceSpan, TraceView, LogSeverity, LogLine, LogDrawer } from "./runs.js";
+
+export {
+  AdapterRegistry,
+  CliJsonlAdapter,
+  validateAdapterDescriptor,
+  ADAPTER_TIMEOUT_DEFAULT_MS,
+  ADAPTER_TIMEOUT_MAX_MS,
+  ADAPTER_OUTPUT_MAX_BYTES,
+} from "./runtime-adapters.js";
+export type { AdapterKind, AdapterDescriptor } from "./runtime-adapters.js";

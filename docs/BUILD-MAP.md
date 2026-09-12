@@ -2,8 +2,8 @@
 
 **Updated:** 2026-09-12
 **Status:** Phase 2 IN PROGRESS
-**Implementation progress:** 12 tasks complete
-**Next:** Phase 2 Task 5
+**Implementation progress:** 13 tasks complete
+**Next:** Phase 2 Task 6
 
 This is the canonical task ledger for Dashboard, like Data's 41-task map.
 
@@ -25,7 +25,7 @@ This is the canonical task ledger for Dashboard, like Data's 41-task map.
 - [x] Phase 2 Task 2 - Agent + runs reads (session summaries, history, run filters, single-entry fetch) — DONE 2026-09-12: gateway agent.list/agent.sessions/run.list/run.get/run.logs + sessions summaries/recent/find + phase-2-live handshake + test/live-runs.test.ts 4/4, npm run check green (51/51 total)
 - [x] Phase 2 Task 3 - Live activity stream (WS live events, task rail, tool grouping) — DONE 2026-09-12: packages/live/src/activity.ts (publishLive, groupToolsBySession) + test/live-activity.test.ts 2/2, npm run check green (53/53 total)
 - [x] Phase 2 Task 4 - Runs timeline + terminal drawer (trace view, logs, cancel path) — DONE 2026-09-12: packages/live/src/runs.ts (buildTrace, buildLogDrawer, copyLogLine) + test/live-runs-timeline.test.ts 3/3, npm run check green (56/56 total)
-- [ ] Phase 2 Task 5 - Runtime adapters (Claude/Codex/ACP contract + one working adapter)
+- [x] Phase 2 Task 5 - Runtime adapters (Claude/Codex/ACP contract + one working adapter) — DONE 2026-09-12: packages/live/src/runtime-adapters.ts (validateAdapterDescriptor, CliJsonlAdapter, AdapterRegistry) + test/live-adapters.test.ts 4/4, npm run check green (60/60 total)
 - [ ] Phase 2 Task 6 - Phase 2 gate (full live story green)
 
 ## Phase 3 - Automations + approvals (4 tasks)
