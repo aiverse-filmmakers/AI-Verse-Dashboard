@@ -193,6 +193,105 @@ AI-Verse should be able to observe a worktree-based coding agent without becomin
 
 ---
 
+# 2026-09-12 adoption amendment: modular shell and persistent-agent UX
+
+This amendment is additive. It does not replace Priorities 1-4 or any source-of-truth rule.
+
+## Hermes Desktop
+
+Source:
+https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/desktop.md
+
+Hermes Desktop is now a strong implementation and interaction reference because it combines a native React desktop surface with a separate headless Hermes backend over JSON-RPC/WebSocket.
+
+### Adopt
+
+- chat-first desktop composition
+- multiple simultaneous agent conversations
+- right-hand preview rail
+- live tool summaries
+- task progress near the composer
+- configurable live status bar
+- session continuity across interfaces
+- contributed-page idea as inspiration for future panel extension
+
+### Do not adopt
+
+- Hermes as the required AI-Verse runtime
+- Hermes-specific state ownership
+- any dependency that would force Dashboard panels to talk directly to `hermes serve`
+
+AI-Verse should borrow the boundary and interaction quality, not bind Layer 5 to Hermes.
+
+## Grok Bot
+
+Sources:
+https://x.ai/news/designing-grok-bot
+https://x.ai/news/introducing-grok-bot
+https://x.ai/news/grok-bot-more-plans
+
+Grok Bot adds several product primitives not explicit enough in the earlier Dashboard plan.
+
+### Adopt
+
+- persistent Bot roster rather than organizing everything around disposable chat history
+- Bot identity and presence/status
+- structured interactive objects in the conversation timeline
+- Bot-visible Routines
+- group Bot interactions
+- desktop/mobile thread continuity
+- three-level runtime visibility: Status -> Preview -> Takeover
+- progressive disclosure that keeps low-level agent machinery hidden until needed
+
+### Do not adopt
+
+- Grok's canonical Bot/runtime model
+- the requirement that every AI-Verse agent has a dedicated cloud computer
+- any UI assumption that weakens AI-Verse's own Multiple-Bots ownership boundaries
+
+## Kylon
+
+Sources:
+https://kylon.io/solutions/ai-workspace
+https://kylon.io/solutions/ai-employee
+https://kylon.io/blog/kylon-privacy-architecture
+
+Kylon is most useful as a collaboration, permissions, and provenance reference.
+
+### Adopt
+
+- Room as a shared work surface containing people/agents/thread/files/context
+- clear scoped-permission visibility
+- human approval and review surfaces
+- execution trail/provenance
+- agents treated as members of a shared work context rather than isolated chat windows
+
+### Do not adopt
+
+- canonical workspace data inside Dashboard
+- canonical Memory inside Dashboard
+- integration ownership inside Dashboard
+- Kylon's backend/runtime architecture as Layer 5 infrastructure
+
+Those belong to AI-Verse OS, Data, Memory, Connections, Multiple-Bots, and runtime layers. Dashboard only projects and controls them.
+
+## Docking and native-window layer
+
+Implementation references:
+https://dockview.dev/docs/core/groups/floatingGroups/
+https://dockview.dev/docs/core/groups/popoutGroups/
+https://v2.tauri.app/reference/config/
+
+Dockview is a strong candidate to evaluate for docked, floating, nested, and popout panel behavior.
+
+Tauri 2 is the preferred native-host candidate to evaluate for separate desktop windows and always-on-top HUD surfaces while preserving the React/Vite application.
+
+Neither is a canonical-state dependency.
+
+The detailed contract is in [MODULAR-DESKTOP-SHELL.md](MODULAR-DESKTOP-SHELL.md).
+
+---
+
 # Priority 4: TenacitOS visual shell
 
 Source: https://github.com/carlosazaustre/tenacitOS
@@ -451,6 +550,10 @@ It should be:
 - **OpenClaw underneath the connection layer:** realtime gateway, tasks, channels, pairing, approvals
 - **OpenHands underneath runtime integration:** typed client and interchangeable agent harnesses
 - **TenacitOS in the visual inspiration:** Mission Control styling and 3D ideas
+- **Hermes Desktop in the operational shell:** chat, previews, session/status interaction and headless-backend separation
+- **Grok Bot in persistent-agent UX:** Bots, presence, Routines, structured transcript and progressive runtime visibility
+- **Kylon in shared-work UX:** Rooms, scoped permissions, approval and execution provenance
+- **AI-Verse modular shell as the composition layer:** dock, float, detach, compact/HUD and saved layout behavior
 - **Phoenix/Langfuse in the observability details:** trace clarity and drill-down
 
 That combination gives AI-Verse a modern visual OS surface without duplicating the core OS or rebuilding an IDE.
