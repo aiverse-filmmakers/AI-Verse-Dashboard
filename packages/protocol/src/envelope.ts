@@ -142,7 +142,7 @@ export const handshakeResultSchema = z
   .object({
     serverProtocol: z.literal(PROTOCOL_VERSION),
     supportedMajors: z.array(z.number().int().nonnegative()),
-    phase: z.literal("phase-1-read-only"),
+    phase: z.enum(["phase-1-read-only", "phase-2-live"]),
   })
   .strict();
 
@@ -157,7 +157,7 @@ export function negotiateHandshake(clientMajor: unknown): z.infer<typeof handsha
   return {
     serverProtocol: PROTOCOL_VERSION,
     supportedMajors: [...SUPPORTED_MAJORS],
-    phase: "phase-1-read-only",
+    phase: "phase-2-live",
   };
 }
 

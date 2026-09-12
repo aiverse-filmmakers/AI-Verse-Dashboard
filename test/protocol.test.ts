@@ -28,7 +28,7 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
   it("handshake negotiates major 1 and rejects others", () => {
     const ok = negotiateHandshake(1);
     assert.equal(ok.serverProtocol, "1.0");
-    assert.equal(ok.phase, "phase-1-read-only");
+    assert.equal(ok.phase, "phase-2-live");
     assert.throws(() => negotiateHandshake(2), /VERSION_MISMATCH/);
     assert.throws(() => negotiateHandshake(0), /VERSION_MISMATCH/);
   });

@@ -2,8 +2,8 @@
 
 **Updated:** 2026-09-12
 **Status:** Phase 2 IN PROGRESS
-**Implementation progress:** 9 tasks complete
-**Next:** Phase 2 Task 2
+**Implementation progress:** 10 tasks complete
+**Next:** Phase 2 Task 3
 
 This is the canonical task ledger for Dashboard, like Data's 41-task map.
 
@@ -22,7 +22,8 @@ This is the canonical task ledger for Dashboard, like Data's 41-task map.
 ## Phase 2 - Live agent control (in progress)
 
 - [x] Phase 2 Task 1 - Chat + live screens slice — DONE 2026-09-12: packages/live/src (timeline, sessions, adapter) + chat/bots/runs panels + test/live-chat.test.ts 4/4, npm run check green (47/47 total)
-- [ ] Phase 2 Task 2 - Next slice (per blueprint Phase 2)
+- [x] Phase 2 Task 2 - Agent + runs reads (session summaries, history, run filters, single-entry fetch) — DONE 2026-09-12: gateway agent.list/agent.sessions/run.list/run.get/run.logs + sessions summaries/recent/find + phase-2-live handshake + test/live-runs.test.ts 4/4, npm run check green (51/51 total)
+- [ ] Phase 2 Task 3 - Next slice (per blueprint Phase 2)
 
 ## Phase 2-6 - Later (not started)
 

@@ -19,17 +19,20 @@ import {
   buildNowModel,
   buildWorkspaceProjections,
 } from "../../../packages/read-models/src/index.js";
+import type { SessionStore } from "../../../packages/live/src/sessions.js";
 import type { SystemRegistry } from "../../../packages/registry/src/index.js";
 
 /**
- * Query router (Task 4, Blueprint Rules 1-3 + 8).
+ * Query router (Task 4 + Phase 2 Task 2, Blueprint Rules 1-3 + 8).
  * Parsed protocol requests in, response frames out. Every OS-bound method
  * resolves through the registry; workspace methods resolve inside the
  * selected OS only. Missing/unknown/unauthorized never falls back to
- * another registered system. Commands are blocked (Phase 1 read-only).
+ * another registered system. Commands stay blocked; live reads
+ * (agent.*, run.*) serve session projections once attached.
  */
 
 export const GATEWAY_VERSION = "gateway-0.1.0-alpha.0";
+export const GATEWAY_PHASE = "phase-2-live" as const;
 const SUPPORTED_QUERIES = [
   "system.list",
   "system.get",
@@ -39,14 +42,25 @@ const SUPPORTED_QUERIES = [
   "workspace.health",
   "workspace.inbox.list",
   "task.list",
+  "agent.list",
+  "agent.sessions",
+  "run.list",
+  "run.get",
+  "run.logs",
   "source.preview",
 ] as const;
 
 export class QueryRouter {
+  private sessions?: SessionStore;
   constructor(
     private readonly registry: SystemRegistry,
     private readonly cache: DisposableCache,
   ) {}
+
+  /** Attach the live session store (Phase 2). Gateway owns it; routers share it. */
+  attachSessions(sessions: SessionStore): void {
+    this.sessions = sessions;
+  }
 
   handle(raw: unknown): DashboardResponse {
     let req: DashboardRequest;
@@ -107,7 +121,7 @@ export class QueryRouter {
         return negotiateHandshake(major);
       }
       case "protocol.capabilities":
-        return { phase: "phase-1-read-only", methods: [...SUPPORTED_QUERIES], maxParamsBytes: 65536 };
+        return { phase: GATEWAY_PHASE, methods: [...SUPPORTED_QUERIES], maxParamsBytes: 65536 };
       case "system.list":
         return { systems: this.registry.listPublic() };
       case "system.get":
@@ -201,11 +215,111 @@ export class QueryRouter {
           },
         };
       }
+      case "agent.list": {
+        const sessions = this.requireSessions();
+        const systemId = req.systemId as string;
+        const workspaceId = req.workspaceId as string;
+        getWorkspace(this.registry, systemId, workspaceId);
+        return {
+          systemId,
+          workspaceId,
+          agents: sessions.summaries(systemId, workspaceId),
+          observedAt: new Date().toISOString(),
+        };
+      }
+      case "agent.sessions": {
+        const sessions = this.requireSessions();
+        const systemId = req.systemId as string;
+        const workspaceId = req.workspaceId as string;
+        getWorkspace(this.registry, systemId, workspaceId);
+        const params = (req.params ?? {}) as { sessionId?: unknown; limit?: unknown };
+        if (typeof params.sessionId === "string") {
+          const one = sessions.get(systemId, params.sessionId);
+          if (!one || one.workspaceId !== workspaceId) {
+            throw Object.assign(new Error(`unknown session ${params.sessionId}`), {
+              code: "SESSION_NOT_FOUND",
+            });
+          }
+          return { session: one, observedAt: new Date().toISOString() };
+        }
+        const limit =
+          typeof params.limit === "number" && Number.isInteger(params.limit)
+            ? Math.max(1, Math.min(params.limit, 100))
+            : 100;
+        return {
+          systemId,
+          workspaceId,
+          sessions: sessions.summaries(systemId, workspaceId),
+          history: sessions.recentEntries(systemId, workspaceId, { limit }),
+          observedAt: new Date().toISOString(),
+        };
+      }
+      case "run.list": {
+        const sessions = this.requireSessions();
+        const systemId = req.systemId as string;
+        const workspaceId = req.workspaceId as string;
+        getWorkspace(this.registry, systemId, workspaceId);
+        const params = (req.params ?? {}) as { kinds?: unknown; limit?: unknown };
+        const kinds = Array.isArray(params.kinds)
+          ? params.kinds.filter((k): k is string => typeof k === "string").slice(0, 11)
+          : ["run-event", "error-event", "tool-call"];
+        const limit =
+          typeof params.limit === "number" && Number.isInteger(params.limit)
+            ? Math.max(1, Math.min(params.limit, 200))
+            : 50;
+        return {
+          systemId,
+          workspaceId,
+          runs: sessions.recentEntries(systemId, workspaceId, { kinds, limit }),
+          observedAt: new Date().toISOString(),
+        };
+      }
+      case "run.get":
+      case "run.logs": {
+        const sessions = this.requireSessions();
+        const systemId = req.systemId as string;
+        const workspaceId = req.workspaceId as string;
+        getWorkspace(this.registry, systemId, workspaceId);
+        const params = (req.params ?? {}) as { entryId?: unknown; sessionId?: unknown; limit?: unknown };
+        if (typeof params.entryId !== "string" || params.entryId.length === 0) {
+          throw Object.assign(new Error(`${req.method} needs params.entryId`), {
+            code: "INVALID_ENVELOPE",
+          });
+        }
+        const found = sessions.findEntry(systemId, params.entryId);
+        if (!found) {
+          throw Object.assign(new Error(`unknown entry ${params.entryId}`), {
+            code: "ENTRY_NOT_FOUND",
+          });
+        }
+        if (typeof params.sessionId === "string" && params.sessionId !== found.sessionId) {
+          throw Object.assign(new Error("entry does not belong to that session"), {
+            code: "ENTRY_NOT_FOUND",
+          });
+        }
+        const entry = found.entry;
+        if (entry.workspaceId !== workspaceId) {
+          throw Object.assign(new Error("entry does not belong to that workspace"), {
+            code: "ENTRY_NOT_FOUND",
+          });
+        }
+        return { entry, sessionId: found.sessionId, observedAt: new Date().toISOString() };
+      }
       default:
-        throw Object.assign(new Error(`${req.method} not yet served in Phase 1`), {
+        throw Object.assign(new Error(`${req.method} not yet served`), {
           code: "UNKNOWN_METHOD",
         });
     }
+  }
+
+  private requireSessions(): SessionStore {
+    const sessions = this.sessions;
+    if (!sessions) {
+      throw Object.assign(new Error("live sessions not attached"), {
+        code: "SESSIONS_UNAVAILABLE",
+      });
+    }
+    return sessions;
   }
 
   /** Workspace projections via read-only adapters (Task 6). */

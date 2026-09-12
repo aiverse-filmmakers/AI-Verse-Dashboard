@@ -112,7 +112,7 @@ async function handleHttp(
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
     if (req.method === "GET" && url.pathname === "/health") {
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ ok: true, phase: "phase-1-read-only" }));
+      res.end(JSON.stringify({ ok: true, phase: "phase-2-live" }));
       return;
     }
     if (req.method === "POST" && url.pathname === "/rpc") {

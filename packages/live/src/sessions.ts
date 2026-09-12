@@ -146,4 +146,79 @@ export class SessionStore {
   abort(systemId: string, sessionId: string): ChatSession {
     return this.setStatus(systemId, sessionId, "aborted");
   }
+
+  /** Lightweight summaries with entry counts (no transcript bodies). */
+  summaries(systemId: string, workspaceId?: string): {
+    sessionId: string;
+    title: string;
+    status: SessionStatus;
+    provider?: string;
+    model?: string;
+    workspaceId: string;
+    entryCount: number;
+    createdAt: string;
+    updatedAt: string;
+  }[] {
+    const out: {
+      sessionId: string;
+      title: string;
+      status: SessionStatus;
+      provider?: string;
+      model?: string;
+      workspaceId: string;
+      entryCount: number;
+      createdAt: string;
+      updatedAt: string;
+    }[] = [];
+    for (const s of this.sessions.values()) {
+      if (s.systemId !== systemId) continue;
+      if (workspaceId !== undefined && s.workspaceId !== workspaceId) continue;
+      out.push({
+        sessionId: s.sessionId,
+        title: s.title,
+        status: s.status,
+        ...(s.provider ? { provider: s.provider } : {}),
+        ...(s.model ? { model: s.model } : {}),
+        workspaceId: s.workspaceId,
+        entryCount: s.entries.length,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      });
+    }
+    return out.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  }
+
+  /** Recent entries across this system's sessions, oldest-first, bounded. */
+  recentEntries(
+    systemId: string,
+    workspaceId?: string,
+    opts?: { kinds?: string[]; limit?: number },
+  ): TimelineEntry[] {
+    const limit = Math.max(1, Math.min(opts?.limit ?? 50, 200));
+    const kinds = opts?.kinds;
+    const all: TimelineEntry[] = [];
+    for (const s of this.sessions.values()) {
+      if (s.systemId !== systemId) continue;
+      if (workspaceId !== undefined && s.workspaceId !== workspaceId) continue;
+      for (const e of s.entries) {
+        if (kinds !== undefined && !kinds.includes(e.kind)) continue;
+        all.push({ ...e });
+      }
+    }
+    all.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+    return all.slice(-limit);
+  }
+
+  /** Find one entry by id within this system only. */
+  findEntry(
+    systemId: string,
+    entryId: string,
+  ): { entry: TimelineEntry; sessionId: string } | undefined {
+    for (const s of this.sessions.values()) {
+      if (s.systemId !== systemId) continue;
+      const found = s.entries.find((e) => e.id === entryId);
+      if (found) return { entry: { ...found }, sessionId: s.sessionId };
+    }
+    return undefined;
+  }
 }

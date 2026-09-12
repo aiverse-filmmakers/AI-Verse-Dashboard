@@ -4,7 +4,7 @@
  * exactly one systemId; missing/unknown never falls back to another
  * system; subscriptions partitioned by systemId; commands blocked.
  */
-export { QueryRouter, GATEWAY_VERSION } from "./query-router.js";
+export { QueryRouter, GATEWAY_VERSION, GATEWAY_PHASE } from "./query-router.js";
 export { SubscriptionHub, watchWorkspace } from "./subscriptions.js";
 export type { HubEvent, DeliveredEvent } from "./subscriptions.js";
 export { startGateway, DEFAULT_PORT } from "./server.js";
