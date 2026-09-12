@@ -1,0 +1,10 @@
+{
+  "name": "@ai-verse/dashboard-gateway",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "description": "Localhost Dashboard Gateway: query router + systemId-partitioned subscriptions over read-only adapters.",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
