@@ -80,13 +80,33 @@ Using the same AI provider or model in two registered OS installations does not 
 - **Knowledge / Brain**: workspace-scoped graph with optional 3D mode
 - **Usage**: tokens, cost and machine/resource visibility
 
+## Modular desktop shell
+
+The first visual layout may look conventional, but the frontend must be built from host-independent panels rather than hard-coded page furniture.
+
+Panels are designed to support:
+
+- docked placement
+- floating placement
+- detached/popout windows
+- compact/HUD presentation for surfaces such as Usage, Bots, Running Work, Attention and Health
+- user-controlled visibility and saved layout presets
+- responsive/mobile presentations using the same scoped Gateway data
+
+Panel placement is Dashboard-owned presentation state only. Detaching, floating, hiding, or moving a panel never changes canonical ownership or relaxes `systemId` / `workspaceId` isolation.
+
+The target native desktop direction is to keep the React/Vite application reusable in a desktop wrapper so selected panels can eventually become separate always-on-top HUD windows without rewriting the panel itself.
+
+See [Modular Desktop Shell](docs/MODULAR-DESKTOP-SHELL.md).
+
 ## Research and blueprint
 
 - [September 2026 research](docs/RESEARCH-2026-09.md)
 - [Architecture blueprint](docs/ARCHITECTURE-BLUEPRINT.md)
 - [Reference adoption and fork plan](docs/REFERENCE-ADOPTION-MAP.md)
+- [Modular desktop shell and visual composition contract](docs/MODULAR-DESKTOP-SHELL.md)
 
-The benchmark combines the strongest ideas from LifeOS Pulse, OpenClaw, OpenHands Agent Canvas, OpenFang, TenacitOS, Langfuse, Phoenix, and modern WebGL graph tooling.
+The benchmark combines the strongest ideas from LifeOS Pulse, OpenClaw, OpenHands Agent Canvas, OpenFang, TenacitOS, Langfuse, Phoenix, Hermes Desktop, Grok Bot, Kylon, modern docking/windowing patterns, and WebGL graph tooling.
 
 The multi-OS isolation amendment extends the original architecture without changing that research baseline or the six implementation phases.
 
