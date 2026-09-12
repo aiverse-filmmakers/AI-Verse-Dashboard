@@ -283,6 +283,87 @@ A strong future option is to let AI-Verse export its runtime traces in OpenTelem
 | Langfuse | Usually no | Traces, sessions, cost/eval UX | Heavy backend dependency |
 | Phoenix | Usually no | OTEL/OpenInference traces and span UX | Making it the AI-Verse control plane |
 
+## 2026-09-12 research amendment: desktop shell, persistent Bots and shared Rooms
+
+The original research remains valid. Additional review of Hermes Desktop, Grok Bot, Kylon, modern docking libraries, and native webview hosts adds a stronger frontend composition direction without changing the Dashboard's authority model.
+
+### Hermes Desktop
+
+Hermes Desktop demonstrates a production-quality native React agent interface driving the same underlying agent through a separate headless backend. Its documented UI includes multiple simultaneous conversations, live tool activity, a right-hand preview rail, task progress, configurable status information, and session continuity across interfaces.
+
+The relevant lesson for AI-Verse is that the desktop application can be a polished client shell without becoming the agent runtime or canonical state store.
+
+Reference:
+https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/desktop.md
+
+### Grok Bot
+
+Grok Bot's September 2026 design write-up explicitly makes persistent Bots, rather than chat sessions, the primary sidebar object. Bots expose identity and state, Routines live with the Bot, group chats allow several Bots to collaborate, and structured widgets/events can appear inside the conversation timeline.
+
+Its computer-use design also uses three levels of visibility:
+
+1. Status
+2. Preview
+3. Takeover
+
+This is a strong pattern for AI-Verse runtime/browser/computer surfaces because it provides visibility without encouraging constant supervision.
+
+Grok Bot also supports continuing the same text-thread experience between desktop and mobile, reinforcing the need to design responsive/mobile behavior from Phase 1 rather than treating it as a later redesign.
+
+References:
+https://x.ai/news/designing-grok-bot
+https://x.ai/news/introducing-grok-bot
+https://x.ai/news/grok-bot-more-plans
+
+### Kylon
+
+Kylon's workspace model treats a Room as the place where one piece of work lives, including the thread, files, records, people, and agents. It emphasizes scoped permissions, human approval gates, and execution trails.
+
+For AI-Verse, these are valuable Dashboard presentation concepts but not Layer 5 storage responsibilities.
+
+The Dashboard should visualize canonical Room/Thread/Bot state, permissions, approvals, and provenance exposed by the appropriate core layers. It must not recreate Kylon's canonical workspace, memory, integration, or data ownership inside the Dashboard.
+
+References:
+https://kylon.io/solutions/ai-workspace
+https://kylon.io/solutions/ai-employee
+https://kylon.io/blog/kylon-privacy-architecture
+
+### Docking and native desktop feasibility
+
+Dockview currently supports docked groups, floating groups, nested layouts, popout windows, and redocking popouts. This makes a mature docking library preferable to inventing basic panel mechanics.
+
+For true desktop HUD behavior, the browser layout layer is not enough. Tauri 2 exposes native window configuration including always-on-top behavior, making it a strong candidate for wrapping the existing React/Vite application later.
+
+The architecture implication is:
+
+- build panels as host-independent UI modules from Phase 1
+- use dock/floating/popout behavior in the web shell
+- add native detached/HUD behavior through a desktop host without changing panel data contracts
+- keep the Gateway independent of the desktop wrapper
+
+References:
+https://dockview.dev/docs/core/groups/floatingGroups/
+https://dockview.dev/docs/core/groups/popoutGroups/
+https://v2.tauri.app/reference/config/
+
+### Revised synthesis
+
+The best current synthesis is now:
+
+- **LifeOS Pulse** for zero-truth read projections and freshness
+- **OpenClaw** for typed realtime control, approvals, tasks, channels and pairing
+- **OpenHands** for typed-client/runtime separation
+- **TenacitOS** for Mission Control visual inspiration
+- **Hermes Desktop** for the operational desktop/chat shell
+- **Grok Bot** for persistent Bot and progressive runtime UX
+- **Kylon** for Room, permission, approval and provenance UX
+- **Dockview/Tauri-style composition** for AI-Verse's own dock/float/detach/HUD shell
+- **Langfuse/Phoenix** for trace and observability UX
+
+The AI-Verse-specific differentiator should be the modular shell: live surfaces can be arranged, hidden, floated, detached, or reduced to compact HUDs while the underlying source-of-truth and isolation contracts remain unchanged.
+
+---
+
 ## What the market is converging on in 2026
 
 The strongest open-source agent interfaces are converging on several common primitives:
@@ -334,6 +415,13 @@ A more efficient path is:
 - TenacitOS: https://github.com/carlosazaustre/tenacitOS
 - Langfuse: https://langfuse.com/docs
 - Arize Phoenix: https://github.com/Arize-ai/phoenix
+- Hermes Desktop: https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/desktop.md
+- Grok Bot design: https://x.ai/news/designing-grok-bot
+- Grok Bot launch: https://x.ai/news/introducing-grok-bot
+- Kylon AI workspace: https://kylon.io/solutions/ai-workspace
+- Kylon privacy architecture: https://kylon.io/blog/kylon-privacy-architecture
+- Dockview popouts: https://dockview.dev/docs/core/groups/popoutGroups/
+- Tauri 2 configuration: https://v2.tauri.app/reference/config/
 - 3D Force Graph: https://github.com/vasturiano/3d-force-graph
 - Cytoscape.js: https://js.cytoscape.org/
 - Cytoscape large-graph performance work: https://github.com/cytoscape/cytoscape.js/issues/3486
