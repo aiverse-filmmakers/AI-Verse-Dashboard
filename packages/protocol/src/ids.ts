@@ -23,6 +23,17 @@ export const SYSTEM_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
  */
 export const WORKSPACE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-_]{0,63}$/;
 
+/**
+ * panelId: Dashboard-owned panel identity (shell amendment §3).
+ * Lowercase slug so traversal and paths cannot parse. Panels are
+ * presentation-only; the id never grants OS authority.
+ */
+export const PANEL_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
+/** Panel presentation modes: full | compact | hud (shell amendment §3). */
+export const PRESENTATIONS = ["full", "compact", "hud"] as const;
+export type Presentation = (typeof PRESENTATIONS)[number];
+
 export const systemIdSchema = z
   .string()
   .regex(SYSTEM_ID_PATTERN, "systemId must be a lowercase slug (a-z, 0-9, dash), 1-64 chars");
@@ -34,8 +45,18 @@ export const workspaceIdSchema = z
     "workspaceId must be alphanumeric with dash/underscore, 1-64 chars",
   );
 
+export const panelIdSchema = z
+  .string()
+  .regex(
+    PANEL_ID_PATTERN,
+    "panelId must be a lowercase slug (a-z, 0-9, dash), 1-64 chars",
+  );
+
+export const presentationSchema = z.enum(PRESENTATIONS);
+
 export type SystemId = z.infer<typeof systemIdSchema>;
 export type WorkspaceId = z.infer<typeof workspaceIdSchema>;
+export type PanelId = z.infer<typeof panelIdSchema>;
 
 /**
  * Param keys that would smuggle a raw filesystem root through the protocol.

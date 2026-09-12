@@ -4,6 +4,8 @@ import {
   ALL_METHODS,
   COMMAND_METHODS,
   MAX_PARAMS_BYTES,
+  PANEL_ID_PATTERN,
+  PRESENTATIONS,
   PROTOCOL_ERRORS,
   QUERY_METHODS,
   assertQueryOnly,
@@ -11,7 +13,9 @@ import {
   isCommandMethod,
   isQueryMethod,
   negotiateHandshake,
+  panelIdSchema,
   parseFrame,
+  presentationSchema,
   requestSchema,
   requiresSystem,
   requiresWorkspace,
@@ -188,5 +192,18 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
     assert.equal(a, "aiverse-01:tasks:t-1");
     assert.equal(workspaceScopeKey("aiverse-01", "ws-1", "inbox"), "aiverse-01:ws-1:inbox");
     assert.throws(() => scopeKey("../evil", "tasks"), /invalid systemId/);
+  });
+
+  it("panel ids are slugs and presentations are full/compact/hud", () => {
+    assert.deepEqual([...PRESENTATIONS], ["full", "compact", "hud"]);
+    assert.ok(PANEL_ID_PATTERN.test("bots-panel"));
+    assert.ok(!PANEL_ID_PATTERN.test("../evil"));
+    assert.ok(!PANEL_ID_PATTERN.test("/etc/passwd"));
+    assert.equal(panelIdSchema.safeParse("chat-panel").success, true);
+    assert.equal(panelIdSchema.safeParse("../evil").success, false);
+    assert.equal(presentationSchema.safeParse("full").success, true);
+    assert.equal(presentationSchema.safeParse("compact").success, true);
+    assert.equal(presentationSchema.safeParse("hud").success, true);
+    assert.equal(presentationSchema.safeParse("floating").success, false);
   });
 });

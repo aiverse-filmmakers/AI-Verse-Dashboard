@@ -14,8 +14,12 @@ export {
   MAX_PARAMS_BYTES,
   SYSTEM_ID_PATTERN,
   WORKSPACE_ID_PATTERN,
+  PANEL_ID_PATTERN,
+  PRESENTATIONS,
   systemIdSchema,
   workspaceIdSchema,
+  panelIdSchema,
+  presentationSchema,
   checkNoRawRoots,
   jsonBytes,
 } from "./ids.js";
@@ -54,4 +58,5 @@ export type {
   DashboardMethod,
   ProtocolErrorCode,
 } from "./methods.js";
-export type { SystemId, WorkspaceId, NoRootsCheck } from "./ids.js";
+export type { SystemId, WorkspaceId, PanelId, NoRootsCheck } from "./ids.js";
+export type { Presentation } from "./ids.js";

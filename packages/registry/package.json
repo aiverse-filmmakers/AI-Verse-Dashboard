@@ -1,0 +1,10 @@
+{
+  "name": "@ai-verse/dashboard-registry",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "description": "Dashboard-local registered OS connection registry: compatible-OS validation, systemId map, per-window selection.",
+  "dependencies": {
+    "@ai-verse/dashboard-protocol": "*"
+  }
+}
