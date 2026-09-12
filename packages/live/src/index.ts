@@ -14,3 +14,6 @@ export type { RuntimeAdapter, RuntimeCapabilities, CommandAck } from "./adapter.
 
 export { publishLive, groupToolsBySession } from "./activity.js";
 export type { LiveEventName, LivePublish, ToolGroup } from "./activity.js";
+
+export { buildTrace, buildLogDrawer, copyLogLine, DRAWER_BUFFER_MAX } from "./runs.js";
+export type { SpanKind, TraceSpan, TraceView, LogSeverity, LogLine, LogDrawer } from "./runs.js";
