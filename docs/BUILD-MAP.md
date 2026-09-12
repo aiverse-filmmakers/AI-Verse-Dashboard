@@ -1,9 +1,9 @@
 # AI-Verse Dashboard Build Map
 
 **Updated:** 2026-09-12
-**Status:** Phase 1 IN PROGRESS
-**Implementation progress:** 7 tasks complete
-**Next:** Task 8 - Phase 1 gate
+**Status:** Phase 1 COMPLETE
+**Implementation progress:** 8 tasks complete
+**Next:** Phase 2 (not started)
 
 This is the canonical task ledger for Dashboard, like Data's 41-task map.
 
@@ -16,7 +16,8 @@ This is the canonical task ledger for Dashboard, like Data's 41-task map.
 - [x] Task 5 - Web shell (panel registry, layout, client, tokens, shell model) — DONE 2026-09-12: packages/client/src + apps/web/src (panels, layout, tokens, shell) + test/web-shell.test.ts 5/5, npm run check green (29/29 total)
 - [x] Task 6 - Health + tasks + Inbox read models (4Cs, provenance, freshness) — DONE 2026-09-12: packages/read-models/src (health, work, inbox, now, workspace-sources) + gateway workspace.inbox.list/task.list + test/read-models.test.ts 5/5, npm run check green (34/34 total)
 - [x] Task 7 - Isolation + security tests (A vs B, traversal, symlink, byte-identical fixtures) — DONE 2026-09-12: test/isolation.test.ts 8/8, npm run check green (42/42 total)
-- [ ] Task 8 - Phase 1 gate (full story green)
+- [x] Task 8 - Phase 1 gate (full story green) — DONE 2026-09-12: test/phase1-gate.test.ts 1/1 (register -> read -> panels -> isolate -> shell, live gateway), npm run check green (43/43 total)
+- Phase 1 COMPLETE 8/8 100% — Next: Phase 2 (not started)
 
 ## Phase 2-6 - Later (not started)
 
