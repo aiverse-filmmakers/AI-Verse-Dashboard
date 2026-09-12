@@ -419,19 +419,9 @@ Do not try to draw every edge in the user's entire AI-Verse at once.
 
 # Practical build recommendation
 
-## If the goal is fastest visual prototype
+## Production path
 
-1. Fork TenacitOS privately or into an experimental branch.
-2. Rebrand the shell as AI-Verse.
-3. Delete its local JSON domain stores.
-4. Disable canonical file/memory editing.
-5. Replace the backend with a mock `@aiverse/dashboard-client`.
-6. Use the prototype to decide the final visual system.
-7. Port the approved components into the clean AI-Verse Vite app.
-
-This gets a high-quality visual prototype quickly without locking the architecture to TenacitOS.
-
-## If the goal is cleanest production foundation
+Do **not** use TenacitOS, Hermes Desktop, Grok Bot, or Kylon as the production shell.
 
 Start directly with:
 
@@ -441,15 +431,51 @@ Node 24 + TypeScript Gateway
 Zod protocol
 TanStack Query/Virtual
 Tailwind v4
+AI-Verse modular panel shell
 ```
 
-Then selectively copy MIT components and patterns.
+The first production UI should already use the panel registry/layout abstraction from [MODULAR-DESKTOP-SHELL.md](MODULAR-DESKTOP-SHELL.md).
 
-This takes slightly more initial assembly but produces the cleanest Layer 5 boundary.
+Borrow visual components and interaction patterns only after they are adapted into AI-Verse panels that obey the typed client, `systemId`, `workspaceId`, zero-truth, and command-boundary contracts.
+
+This avoids a later rewrite when docking, detachment, native HUDs, mobile layouts, Bots, Rooms, or contributed panels are added.
+
+## Visual prototype sandbox
+
+A private or throwaway TenacitOS fork is still acceptable only for rapid visual experimentation.
+
+If used:
+
+1. treat it as a reference sandbox, not the production repository
+2. do not add AI-Verse domain logic to its JSON stores
+3. disable direct canonical editing
+4. prototype styling/layout ideas only
+5. port approved components into the clean AI-Verse modular shell
+
+Hermes Desktop can likewise be studied or selectively adapted for chat/preview/status interactions, but must not become the required runtime or shell foundation.
 
 ---
 
 # Suggested implementation order by borrowed source
+
+## Milestone 0: modular shell foundation
+
+Borrow implementation ideas from mature docking/windowing systems, but keep AI-Verse ownership.
+
+Deliver:
+
+- design tokens and visual primitives
+- panel registry
+- panel host contract
+- dock/layout manager
+- View menu and panel visibility
+- reset/saved layout presentation state
+- responsive/narrow shell
+- full/compact presentation contract
+- isolation tests across panel instances
+- native-host-compatible panel boundaries
+
+Then continue the existing milestones.
 
 ## Milestone A: zero-truth read surface
 
