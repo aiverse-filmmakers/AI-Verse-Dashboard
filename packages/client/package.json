@@ -1,0 +1,7 @@
+{
+  "name": "@ai-verse/dashboard-client",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed Dashboard Gateway client: systemId-bound queries over the versioned protocol. Read-only in Phase 1."
+}

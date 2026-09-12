@@ -1,0 +1,7 @@
+{
+  "name": "@ai-verse/dashboard-web",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "type": "module",
+  "description": "Web shell model: panel registry, layout manager, design tokens, switchers, provenance. Framework-free in Phase 1."
+}
