@@ -2,8 +2,8 @@
 
 **Updated:** 2026-09-12
 **Status:** Phase 1 IN PROGRESS
-**Implementation progress:** 5 tasks complete
-**Next:** Task 6 - Health + tasks + Inbox read models
+**Implementation progress:** 6 tasks complete
+**Next:** Task 7 - Isolation + security tests
 
 This is the canonical task ledger for Dashboard, like Data's 41-task map.
 
@@ -14,7 +14,7 @@ This is the canonical task ledger for Dashboard, like Data's 41-task map.
 - [x] Task 3 - Read adapters (read-only Markdown + SQLite, disposable cache by systemId) — DONE 2026-09-12: packages/os-read-adapter/src (path-resolve, markdown, sqlite, workspace, cache) + test/read-adapters.test.ts 6/6, npm run check green (21/21 total)
 - [x] Task 4 - Gateway query path (localhost server + WS events, no fallback across systems) — DONE 2026-09-12: apps/gateway/src (query-router, subscriptions, server) + test/gateway.test.ts 3/3, npm run check green (24/24 total)
 - [x] Task 5 - Web shell (panel registry, layout, client, tokens, shell model) — DONE 2026-09-12: packages/client/src + apps/web/src (panels, layout, tokens, shell) + test/web-shell.test.ts 5/5, npm run check green (29/29 total)
-- [ ] Task 6 - Health + tasks + Inbox read models (4Cs, provenance, freshness)
+- [x] Task 6 - Health + tasks + Inbox read models (4Cs, provenance, freshness) — DONE 2026-09-12: packages/read-models/src (health, work, inbox, now, workspace-sources) + gateway workspace.inbox.list/task.list + test/read-models.test.ts 5/5, npm run check green (34/34 total)
 - [ ] Task 7 - Isolation + security tests (A vs B, traversal, symlink, byte-identical fixtures)
 - [ ] Task 8 - Phase 1 gate (full story green)
 

@@ -1,3 +1,4 @@
+import { existsSync, readFileSync, statSync } from "node:fs";
 import {
   PROTOCOL_VERSION,
   assertQueryOnly,
@@ -11,8 +12,13 @@ import {
   getWorkspace,
   listWorkspaces,
   readMarkdownFile,
+  resolveWithinWorkspace,
   type DisposableCache,
 } from "../../../packages/os-read-adapter/src/index.js";
+import {
+  buildNowModel,
+  buildWorkspaceProjections,
+} from "../../../packages/read-models/src/index.js";
 import type { SystemRegistry } from "../../../packages/registry/src/index.js";
 
 /**
@@ -31,6 +37,8 @@ const SUPPORTED_QUERIES = [
   "workspace.list",
   "workspace.get",
   "workspace.health",
+  "workspace.inbox.list",
+  "task.list",
   "source.preview",
 ] as const;
 
@@ -133,16 +141,37 @@ export class QueryRouter {
         return { workspace: summary };
       }
       case "workspace.health": {
-        const { summary } = getWorkspace(
-          this.registry,
-          req.systemId as string,
-          req.workspaceId as string,
-        );
+        const projections = this.projections(req.systemId as string, req.workspaceId as string);
         return {
-          workspaceId: summary.id,
-          status: summary.status ?? "unknown",
+          workspaceId: projections.workspaceId,
+          status: "unknown",
           manifest: "ok",
-          observedAt: new Date().toISOString(),
+          health: projections.health,
+          observedAt: projections.observedAt,
+        };
+      }
+      case "workspace.inbox.list": {
+        const projections = this.projections(req.systemId as string, req.workspaceId as string);
+        return {
+          workspaceId: projections.workspaceId,
+          items: projections.inbox,
+          observedAt: projections.observedAt,
+        };
+      }
+      case "task.list": {
+        const projections = this.projections(req.systemId as string, req.workspaceId as string);
+        return {
+          workspaceId: projections.workspaceId,
+          summary: projections.work,
+          now: buildNowModel({
+            systemId: projections.systemId,
+            workspaceId: projections.workspaceId,
+            focus: null,
+            work: projections.work,
+            inbox: projections.inbox,
+            health: projections.health,
+          }),
+          observedAt: projections.observedAt,
         };
       }
       case "source.preview": {
@@ -177,5 +206,41 @@ export class QueryRouter {
           code: "UNKNOWN_METHOD",
         });
     }
+  }
+
+  /** Workspace projections via read-only adapters (Task 6). */
+  private projections(systemId: string, workspaceId: string) {
+    return buildWorkspaceProjections(this.registry, systemId, workspaceId, {
+      readText: (rootReal: string, rel: string) => {
+        let real: string;
+        try {
+          real = resolveWithinWorkspace(rootReal, rel);
+        } catch {
+          return null;
+        }
+        try {
+          const st = statSync(real);
+          if (!st.isFile()) return null;
+          return { body: readFileSync(real, "utf8"), mtimeMs: st.mtimeMs };
+        } catch {
+          return null;
+        }
+      },
+      fileExists: (rootReal: string, rel: string) => {
+        try {
+          const real = resolveWithinWorkspace(rootReal, rel);
+          return existsSync(real);
+        } catch {
+          return false;
+        }
+      },
+      dirPath: (rootReal: string, rel: string) => {
+        try {
+          return resolveWithinWorkspace(rootReal, rel);
+        } catch {
+          return null;
+        }
+      },
+    });
   }
 }
