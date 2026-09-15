@@ -5,10 +5,11 @@ import {
   mkdtempSync,
   mkdirSync,
   writeFileSync,
+  readFileSync,
   rmSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import {
   DEFAULT_GATEWAY_URL,
   MISSION_CONTROL_PIN,
@@ -219,4 +220,17 @@ describe("MC1 automation safety and Gateway preflight", () => {
     assert.equal(sanitized.nested.password, "[REDACTED]");
     assert.equal(sanitized.nested.ordinary, "safe");
   });
+  it("local runner prompts without echoing and clears the token", () => {
+    const script = readFileSync(
+      resolve("scripts/mc1/run-local.sh"),
+      "utf8",
+    );
+    assert.match(script, /read -r -s AIVERSE_GATEWAY_TOKEN/);
+    assert.match(script, /trap cleanup_secret EXIT INT TERM/);
+    assert.match(script, /unset AIVERSE_GATEWAY_TOKEN/);
+    assert.match(script, /npm ci/);
+    assert.match(script, /npm run mc1:proof/);
+    assert.doesNotMatch(script, /echo .*AIVERSE_GATEWAY_TOKEN/);
+  });
+
 });
