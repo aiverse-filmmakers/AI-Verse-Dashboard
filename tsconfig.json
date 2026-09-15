@@ -8,7 +8,14 @@
     "rootDir": ".",
     "declaration": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["apps/*/src/**/*.ts", "packages/*/src/**/*.ts", "test/**/*.ts"]
+  "include": [
+    "apps/*/src/**/*.ts",
+    "packages/*/src/**/*.ts",
+    "scripts/**/*.ts",
+    "test/**/*.ts"
+  ]
 }
