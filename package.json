@@ -10,7 +10,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "node --test dist/test/*.test.js",
-    "check": "npm run build && npm test"
+    "check": "npm run build && npm test",
+    "mc1:bootstrap": "npm run build --silent && node dist/scripts/mc1/bootstrap.js",
+    "mc1:preflight": "npm run build --silent && node dist/scripts/mc1/preflight.js",
+    "mc1:proof": "npm run build --silent && node dist/scripts/mc1/proof.js"
   },
   "engines": {
     "node": ">=22.0.0"
