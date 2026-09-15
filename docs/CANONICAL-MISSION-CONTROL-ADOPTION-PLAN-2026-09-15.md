@@ -48,6 +48,10 @@ This is a temporary compatibility route used to prove task dispatch. Stock Missi
 9. The browser and DMG share one UI.
 10. The canonical AI-Verse Gateway remains the runtime/client edge.
 
+## Reproducible MC1 runbook
+
+Use [MC1-MISSION-CONTROL-AIVERSE-RUNTIME-PROOF.md](MC1-MISSION-CONTROL-AIVERSE-RUNTIME-PROOF.md) for the exact non-destructive local proof.
+
 ## Work tracks
 
 ### MC0: baseline and preservation
