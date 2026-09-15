@@ -5,6 +5,10 @@
 **PRD:** `docs/PRD-MISSION-CONTROL-AIVERSE-DASHBOARD-2026-09-15.md`  
 **Canonical plan:** `docs/CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md`
 
+## Pre-dogfood whole-system audit override
+
+AI-Verse-System now owns an independent whole-system public-beta audit gate before MC1.4 and owner dogfood. This Dashboard tracker remains canonical for Dashboard implementation, but its next executable task is intentionally blocked until the System audit verdict and repair gate release it. Dashboard progress remains **11/100**; no accepted Dashboard work is rolled back.
+
 ## How to use this tracker
 
 This file is the execution ledger for the Mission Control adoption program.
@@ -179,7 +183,14 @@ Evidence:
 
 
 ### MC1.4 - Real local Mission Control -> Gateway proof - 3 points - A/H
-Status: ACTIVE
+Status: BLOCKED
+
+Whole-system audit gate:
+- paused by product-owner decision before real local proof/dogfood;
+- canonical audit program lives in `AI-Verse-System/docs/public-beta-audit/PROGRAM-2026-09-15.md`;
+- do not run `npm run mc1:local` as acceptance until the whole-system audit and required blocking repairs release this gate;
+- existing MC1 automation remains accepted and must not be discarded.
+
 
 Assistant:
 - provides one command/script;
