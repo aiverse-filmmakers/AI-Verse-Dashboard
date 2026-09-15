@@ -1,177 +1,174 @@
-# MC1 Runbook: Open Mission Control Against a Real AI-Verse Gateway
+# MC1 Runbook: Automated Mission Control -> AI-Verse Runtime Proof
 
 **Date:** 2026-09-15  
-**Status:** canonical first runtime proof  
+**Status:** canonical local acceptance runbook  
 **Mission Control pin:** `5483a0e1eef15b467c167e95796791112cedbb7c`
 
 ## Goal
 
-Run stock Builderz Labs Mission Control beside AI-Verse and prove one Mission Control task executes through the canonical AI-Verse Gateway.
+Prove that stock Builderz Labs Mission Control can dispatch a real task through the canonical AI-Verse Gateway without making Mission Control an AI-Verse owner.
 
-This is intentionally non-destructive:
+The proof is automated as far as practical.
 
-- do not strip Mission Control yet;
-- do not import its SQLite state into AI-Verse;
-- do not replace AI-Verse owners;
-- do not treat this as the finished Chat integration.
+The user should not manually:
 
-The generic OpenAI-compatible provider in stock Mission Control is used by task dispatch. The main Mission Control `/chat` page needs a first-class AI-Verse adapter in MC2.
+- configure Mission Control;
+- create its admin account;
+- create its test agent;
+- create its test task;
+- click the task board;
+- copy Mission Control API keys.
 
-## 1. Start the real AI-Verse Gateway
+The only required secret is the real AI-Verse Gateway bearer token.
 
-Use the Gateway installation already bound to the AI-Verse system you want to open.
+## What the proof script does
 
-Check it:
+`npm run mc1:proof`:
 
-~~~bash
-aiverse-gateway status --json
-aiverse-gateway doctor --json
-~~~
+1. reads the real local AI-Verse Gateway config from `AIVERSE_GATEWAY_HOME` or `~/.aiverse/gateway`;
+2. verifies the configured system ID, default workspace, root and loopback server binding;
+3. authenticates to the running Gateway;
+4. checks `/health`, `/status` and `/v1/models`;
+5. verifies the Gateway advertises model `aiverse`;
+6. clones Builderz Mission Control into a disposable lab outside the AI-Verse repositories;
+7. checks out the exact audited commit;
+8. installs Mission Control with its pinned lockfile;
+9. creates a fresh disposable Mission Control data directory;
+10. generates temporary Mission Control admin/API credentials in memory;
+11. starts stock Mission Control with:
+    - `LOCAL_LLM_ENDPOINT=<AI-Verse Gateway>/v1`;
+    - `LOCAL_LLM_API_KEY=<AI-Verse Gateway bearer token>`;
+12. creates a temporary `ai-verse` agent with `dispatchModel=local/aiverse`;
+13. creates a read-only proof task;
+14. triggers Mission Control's real task dispatcher;
+15. waits for the response returned through AI-Verse Gateway;
+16. reports the bound AI-Verse system/workspace and a sanitized response preview;
+17. stops Mission Control;
+18. deletes the disposable Mission Control run database unless `AIVERSE_MC1_KEEP_LAB_DATA=1`.
 
-Start it if needed:
+The Gateway token is never written by these scripts.
 
-~~~bash
-aiverse-gateway serve
-~~~
+## Before running
 
-Default local endpoint:
+The real AI-Verse Gateway must already be configured and running on the Mac.
 
-~~~text
-http://127.0.0.1:8787
-~~~
+Default expected endpoint:
 
-The Gateway bearer token is required for the proof. Use the token from the Gateway setup/secure client store. Do not commit it.
+`http://127.0.0.1:8787`
 
-Verify the Gateway directly before involving Mission Control:
+The script defaults to the Gateway home:
 
-~~~bash
-export AIVERSE_GATEWAY_TOKEN='...'
+`~/.aiverse/gateway`
 
-curl -s http://127.0.0.1:8787/v1/models \
-  -H "Authorization: Bearer $AIVERSE_GATEWAY_TOKEN"
-~~~
-
-Optional direct chat smoke:
-
-~~~bash
-curl -s http://127.0.0.1:8787/v1/chat/completions \
-  -H "Authorization: Bearer $AIVERSE_GATEWAY_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "aiverse",
-    "messages": [
-      {"role": "user", "content": "Reply with AI-Verse Gateway connected."}
-    ]
-  }'
-~~~
-
-## 2. Run the pinned Mission Control reference build
-
-Use a separate lab directory. Do not copy it over the AI-Verse Dashboard repo.
+If the Gateway uses another home:
 
 ~~~bash
-mkdir -p ~/AI-Verse-Lab
-cd ~/AI-Verse-Lab
-
-git clone https://github.com/builderz-labs/mission-control.git
-cd mission-control
-git checkout 5483a0e1eef15b467c167e95796791112cedbb7c
+export AIVERSE_GATEWAY_HOME="/path/to/gateway/home"
 ~~~
 
-Install:
+If it uses another endpoint:
 
 ~~~bash
-corepack enable
-pnpm install
+export AIVERSE_GATEWAY_URL="http://127.0.0.1:PORT"
 ~~~
 
-Create local configuration:
+## Human checkpoint H1
+
+This is the first point in the Dashboard program where the owner may need to act.
+
+### If AI-Verse-Dashboard is not already cloned
 
 ~~~bash
-cp .env.example .env.local
+git clone https://github.com/aiverse-filmmakers/AI-Verse-Dashboard.git
+cd AI-Verse-Dashboard
+npm ci
 ~~~
 
-Add or override:
-
-~~~text
-LOCAL_LLM_ENDPOINT=http://127.0.0.1:8787/v1
-LOCAL_LLM_API_KEY=<AI-Verse Gateway bearer token>
-~~~
-
-Do not commit `.env.local`.
-
-Launch:
+### If it is already cloned
 
 ~~~bash
-pnpm dev
+cd /path/to/AI-Verse-Dashboard
+git pull
+npm ci
 ~~~
 
-Open:
+### Supply the Gateway bearer token only in the local shell
 
-~~~text
-http://127.0.0.1:3000/setup
+~~~bash
+export AIVERSE_GATEWAY_TOKEN='PASTE_THE_REAL_GATEWAY_TOKEN_HERE'
 ~~~
 
-Complete the local Mission Control admin setup.
+Then run:
 
-## 3. Create the temporary AI-Verse-backed Mission Control agent
-
-In Mission Control, create one test agent such as:
-
-~~~text
-Name: ai-verse
-Role: assistant
-Dispatch model: local/aiverse
+~~~bash
+npm run mc1:proof
 ~~~
 
-The important field is:
+Do not paste the Gateway token into ChatGPT or a GitHub issue.
 
-~~~text
-dispatchModel=local/aiverse
+The final command prints sanitized JSON. Share that sanitized JSON if the proof fails or if acceptance evidence is needed.
+
+## Separate preflight commands
+
+Bootstrap Mission Control lab only:
+
+~~~bash
+npm run mc1:bootstrap
 ~~~
 
-Mission Control routes `local/*` through `LOCAL_LLM_ENDPOINT` and strips the `local/` prefix before the request, so AI-Verse Gateway receives model `aiverse`.
+Verify Gateway only:
 
-## 4. Dispatch one test task
-
-From the Mission Control Tasks surface:
-
-1. create a small test task;
-2. assign it to the `ai-verse` test agent;
-3. dispatch/run it;
-4. watch Mission Control's task/activity surfaces;
-5. verify the AI-Verse Gateway run/event stream records the execution.
-
-Recommended task:
-
-~~~text
-Inspect the currently selected AI-Verse workspace context and return a one-paragraph summary. Do not modify files.
+~~~bash
+AIVERSE_GATEWAY_TOKEN='...' npm run mc1:preflight
 ~~~
 
-## 5. MC1 acceptance
+Verify Gateway with an additional direct read-only chat smoke:
 
-MC1 passes only when all are true:
+~~~bash
+AIVERSE_GATEWAY_TOKEN='...' npm run mc1:preflight -- --smoke-chat
+~~~
 
-- Mission Control is the stock pinned reference build;
-- AI-Verse Gateway is the canonical runtime edge;
-- the request reaches model `aiverse`;
-- the run is bound to the intended AI-Verse system/workspace;
-- the result returns to Mission Control;
-- no Mission Control task/agent/memory/cost store has been declared canonical AI-Verse state;
-- no secrets are committed;
-- stopping/deleting the reference Mission Control instance does not damage AI-Verse state.
+## Safety properties
 
-## 6. After MC1
+The proof:
 
-Do not begin stripping panels.
+- uses stock Mission Control at the exact audited pin;
+- does not copy Mission Control source into the production Dashboard yet;
+- uses a fresh disposable Mission Control database;
+- does not import AI-Verse canonical state into that database;
+- does not promote Mission Control state into AI-Verse;
+- requires a loopback Gateway by default;
+- refuses a non-loopback Gateway unless `AIVERSE_MC1_ALLOW_REMOTE=1` is explicitly set;
+- does not modify AI-Verse Gateway source;
+- does not modify the selected AI-Verse OS merely to establish the integration;
+- sends a task explicitly instructing the runtime not to modify files or external systems;
+- records system/workspace binding from the canonical local Gateway config.
+
+## MC1 acceptance
+
+MC1 passes only when:
+
+- the pinned Mission Control lab is verified;
+- the real Gateway is healthy and authenticated;
+- HTTP `system_id` matches the local canonical Gateway config;
+- Mission Control creates the temporary `ai-verse` agent;
+- Mission Control dispatches the task through `local/aiverse`;
+- a non-empty task result returns;
+- the proof reports the Gateway's canonical default workspace;
+- Mission Control run state remains disposable;
+- deleting the lab state does not damage AI-Verse;
+- no secret appears in committed files or sanitized output.
+
+The response marker is an additional quality signal. Transport acceptance does not depend solely on the model echoing the marker.
+
+## After MC1
+
+Do not strip Mission Control panels.
 
 Proceed to MC2:
 
-- introduce a first-class `aiverse` runtime adapter/source in the AI-Verse Dashboard shell;
-- connect real Gateway run/session/event controls;
-- make system/workspace selection explicit;
-- then execute the feature-disposition map before deleting Mission Control functionality.
-
-Canonical feature audit:
-
-`docs/MISSION-CONTROL-FEATURE-DISPOSITION-MAP-2026-09-15.md`
+1. replace the temporary `local/aiverse` disguise with a first-class AI-Verse runtime source;
+2. connect the main Chat UI to canonical Gateway;
+3. expose explicit system/workspace selection;
+4. consume Gateway runs/events and controls;
+5. keep all Mission Control features until the MC3 disposition gate.
