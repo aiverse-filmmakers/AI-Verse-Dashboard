@@ -1,3 +1,7 @@
+> **STATUS NOTE, 2026-09-15**
+>
+> The modular panel/window contracts in this document remain intended behavior. Its shell-bootstrap sequencing is no longer the current implementation entry point. Builderz Labs Mission Control is now the initial shell, and these modular behaviors are to be preserved or incorporated progressively. See [CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md).
+
 # AI-Verse Dashboard Modular Desktop Shell
 
 Status: additive architecture amendment
