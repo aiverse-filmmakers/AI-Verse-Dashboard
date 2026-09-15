@@ -16,7 +16,7 @@ Do not restart the previous scratch-built shell sequence. Do not delete the exis
 
 ## First objective
 
-Get a real AI-Verse system talking through Mission Control before stripping any Mission Control feature.
+Get a real Mission Control task executing through a real AI-Verse system before stripping any Mission Control feature.
 
 Mission Control already supports an OpenAI-compatible local provider. AI-Verse Gateway already exposes an OpenAI-compatible `/v1/chat/completions` endpoint.
 
@@ -33,7 +33,7 @@ Mission Control
 
 Use `dispatchModel=local/aiverse`. Mission Control strips the provider prefix and sends model `aiverse`.
 
-This is a temporary compatibility route used to prove the shell. It does not make Mission Control the canonical task, agent, memory, schedule, cost, approval or session owner.
+This is a temporary compatibility route used to prove task dispatch. Stock Mission Control does not send its main /chat page through this generic provider path. It does not make Mission Control the canonical task, agent, memory, schedule, cost, approval or session owner.
 
 ## Rules
 
@@ -58,12 +58,12 @@ This is a temporary compatibility route used to prove the shell. It does not mak
 - run stock Mission Control locally;
 - add no AI-Verse domain mutation yet.
 
-### MC1: real AI-Verse chat proof
+### MC1: real AI-Verse runtime dispatch proof
 
 - run canonical AI-Verse Gateway;
 - point Mission Control local provider to Gateway;
 - create/select an AI-Verse-backed runtime entry;
-- send a real message;
+- create and dispatch a real task using an agent configured with `dispatchModel=local/aiverse`;
 - prove system/workspace isolation and Gateway authentication;
 - record an integration test.
 
@@ -157,7 +157,7 @@ Do not begin a mass removal pass until all are true:
 
 - stock Mission Control launches;
 - AI-Verse Gateway launches;
-- Mission Control sends a successful message through AI-Verse Gateway;
+- Mission Control dispatches a successful task through AI-Verse Gateway;
 - the selected AI-Verse system/workspace is explicit;
 - no cross-system context leak exists;
 - feature-disposition map is complete;
