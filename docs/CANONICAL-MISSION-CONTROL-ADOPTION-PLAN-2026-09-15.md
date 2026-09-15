@@ -6,6 +6,15 @@
 **Upstream shell pin:** `builderz-labs/mission-control@5483a0e1eef15b467c167e95796791112cedbb7c`  
 **Dashboard baseline before adoption:** `c636acf019f76194c40a341bd7985906383f7106`
 
+## Implementation authority
+
+Before implementation, read:
+
+- [Canonical PRD](PRD-MISSION-CONTROL-AIVERSE-DASHBOARD-2026-09-15.md)
+- [Execution tracker](MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md)
+
+The PRD defines invariants and the tracker defines the only active execution order. Future chats must recheck live GitHub state, then continue the first eligible tracker task.
+
 ## Decision
 
 Use Builderz Labs Mission Control as the initial launchable UI/application shell.
