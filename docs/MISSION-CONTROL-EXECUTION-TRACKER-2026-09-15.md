@@ -31,7 +31,7 @@ Formal program weight totals **100 points**.
 
 A task contributes its points only after its acceptance gate is satisfied and evidence is recorded.
 
-**Current accepted progress at tracker creation: 0 / 100.**
+**Current accepted progress: 5 / 100. 95% remaining.**
 
 The previously merged canonical adoption plan is prerequisite context, not retroactive execution credit for this tracker.
 
@@ -40,7 +40,7 @@ The previously merged canonical adoption plan is prerequisite context, not retro
 # MC0 - Governance, preservation and build safety - 5 points
 
 ### MC0.1 - Canonical PRD - 1 point - A
-Status: IN PROGRESS
+Status: COMPLETE
 
 Deliver:
 - PRD with product goals, invariants, source-adoption strategy, phases, human checkpoints and failure rules.
@@ -50,10 +50,10 @@ Acceptance:
 - canonical plan links to it.
 
 Evidence:
-- pending.
+- Dashboard PR #5 merged at `604b7fec8d1e53a930c63be62f6891050eb0e33b`.
 
 ### MC0.2 - Canonical execution tracker - 1 point - A
-Status: IN PROGRESS
+Status: COMPLETE
 
 Deliver:
 - this file;
@@ -65,10 +65,10 @@ Acceptance:
 - merged to Dashboard main.
 
 Evidence:
-- pending.
+- Dashboard PR #5 merged at `604b7fec8d1e53a930c63be62f6891050eb0e33b`.
 
 ### MC0.3 - Third-party provenance baseline - 1 point - A
-Status: PENDING
+Status: COMPLETE
 
 Deliver:
 - `THIRD_PARTY_NOTICES.md`;
@@ -81,8 +81,13 @@ Acceptance:
 - license/provenance review passes;
 - no copied third-party source exists without attribution.
 
+Evidence:
+- `THIRD_PARTY_NOTICES.md` merged in Dashboard PR #6 at `f54625255f76bccc716915620b8bd687710fe943`.
+- Builderz Mission Control pinned to `5483a0e1eef15b467c167e95796791112cedbb7c` under MIT.
+- GawkBot recorded as reference-only under its reviewed Sustainable Use License.
+
 ### MC0.4 - Dashboard CI baseline - 1 point - A
-Status: PENDING
+Status: COMPLETE
 
 Deliver:
 - GitHub Actions for Node 22;
@@ -93,8 +98,13 @@ Deliver:
 Acceptance:
 - current pre-adoption Dashboard test suite passes on hosted CI.
 
+Evidence:
+- Dashboard PR #6 repaired the clean-install lockfile, portable live-OS probe and Windows root-overlap logic.
+- PR-head CI run `34992855307` passed Linux, macOS and Windows.
+- post-merge main CI run `34993003011` passed Linux, macOS and Windows at `f54625255f76bccc716915620b8bd687710fe943`.
+
 ### MC0.5 - Baseline architecture preservation report - 1 point - A
-Status: PENDING
+Status: COMPLETE
 
 Deliver:
 - exact files/packages that must survive adoption;
@@ -105,12 +115,16 @@ Acceptance:
 - report merged;
 - MC1 activated.
 
+Evidence:
+- `docs/BASELINE-PRESERVATION-REPORT-2026-09-15.md` merged in Dashboard PR #6 at `f54625255f76bccc716915620b8bd687710fe943`.
+- MC1.1 is now the only active implementation task.
+
 ---
 
 # MC1 - Real AI-Verse runtime dispatch proof - 10 points
 
 ### MC1.1 - Automated local lab bootstrap - 2 points - A
-Status: PENDING
+Status: ACTIVE
 
 Deliver:
 - script that clones/checks out pinned stock Mission Control into a lab directory;
