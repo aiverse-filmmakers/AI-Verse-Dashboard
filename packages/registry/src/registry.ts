@@ -1,3 +1,4 @@
+import { isAbsolute, relative } from "node:path";
 import { systemIdSchema } from "../../protocol/src/index.js";
 import {
   OS_TYPE,
@@ -47,8 +48,10 @@ export function toPublic(record: ConnectionRecord): PublicConnection {
   return pub;
 }
 
-const isWithin = (child: string, parent: string): boolean =>
-  child === parent || child.startsWith(parent + "/");
+const isWithin = (child: string, parent: string): boolean => {
+  const rel = relative(parent, child);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+};
 
 export class SystemRegistry {
   private readonly byId = new Map<string, ConnectionRecord>();
