@@ -1,4 +1,4 @@
-import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
   existsSync,
@@ -554,7 +554,7 @@ export async function requestJson(
 export async function waitForMissionControl(
   baseUrl: string,
   apiKey: string,
-  child: ChildProcessWithoutNullStreams,
+  child: ChildProcess,
   options: { timeoutMs?: number; logTail?: () => string } = {},
 ): Promise<void> {
   const timeoutMs = options.timeoutMs ?? 120_000;
@@ -586,7 +586,7 @@ export function startMissionControl(
   settings: Mc1Settings,
   env: NodeJS.ProcessEnv,
 ): {
-  child: ChildProcessWithoutNullStreams;
+  child: ChildProcess;
   logTail: () => string;
 } {
   const child = spawn(commandName("corepack"), ["pnpm", "dev"], {
@@ -594,19 +594,19 @@ export function startMissionControl(
     env,
     stdio: ["ignore", "pipe", "pipe"],
     shell: false,
-  }) as ChildProcessWithoutNullStreams;
+  });
 
   let logs = "";
   const append = (chunk: Buffer | string) => {
     logs = (logs + chunk.toString()).slice(-16_000);
   };
-  child.stdout.on("data", append);
-  child.stderr.on("data", append);
+  child.stdout?.on("data", append);
+  child.stderr?.on("data", append);
   return { child, logTail: () => logs };
 }
 
 export async function stopChild(
-  child: ChildProcessWithoutNullStreams,
+  child: ChildProcess,
 ): Promise<void> {
   if (child.exitCode !== null) return;
   child.kill("SIGTERM");
