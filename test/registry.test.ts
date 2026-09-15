@@ -143,10 +143,14 @@ describe("registry Task 2: compatible-OS validation + systemId map + selection",
     );
   });
 
-  it("live OS root passes validation (read-only probe)", () => {
-    const live = "/home/hermes/ai-verse-dev/AI-Verse-OS";
-    const compat = validateCompatibleOs(live);
-    assert.equal(compat.compatible, true);
-    assert.equal(compat.osType, "ai-verse-os-v2");
-  });
+  it(
+    "optional live OS root passes validation (read-only integration probe)",
+    { skip: !process.env.AIVERSE_DASHBOARD_LIVE_OS_ROOT },
+    () => {
+      const live = process.env.AIVERSE_DASHBOARD_LIVE_OS_ROOT as string;
+      const compat = validateCompatibleOs(live);
+      assert.equal(compat.compatible, true);
+      assert.equal(compat.osType, "ai-verse-os-v2");
+    },
+  );
 });
