@@ -1,3 +1,5 @@
+> **Current Dashboard direction, 2026-09-15:** Builderz Labs Mission Control is the approved initial visual/application shell. AI-Verse remains the canonical backend architecture. Start with [the canonical adoption plan](docs/CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md) and [the Mission Control feature disposition map](docs/MISSION-CONTROL-FEATURE-DISPOSITION-MAP-2026-09-15.md). Older roadmap documents are historical where they conflict with this direction.
+
 # AI-Verse-Dashboard
 
 **Layer 5: the visual Control Room for AI-Verse OS.**
