@@ -19,7 +19,7 @@ The user should not manually:
 - click the task board;
 - copy Mission Control API keys.
 
-The only required secret is the real AI-Verse Gateway bearer token.
+The only required secret is the real AI-Verse Gateway bearer token. The preferred local runner requests it through hidden terminal input.
 
 ## What the proof script does
 
@@ -81,7 +81,7 @@ This is the first point in the Dashboard program where the owner may need to act
 ~~~bash
 git clone https://github.com/aiverse-filmmakers/AI-Verse-Dashboard.git
 cd AI-Verse-Dashboard
-npm ci
+npm run mc1:local
 ~~~
 
 ### If it is already cloned
@@ -89,22 +89,18 @@ npm ci
 ~~~bash
 cd /path/to/AI-Verse-Dashboard
 git pull
-npm ci
+npm run mc1:local
 ~~~
 
-### Supply the Gateway bearer token only in the local shell
+The command installs the exact Dashboard dependencies, then prompts:
 
-~~~bash
-export AIVERSE_GATEWAY_TOKEN='PASTE_THE_REAL_GATEWAY_TOKEN_HERE'
+~~~text
+AI-Verse Gateway token (input hidden):
 ~~~
 
-Then run:
+Paste the token there and press Return. The terminal does not echo it and the runner clears it from its environment when finished.
 
-~~~bash
-npm run mc1:proof
-~~~
-
-Do not paste the Gateway token into ChatGPT or a GitHub issue.
+Do not paste the Gateway token into ChatGPT, a GitHub issue, or a command that would put it into shell history.
 
 The final command prints sanitized JSON. Share that sanitized JSON if the proof fails or if acceptance evidence is needed.
 
