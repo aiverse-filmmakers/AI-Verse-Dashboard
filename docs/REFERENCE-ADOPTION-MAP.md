@@ -1,3 +1,7 @@
+> **HISTORICAL RESEARCH NOTICE, 2026-09-15**
+>
+> This research remains useful for ownership boundaries and selective reference ideas, but its recommendation to avoid a production shell fork is superseded by the product-owner decision to use Builderz Labs Mission Control as the initial AI-Verse shell. See [CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md). AI-Verse still keeps canonical authority in its existing owners.
+
 # Reference Adoption Map
 
 This document answers the practical question: **what should AI-Verse Dashboard actually copy, adapt, integrate, or ignore?**
