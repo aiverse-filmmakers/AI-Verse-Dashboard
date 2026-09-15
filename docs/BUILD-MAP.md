@@ -1,3 +1,9 @@
+> **CANONICAL PLAN NOTICE, 2026-09-15**
+>
+> This file is retained as the historical implementation ledger through Dashboard Phase 2 Task 5. **Do not resume from Phase 2 Task 6 as the product sequence.** The current go-ahead plan is [CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md), with the pre-strip audit in [MISSION-CONTROL-FEATURE-DISPOSITION-MAP-2026-09-15.md](MISSION-CONTROL-FEATURE-DISPOSITION-MAP-2026-09-15.md).
+>
+> Completed code and tests recorded below remain valuable and must be preserved/reused. The old sequencing, including the statement that desktop packaging is only a final step, is superseded.
+
 # AI-Verse Dashboard Build Map
 
 **Updated:** 2026-09-12
