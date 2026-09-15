@@ -13,7 +13,8 @@
     "check": "npm run build && npm test",
     "mc1:bootstrap": "npm run build --silent && node dist/scripts/mc1/bootstrap.js",
     "mc1:preflight": "npm run build --silent && node dist/scripts/mc1/preflight.js",
-    "mc1:proof": "npm run build --silent && node dist/scripts/mc1/proof.js"
+    "mc1:proof": "npm run build --silent && node dist/scripts/mc1/proof.js",
+    "mc1:local": "bash scripts/mc1/run-local.sh"
   },
   "engines": {
     "node": ">=22.0.0"
