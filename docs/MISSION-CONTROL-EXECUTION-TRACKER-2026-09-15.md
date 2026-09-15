@@ -31,7 +31,7 @@ Formal program weight totals **100 points**.
 
 A task contributes its points only after its acceptance gate is satisfied and evidence is recorded.
 
-**Current accepted progress: 5 / 100. 95% remaining.**
+**Current accepted progress: 11 / 100. 89% remaining.**
 
 The previously merged canonical adoption plan is prerequisite context, not retroactive execution credit for this tracker.
 
@@ -124,7 +124,7 @@ Evidence:
 # MC1 - Real AI-Verse runtime dispatch proof - 10 points
 
 ### MC1.1 - Automated local lab bootstrap - 2 points - A
-Status: ACTIVE
+Status: COMPLETE
 
 Deliver:
 - script that clones/checks out pinned stock Mission Control into a lab directory;
@@ -137,8 +137,14 @@ Acceptance:
 - clear failure messages;
 - no secret persistence.
 
+Evidence:
+- Dashboard PR #8 merged at `23edb8bea28e3f1ceac53df0daff28319b43090d`.
+- Exact upstream Mission Control pin is enforced at `5483a0e1eef15b467c167e95796791112cedbb7c`.
+- Disposable lab path, origin validation, dirty-tree refusal and pinned lockfile install are automated.
+
+
 ### MC1.2 - Gateway preflight + smoke verifier - 2 points - A
-Status: PENDING
+Status: COMPLETE
 
 Deliver:
 - script that verifies `/health`, `/status` where appropriate, `/v1/models`, auth and model `aiverse`;
@@ -149,8 +155,13 @@ Acceptance:
 - deterministic pass/fail output;
 - mock/fixture tests in CI.
 
+Evidence:
+- PR #8 adds authenticated `/health`, `/status`, `/v1/models` verification, local Gateway config binding checks, and optional workspace-explicit read-only chat smoke.
+- Unit/fixture coverage passed on Linux, macOS and Windows.
+
+
 ### MC1.3 - Mission Control AI-Verse dispatch setup automation - 2 points - A
-Status: PENDING
+Status: COMPLETE
 
 Deliver:
 - safe env/template setup for `LOCAL_LLM_ENDPOINT`;
@@ -161,8 +172,14 @@ Deliver:
 Acceptance:
 - automated fixture proves generated config is correct.
 
+Evidence:
+- PR #8 adds in-memory Mission Control credentials/provider configuration, temporary `ai-verse` agent creation, `local/aiverse` routing, task creation, scheduler trigger, sanitized result capture and cleanup.
+- `npm run mc1:local` prompts for the Gateway token with hidden input and clears it on exit.
+- Current-head PR CI run `34994307940` and post-merge main CI run `34994439986` passed Linux, macOS and Windows.
+
+
 ### MC1.4 - Real local Mission Control -> Gateway proof - 3 points - A/H
-Status: PENDING
+Status: ACTIVE
 
 Assistant:
 - provides one command/script;
@@ -171,9 +188,11 @@ Assistant:
 - updates code/runbook if needed.
 
 User:
-- runs the command on the Mac where the real AI-Verse system and Gateway token exist;
-- completes local Mission Control admin setup only if stock upstream requires it;
-- returns output or screenshot if needed.
+- from a current local AI-Verse-Dashboard checkout, runs `npm run mc1:local` on the Mac where the real AI-Verse system and Gateway token exist;
+- pastes the Gateway token only into the hidden terminal prompt;
+- returns the sanitized JSON output or sanitized error if needed.
+
+No manual Mission Control admin setup, agent creation, task creation or dashboard clicking is expected.
 
 Acceptance:
 - one real task executes through canonical Gateway;
