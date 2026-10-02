@@ -57,6 +57,20 @@ function websocket(
   return new WebSocket(url, { headers: options?.headers });
 }
 
+async function waitFor(
+  predicate: () => boolean,
+  message: string,
+  timeoutMs = 1500,
+): Promise<void> {
+  const started = Date.now();
+  while (!predicate()) {
+    if (Date.now() - started > timeoutMs) {
+      throw new Error(`timed out waiting for ${message}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+
 async function expectWsRejected(
   url: string,
   expectedStatus: number,
@@ -297,6 +311,10 @@ describe("WSA-2026-040 Dashboard local read authentication", () => {
 
     bearerStyle.close();
     await new Promise<void>((resolve) => bearerStyle.once("close", () => resolve()));
+    await waitFor(
+      () => hub.subscriberCount(systemId) === 0,
+      "authenticated websocket subscription cleanup",
+    );
     assert.equal(hub.subscriberCount(systemId), 0);
   });
 
