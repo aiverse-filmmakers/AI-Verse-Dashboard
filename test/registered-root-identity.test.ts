@@ -72,7 +72,7 @@ describe("WSA-2026-039 registered-root identity binding", () => {
     assert.ok(record.rootIdentity.device.length > 0);
     assert.ok(record.rootIdentity.inode.length > 0);
 
-    const publicRecord = toPublic(record) as Record<string, unknown>;
+    const publicRecord = toPublic(record) as unknown as Record<string, unknown>;
     assert.equal("root" in publicRecord, false);
     assert.equal("rootIdentity" in publicRecord, false);
     assert.equal("identityDrifted" in publicRecord, false);
