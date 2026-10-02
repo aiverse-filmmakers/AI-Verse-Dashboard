@@ -1,5 +1,6 @@
 import {
   PROTOCOL_VERSION,
+  assertDashboardAuthToken,
   requestSchema,
   scopeKey,
   type DashboardMethod,
@@ -43,8 +44,10 @@ export class DashboardClient {
   constructor(
     private readonly gatewayBase: string,
     scope: ClientScope,
+    private readonly authToken: string,
     private readonly fetchFn: FetchFn = fetch as unknown as FetchFn,
   ) {
+    assertDashboardAuthToken(authToken);
     this.scope = { ...scope };
   }
 
@@ -97,7 +100,10 @@ export class DashboardClient {
     }
     const res = await this.fetchFn(`${this.gatewayBase}/rpc`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${this.authToken}`,
+      },
       body: JSON.stringify(frame),
     });
     const out = (await res.json()) as {
