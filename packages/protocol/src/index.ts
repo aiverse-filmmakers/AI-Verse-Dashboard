@@ -42,6 +42,7 @@ export {
 
 export {
   requestSchema,
+  subscriptionRequestSchema,
   responseSchema,
   eventSchema,
   parseFrame,
@@ -50,7 +51,12 @@ export {
   negotiateHandshake,
 } from "./envelope.js";
 
-export type { DashboardRequest, DashboardResponse, DashboardEvent } from "./envelope.js";
+export type {
+  DashboardRequest,
+  DashboardSubscriptionRequest,
+  DashboardResponse,
+  DashboardEvent,
+} from "./envelope.js";
 export type {
   QueryMethod,
   CommandMethod,
