@@ -17,6 +17,9 @@ export {
 } from "./validation.js";
 export type { OsCompatibility, RegistryErrorCode } from "./validation.js";
 
+export { captureRootIdentity, sameRootIdentity } from "./root-identity.js";
+export type { RootIdentity } from "./root-identity.js";
+
 export { SystemRegistry, toPublic } from "./registry.js";
 export type { ConnectionRecord, PublicConnection } from "./registry.js";
 
