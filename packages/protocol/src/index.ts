@@ -66,3 +66,10 @@ export type {
 } from "./methods.js";
 export type { SystemId, WorkspaceId, PanelId, NoRootsCheck } from "./ids.js";
 export type { Presentation } from "./ids.js";
+
+
+export {
+  DASHBOARD_WS_PROTOCOL,
+  assertDashboardAuthToken,
+  dashboardWsAuthProtocol,
+} from "./gateway-auth.js";
