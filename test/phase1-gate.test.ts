@@ -71,10 +71,13 @@ function makeWorkspace(osRoot: string, id: string): void {
   writeFileSync(join(dir, "STATE.md"), "---\ntitle: State\n---\n\n# gate body\n");
 }
 
-async function rpc(port: number, frame: unknown): Promise<Record<string, unknown>> {
+async function rpc(port: number, authToken: string, frame: unknown): Promise<Record<string, unknown>> {
   const res = await fetch(`http://127.0.0.1:${port}/rpc`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${authToken}`,
+    },
     body: JSON.stringify(frame),
   });
   return (await res.json()) as Record<string, unknown>;
@@ -206,9 +209,9 @@ describe("Phase 1 gate Task 8: full read-only Control Room story", () => {
     const client = new DashboardClient(`http://127.0.0.1:${PORT}`, {
       systemId: a.systemId,
       workspaceId: "shared",
-    });
+    }, gw.authToken);
     // Client uses global fetch; point it at the live gateway via query path.
-    const live = await rpc(PORT, {
+    const live = await rpc(PORT, gw.authToken, {
       type: "req", v: "1.0", id: "live-1", method: "task.list",
       systemId: a.systemId, workspaceId: "shared",
     });

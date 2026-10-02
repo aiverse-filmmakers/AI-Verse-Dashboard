@@ -141,8 +141,8 @@ describe("isolation Task 7: A vs B, traversal, symlink, byte-identical fixtures"
         },
       };
     };
-    const clientA = new DashboardClient("http://127.0.0.1:9", { systemId: "aiverse-01", workspaceId: "shared" }, fetchFn);
-    const clientB = new DashboardClient("http://127.0.0.1:9", { systemId: "aiverse-02", workspaceId: "shared" }, fetchFn);
+    const clientA = new DashboardClient("http://127.0.0.1:9", { systemId: "aiverse-01", workspaceId: "shared" }, "dashboard_test_token_0123456789abcdef", fetchFn);
+    const clientB = new DashboardClient("http://127.0.0.1:9", { systemId: "aiverse-02", workspaceId: "shared" }, "dashboard_test_token_0123456789abcdef", fetchFn);
     const ra = await clientA.query("task.list");
     const rb = await clientB.query("task.list");
     assert.deepEqual((ra.result as { echo: string }).echo, "aiverse-01");

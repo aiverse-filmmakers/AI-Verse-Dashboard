@@ -5,6 +5,10 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SystemRegistry } from "../packages/registry/src/index.js";
+import {
+  DASHBOARD_WS_PROTOCOL,
+  dashboardWsAuthProtocol,
+} from "../packages/protocol/src/index.js";
 import { DisposableCache } from "../packages/os-read-adapter/src/index.js";
 import {
   LocalEchoAdapter,
@@ -111,7 +115,10 @@ describe("live Task 3 (Phase 2): activity stream + task rail over WS", () => {
       const hub = new SubscriptionHub();
       const gw = await startGateway(router, hub, { port: PORT });
       try {
-        const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws?systemId=house-a`);
+        const ws = new WebSocket(
+          `ws://127.0.0.1:${PORT}/ws?systemId=house-a`,
+          [DASHBOARD_WS_PROTOCOL, dashboardWsAuthProtocol(gw.authToken)],
+        );
         await new Promise<void>((resolve, reject) => {
           ws.on("open", resolve);
           ws.on("error", reject);

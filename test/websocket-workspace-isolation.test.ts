@@ -5,6 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocket } from "ws";
 import { SystemRegistry } from "../packages/registry/src/index.js";
+import {
+  DASHBOARD_WS_PROTOCOL,
+  dashboardWsAuthProtocol,
+} from "../packages/protocol/src/index.js";
 import { DisposableCache } from "../packages/os-read-adapter/src/index.js";
 import { QueryRouter, SubscriptionHub, startGateway } from "../apps/gateway/src/index.js";
 
@@ -77,7 +81,10 @@ describe("WSA-2026-038 websocket workspace resubscribe isolation", () => {
     const gateway = await startGateway(router, hub, { port: 0 });
     servers.push(gateway);
 
-    const ws = new WebSocket(`ws://127.0.0.1:${gateway.port}/ws?systemId=${systemId}`);
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${gateway.port}/ws?systemId=${systemId}`,
+      [DASHBOARD_WS_PROTOCOL, dashboardWsAuthProtocol(gateway.authToken)],
+    );
     await new Promise<void>((resolve, reject) => {
       ws.once("open", resolve);
       ws.once("error", reject);

@@ -28,8 +28,8 @@ describe("web shell Task 5: client + panels + layout + shell model", () => {
       assert.ok(frame.workspaceId === "ws-1");
       return { ok: true, result: { n: 1 }, systemId: frame.systemId, observedAt: new Date().toISOString() };
     });
-    const a = new DashboardClient("http://127.0.0.1:9", { systemId: "aiverse-01", workspaceId: "ws-1" }, fetchFn);
-    const b = new DashboardClient("http://127.0.0.1:9", { systemId: "aiverse-02", workspaceId: "ws-1" }, fetchFn);
+    const a = new DashboardClient("http://127.0.0.1:9", { systemId: "aiverse-01", workspaceId: "ws-1" }, "dashboard_test_token_0123456789abcdef", fetchFn);
+    const b = new DashboardClient("http://127.0.0.1:9", { systemId: "aiverse-02", workspaceId: "ws-1" }, "dashboard_test_token_0123456789abcdef", fetchFn);
     await a.query("task.list");
     await a.query("task.list"); // cache hit
     await b.query("task.list"); // different system: no shared entry
@@ -37,7 +37,7 @@ describe("web shell Task 5: client + panels + layout + shell model", () => {
     assert.equal(a.cacheStats().entries, 1);
     assert.equal(b.cacheStats().entries, 1);
     // Cross-system frame rejected before send.
-    const evil = new DashboardClient("http://127.0.0.1:9", { systemId: "../evil" }, fetchFn);
+    const evil = new DashboardClient("http://127.0.0.1:9", { systemId: "../evil" }, "dashboard_test_token_0123456789abcdef", fetchFn);
     await assert.rejects(() => evil.query("task.list"));
   });
 

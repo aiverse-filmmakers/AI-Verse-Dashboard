@@ -5,6 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocket } from "ws";
 import { SystemRegistry } from "../packages/registry/src/index.js";
+import {
+  DASHBOARD_WS_PROTOCOL,
+  dashboardWsAuthProtocol,
+} from "../packages/protocol/src/index.js";
 import { DisposableCache } from "../packages/os-read-adapter/src/index.js";
 import { QueryRouter, SubscriptionHub, startGateway } from "../apps/gateway/src/index.js";
 
@@ -36,10 +40,13 @@ function makeWorkspace(osRoot: string, id: string, files?: Record<string, string
   }
 }
 
-async function rpc(port: number, frame: unknown): Promise<Record<string, unknown>> {
+async function rpc(port: number, authToken: string, frame: unknown): Promise<Record<string, unknown>> {
   const res = await fetch(`http://127.0.0.1:${port}/rpc`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${authToken}`,
+    },
     body: JSON.stringify(frame),
   });
   return (await res.json()) as Record<string, unknown>;
@@ -69,15 +76,17 @@ describe("gateway Task 4: query path + subscriptions, no cross-system fallback",
     const gw = await startGateway(router, new SubscriptionHub(), { port: PORTS.t1 });
     servers.push(gw);
 
-    const health = (await (await fetch(`http://127.0.0.1:${PORTS.t1}/health`)).json()) as {
+    const health = (await (await fetch(`http://127.0.0.1:${PORTS.t1}/health`, {
+      headers: { authorization: `Bearer ${gw.authToken}` },
+    })).json()) as {
       ok: boolean;
     };
     assert.equal(health.ok, true);
 
-    const sys = await rpc(PORTS.t1, { type: "req", v: "1.0", id: "1", method: "system.list" });
+    const sys = await rpc(PORTS.t1, gw.authToken, { type: "req", v: "1.0", id: "1", method: "system.list" });
     assert.equal(sys.ok, true);
 
-    const preview = await rpc(PORTS.t1, {
+    const preview = await rpc(PORTS.t1, gw.authToken, {
       type: "req", v: "1.0", id: "2", method: "source.preview",
       systemId, workspaceId: "ws-1", params: { path: "STATE.md" },
     });
@@ -87,7 +96,7 @@ describe("gateway Task 4: query path + subscriptions, no cross-system fallback",
     assert.equal(prov.freshness, "fresh");
     assert.equal(prov.canonical, true);
 
-    const blocked = await rpc(PORTS.t1, {
+    const blocked = await rpc(PORTS.t1, gw.authToken, {
       type: "req", v: "1.0", id: "3", method: "chat.send",
       systemId, workspaceId: "ws-1", params: {},
     });
@@ -108,14 +117,14 @@ describe("gateway Task 4: query path + subscriptions, no cross-system fallback",
     const gw = await startGateway(routerB, new SubscriptionHub(), { port: PORTS.t2 });
     servers.push(gw);
 
-    const okB = await rpc(PORTS.t2, {
+    const okB = await rpc(PORTS.t2, gw.authToken, {
       type: "req", v: "1.0", id: "1", method: "workspace.get",
       systemId: b.systemId, workspaceId: "shared",
     });
     assert.equal(okB.ok, true);
 
     // A foreign systemId is unknown to this registry: fail, not fallback.
-    const miss = await rpc(PORTS.t2, {
+    const miss = await rpc(PORTS.t2, gw.authToken, {
       type: "req", v: "1.0", id: "2", method: "workspace.get",
       systemId: "aiverse-02", workspaceId: "shared",
     });
@@ -141,7 +150,10 @@ describe("gateway Task 4: query path + subscriptions, no cross-system fallback",
     assert.equal(hubSeenB.length, 0);
     assert.equal((hubSeenA[0] as { seq: number }).seq, 1);
 
-    const ws = new WebSocket(`ws://127.0.0.1:${PORTS.t3}/ws?systemId=${systemId}`);
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${PORTS.t3}/ws?systemId=${systemId}`,
+      [DASHBOARD_WS_PROTOCOL, dashboardWsAuthProtocol(gw.authToken)],
+    );
     await new Promise<void>((resolve, reject) => {
       ws.on("open", resolve);
       ws.on("error", reject);
