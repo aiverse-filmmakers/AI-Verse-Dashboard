@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   mkdirSync,
   mkdtempSync,
+  realpathSync,
   renameSync,
   rmSync,
   symlinkSync,
@@ -183,6 +184,6 @@ describe("WSA-2026-039 registered-root identity binding", () => {
 
     registry.rebind(record.systemId, root);
     const replacementWorkspace = resolveWorkspaceRoot(registry, record.systemId, "shared");
-    assert.equal(replacementWorkspace, join(root, "workspaces", "shared"));
+    assert.equal(replacementWorkspace, realpathSync(join(root, "workspaces", "shared")));
   });
 });
