@@ -1,6 +1,9 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
-import { systemIdSchema } from "../../../packages/protocol/src/index.js";
+import {
+  subscriptionRequestSchema,
+  systemIdSchema,
+} from "../../../packages/protocol/src/index.js";
 import { QueryRouter } from "./query-router.js";
 import { SubscriptionHub } from "./subscriptions.js";
 
@@ -142,8 +145,8 @@ function handleSocket(
   router: QueryRouter,
   hub: SubscriptionHub,
 ): void {
-  let subId: string | undefined;
-  let boundWorkspace: string | undefined;
+  let activeSubId: string | undefined;
+  const socketSubIds = new Set<string>();
   ws.on("message", (data) => {
     let frame: unknown;
     try {
@@ -155,16 +158,63 @@ function handleSocket(
     const tagged = (frame as { type?: string }).type;
     // Subscribe control frame: Dashboard-local, bound to this socket's system.
     if (tagged === "subscribe") {
-      const ws2 = (frame as { workspaceId?: string }).workspaceId;
-      boundWorkspace = typeof ws2 === "string" ? ws2 : undefined;
-      subId = hub.subscribe(
+      const parsed = subscriptionRequestSchema.safeParse(frame);
+      if (!parsed.success) {
+        ws.send(JSON.stringify({
+          type: "res",
+          v: "1.0",
+          id: "subscribe",
+          ok: false,
+          systemId: boundSystem,
+          error: { code: "INVALID_SUBSCRIPTION", message: "invalid workspace subscription" },
+          observedAt: new Date().toISOString(),
+        }));
+        return;
+      }
+
+      const nextWorkspace = parsed.data.workspaceId;
+      try {
+        router.assertSubscriptionWorkspace(boundSystem, nextWorkspace);
+      } catch (err) {
+        ws.send(JSON.stringify({
+          type: "res",
+          v: "1.0",
+          id: "subscribe",
+          ok: false,
+          systemId: boundSystem,
+          error: {
+            code: (err as { code?: string }).code ?? "WORKSPACE_NOT_REGISTERED",
+            message: (err as Error).message.slice(0, 300),
+          },
+          observedAt: new Date().toISOString(),
+        }));
+        return;
+      }
+
+      if (activeSubId !== undefined) {
+        hub.unsubscribe(activeSubId);
+        socketSubIds.delete(activeSubId);
+        activeSubId = undefined;
+      }
+
+      const nextSubId = hub.subscribe(
         boundSystem,
         (ev) => {
           ws.send(JSON.stringify({ type: "event", v: "1.0", ...ev }));
         },
-        boundWorkspace,
+        nextWorkspace,
       );
-      ws.send(JSON.stringify({ type: "res", v: "1.0", id: "subscribe", ok: true, systemId: boundSystem, result: { subscribed: true }, observedAt: new Date().toISOString() }));
+      activeSubId = nextSubId;
+      socketSubIds.add(nextSubId);
+      ws.send(JSON.stringify({
+        type: "res",
+        v: "1.0",
+        id: "subscribe",
+        ok: true,
+        systemId: boundSystem,
+        result: { subscribed: true, workspaceId: nextWorkspace },
+        observedAt: new Date().toISOString(),
+      }));
       return;
     }
     // RPC frames must stay inside this socket's bound system.
@@ -184,6 +234,8 @@ function handleSocket(
     ws.send(JSON.stringify(out));
   });
   ws.on("close", () => {
-    if (subId !== undefined) hub.unsubscribe(subId);
+    for (const subId of socketSubIds) hub.unsubscribe(subId);
+    socketSubIds.clear();
+    activeSubId = undefined;
   });
 }
