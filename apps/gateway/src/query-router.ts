@@ -62,6 +62,11 @@ export class QueryRouter {
     this.sessions = sessions;
   }
 
+  /** Validate one realtime workspace scope through the registered OS boundary. */
+  assertSubscriptionWorkspace(systemId: string, workspaceId: string): void {
+    getWorkspace(this.registry, systemId, workspaceId);
+  }
+
   handle(raw: unknown): DashboardResponse {
     let req: DashboardRequest;
     try {
