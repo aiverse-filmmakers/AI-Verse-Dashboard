@@ -1,10 +1,16 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import {
+  DASHBOARD_WS_PROTOCOL,
   subscriptionRequestSchema,
   systemIdSchema,
 } from "../../../packages/protocol/src/index.js";
 import { QueryRouter } from "./query-router.js";
+import {
+  createGatewayAuthToken,
+  hasBearerAuthorization,
+  hasWebSocketAuthorization,
+} from "./auth.js";
 import { SubscriptionHub } from "./subscriptions.js";
 
 /**
@@ -35,24 +41,38 @@ function isLoopbackOrigin(origin: string | undefined): boolean {
 
 export interface GatewayServer {
   port: number;
+  /** Privileged local session token. Host code must pass it to trusted clients. */
+  authToken: string;
   close(): Promise<void>;
 }
 
 export async function startGateway(
   router: QueryRouter,
   hub: SubscriptionHub,
-  opts?: { port?: number; host?: string },
+  opts?: { port?: number; host?: string; authToken?: string },
 ): Promise<GatewayServer> {
   const host = "127.0.0.1";
+  const authToken = createGatewayAuthToken(opts?.authToken);
   if (opts?.host !== undefined && opts.host !== "127.0.0.1" && opts.host !== "localhost") {
     throw new Error("gateway binds loopback only; remote access must use a tunnel");
   }
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    void handleHttp(req, res, router);
+    void handleHttp(req, res, router, authToken);
   });
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({
+    noServer: true,
+    handleProtocols(protocols) {
+      return protocols.has(DASHBOARD_WS_PROTOCOL) ? DASHBOARD_WS_PROTOCOL : false;
+    },
+  });
 
   server.on("upgrade", (req, socket, head) => {
+    if (!hasWebSocketAuthorization(req.headers, authToken)) {
+      socket.write("HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Bearer\r\nConnection: close\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+
     const origin = req.headers.origin as string | undefined;
     if (!isLoopbackOrigin(origin)) {
       socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
@@ -85,6 +105,7 @@ export async function startGateway(
   });
   return {
     port: actual,
+    authToken,
     async close() {
       wss.close();
       await new Promise<void>((resolve, reject) => {
@@ -110,6 +131,7 @@ async function handleHttp(
   req: IncomingMessage,
   res: ServerResponse,
   router: QueryRouter,
+  authToken: string,
 ): Promise<void> {
   try {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -118,6 +140,18 @@ async function handleHttp(
       res.end(JSON.stringify({ ok: true, phase: "phase-2-live" }));
       return;
     }
+    if (!hasBearerAuthorization(req.headers, authToken)) {
+      res.writeHead(401, {
+        "content-type": "application/json",
+        "www-authenticate": "Bearer",
+      });
+      res.end(JSON.stringify({
+        ok: false,
+        error: { code: "UNAUTHENTICATED", message: "local gateway authentication required" },
+      }));
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/rpc") {
       const origin = req.headers.origin as string | undefined;
       if (!isLoopbackOrigin(origin)) {
