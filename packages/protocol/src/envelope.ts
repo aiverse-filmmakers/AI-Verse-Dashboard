@@ -75,6 +75,15 @@ export const requestSchema = z
 
 export type DashboardRequest = z.infer<typeof requestSchema>;
 
+export const subscriptionRequestSchema = z
+  .object({
+    type: z.literal("subscribe"),
+    workspaceId: workspaceIdSchema,
+  })
+  .strict();
+
+export type DashboardSubscriptionRequest = z.infer<typeof subscriptionRequestSchema>;
+
 const protocolErrorSchema = z.object({
   code: z.string().min(1).max(64),
   message: z.string().min(1).max(1024),
