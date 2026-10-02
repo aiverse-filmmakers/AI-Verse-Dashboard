@@ -135,11 +135,6 @@ async function handleHttp(
 ): Promise<void> {
   try {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
-    if (req.method === "GET" && url.pathname === "/health") {
-      res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ ok: true, phase: "phase-2-live" }));
-      return;
-    }
     if (!hasBearerAuthorization(req.headers, authToken)) {
       res.writeHead(401, {
         "content-type": "application/json",
@@ -149,6 +144,12 @@ async function handleHttp(
         ok: false,
         error: { code: "UNAUTHENTICATED", message: "local gateway authentication required" },
       }));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/health") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true, phase: "phase-2-live" }));
       return;
     }
 
