@@ -76,7 +76,9 @@ describe("gateway Task 4: query path + subscriptions, no cross-system fallback",
     const gw = await startGateway(router, new SubscriptionHub(), { port: PORTS.t1 });
     servers.push(gw);
 
-    const health = (await (await fetch(`http://127.0.0.1:${PORTS.t1}/health`)).json()) as {
+    const health = (await (await fetch(`http://127.0.0.1:${PORTS.t1}/health`, {
+      headers: { authorization: `Bearer ${gw.authToken}` },
+    })).json()) as {
       ok: boolean;
     };
     assert.equal(health.ok, true);
