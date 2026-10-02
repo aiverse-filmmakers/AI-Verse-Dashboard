@@ -1,6 +1,11 @@
 import { isAbsolute, relative } from "node:path";
 import { systemIdSchema } from "../../protocol/src/index.js";
 import {
+  captureRootIdentity,
+  sameRootIdentity,
+  type RootIdentity,
+} from "./root-identity.js";
+import {
   OS_TYPE,
   REGISTRY_ERRORS,
   registryError,
@@ -23,14 +28,18 @@ export interface ConnectionRecord {
   osType: string;
   osVersion: string;
   architecture: string;
-  /** Canonical realpath. Server-side only — never sent to clients. */
+  /** Canonical realpath. Server-side only, never sent to clients. */
   root: string;
+  /** Durable filesystem identity captured at explicit approval time. */
+  rootIdentity: RootIdentity;
+  /** Sticky once identity drift is observed; only explicit rebind clears it. */
+  identityDrifted: boolean;
   authorized: boolean;
   registeredAt: string;
   lastValidatedAt: string;
 }
 
-/** Client-safe view: everything except the privileged root. */
+/** Client-safe view: privileged root identity stays server-side. */
 export interface PublicConnection {
   systemId: string;
   label: string;
@@ -41,9 +50,21 @@ export interface PublicConnection {
   lastValidatedAt: string;
 }
 
+function cloneRecord(record: ConnectionRecord): ConnectionRecord {
+  return { ...record, rootIdentity: { ...record.rootIdentity } };
+}
+
 export function toPublic(record: ConnectionRecord): PublicConnection {
-  const { root: _root, architecture: _arch, ...pub } = record;
+  const {
+    root: _root,
+    rootIdentity: _rootIdentity,
+    identityDrifted: _identityDrifted,
+    architecture: _arch,
+    ...pub
+  } = record;
   void _root;
+  void _rootIdentity;
+  void _identityDrifted;
   void _arch;
   return pub;
 }
@@ -53,29 +74,57 @@ const isWithin = (child: string, parent: string): boolean => {
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 };
 
+interface ApprovedBinding {
+  compat: OsCompatibility & { root: string };
+  identity: RootIdentity;
+}
+
+function validateBindingCandidate(candidateRoot: string): ApprovedBinding {
+  const first = validateCompatibleOs(candidateRoot);
+  if (!first.compatible || first.root === null) {
+    throw registryError(
+      REGISTRY_ERRORS.OS_INCOMPATIBLE,
+      `incompatible OS at ${candidateRoot}: ${first.reasons.join("; ")}`,
+    );
+  }
+
+  const firstIdentity = captureRootIdentity(first.root);
+  const second = validateCompatibleOs(firstIdentity.realpath);
+  if (!second.compatible || second.root === null) {
+    throw registryError(
+      REGISTRY_ERRORS.OS_INCOMPATIBLE,
+      `OS root changed during approval: ${candidateRoot}`,
+    );
+  }
+  const secondIdentity = captureRootIdentity(second.root);
+  if (!sameRootIdentity(firstIdentity, secondIdentity)) {
+    throw registryError(
+      REGISTRY_ERRORS.OS_INCOMPATIBLE,
+      `OS root identity changed during approval: ${candidateRoot}`,
+    );
+  }
+
+  return {
+    compat: { ...second, root: second.root },
+    identity: secondIdentity,
+  };
+}
+
 export class SystemRegistry {
   private readonly byId = new Map<string, ConnectionRecord>();
   private readonly byRoot = new Map<string, string>();
   private counter = 0;
 
-  register(candidateRoot: string, opts?: { systemId?: string; label?: string }): ConnectionRecord {
-    const compat: OsCompatibility = validateCompatibleOs(candidateRoot);
-    if (!compat.compatible || compat.root === null) {
-      throw registryError(
-        REGISTRY_ERRORS.OS_INCOMPATIBLE,
-        `incompatible OS at ${candidateRoot}: ${compat.reasons.join("; ")}`,
-      );
-    }
-    const root = compat.root;
-
+  private assertNoOverlap(root: string, ownSystemId?: string): void {
     const existingId = this.byRoot.get(root);
-    if (existingId !== undefined) {
+    if (existingId !== undefined && existingId !== ownSystemId) {
       throw registryError(
         REGISTRY_ERRORS.SYSTEM_DUPLICATE,
         `OS root already registered as ${existingId}`,
       );
     }
     for (const [otherRoot, otherId] of this.byRoot) {
+      if (otherId === ownSystemId) continue;
       if (isWithin(root, otherRoot) || isWithin(otherRoot, root)) {
         throw registryError(
           REGISTRY_ERRORS.SYSTEM_OVERLAP,
@@ -83,6 +132,34 @@ export class SystemRegistry {
         );
       }
     }
+  }
+
+  private markIdentityDrift(record: ConnectionRecord, reason: string): never {
+    record.authorized = false;
+    record.identityDrifted = true;
+    record.lastValidatedAt = new Date().toISOString();
+    throw registryError(
+      REGISTRY_ERRORS.SYSTEM_IDENTITY_DRIFT,
+      `systemId ${record.systemId} registered-root identity changed: ${reason}; explicit rebind required`,
+    );
+  }
+
+  private assertRootBinding(record: ConnectionRecord): void {
+    let current: RootIdentity;
+    try {
+      current = captureRootIdentity(record.root);
+    } catch {
+      this.markIdentityDrift(record, "approved root is missing or unusable");
+    }
+    if (!sameRootIdentity(record.rootIdentity, current)) {
+      this.markIdentityDrift(record, "approved filesystem object no longer matches registration");
+    }
+  }
+
+  register(candidateRoot: string, opts?: { systemId?: string; label?: string }): ConnectionRecord {
+    const approved = validateBindingCandidate(candidateRoot);
+    const root = approved.compat.root;
+    this.assertNoOverlap(root);
 
     let systemId = opts?.systemId;
     if (systemId === undefined) {
@@ -106,33 +183,67 @@ export class SystemRegistry {
       systemId,
       label: opts?.label ?? systemId,
       osType: OS_TYPE,
-      osVersion: compat.osVersion ?? "unknown",
-      architecture: compat.architecture ?? "unknown",
+      osVersion: approved.compat.osVersion ?? "unknown",
+      architecture: approved.compat.architecture ?? "unknown",
       root,
+      rootIdentity: { ...approved.identity },
+      identityDrifted: false,
       authorized: true,
       registeredAt: now,
       lastValidatedAt: now,
     };
     this.byId.set(systemId, record);
     this.byRoot.set(root, systemId);
-    return { ...record };
+    return cloneRecord(record);
+  }
+
+  /**
+   * Explicitly approve a root for an existing systemId.
+   * This is the only operation that clears sticky identity drift.
+   */
+  rebind(systemId: string, candidateRoot: string): ConnectionRecord {
+    const record = this.byId.get(systemId);
+    if (!record) {
+      throw registryError(
+        REGISTRY_ERRORS.SYSTEM_NOT_REGISTERED,
+        `unknown systemId ${systemId}`,
+      );
+    }
+
+    const approved = validateBindingCandidate(candidateRoot);
+    const root = approved.compat.root;
+    this.assertNoOverlap(root, systemId);
+
+    if (this.byRoot.get(record.root) === systemId) this.byRoot.delete(record.root);
+
+    record.root = root;
+    record.rootIdentity = { ...approved.identity };
+    record.identityDrifted = false;
+    record.authorized = true;
+    record.osType = OS_TYPE;
+    record.osVersion = approved.compat.osVersion ?? "unknown";
+    record.architecture = approved.compat.architecture ?? "unknown";
+    record.lastValidatedAt = new Date().toISOString();
+
+    this.byRoot.set(root, systemId);
+    return cloneRecord(record);
   }
 
   unregister(systemId: string): boolean {
     const record = this.byId.get(systemId);
     if (!record) return false;
     this.byId.delete(systemId);
-    this.byRoot.delete(record.root);
+    if (this.byRoot.get(record.root) === systemId) this.byRoot.delete(record.root);
     return true;
   }
 
   get(systemId: string): ConnectionRecord | undefined {
     const record = this.byId.get(systemId);
-    return record ? { ...record } : undefined;
+    return record ? cloneRecord(record) : undefined;
   }
 
   list(): ConnectionRecord[] {
-    return [...this.byId.values()].map((r) => ({ ...r }));
+    return [...this.byId.values()].map(cloneRecord);
   }
 
   listPublic(): PublicConnection[] {
@@ -145,8 +256,7 @@ export class SystemRegistry {
 
   /**
    * Resolve systemId to its approved canonical root.
-   * Unknown or unauthorized systems fail closed — never falls back
-   * to another registered system (Blueprint Rule 8).
+   * Unknown, unauthorized or identity-drifted systems fail closed.
    */
   resolveRoot(systemId: string): string {
     const record = this.byId.get(systemId);
@@ -162,10 +272,15 @@ export class SystemRegistry {
         `systemId ${systemId} is not currently authorized`,
       );
     }
+
+    this.assertRootBinding(record);
     return record.root;
   }
 
-  /** Re-run the compatibility probe; marks unauthorized on failure. */
+  /**
+   * Re-run compatibility without changing the approved filesystem identity.
+   * Identity drift is sticky and can only be cleared by explicit rebind().
+   */
   revalidate(systemId: string): OsCompatibility {
     const record = this.byId.get(systemId);
     if (!record) {
@@ -174,6 +289,32 @@ export class SystemRegistry {
         `unknown systemId ${systemId}`,
       );
     }
+
+    if (record.identityDrifted) {
+      return {
+        compatible: false,
+        osType: null,
+        osVersion: record.osVersion,
+        architecture: record.architecture,
+        root: record.root,
+        reasons: ["registered root identity changed; explicit rebind required"],
+      };
+    }
+
+    try {
+      this.assertRootBinding(record);
+    } catch (err) {
+      if ((err as { code?: string }).code !== REGISTRY_ERRORS.SYSTEM_IDENTITY_DRIFT) throw err;
+      return {
+        compatible: false,
+        osType: null,
+        osVersion: record.osVersion,
+        architecture: record.architecture,
+        root: record.root,
+        reasons: ["registered root identity changed; explicit rebind required"],
+      };
+    }
+
     const compat = validateCompatibleOs(record.root);
     record.authorized = compat.compatible;
     record.lastValidatedAt = new Date().toISOString();
