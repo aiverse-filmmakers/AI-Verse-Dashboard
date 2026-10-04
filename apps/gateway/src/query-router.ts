@@ -163,8 +163,9 @@ export class QueryRouter {
         const projections = this.projections(req.systemId as string, req.workspaceId as string);
         return {
           workspaceId: projections.workspaceId,
+          available: false,
+          availability: "unavailable",
           status: "unknown",
-          manifest: "ok",
           health: projections.health,
           observedAt: projections.observedAt,
         };
@@ -173,6 +174,8 @@ export class QueryRouter {
         const projections = this.projections(req.systemId as string, req.workspaceId as string);
         return {
           workspaceId: projections.workspaceId,
+          available: false,
+          availability: "unavailable",
           items: projections.inbox,
           observedAt: projections.observedAt,
         };
@@ -181,14 +184,16 @@ export class QueryRouter {
         const projections = this.projections(req.systemId as string, req.workspaceId as string);
         return {
           workspaceId: projections.workspaceId,
+          available: projections.work.available,
+          availability: "unavailable",
           summary: projections.work,
           now: buildNowModel({
             systemId: projections.systemId,
             workspaceId: projections.workspaceId,
             focus: null,
-            work: projections.work,
-            inbox: projections.inbox,
-            health: projections.health,
+            work: null,
+            inbox: null,
+            health: null,
           }),
           observedAt: projections.observedAt,
         };
