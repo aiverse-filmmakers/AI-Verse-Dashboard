@@ -28,6 +28,8 @@ export interface WorkItem {
 export interface WorkSummary {
   systemId: string;
   workspaceId: string;
+  /** False means the owning OS did not provide task records; empty lists are not proof of no work. */
+  available: boolean;
   active: WorkItem[];
   waiting: WorkItem[];
   blocked: WorkItem[];
@@ -102,6 +104,21 @@ export function normalizeWorkItem(
   return item;
 }
 
+/** Explicit unavailable projection when no owner task source is connected. */
+export function unavailableWorkSummary(systemId: string, workspaceId: string): WorkSummary {
+  return {
+    systemId,
+    workspaceId,
+    available: false,
+    active: [],
+    waiting: [],
+    blocked: [],
+    done: [],
+    attention: [],
+    observedAt: new Date().toISOString(),
+  };
+}
+
 /** Split items into Active / Waiting / Blocked / Done + attention queue. */
 export function summarizeWork(
   systemId: string,
@@ -124,6 +141,7 @@ export function summarizeWork(
   return {
     systemId,
     workspaceId,
+    available: true,
     active,
     waiting,
     blocked,
