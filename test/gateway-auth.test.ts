@@ -235,6 +235,36 @@ describe("WSA-2026-040 Dashboard local read authentication", () => {
       "COMMAND_BLOCKED_READ_ONLY",
     );
 
+    for (const origin of [
+      "http://localhost:5173",
+      "http://127.0.0.1:3000",
+      "http://localhost",
+      "http://127.0.0.1",
+    ]) {
+      const allowedOrigin = await httpJson(gateway.port, "/rpc", {
+        method: "POST",
+        headers: { ...authHeaders, origin },
+        body: JSON.stringify(frame),
+      });
+      assert.equal(allowedOrigin.status, 200, `approved loopback Origin should pass: ${origin}`);
+    }
+
+    for (const origin of [
+      "https://localhost:5173",
+      "http://localhost.attacker.example:5173",
+      "http://192.168.1.20:5173",
+      "http://localhost:65536",
+      "http://localhost/path",
+      "http://user@localhost:5173",
+    ]) {
+      const rejectedOrigin = await httpJson(gateway.port, "/rpc", {
+        method: "POST",
+        headers: { ...authHeaders, origin },
+        body: JSON.stringify(frame),
+      });
+      assert.equal(rejectedOrigin.status, 403, `unapproved Origin must be rejected: ${origin}`);
+    }
+
     const nonLoopbackOrigin = await httpJson(gateway.port, "/rpc", {
       method: "POST",
       headers: {
@@ -278,6 +308,21 @@ describe("WSA-2026-040 Dashboard local read authentication", () => {
       ],
     });
     assert.equal(hub.subscriberCount(), 0);
+
+    for (const origin of ["http://localhost:5173", "http://127.0.0.1:3000"]) {
+      const portedOrigin = websocket(url, {
+        origin,
+        protocols: [
+          DASHBOARD_WS_PROTOCOL,
+          dashboardWsAuthProtocol(gateway.authToken),
+        ],
+      });
+      await new Promise<void>((resolve, reject) => {
+        portedOrigin.once("open", resolve);
+        portedOrigin.once("error", reject);
+      });
+      portedOrigin.close();
+    }
 
     const browserStyle = websocket(url, {
       protocols: [
