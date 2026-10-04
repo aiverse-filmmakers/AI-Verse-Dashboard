@@ -163,8 +163,9 @@ export class QueryRouter {
         const projections = this.projections(req.systemId as string, req.workspaceId as string);
         return {
           workspaceId: projections.workspaceId,
+          available: false,
+          availability: "unavailable",
           status: "unknown",
-          manifest: "ok",
           health: projections.health,
           observedAt: projections.observedAt,
         };
@@ -173,6 +174,8 @@ export class QueryRouter {
         const projections = this.projections(req.systemId as string, req.workspaceId as string);
         return {
           workspaceId: projections.workspaceId,
+          available: false,
+          availability: "unavailable",
           items: projections.inbox,
           observedAt: projections.observedAt,
         };
@@ -181,14 +184,16 @@ export class QueryRouter {
         const projections = this.projections(req.systemId as string, req.workspaceId as string);
         return {
           workspaceId: projections.workspaceId,
+          available: projections.work.available,
+          availability: "unavailable",
           summary: projections.work,
           now: buildNowModel({
             systemId: projections.systemId,
             workspaceId: projections.workspaceId,
             focus: null,
-            work: projections.work,
-            inbox: projections.inbox,
-            health: projections.health,
+            work: null,
+            inbox: null,
+            health: null,
           }),
           observedAt: projections.observedAt,
         };
@@ -327,39 +332,8 @@ export class QueryRouter {
     return sessions;
   }
 
-  /** Workspace projections via read-only adapters (Task 6). */
+  /** Workspace projections preserve unavailable owner truth (Task 6). */
   private projections(systemId: string, workspaceId: string) {
-    return buildWorkspaceProjections(this.registry, systemId, workspaceId, {
-      readText: (rootReal: string, rel: string) => {
-        let real: string;
-        try {
-          real = resolveWithinWorkspace(rootReal, rel);
-        } catch {
-          return null;
-        }
-        try {
-          const st = statSync(real);
-          if (!st.isFile()) return null;
-          return { body: readFileSync(real, "utf8"), mtimeMs: st.mtimeMs };
-        } catch {
-          return null;
-        }
-      },
-      fileExists: (rootReal: string, rel: string) => {
-        try {
-          const real = resolveWithinWorkspace(rootReal, rel);
-          return existsSync(real);
-        } catch {
-          return false;
-        }
-      },
-      dirPath: (rootReal: string, rel: string) => {
-        try {
-          return resolveWithinWorkspace(rootReal, rel);
-        } catch {
-          return null;
-        }
-      },
-    });
+    return buildWorkspaceProjections(this.registry, systemId, workspaceId);
   }
 }

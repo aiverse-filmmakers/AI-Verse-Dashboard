@@ -18,6 +18,8 @@ export interface NowModel {
   workspaceId: string;
   focus: { title: string; detail?: string } | null;
   focusUnavailable: boolean;
+  workUnavailable: boolean;
+  inboxUnavailable: boolean;
   running: { id: string; title: string; status: string }[];
   attention: { id: string; title: string; severity: string }[];
   healthStrip: { overall: HealthReport["overall"]; dimensions: { id: string; label: string; status: string }[] };
@@ -55,6 +57,8 @@ export function buildNowModel(input: {
     workspaceId: input.workspaceId,
     focus: input.focus ?? null,
     focusUnavailable: input.focus == null,
+    workUnavailable: input.work == null || !input.work.available,
+    inboxUnavailable: input.inbox == null,
     running,
     attention: attention.slice(0, NOW_ATTENTION_MAX),
     healthStrip: {

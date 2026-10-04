@@ -123,6 +123,7 @@ describe("read models Task 6: health + work + inbox + now", () => {
     });
     assert.throws(() => normalizeWorkItem("aiverse-01", "ws-1", { id: "x", title: "T", status: "nope" }), /bad work status/);
     const summary = summarizeWork("aiverse-01", "ws-1", [a, b]);
+    assert.equal(summary.available, true);
     assert.equal(summary.active.length, 1);
     assert.equal(summary.blocked.length, 1);
     assert.equal(summary.attention.length, 1);
@@ -156,7 +157,7 @@ describe("read models Task 6: health + work + inbox + now", () => {
     );
   });
 
-  it("workspace projections read canonical files; inbox lists files; A never reads B", () => {
+  it("workspace projections preserve unknown owner truth and A never reads B", () => {
     const a = makeOs("a");
     const b = makeOs("b");
     roots.push(a.root, b.root);
@@ -169,28 +170,54 @@ describe("read models Task 6: health + work + inbox + now", () => {
       systemId: a.systemId, workspaceId: "ws-1",
     });
     assert.equal(health.ok, true);
-    const dims = (
-      health.result as { health: { overall: string; dimensions: { id: string }[] } }
-    ).health;
-    assert.ok(dims.dimensions.some((d) => d.id === "manifest"));
-    assert.ok(dims.dimensions.some((d) => d.id === "context"));
+    const healthResult = health.result as {
+      available: boolean;
+      status: string;
+      health: { overall: string; dimensions: { id: string }[] };
+    };
+    assert.equal(healthResult.available, false);
+    assert.equal(healthResult.status, "unknown");
+    assert.equal(healthResult.health.overall, "unknown");
+    assert.deepEqual(healthResult.health.dimensions, []);
 
     const inbox = router.handle({
       type: "req", v: "1.0", id: "i", method: "workspace.inbox.list",
       systemId: a.systemId, workspaceId: "ws-1",
     });
     assert.equal(inbox.ok, true);
-    const items = (inbox.result as { items: { title: string }[] }).items;
-    assert.ok(items.some((x) => x.title === "triage-note.md"));
+    const inboxResult = inbox.result as { available: boolean; items: { title: string }[] };
+    assert.equal(inboxResult.available, false);
+    assert.deepEqual(inboxResult.items, []);
 
     const tasks = router.handle({
       type: "req", v: "1.0", id: "t", method: "task.list",
       systemId: a.systemId, workspaceId: "ws-1",
     });
     assert.equal(tasks.ok, true);
-    const now = (tasks.result as { now: { systemId: string; healthUnavailable: boolean } }).now;
-    assert.equal(now.systemId, a.systemId);
-    assert.equal(now.healthUnavailable, false);
+    const taskResult = tasks.result as {
+      available: boolean;
+      availability: string;
+      summary: { available: boolean; active: unknown[]; attention: unknown[] };
+      now: {
+        systemId: string;
+        healthUnavailable: boolean;
+        workUnavailable: boolean;
+        inboxUnavailable: boolean;
+        running: unknown[];
+        attention: unknown[];
+      };
+    };
+    assert.equal(taskResult.available, false);
+    assert.equal(taskResult.availability, "unavailable");
+    assert.equal(taskResult.summary.available, false);
+    assert.deepEqual(taskResult.summary.active, []);
+    assert.deepEqual(taskResult.summary.attention, []);
+    assert.equal(taskResult.now.systemId, a.systemId);
+    assert.equal(taskResult.now.healthUnavailable, true);
+    assert.equal(taskResult.now.workUnavailable, true);
+    assert.equal(taskResult.now.inboxUnavailable, true);
+    assert.deepEqual(taskResult.now.running, []);
+    assert.deepEqual(taskResult.now.attention, []);
 
     // B's workspace id is unknown to A's registry: fail, not fallback.
     const miss = router.handle({
@@ -221,6 +248,8 @@ describe("read models Task 6: health + work + inbox + now", () => {
     assert.equal(now.running.length, 5);
     assert.equal(now.focusUnavailable, true);
     assert.equal(now.healthUnavailable, true);
+    assert.equal(now.workUnavailable, false);
+    assert.equal(now.inboxUnavailable, true);
     assert.equal(now.provenance.systemId, "aiverse-01");
     void buildWorkspaceProjections;
   });
