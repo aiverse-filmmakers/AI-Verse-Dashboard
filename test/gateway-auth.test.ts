@@ -311,7 +311,7 @@ describe("WSA-2026-040 Dashboard local read authentication", () => {
 
     for (const origin of ["http://localhost:5173", "http://127.0.0.1:3000"]) {
       const portedOrigin = websocket(url, {
-        origin,
+        headers: { Origin: origin },
         protocols: [
           DASHBOARD_WS_PROTOCOL,
           dashboardWsAuthProtocol(gateway.authToken),
