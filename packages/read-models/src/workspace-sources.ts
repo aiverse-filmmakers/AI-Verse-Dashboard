@@ -1,12 +1,8 @@
 import type { SystemRegistry } from "../../registry/src/index.js";
 import { getWorkspace } from "../../os-read-adapter/src/index.js";
-import {
-  buildHealthReport,
-  unavailableWorkSummary,
-  type HealthReport,
-  type InboxItem,
-  type WorkSummary,
-} from "../../read-models/src/index.js";
+import { buildHealthReport, type HealthReport } from "./health.js";
+import { unavailableWorkSummary, type WorkSummary } from "./work.js";
+import type { InboxItem } from "./inbox.js";
 
 /**
  * Workspace projection boundary.
