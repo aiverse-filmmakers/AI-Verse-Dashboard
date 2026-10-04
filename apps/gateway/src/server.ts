@@ -24,16 +24,21 @@ import { SubscriptionHub } from "./subscriptions.js";
 export const DEFAULT_PORT = 3100;
 const MAX_BODY_BYTES = 256 * 1024;
 
-const LOOPBACK_ORIGINS = new Set(["http://127.0.0.1", "http://localhost"]);
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost"]);
+const MAX_TRUSTED_ORIGIN_PORT = 65_535;
 
 function isLoopbackOrigin(origin: string | undefined): boolean {
   if (origin === undefined) return true; // non-browser client
   try {
     const url = new URL(origin);
-    const base = `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ""}`;
-    if (LOOPBACK_ORIGINS.has(base) && url.hostname === "127.0.0.1") return true;
-    if (LOOPBACK_ORIGINS.has(base) && url.hostname === "localhost") return true;
-    return false;
+    if (url.protocol !== "http:" || url.username || url.password) return false;
+    if (!LOOPBACK_HOSTS.has(url.hostname)) return false;
+    if (url.pathname !== "/" || url.search || url.hash) return false;
+    if (url.port) {
+      const port = Number(url.port);
+      if (!Number.isInteger(port) || port < 1 || port > MAX_TRUSTED_ORIGIN_PORT) return false;
+    }
+    return true;
   } catch {
     return false;
   }
