@@ -14,7 +14,7 @@ export type {
 export { buildHealthReport, assessFreshness, HEALTH_STALE_MS } from "./health.js";
 
 export type { WorkStatus, WorkKind, WorkItem, WorkSummary } from "./work.js";
-export { normalizeWorkItem, summarizeWork } from "./work.js";
+export { normalizeWorkItem, summarizeWork, unavailableWorkSummary } from "./work.js";
 
 export type {
   InboxKind,
