@@ -332,39 +332,8 @@ export class QueryRouter {
     return sessions;
   }
 
-  /** Workspace projections via read-only adapters (Task 6). */
+  /** Workspace projections preserve unavailable owner truth (Task 6). */
   private projections(systemId: string, workspaceId: string) {
-    return buildWorkspaceProjections(this.registry, systemId, workspaceId, {
-      readText: (rootReal: string, rel: string) => {
-        let real: string;
-        try {
-          real = resolveWithinWorkspace(rootReal, rel);
-        } catch {
-          return null;
-        }
-        try {
-          const st = statSync(real);
-          if (!st.isFile()) return null;
-          return { body: readFileSync(real, "utf8"), mtimeMs: st.mtimeMs };
-        } catch {
-          return null;
-        }
-      },
-      fileExists: (rootReal: string, rel: string) => {
-        try {
-          const real = resolveWithinWorkspace(rootReal, rel);
-          return existsSync(real);
-        } catch {
-          return false;
-        }
-      },
-      dirPath: (rootReal: string, rel: string) => {
-        try {
-          return resolveWithinWorkspace(rootReal, rel);
-        } catch {
-          return null;
-        }
-      },
-    });
+    return buildWorkspaceProjections(this.registry, systemId, workspaceId);
   }
 }
