@@ -32,6 +32,7 @@ function unavailable(message: string): Error & { code: string } {
  * Read the disposable OS-owned Purpose projection for one registered workspace.
  * The Dashboard never parses Brain/Data/Memory private stores and never caches
  * this result. Each call re-enters the selected OS's canonical read surface.
+ * KPI relevance is declared to OS; OS remains responsible for profile choice.
  */
 export function readPurposeProjection(
   registry: SystemRegistry,
@@ -56,7 +57,9 @@ export function readPurposeProjection(
       "--scope",
       scope,
       "--profile",
-      "basic",
+      "auto",
+      "--relevant-domain",
+      "kpis",
       "--max-bytes",
       String(PURPOSE_MAX_BYTES),
     ],

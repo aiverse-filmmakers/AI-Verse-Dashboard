@@ -43,6 +43,7 @@ export type {
   PurposeInitiativesView,
   PurposeChallengesView,
   PurposeRisksView,
+  PurposeKpisView,
   PurposeViewProvenance,
   PurposeMissionModel,
   PurposeMissionGoalsModel,

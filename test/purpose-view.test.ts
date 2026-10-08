@@ -29,10 +29,17 @@ function makeOs(): { root: string; registry: SystemRegistry; systemId: string } 
 import fs from "node:fs";
 const args = process.argv.slice(2);
 const at = (flag) => args[args.indexOf(flag) + 1];
-if (args[0] !== "read" || at("--scope") !== "workspace:film-project" || at("--profile") !== "basic" || at("--max-bytes") !== "16384") process.exit(7);
+if (
+  args[0] !== "read" ||
+  at("--scope") !== "workspace:film-project" ||
+  at("--profile") !== "auto" ||
+  at("--relevant-domain") !== "kpis" ||
+  at("--max-bytes") !== "16384"
+) process.exit(7);
 const root = at("--root");
 const mission = fs.readFileSync(root + "/mission.txt", "utf8");
 const ref = (id) => ({ owner: "ai-verse-brain", scope: "workspace:film-project", kind: "intent", id });
+const dataRef = (id) => ({ owner: "ai-verse-data", scope: "workspace:film-project", kind: "metric", id });
 process.stdout.write(JSON.stringify({
   schema_version: "1.0",
   scope: "workspace:film-project",
@@ -58,8 +65,29 @@ process.stdout.write(JSON.stringify({
     { id: "risk-1", status: "ACTIVE", payload: { statement: "Stale owner truth" }, canonical_ref: ref("risk-1") },
     { id: "risk-2", status: "CONFIRMED", payload: { statement: "Cross-scope leakage" }, canonical_ref: ref("risk-2") }
   ],
-  kpis: [{ id: "kpi-hidden" }],
-  provenance: { projection_owner: "ai-verse-os", generated_at: new Date().toISOString(), owner_reads: [{ owner: "ai-verse-brain", operation: "purpose_snapshot", status: "ok" }] }
+  kpis: [{
+    id: "kpi-adoption",
+    definition: "Weekly active purposeful workspaces",
+    target: 100,
+    current_value: 42,
+    trend: "up",
+    definition_source_ref: ref("kpi-adoption"),
+    value_source_ref: dataRef("weekly-active-workspaces"),
+    value_freshness: { status: "fresh", observed_at: "2026-10-08T22:00:00Z" }
+  }],
+  narratives: [{ id: "narrative-not-for-this-view", canonical_ref: ref("narrative-not-for-this-view") }],
+  current_state: [{ id: "state-not-for-this-view", source_refs: [dataRef("state-not-for-this-view")] }],
+  current_work: [{ id: "work-not-for-this-view", canonical_ref: ref("work-not-for-this-view") }],
+  recent_material_changes: [{ event: "not-yet", source_ref: ref("change-not-for-this-view") }],
+  provenance: {
+    projection_owner: "ai-verse-os",
+    generated_at: new Date().toISOString(),
+    profile: { requested: "auto", resolved: "workspace_rich", reasons: ["relevant_kpi_binding_present"] },
+    owner_reads: [
+      { owner: "ai-verse-brain", operation: "purpose_snapshot", status: "ok" },
+      { owner: "ai-verse-data", operation: "purpose_current_state", status: "ok" }
+    ]
+  }
 }));
 `);
   const registry = new SystemRegistry();
@@ -68,7 +96,7 @@ process.stdout.write(JSON.stringify({
 }
 
 describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
-  it("returns current strategic sections through key risks while preserving owner objects", () => {
+  it("adds KPI bindings/current values without exposing unrelated rich domains", () => {
     const { root, registry, systemId } = makeOs();
     const router = new QueryRouter(registry, new DisposableCache());
     const frame = () => router.handle({
@@ -86,35 +114,23 @@ describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
     assert.equal("initiatives" in result, false);
     assert.equal("challenges" in result, false);
     assert.equal("risks" in result, false);
-    assert.equal("kpis" in result, false);
+    assert.equal("narratives" in result, false);
+    assert.equal("current_state" in result, false);
+    assert.equal("current_work" in result, false);
+    assert.equal("recent_material_changes" in result, false);
 
-    const mission = result.mission as { available: boolean; missions: Array<Record<string, unknown>> };
-    assert.equal(mission.available, true);
-    assert.equal(mission.missions[0].statement, "Ship a useful film system");
-
-    const activeGoals = result.activeGoals as { available: boolean; goals: Array<Record<string, unknown>> };
-    assert.deepEqual(activeGoals.goals.map((goal) => goal.status), ["ACTIVE", "PAUSED"]);
-
-    const currentStrategies = result.currentStrategies as { available: boolean; strategies: Array<Record<string, unknown>> };
-    assert.deepEqual(currentStrategies.strategies.map((strategy) => strategy.status), ["ACTIVE", "PAUSED"]);
-
-    const currentInitiatives = result.currentInitiatives as { available: boolean; initiatives: Array<Record<string, unknown>> };
-    assert.deepEqual(currentInitiatives.initiatives.map((initiative) => initiative.status), ["ACTIVE", "PAUSED"]);
-
-    const keyChallenges = result.keyChallenges as { available: boolean; challenges: Array<Record<string, unknown>> };
-    assert.deepEqual(keyChallenges.challenges.map((challenge) => challenge.status), ["ACTIVE", "CONFIRMED"]);
-
-    const keyRisks = result.keyRisks as { available: boolean; risks: Array<Record<string, unknown>> };
-    assert.equal(keyRisks.available, true);
-    assert.deepEqual(keyRisks.risks.map((risk) => risk.status), ["ACTIVE", "CONFIRMED"]);
-    for (const risk of keyRisks.risks) {
-      assert.equal((risk.canonical_ref as Record<string, unknown>).owner, "ai-verse-brain");
-      assert.equal((risk.canonical_ref as Record<string, unknown>).scope, "workspace:film-project");
-    }
+    const kpis = result.kpis as { available: boolean; kpis: Array<Record<string, unknown>> };
+    assert.equal(kpis.available, true);
+    assert.equal(kpis.kpis.length, 1);
+    assert.equal(kpis.kpis[0].current_value, 42);
+    assert.equal((kpis.kpis[0].definition_source_ref as Record<string, unknown>).owner, "ai-verse-brain");
+    assert.equal((kpis.kpis[0].value_source_ref as Record<string, unknown>).owner, "ai-verse-data");
+    assert.deepEqual(kpis.kpis[0].value_freshness, { status: "fresh", observed_at: "2026-10-08T22:00:00Z" });
 
     const provenance = result.provenance as Record<string, unknown>;
     assert.equal(provenance.projectionOwner, "ai-verse-os");
     assert.equal(provenance.scope, "workspace:film-project");
+    assert.equal((provenance.ownerReads as unknown[]).length, 2);
 
     writeFileSync(join(root, "mission.txt"), "Ship the refreshed mission");
     const second = frame();

@@ -30,6 +30,11 @@ export interface PurposeRisksView {
   risks: Record<string, unknown>[];
 }
 
+export interface PurposeKpisView {
+  available: boolean;
+  kpis: Record<string, unknown>[];
+}
+
 export interface PurposeViewProvenance {
   projectionOwner: "ai-verse-os";
   scope: string;
@@ -52,6 +57,7 @@ export interface PurposeMissionGoalsStrategiesModel extends PurposeMissionGoalsM
   currentInitiatives: PurposeInitiativesView;
   keyChallenges: PurposeChallengesView;
   keyRisks: PurposeRisksView;
+  kpis: PurposeKpisView;
 }
 
 function objects(value: unknown): Record<string, unknown>[] {
@@ -71,6 +77,7 @@ export function buildPurposeMissionModel(projection: PurposeProjection): Purpose
   const initiatives = objects(projection.initiatives);
   const challenges = objects(projection.challenges);
   const risks = objects(projection.risks);
+  const kpis = objects(projection.kpis);
   return {
     readOnly: true,
     mission: {
@@ -96,6 +103,10 @@ export function buildPurposeMissionModel(projection: PurposeProjection): Purpose
     keyRisks: {
       available: risks.length > 0,
       risks: risks.map((item) => structuredClone(item)),
+    },
+    kpis: {
+      available: kpis.length > 0,
+      kpis: kpis.map((item) => structuredClone(item)),
     },
     provenance: {
       projectionOwner: "ai-verse-os",
