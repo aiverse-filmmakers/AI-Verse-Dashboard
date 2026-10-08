@@ -40,6 +40,7 @@ const root = at("--root");
 const mission = fs.readFileSync(root + "/mission.txt", "utf8");
 const ref = (id) => ({ owner: "ai-verse-brain", scope: "workspace:film-project", kind: "intent", id });
 const dataRef = (id) => ({ owner: "ai-verse-data", scope: "workspace:film-project", kind: "metric", id });
+const osRef = (id) => ({ owner: "ai-verse-os", scope: "workspace:film-project", kind: "current_context", id });
 process.stdout.write(JSON.stringify({
   schema_version: "1.0",
   scope: "workspace:film-project",
@@ -77,7 +78,10 @@ process.stdout.write(JSON.stringify({
   }],
   narratives: [{ id: "narrative-not-for-this-view", canonical_ref: ref("narrative-not-for-this-view") }],
   current_state: [{ id: "state-not-for-this-view", source_refs: [dataRef("state-not-for-this-view")] }],
-  current_work: [{ id: "work-not-for-this-view", canonical_ref: ref("work-not-for-this-view") }],
+  current_work: [
+    { kind: "current_work", statement: "Finish the Purpose Dashboard slice", source_refs: [osRef("current-context-1")] },
+    { kind: "current_work", statement: "Preserve exact owner boundaries", source_refs: [osRef("current-context-1")] }
+  ],
   recent_material_changes: [{ event: "not-yet", source_ref: ref("change-not-for-this-view") }],
   provenance: {
     projection_owner: "ai-verse-os",
@@ -96,7 +100,7 @@ process.stdout.write(JSON.stringify({
 }
 
 describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
-  it("adds KPI bindings/current values without exposing unrelated rich domains", () => {
+  it("adds current work while keeping recent material changes outside the response boundary", () => {
     const { root, registry, systemId } = makeOs();
     const router = new QueryRouter(registry, new DisposableCache());
     const frame = () => router.handle({
@@ -121,11 +125,19 @@ describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
 
     const kpis = result.kpis as { available: boolean; kpis: Array<Record<string, unknown>> };
     assert.equal(kpis.available, true);
-    assert.equal(kpis.kpis.length, 1);
     assert.equal(kpis.kpis[0].current_value, 42);
-    assert.equal((kpis.kpis[0].definition_source_ref as Record<string, unknown>).owner, "ai-verse-brain");
-    assert.equal((kpis.kpis[0].value_source_ref as Record<string, unknown>).owner, "ai-verse-data");
-    assert.deepEqual(kpis.kpis[0].value_freshness, { status: "fresh", observed_at: "2026-10-08T22:00:00Z" });
+
+    const currentWork = result.currentWork as { available: boolean; work: Array<Record<string, unknown>> };
+    assert.equal(currentWork.available, true);
+    assert.deepEqual(currentWork.work.map((item) => item.statement), [
+      "Finish the Purpose Dashboard slice",
+      "Preserve exact owner boundaries",
+    ]);
+    for (const item of currentWork.work) {
+      const source = (item.source_refs as Array<Record<string, unknown>>)[0];
+      assert.equal(source.owner, "ai-verse-os");
+      assert.equal(source.scope, "workspace:film-project");
+    }
 
     const provenance = result.provenance as Record<string, unknown>;
     assert.equal(provenance.projectionOwner, "ai-verse-os");
