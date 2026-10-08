@@ -10,6 +10,11 @@ export interface PurposeGoalsView {
   goals: Record<string, unknown>[];
 }
 
+export interface PurposeStrategiesView {
+  available: boolean;
+  strategies: Record<string, unknown>[];
+}
+
 export interface PurposeViewProvenance {
   projectionOwner: "ai-verse-os";
   scope: string;
@@ -27,6 +32,10 @@ export interface PurposeMissionGoalsModel extends PurposeMissionModel {
   activeGoals: PurposeGoalsView;
 }
 
+export interface PurposeMissionGoalsStrategiesModel extends PurposeMissionGoalsModel {
+  currentStrategies: PurposeStrategiesView;
+}
+
 function objects(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value)
     ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
@@ -34,13 +43,13 @@ function objects(value: unknown): Record<string, unknown>[] {
 }
 
 /**
- * The existing Purpose view grows in place. Goal objects are already bounded
- * to current owner state by the canonical Purpose projection, so Dashboard
- * preserves owner status and refs rather than reclassifying them.
+ * The existing Purpose view grows in place. Dashboard preserves owner objects,
+ * statuses, payloads, refs, and ordering rather than creating strategic truth.
  */
-export function buildPurposeMissionModel(projection: PurposeProjection): PurposeMissionGoalsModel {
+export function buildPurposeMissionModel(projection: PurposeProjection): PurposeMissionGoalsStrategiesModel {
   const missions = objects(projection.purpose?.missions);
   const goals = objects(projection.goals);
+  const strategies = objects(projection.strategies);
   return {
     readOnly: true,
     mission: {
@@ -50,6 +59,10 @@ export function buildPurposeMissionModel(projection: PurposeProjection): Purpose
     activeGoals: {
       available: goals.length > 0,
       goals: goals.map((item) => structuredClone(item)),
+    },
+    currentStrategies: {
+      available: strategies.length > 0,
+      strategies: strategies.map((item) => structuredClone(item)),
     },
     provenance: {
       projectionOwner: "ai-verse-os",
@@ -62,6 +75,10 @@ export function buildPurposeMissionModel(projection: PurposeProjection): Purpose
   };
 }
 
-export function buildPurposeMissionGoalsModel(projection: PurposeProjection): PurposeMissionGoalsModel {
+export function buildPurposeMissionGoalsModel(projection: PurposeProjection): PurposeMissionGoalsStrategiesModel {
+  return buildPurposeMissionModel(projection);
+}
+
+export function buildPurposeMissionGoalsStrategiesModel(projection: PurposeProjection): PurposeMissionGoalsStrategiesModel {
   return buildPurposeMissionModel(projection);
 }
