@@ -46,7 +46,10 @@ process.stdout.write(JSON.stringify({
     { id: "strategy-active", status: "ACTIVE", payload: { statement: "Prove value first" }, canonical_ref: ref("strategy-active") },
     { id: "strategy-paused", status: "PAUSED", payload: { statement: "Delay expansion" }, canonical_ref: ref("strategy-paused") }
   ],
-  initiatives: [{ id: "initiative-hidden", status: "ACTIVE" }],
+  initiatives: [
+    { id: "initiative-active", status: "ACTIVE", payload: { title: "Dashboard Purpose view" }, canonical_ref: ref("initiative-active") },
+    { id: "initiative-paused", status: "PAUSED", payload: { title: "Secondary rollout" }, canonical_ref: ref("initiative-paused") }
+  ],
   challenges: [{ id: "challenge-hidden", status: "ACTIVE" }],
   risks: [{ id: "risk-hidden", status: "ACTIVE" }],
   kpis: [{ id: "kpi-hidden" }],
@@ -59,7 +62,7 @@ process.stdout.write(JSON.stringify({
 }
 
 describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
-  it("returns mission, goals, and current strategies while preserving owner objects", () => {
+  it("returns mission, goals, strategies, and current initiatives while preserving owner objects", () => {
     const { root, registry, systemId } = makeOs();
     const router = new QueryRouter(registry, new DisposableCache());
     const frame = () => router.handle({
@@ -90,9 +93,13 @@ describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
     const currentStrategies = result.currentStrategies as { available: boolean; strategies: Array<Record<string, unknown>> };
     assert.equal(currentStrategies.available, true);
     assert.deepEqual(currentStrategies.strategies.map((strategy) => strategy.status), ["ACTIVE", "PAUSED"]);
-    for (const strategy of currentStrategies.strategies) {
-      assert.equal((strategy.canonical_ref as Record<string, unknown>).owner, "ai-verse-brain");
-      assert.equal((strategy.canonical_ref as Record<string, unknown>).scope, "workspace:film-project");
+
+    const currentInitiatives = result.currentInitiatives as { available: boolean; initiatives: Array<Record<string, unknown>> };
+    assert.equal(currentInitiatives.available, true);
+    assert.deepEqual(currentInitiatives.initiatives.map((initiative) => initiative.status), ["ACTIVE", "PAUSED"]);
+    for (const initiative of currentInitiatives.initiatives) {
+      assert.equal((initiative.canonical_ref as Record<string, unknown>).owner, "ai-verse-brain");
+      assert.equal((initiative.canonical_ref as Record<string, unknown>).scope, "workspace:film-project");
     }
 
     const provenance = result.provenance as Record<string, unknown>;
