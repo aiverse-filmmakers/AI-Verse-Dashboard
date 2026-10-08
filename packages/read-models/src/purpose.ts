@@ -20,6 +20,11 @@ export interface PurposeInitiativesView {
   initiatives: Record<string, unknown>[];
 }
 
+export interface PurposeChallengesView {
+  available: boolean;
+  challenges: Record<string, unknown>[];
+}
+
 export interface PurposeViewProvenance {
   projectionOwner: "ai-verse-os";
   scope: string;
@@ -40,6 +45,7 @@ export interface PurposeMissionGoalsModel extends PurposeMissionModel {
 export interface PurposeMissionGoalsStrategiesModel extends PurposeMissionGoalsModel {
   currentStrategies: PurposeStrategiesView;
   currentInitiatives: PurposeInitiativesView;
+  keyChallenges: PurposeChallengesView;
 }
 
 function objects(value: unknown): Record<string, unknown>[] {
@@ -57,6 +63,7 @@ export function buildPurposeMissionModel(projection: PurposeProjection): Purpose
   const goals = objects(projection.goals);
   const strategies = objects(projection.strategies);
   const initiatives = objects(projection.initiatives);
+  const challenges = objects(projection.challenges);
   return {
     readOnly: true,
     mission: {
@@ -74,6 +81,10 @@ export function buildPurposeMissionModel(projection: PurposeProjection): Purpose
     currentInitiatives: {
       available: initiatives.length > 0,
       initiatives: initiatives.map((item) => structuredClone(item)),
+    },
+    keyChallenges: {
+      available: challenges.length > 0,
+      challenges: challenges.map((item) => structuredClone(item)),
     },
     provenance: {
       projectionOwner: "ai-verse-os",
