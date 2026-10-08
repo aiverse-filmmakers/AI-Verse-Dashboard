@@ -4,6 +4,7 @@ export type {
   PurposeMutationBridge,
   PurposeRoutedProposalInput,
   PurposeConfirmationInput,
+  PurposeApplicationInput,
 } from "./purpose-mutation-bridge.js";
 export { SubscriptionHub, watchWorkspace } from "./subscriptions.js";
 export type { HubEvent, DeliveredEvent } from "./subscriptions.js";
