@@ -1,10 +1,6 @@
-/**
- * @ai-verse/dashboard-gateway — localhost query path (Task 4).
- * Laws: loopback bind only; every OS read resolves via the registry for
- * exactly one systemId; missing/unknown never falls back to another
- * system; subscriptions partitioned by systemId; commands blocked.
- */
+/** @ai-verse/dashboard-gateway — localhost Dashboard gateway. */
 export { QueryRouter, GATEWAY_VERSION, GATEWAY_PHASE } from "./query-router.js";
+export type { PurposeMutationBridge, PurposeRoutedProposalInput } from "./purpose-mutation-bridge.js";
 export { SubscriptionHub, watchWorkspace } from "./subscriptions.js";
 export type { HubEvent, DeliveredEvent } from "./subscriptions.js";
 export { startGateway, DEFAULT_PORT } from "./server.js";
