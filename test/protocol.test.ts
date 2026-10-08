@@ -1,28 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-  ALL_METHODS,
-  COMMAND_METHODS,
-  MAX_PARAMS_BYTES,
-  PANEL_ID_PATTERN,
-  PRESENTATIONS,
-  PROTOCOL_ERRORS,
-  QUERY_METHODS,
-  WORKSPACE_ID_PATTERN,
-  assertQueryOnly,
-  eventSchema,
-  isCommandMethod,
-  isQueryMethod,
-  negotiateHandshake,
-  panelIdSchema,
-  parseFrame,
-  presentationSchema,
-  requestSchema,
-  requiresSystem,
-  requiresWorkspace,
-  responseSchema,
-  scopeKey,
-  workspaceScopeKey,
+  ALL_METHODS, COMMAND_METHODS, MAX_PARAMS_BYTES, PANEL_ID_PATTERN, PRESENTATIONS,
+  PROTOCOL_ERRORS, PURPOSE_CONTROL_METHODS, QUERY_METHODS, WORKSPACE_ID_PATTERN,
+  assertQueryOnly, eventSchema, isCommandMethod, isPurposeControlMethod, isQueryMethod,
+  negotiateHandshake, panelIdSchema, parseFrame, presentationSchema, requestSchema,
+  requiresSystem, requiresWorkspace, responseSchema, scopeKey, workspaceScopeKey,
 } from "../packages/protocol/src/index.js";
 
 describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () => {
@@ -34,8 +17,10 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
   });
 
   it("OS-bound and workspace-bound methods require explicit ids", () => {
-    assert.equal(requiresSystem("purpose.get"), true);
-    assert.equal(requiresWorkspace("purpose.get"), true);
+    for (const method of ["purpose.get", "purpose.change.propose"]) {
+      assert.equal(requiresSystem(method), true);
+      assert.equal(requiresWorkspace(method), true);
+    }
     assert.equal(requestSchema.safeParse({ type: "req", v: "1.0", id: "a", method: "purpose.get", workspaceId: "ws-1" }).success, false);
     assert.equal(requestSchema.safeParse({ type: "req", v: "1.0", id: "b", method: "purpose.get", systemId: "aiverse-01" }).success, false);
     assert.equal(requestSchema.safeParse({ type: "req", v: "1.0", id: "c", method: "purpose.get", systemId: "aiverse-01", workspaceId: "film-project-x" }).success, true);
@@ -67,15 +52,18 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
     assert.equal(requestSchema.safeParse({ type: "req", v: "1.0", id: "h", method: "task.list", systemId: "aiverse-01", workspaceId: "ws-1", params: big }).success, false);
   });
 
-  it("commands remain blocked while Purpose is query-only", () => {
+  it("keeps general commands blocked and admits only the explicit Purpose control method in the router", () => {
     assert.equal(isCommandMethod("chat.send"), true);
     assert.equal(isQueryMethod("purpose.get"), true);
+    assert.equal(isPurposeControlMethod("purpose.change.propose"), true);
+    assert.deepEqual([...PURPOSE_CONTROL_METHODS], ["purpose.change.propose"]);
     assert.throws(() => assertQueryOnly("chat.send"), /blocked/);
+    assert.throws(() => assertQueryOnly("purpose.change.propose"), /blocked/);
     assert.doesNotThrow(() => assertQueryOnly("purpose.get"));
     assert.throws(() => assertQueryOnly("nope.method"), /unknown method/);
-    assert.equal(COMMAND_METHODS.length, 12);
+    assert.equal(COMMAND_METHODS.length, 13);
     assert.equal(QUERY_METHODS.length, 24);
-    assert.equal(ALL_METHODS.length, 38);
+    assert.equal(ALL_METHODS.length, 39);
   });
 
   it("responses and events round-trip with systemId provenance", () => {
