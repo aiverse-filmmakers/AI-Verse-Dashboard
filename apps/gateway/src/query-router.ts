@@ -31,7 +31,9 @@ const SUPPORTED_QUERIES = [
   "workspace.health", "workspace.inbox.list", "purpose.get", "task.list", "agent.list",
   "agent.sessions", "run.list", "run.get", "run.logs", "source.preview",
 ] as const;
-const SUPPORTED_PURPOSE_CONTROLS = ["purpose.change.propose", "purpose.change.confirm"] as const;
+const SUPPORTED_PURPOSE_CONTROLS = [
+  "purpose.change.propose", "purpose.change.confirm", "purpose.change.apply",
+] as const;
 
 export class QueryRouter {
   private sessions?: SessionStore;
@@ -81,10 +83,19 @@ export class QueryRouter {
 
   private bridge(): PurposeMutationBridge {
     const bridge = this.purposeMutationBridge;
-    if (!bridge) {
-      throw Object.assign(new Error("canonical Purpose mutation Gateway is not attached"), { code: "PURPOSE_MUTATION_GATEWAY_UNAVAILABLE" });
-    }
+    if (!bridge) throw Object.assign(new Error("canonical Purpose mutation Gateway is not attached"), { code: "PURPOSE_MUTATION_GATEWAY_UNAVAILABLE" });
     return bridge;
+  }
+
+  private assertEnvelopeScope(value: unknown, scope: string, name: string): Record<string, unknown> {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw Object.assign(new Error(`${name} must be an object`), { code: "INVALID_ENVELOPE" });
+    }
+    const envelope = value as Record<string, unknown>;
+    if (envelope.scope !== scope) {
+      throw Object.assign(new Error(`${name} scope does not match selected workspace`), { code: "PURPOSE_CONFIRMATION_SCOPE_MISMATCH" });
+    }
+    return envelope;
   }
 
   private route(req: DashboardRequest): unknown {
@@ -98,21 +109,17 @@ export class QueryRouter {
       }
       case "protocol.capabilities":
         return { phase: GATEWAY_PHASE, methods: [...SUPPORTED_QUERIES, ...SUPPORTED_PURPOSE_CONTROLS], maxParamsBytes: 65536 };
-      case "system.list":
-        return { systems: this.registry.listPublic() };
+      case "system.list": return { systems: this.registry.listPublic() };
       case "system.get":
       case "system.info": {
         const rec = this.registry.get(req.systemId as string);
         if (!rec) throw Object.assign(new Error(`unknown systemId ${req.systemId}`), { code: "SYSTEM_NOT_REGISTERED" });
         if (req.method === "system.get") {
-          const { root: _r, architecture: _a, ...pub } = rec;
-          void _r; void _a;
-          return { system: pub };
+          const { root: _r, architecture: _a, ...pub } = rec; void _r; void _a; return { system: pub };
         }
         return { systemId: rec.systemId, authorized: rec.authorized, workspaces: listWorkspaces(this.registry, rec.systemId).length };
       }
-      case "workspace.list":
-        return { workspaces: listWorkspaces(this.registry, req.systemId as string) };
+      case "workspace.list": return { workspaces: listWorkspaces(this.registry, req.systemId as string) };
       case "workspace.get": {
         const { summary } = getWorkspace(this.registry, req.systemId as string, req.workspaceId as string);
         return { workspace: summary };
@@ -122,39 +129,34 @@ export class QueryRouter {
         return { workspaceId: req.workspaceId as string, ...buildPurposeMissionModel(projection) };
       }
       case "purpose.change.propose": {
-        const systemId = req.systemId as string;
-        const workspaceId = req.workspaceId as string;
+        const systemId = req.systemId as string; const workspaceId = req.workspaceId as string;
         getWorkspace(this.registry, systemId, workspaceId);
         const text = (req.params as { text?: unknown } | undefined)?.text;
-        if (typeof text !== "string" || text.trim().length === 0 || text.length > 4096) {
-          throw Object.assign(new Error("purpose.change.propose needs params.text (1-4096 chars)"), { code: "INVALID_ENVELOPE" });
-        }
+        if (typeof text !== "string" || text.trim().length === 0 || text.length > 4096) throw Object.assign(new Error("purpose.change.propose needs params.text (1-4096 chars)"), { code: "INVALID_ENVELOPE" });
         return this.bridge().proposeOwnerRoutedChange({ systemId, workspaceId, scope: `workspace:${workspaceId}`, text });
       }
       case "purpose.change.confirm": {
-        const systemId = req.systemId as string;
-        const workspaceId = req.workspaceId as string;
+        const systemId = req.systemId as string; const workspaceId = req.workspaceId as string;
         getWorkspace(this.registry, systemId, workspaceId);
         const params = (req.params ?? {}) as { routedEnvelope?: unknown; grantedBy?: unknown };
-        if (!params.routedEnvelope || typeof params.routedEnvelope !== "object" || Array.isArray(params.routedEnvelope)) {
-          throw Object.assign(new Error("purpose.change.confirm needs params.routedEnvelope"), { code: "INVALID_ENVELOPE" });
-        }
-        if (typeof params.grantedBy !== "string" || params.grantedBy.trim().length === 0 || params.grantedBy.length > 256) {
-          throw Object.assign(new Error("purpose.change.confirm needs params.grantedBy"), { code: "INVALID_ENVELOPE" });
-        }
         const scope = `workspace:${workspaceId}`;
-        const envelopeScope = (params.routedEnvelope as Record<string, unknown>).scope;
-        if (envelopeScope !== scope) {
-          throw Object.assign(new Error("routed proposal scope does not match selected workspace"), { code: "PURPOSE_CONFIRMATION_SCOPE_MISMATCH" });
-        }
-        return this.bridge().confirmOwnerRoutedChange({
-          systemId,
-          workspaceId,
-          scope,
-          routedEnvelope: structuredClone(params.routedEnvelope as Record<string, unknown>),
-          grantedBy: params.grantedBy.trim(),
-          confirmedAt: new Date().toISOString(),
-        });
+        const routedEnvelope = this.assertEnvelopeScope(params.routedEnvelope, scope, "routed proposal");
+        if (typeof params.grantedBy !== "string" || params.grantedBy.trim().length === 0 || params.grantedBy.length > 256) throw Object.assign(new Error("purpose.change.confirm needs params.grantedBy"), { code: "INVALID_ENVELOPE" });
+        return this.bridge().confirmOwnerRoutedChange({ systemId, workspaceId, scope, routedEnvelope: structuredClone(routedEnvelope), grantedBy: params.grantedBy.trim(), confirmedAt: new Date().toISOString() });
+      }
+      case "purpose.change.apply": {
+        const systemId = req.systemId as string; const workspaceId = req.workspaceId as string;
+        getWorkspace(this.registry, systemId, workspaceId);
+        const scope = `workspace:${workspaceId}`;
+        const confirmedEnvelope = this.assertEnvelopeScope((req.params as { confirmedEnvelope?: unknown } | undefined)?.confirmedEnvelope, scope, "confirmed proposal");
+        const ownerOutcome = this.bridge().applyConfirmedOwnerChange({ systemId, workspaceId, scope, confirmedEnvelope: structuredClone(confirmedEnvelope) });
+        const freshProjection = readPurposeProjection(this.registry, systemId, workspaceId);
+        return {
+          ownerOutcome: structuredClone(ownerOutcome),
+          purpose: { workspaceId, ...buildPurposeMissionModel(freshProjection) },
+          purposeSource: "fresh_os_owner_read",
+          canonicalMutationEvidence: "ownerOutcome",
+        };
       }
       case "workspace.health": {
         const projections = this.projections(req.systemId as string, req.workspaceId as string);
@@ -166,38 +168,24 @@ export class QueryRouter {
       }
       case "task.list": {
         const projections = this.projections(req.systemId as string, req.workspaceId as string);
-        return {
-          workspaceId: projections.workspaceId, available: projections.work.available, availability: "unavailable", summary: projections.work,
-          now: buildNowModel({ systemId: projections.systemId, workspaceId: projections.workspaceId, focus: null, work: null, inbox: null, health: null }),
-          observedAt: projections.observedAt,
-        };
+        return { workspaceId: projections.workspaceId, available: projections.work.available, availability: "unavailable", summary: projections.work, now: buildNowModel({ systemId: projections.systemId, workspaceId: projections.workspaceId, focus: null, work: null, inbox: null, health: null }), observedAt: projections.observedAt };
       }
       case "source.preview": {
         const rel = (req.params as { path?: unknown } | undefined)?.path;
         if (typeof rel !== "string") throw Object.assign(new Error("source.preview needs params.path (relative)"), { code: "INVALID_ENVELOPE" });
-        const systemId = req.systemId as string;
-        const workspaceId = req.workspaceId as string;
+        const systemId = req.systemId as string; const workspaceId = req.workspaceId as string;
         const { rootReal } = getWorkspace(this.registry, systemId, workspaceId);
-        const cached = this.cache.getProjection(systemId, workspaceId, rel, NaN, NaN);
-        void cached;
-        const proj = readMarkdownFile(rootReal, rel);
-        this.cache.putProjection(systemId, workspaceId, rel, proj.mtimeMs, proj.size, proj);
-        return {
-          projection: proj,
-          provenance: { systemId, source: `workspace://${workspaceId}/${proj.path}`, observedAt: new Date().toISOString(), sourceModifiedAt: new Date(proj.mtimeMs).toISOString(), freshness: "fresh", canonical: true },
-        };
+        const cached = this.cache.getProjection(systemId, workspaceId, rel, NaN, NaN); void cached;
+        const proj = readMarkdownFile(rootReal, rel); this.cache.putProjection(systemId, workspaceId, rel, proj.mtimeMs, proj.size, proj);
+        return { projection: proj, provenance: { systemId, source: `workspace://${workspaceId}/${proj.path}`, observedAt: new Date().toISOString(), sourceModifiedAt: new Date(proj.mtimeMs).toISOString(), freshness: "fresh", canonical: true } };
       }
       case "agent.list": {
-        const sessions = this.requireSessions();
-        const systemId = req.systemId as string;
-        const workspaceId = req.workspaceId as string;
+        const sessions = this.requireSessions(); const systemId = req.systemId as string; const workspaceId = req.workspaceId as string;
         getWorkspace(this.registry, systemId, workspaceId);
         return { systemId, workspaceId, agents: sessions.summaries(systemId, workspaceId), observedAt: new Date().toISOString() };
       }
       case "agent.sessions": {
-        const sessions = this.requireSessions();
-        const systemId = req.systemId as string;
-        const workspaceId = req.workspaceId as string;
+        const sessions = this.requireSessions(); const systemId = req.systemId as string; const workspaceId = req.workspaceId as string;
         getWorkspace(this.registry, systemId, workspaceId);
         const params = (req.params ?? {}) as { sessionId?: unknown; limit?: unknown };
         if (typeof params.sessionId === "string") {
@@ -209,9 +197,7 @@ export class QueryRouter {
         return { systemId, workspaceId, sessions: sessions.summaries(systemId, workspaceId), history: sessions.recentEntries(systemId, workspaceId, { limit }), observedAt: new Date().toISOString() };
       }
       case "run.list": {
-        const sessions = this.requireSessions();
-        const systemId = req.systemId as string;
-        const workspaceId = req.workspaceId as string;
+        const sessions = this.requireSessions(); const systemId = req.systemId as string; const workspaceId = req.workspaceId as string;
         getWorkspace(this.registry, systemId, workspaceId);
         const params = (req.params ?? {}) as { kinds?: unknown; limit?: unknown };
         const kinds = Array.isArray(params.kinds) ? params.kinds.filter((k): k is string => typeof k === "string").slice(0, 11) : ["run-event", "error-event", "tool-call"];
@@ -220,21 +206,16 @@ export class QueryRouter {
       }
       case "run.get":
       case "run.logs": {
-        const sessions = this.requireSessions();
-        const systemId = req.systemId as string;
-        const workspaceId = req.workspaceId as string;
+        const sessions = this.requireSessions(); const systemId = req.systemId as string; const workspaceId = req.workspaceId as string;
         getWorkspace(this.registry, systemId, workspaceId);
         const params = (req.params ?? {}) as { entryId?: unknown; sessionId?: unknown; limit?: unknown };
         if (typeof params.entryId !== "string" || params.entryId.length === 0) throw Object.assign(new Error(`${req.method} needs params.entryId`), { code: "INVALID_ENVELOPE" });
-        const found = sessions.findEntry(systemId, params.entryId);
-        if (!found) throw Object.assign(new Error(`unknown entry ${params.entryId}`), { code: "ENTRY_NOT_FOUND" });
+        const found = sessions.findEntry(systemId, params.entryId); if (!found) throw Object.assign(new Error(`unknown entry ${params.entryId}`), { code: "ENTRY_NOT_FOUND" });
         if (typeof params.sessionId === "string" && params.sessionId !== found.sessionId) throw Object.assign(new Error("entry does not belong to that session"), { code: "ENTRY_NOT_FOUND" });
-        const entry = found.entry;
-        if (entry.workspaceId !== workspaceId) throw Object.assign(new Error("entry does not belong to that workspace"), { code: "ENTRY_NOT_FOUND" });
+        const entry = found.entry; if (entry.workspaceId !== workspaceId) throw Object.assign(new Error("entry does not belong to that workspace"), { code: "ENTRY_NOT_FOUND" });
         return { entry, sessionId: found.sessionId, observedAt: new Date().toISOString() };
       }
-      default:
-        throw Object.assign(new Error(`${req.method} not yet served`), { code: "UNKNOWN_METHOD" });
+      default: throw Object.assign(new Error(`${req.method} not yet served`), { code: "UNKNOWN_METHOD" });
     }
   }
 
@@ -243,8 +224,5 @@ export class QueryRouter {
     if (!sessions) throw Object.assign(new Error("live sessions not attached"), { code: "SESSIONS_UNAVAILABLE" });
     return sessions;
   }
-
-  private projections(systemId: string, workspaceId: string) {
-    return buildWorkspaceProjections(this.registry, systemId, workspaceId);
-  }
+  private projections(systemId: string, workspaceId: string) { return buildWorkspaceProjections(this.registry, systemId, workspaceId); }
 }

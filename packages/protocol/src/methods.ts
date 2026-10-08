@@ -9,7 +9,11 @@ export const QUERY_METHODS = [
   "usage.summary", "graph.query", "graph.node", "source.preview",
 ] as const;
 
-export const PURPOSE_CONTROL_METHODS = ["purpose.change.propose", "purpose.change.confirm"] as const;
+export const PURPOSE_CONTROL_METHODS = [
+  "purpose.change.propose",
+  "purpose.change.confirm",
+  "purpose.change.apply",
+] as const;
 
 export const COMMAND_METHODS = [
   "chat.send", "chat.abort", "task.start", "task.cancel", "task.retry", "cron.create",
