@@ -5,6 +5,11 @@ export interface PurposeMissionView {
   missions: Record<string, unknown>[];
 }
 
+export interface PurposeGoalsView {
+  available: boolean;
+  goals: Record<string, unknown>[];
+}
+
 export interface PurposeViewProvenance {
   projectionOwner: "ai-verse-os";
   scope: string;
@@ -18,16 +23,18 @@ export interface PurposeMissionModel {
   provenance: PurposeViewProvenance;
 }
 
-/**
- * Narrow the OS-owned Purpose projection to the first read-only UI slice.
- * No Dashboard truth is synthesized and no unrelated Purpose sections cross
- * the Gateway response boundary.
- */
-export function buildPurposeMissionModel(projection: PurposeProjection): PurposeMissionModel {
-  const raw = projection.purpose?.missions;
-  const missions = Array.isArray(raw)
-    ? raw.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+export interface PurposeMissionGoalsModel extends PurposeMissionModel {
+  activeGoals: PurposeGoalsView;
+}
+
+function objects(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object" && !Array.isArray(item))
     : [];
+}
+
+export function buildPurposeMissionModel(projection: PurposeProjection): PurposeMissionModel {
+  const missions = objects(projection.purpose?.missions);
   return {
     readOnly: true,
     mission: {
@@ -41,6 +48,25 @@ export function buildPurposeMissionModel(projection: PurposeProjection): Purpose
       ownerReads: Array.isArray(projection.provenance.owner_reads)
         ? structuredClone(projection.provenance.owner_reads)
         : [],
+    },
+  };
+}
+
+/**
+ * Purpose goals are already current-owner projections. Brain's public Purpose
+ * snapshot bounds goal intents to current statuses (CONFIRMED/ACTIVE/PAUSED),
+ * while OS-owned workspace objectives are current by definition. Dashboard
+ * therefore preserves the owner objects/statuses as-is instead of inventing a
+ * second active/inactive classification.
+ */
+export function buildPurposeMissionGoalsModel(projection: PurposeProjection): PurposeMissionGoalsModel {
+  const base = buildPurposeMissionModel(projection);
+  const goals = objects(projection.goals);
+  return {
+    ...base,
+    activeGoals: {
+      available: goals.length > 0,
+      goals: goals.map((item) => structuredClone(item)),
     },
   };
 }
