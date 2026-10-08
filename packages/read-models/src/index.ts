@@ -1,7 +1,7 @@
 /**
- * @ai-verse/dashboard-read-models — Health + Work + Inbox + Now (Task 6).
- * Generic projections. The OS owns meaning; missing is unavailable,
- * never zero, never borrowed from another system.
+ * @ai-verse/dashboard-read-models — bounded UI projections.
+ * The OS owns meaning; missing is unavailable, never zero, never borrowed
+ * from another system.
  */
 export type {
   HealthStatus,
@@ -35,3 +35,10 @@ export { buildWorkspaceProjections, SOURCES } from "./workspace-sources.js";
 
 export type { NowModel } from "./now.js";
 export { buildNowModel, NOW_RUNNING_MAX, NOW_ATTENTION_MAX } from "./now.js";
+
+export type {
+  PurposeMissionView,
+  PurposeViewProvenance,
+  PurposeMissionModel,
+} from "./purpose.js";
+export { buildPurposeMissionModel } from "./purpose.js";

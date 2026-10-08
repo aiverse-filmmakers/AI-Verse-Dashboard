@@ -18,10 +18,11 @@ export const MAX_PARAMS_BYTES = 64 * 1024;
 export const SYSTEM_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 /**
- * workspaceId: canonical workspace id inside the selected OS, never a path.
- * Same shape family as Data-side workspace ids; no slashes or dots segments.
+ * workspaceId: canonical AI-Verse OS workspace id inside the selected OS.
+ * Lowercase alphanumeric + dash, 1-128 chars, no trailing dash.
+ * This intentionally matches the canonical Purpose/OS scope contract.
  */
-export const WORKSPACE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-_]{0,63}$/;
+export const WORKSPACE_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/;
 
 /**
  * panelId: Dashboard-owned panel identity (shell amendment §3).
@@ -42,7 +43,7 @@ export const workspaceIdSchema = z
   .string()
   .regex(
     WORKSPACE_ID_PATTERN,
-    "workspaceId must be alphanumeric with dash/underscore, 1-64 chars",
+    "workspaceId must be canonical lowercase alphanumeric/dash, 1-128 chars, with no trailing dash",
   );
 
 export const panelIdSchema = z

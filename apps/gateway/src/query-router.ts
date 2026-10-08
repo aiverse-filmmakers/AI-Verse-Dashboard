@@ -1,4 +1,3 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
 import {
   PROTOCOL_VERSION,
   assertQueryOnly,
@@ -12,24 +11,16 @@ import {
   getWorkspace,
   listWorkspaces,
   readMarkdownFile,
-  resolveWithinWorkspace,
+  readPurposeProjection,
   type DisposableCache,
 } from "../../../packages/os-read-adapter/src/index.js";
 import {
   buildNowModel,
+  buildPurposeMissionModel,
   buildWorkspaceProjections,
 } from "../../../packages/read-models/src/index.js";
 import type { SessionStore } from "../../../packages/live/src/sessions.js";
 import type { SystemRegistry } from "../../../packages/registry/src/index.js";
-
-/**
- * Query router (Task 4 + Phase 2 Task 2, Blueprint Rules 1-3 + 8).
- * Parsed protocol requests in, response frames out. Every OS-bound method
- * resolves through the registry; workspace methods resolve inside the
- * selected OS only. Missing/unknown/unauthorized never falls back to
- * another registered system. Commands stay blocked; live reads
- * (agent.*, run.*) serve session projections once attached.
- */
 
 export const GATEWAY_VERSION = "gateway-0.1.0-alpha.0";
 export const GATEWAY_PHASE = "phase-2-live" as const;
@@ -41,6 +32,7 @@ const SUPPORTED_QUERIES = [
   "workspace.get",
   "workspace.health",
   "workspace.inbox.list",
+  "purpose.get",
   "task.list",
   "agent.list",
   "agent.sessions",
@@ -57,12 +49,10 @@ export class QueryRouter {
     private readonly cache: DisposableCache,
   ) {}
 
-  /** Attach the live session store (Phase 2). Gateway owns it; routers share it. */
   attachSessions(sessions: SessionStore): void {
     this.sessions = sessions;
   }
 
-  /** Validate one realtime workspace scope through the registered OS boundary. */
   assertSubscriptionWorkspace(systemId: string, workspaceId: string): void {
     getWorkspace(this.registry, systemId, workspaceId);
   }
@@ -115,7 +105,6 @@ export class QueryRouter {
   }
 
   private route(req: DashboardRequest): unknown {
-    // Phase 1: commands parse (Task 1) but never execute.
     assertQueryOnly(req.method);
     if (!isKnownMethod(req.method)) {
       throw Object.assign(new Error(`unknown method ${req.method}`), { code: "UNKNOWN_METHOD" });
@@ -158,6 +147,17 @@ export class QueryRouter {
           req.workspaceId as string,
         );
         return { workspace: summary };
+      }
+      case "purpose.get": {
+        const projection = readPurposeProjection(
+          this.registry,
+          req.systemId as string,
+          req.workspaceId as string,
+        );
+        return {
+          workspaceId: req.workspaceId as string,
+          ...buildPurposeMissionModel(projection),
+        };
       }
       case "workspace.health": {
         const projections = this.projections(req.systemId as string, req.workspaceId as string);
@@ -208,7 +208,6 @@ export class QueryRouter {
         const systemId = req.systemId as string;
         const workspaceId = req.workspaceId as string;
         const { rootReal } = getWorkspace(this.registry, systemId, workspaceId);
-        // Freshness: stat first; serve cache only when mtime+size match.
         const cached = this.cache.getProjection(systemId, workspaceId, rel, NaN, NaN);
         void cached;
         const proj = readMarkdownFile(rootReal, rel);
@@ -332,7 +331,6 @@ export class QueryRouter {
     return sessions;
   }
 
-  /** Workspace projections preserve unavailable owner truth (Task 6). */
   private projections(systemId: string, workspaceId: string) {
     return buildWorkspaceProjections(this.registry, systemId, workspaceId);
   }
