@@ -1,5 +1,5 @@
 /**
- * @ai-verse/dashboard-read-adapters — read-only OS projectors (Task 3).
+ * @ai-verse/dashboard-read-adapters — read-only OS projectors.
  *
  * Laws: IDs in, realpaths resolved server-side; traversal and symlink
  * escapes fail closed; SQLite opens read-only with SELECT-only queries;
@@ -23,5 +23,8 @@ export type { SqliteHandle } from "./sqlite.js";
 
 export { listWorkspaces, getWorkspace } from "./workspace.js";
 export type { WorkspaceSummary } from "./workspace.js";
+
+export { readPurposeProjection } from "./purpose.js";
+export type { PurposeProjection } from "./purpose.js";
 
 export { DisposableCache } from "./cache.js";
