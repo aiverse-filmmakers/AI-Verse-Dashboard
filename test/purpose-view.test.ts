@@ -32,13 +32,17 @@ const at = (flag) => args[args.indexOf(flag) + 1];
 if (args[0] !== "read" || at("--scope") !== "workspace:film-project" || at("--profile") !== "basic" || at("--max-bytes") !== "16384") process.exit(7);
 const root = at("--root");
 const mission = fs.readFileSync(root + "/mission.txt", "utf8");
+const ref = (id) => ({ owner: "ai-verse-brain", scope: "workspace:film-project", kind: "intent", id });
 process.stdout.write(JSON.stringify({
   schema_version: "1.0",
   scope: "workspace:film-project",
   scope_kind: "workspace",
-  purpose: { missions: [{ id: "mission-1", statement: mission, canonical_ref: { owner: "ai-verse-brain", scope: "workspace:film-project", kind: "intent", id: "mission-1" } }] },
-  goals: [{ id: "goal-hidden", statement: "must not cross Task 1 UI boundary" }],
-  strategies: [{ id: "strategy-hidden" }],
+  purpose: { missions: [{ id: "mission-1", status: "CONFIRMED", statement: mission, canonical_ref: ref("mission-1") }] },
+  goals: [
+    { id: "goal-active", status: "ACTIVE", payload: { statement: "Launch" }, canonical_ref: ref("goal-active") },
+    { id: "goal-paused", status: "PAUSED", payload: { statement: "Expansion" }, canonical_ref: ref("goal-paused") }
+  ],
+  strategies: [{ id: "strategy-hidden", status: "ACTIVE" }],
   provenance: { projection_owner: "ai-verse-os", generated_at: new Date().toISOString(), owner_reads: [{ owner: "ai-verse-brain", operation: "purpose_snapshot", status: "ok" }] }
 }));
 `);
@@ -47,8 +51,8 @@ process.stdout.write(JSON.stringify({
   return { root, registry, systemId };
 }
 
-describe("Purpose Slice 10.1 Task 1: read-only mission/purpose surface", () => {
-  it("reads fresh OS-owned Purpose and returns mission only with provenance", () => {
+describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
+  it("returns mission and current owner goals, preserving owner status/refs", () => {
     const { root, registry, systemId } = makeOs();
     const router = new QueryRouter(registry, new DisposableCache());
     const frame = () => router.handle({
@@ -63,22 +67,30 @@ describe("Purpose Slice 10.1 Task 1: read-only mission/purpose surface", () => {
     assert.equal(result.workspaceId, "film-project");
     assert.equal("goals" in result, false);
     assert.equal("strategies" in result, false);
+
     const mission = result.mission as { available: boolean; missions: Array<Record<string, unknown>> };
     assert.equal(mission.available, true);
     assert.equal(mission.missions[0].statement, "Ship a useful film system");
+
+    const activeGoals = result.activeGoals as { available: boolean; goals: Array<Record<string, unknown>> };
+    assert.equal(activeGoals.available, true);
+    assert.deepEqual(activeGoals.goals.map((goal) => goal.status), ["ACTIVE", "PAUSED"]);
+    for (const goal of activeGoals.goals) {
+      assert.equal((goal.canonical_ref as Record<string, unknown>).owner, "ai-verse-brain");
+      assert.equal((goal.canonical_ref as Record<string, unknown>).scope, "workspace:film-project");
+    }
+
     const provenance = result.provenance as Record<string, unknown>;
     assert.equal(provenance.projectionOwner, "ai-verse-os");
     assert.equal(provenance.scope, "workspace:film-project");
 
-    // There is deliberately no Dashboard Purpose cache: a second call must
-    // observe the new owner output immediately.
     writeFileSync(join(root, "mission.txt"), "Ship the refreshed mission");
     const second = frame();
     const secondMission = (second.result as { mission: { missions: Array<Record<string, unknown>> } }).mission;
     assert.equal(secondMission.missions[0].statement, "Ship the refreshed mission");
   });
 
-  it("Purpose is a workspace-scoped presentation panel, not a truth owner", () => {
+  it("Purpose remains a workspace-scoped presentation panel, not a truth owner", () => {
     const purpose = phase2Panels().find((panel) => panel.id === "purpose");
     assert.ok(purpose);
     assert.equal(purpose.systemScoped, true);
