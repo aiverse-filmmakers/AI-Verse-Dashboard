@@ -4,13 +4,6 @@ import {
   type Presentation,
 } from "../../../packages/protocol/src/index.js";
 
-/**
- * Panel registry (Task 5, shell §3).
- * Host-independent panel definitions: id, title, presentations,
- * placement hints, detach/float/pin capability, and scope flags.
- * The registry owns presentation contracts only — never canonical data.
- */
-
 export type PanelPlacement = "left" | "right" | "bottom" | "center";
 export type PanelState = "docked" | "floating" | "detached" | "hud" | "hidden";
 
@@ -36,28 +29,18 @@ export interface PanelDefinition {
 const VALID_PANEL_ERROR = "invalid panel definition";
 
 function checkDefinition(def: PanelDefinition): void {
-  if (!panelIdSchema.safeParse(def.id).success) {
-    throw new Error(`${VALID_PANEL_ERROR}: bad id ${def.id}`);
-  }
-  if (!def.title || def.title.length > 64) {
-    throw new Error(`${VALID_PANEL_ERROR}: bad title`);
-  }
-  if (def.supportedPresentations.length === 0) {
-    throw new Error(`${VALID_PANEL_ERROR}: needs at least one presentation`);
-  }
+  if (!panelIdSchema.safeParse(def.id).success) throw new Error(`${VALID_PANEL_ERROR}: bad id ${def.id}`);
+  if (!def.title || def.title.length > 64) throw new Error(`${VALID_PANEL_ERROR}: bad title`);
+  if (def.supportedPresentations.length === 0) throw new Error(`${VALID_PANEL_ERROR}: needs at least one presentation`);
   for (const p of def.supportedPresentations) {
-    if (!presentationSchema.safeParse(p).success) {
-      throw new Error(`${VALID_PANEL_ERROR}: bad presentation ${String(p)}`);
-    }
+    if (!presentationSchema.safeParse(p).success) throw new Error(`${VALID_PANEL_ERROR}: bad presentation ${String(p)}`);
   }
   if (def.workspaceScoped === true && def.systemScoped !== true) {
     throw new Error(`${VALID_PANEL_ERROR}: workspace-scoped panels must be system-scoped`);
   }
   if (def.preferredPlacement !== undefined) {
     const allowed: PanelPlacement[] = ["left", "right", "bottom", "center"];
-    if (!allowed.includes(def.preferredPlacement)) {
-      throw new Error(`${VALID_PANEL_ERROR}: bad placement`);
-    }
+    if (!allowed.includes(def.preferredPlacement)) throw new Error(`${VALID_PANEL_ERROR}: bad placement`);
   }
 }
 
@@ -66,9 +49,7 @@ export class PanelRegistry {
 
   register(def: PanelDefinition): void {
     checkDefinition(def);
-    if (this.defs.has(def.id)) {
-      throw new Error(`panel already registered: ${def.id}`);
-    }
+    if (this.defs.has(def.id)) throw new Error(`panel already registered: ${def.id}`);
     this.defs.set(def.id, { ...def, supportedPresentations: [...def.supportedPresentations] });
   }
 
@@ -86,19 +67,28 @@ export class PanelRegistry {
   }
 }
 
-/** Phase 1 default read-only panels (shell §14: Now/Health/Work/Inbox). */
 export function defaultPhase1Panels(): PanelDefinition[] {
   return phase2Panels().filter((p) =>
     ["now", "health", "work", "inbox", "usage"].includes(p.id),
   );
 }
 
-/** Phase 2 live panels: chat, bots, runs (shell §14 Phase 2). */
+/** Current live shell panels. Purpose is read-only presentation state only. */
 export function phase2Panels(): PanelDefinition[] {
   return [
     {
       id: "now",
       title: "Now",
+      supportedPresentations: ["full", "compact"],
+      preferredPlacement: "center",
+      canFloat: true,
+      canDetach: true,
+      systemScoped: true,
+      workspaceScoped: true,
+    },
+    {
+      id: "purpose",
+      title: "Purpose",
       supportedPresentations: ["full", "compact"],
       preferredPlacement: "center",
       canFloat: true,
