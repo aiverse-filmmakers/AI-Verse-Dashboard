@@ -25,69 +25,96 @@ function makeRouter() {
   return { router: new QueryRouter(registry, new DisposableCache()), systemId };
 }
 
-describe("Purpose Slice 10.2 Task 1: owner-routed UI proposals", () => {
+function routed(scope: string, text = "Update our mission") {
+  return {
+    api_version: "gateway.purpose-strategic-routing.v1",
+    state: "routed",
+    scope,
+    proposal: {
+      scope,
+      state: "proposed",
+      change_kind: "mission_purpose",
+      operation_kind: "update",
+      requested_change: text,
+      target_owner: "brain",
+      routing_state: "routed_by_current_direction_owner",
+      requires_explicit_confirmation: true,
+      confirmation_state: "required_not_confirmed",
+      apply_allowed: false,
+      mutation_executed: false,
+    },
+    direction_owner: { schema_version: 1, scope, owner: "brain", record: null },
+  };
+}
+
+describe("Purpose Slice 10.2: owner-routed UI controls", () => {
   it("passes exact workspace scope and user intent to the canonical Gateway bridge", () => {
     const { router, systemId } = makeRouter();
     let captured: unknown;
     const bridge: PurposeMutationBridge = {
-      proposeOwnerRoutedChange(input) {
-        captured = structuredClone(input);
+      proposeOwnerRoutedChange(input) { captured = structuredClone(input); return routed(input.scope, input.text); },
+      confirmOwnerRoutedChange() { throw new Error("not used"); },
+    };
+    router.attachPurposeMutationBridge(bridge);
+    const out = router.handle({ type: "req", v: "1.0", id: "p1", method: "purpose.change.propose", systemId, workspaceId: "film-project", params: { text: "Update our mission to focus on creator outcomes" } });
+    assert.equal(out.ok, true);
+    assert.deepEqual(captured, { systemId, workspaceId: "film-project", scope: "workspace:film-project", text: "Update our mission to focus on creator outcomes" });
+    assert.equal((out.result as Record<string, unknown>).state, "routed");
+  });
+
+  it("delegates explicit-user confirmation for the exact routed proposal", () => {
+    const { router, systemId } = makeRouter();
+    const envelope = routed("workspace:film-project");
+    let confirmationInput: Record<string, unknown> | undefined;
+    const bridge: PurposeMutationBridge = {
+      proposeOwnerRoutedChange() { return envelope; },
+      confirmOwnerRoutedChange(input) {
+        confirmationInput = structuredClone(input) as unknown as Record<string, unknown>;
         return {
-          api_version: "gateway.purpose-strategic-routing.v1",
-          state: "routed",
+          api_version: "gateway.purpose-strategic-confirmation.v1",
+          state: "confirmed",
           scope: input.scope,
-          proposal: {
-            state: "proposed",
-            change_kind: "mission_purpose",
-            operation_kind: "update",
-            requested_change: input.text,
-            target_owner: "brain",
-            routing_state: "routed_by_current_direction_owner",
-            requires_explicit_confirmation: true,
-            confirmation_state: "required_not_confirmed",
-            apply_allowed: false,
-            mutation_executed: false,
-          },
-          direction_owner: { schema_version: 1, scope: input.scope, owner: "brain", record: null },
+          proposal: { ...envelope.proposal, confirmation_state: "explicit_user_confirmed" },
+          confirmation: { authority: "explicit_user", granted_by: input.grantedBy },
+          apply_allowed: false,
+          mutation_executed: false,
         };
       },
     };
     router.attachPurposeMutationBridge(bridge);
-
     const out = router.handle({
-      type: "req", v: "1.0", id: "p1", method: "purpose.change.propose",
-      systemId, workspaceId: "film-project",
-      params: { text: "Update our mission to focus on creator outcomes" },
+      type: "req", v: "1.0", id: "c1", method: "purpose.change.confirm",
+      systemId, workspaceId: "film-project", params: { routedEnvelope: envelope, grantedBy: "bogdan" },
     });
     assert.equal(out.ok, true);
-    assert.deepEqual(captured, {
-      systemId,
-      workspaceId: "film-project",
-      scope: "workspace:film-project",
-      text: "Update our mission to focus on creator outcomes",
-    });
-    const result = out.result as Record<string, unknown>;
-    assert.equal(result.state, "routed");
-    assert.equal((result.proposal as Record<string, unknown>).target_owner, "brain");
+    assert.equal((out.result as Record<string, unknown>).state, "confirmed");
+    assert.equal(confirmationInput?.scope, "workspace:film-project");
+    assert.deepEqual(confirmationInput?.routedEnvelope, envelope);
+    assert.equal(confirmationInput?.grantedBy, "bogdan");
+    assert.equal(Number.isNaN(Date.parse(String(confirmationInput?.confirmedAt))), false);
   });
 
-  it("fails closed when the canonical mutation Gateway is not attached", () => {
+  it("rejects cross-workspace confirmation before the bridge", () => {
     const { router, systemId } = makeRouter();
-    const out = router.handle({
-      type: "req", v: "1.0", id: "p2", method: "purpose.change.propose",
-      systemId, workspaceId: "film-project", params: { text: "Update our mission" },
-    });
+    let called = false;
+    const bridge: PurposeMutationBridge = {
+      proposeOwnerRoutedChange() { return routed("workspace:film-project"); },
+      confirmOwnerRoutedChange() { called = true; return {}; },
+    };
+    router.attachPurposeMutationBridge(bridge);
+    const out = router.handle({ type: "req", v: "1.0", id: "c2", method: "purpose.change.confirm", systemId, workspaceId: "film-project", params: { routedEnvelope: routed("workspace:other"), grantedBy: "bogdan" } });
     assert.equal(out.ok, false);
-    assert.equal(out.error?.code, "PURPOSE_MUTATION_GATEWAY_UNAVAILABLE");
+    assert.equal(out.error?.code, "PURPOSE_CONFIRMATION_SCOPE_MISMATCH");
+    assert.equal(called, false);
   });
 
-  it("does not admit unrelated Dashboard commands through the Purpose control exception", () => {
+  it("fails closed without the canonical mutation Gateway and keeps unrelated commands blocked", () => {
     const { router, systemId } = makeRouter();
-    const out = router.handle({
-      type: "req", v: "1.0", id: "p3", method: "task.start",
-      systemId, workspaceId: "film-project", params: {},
-    });
-    assert.equal(out.ok, false);
-    assert.equal(out.error?.code, "COMMAND_BLOCKED_READ_ONLY");
+    const propose = router.handle({ type: "req", v: "1.0", id: "p2", method: "purpose.change.propose", systemId, workspaceId: "film-project", params: { text: "Update our mission" } });
+    assert.equal(propose.ok, false);
+    assert.equal(propose.error?.code, "PURPOSE_MUTATION_GATEWAY_UNAVAILABLE");
+    const other = router.handle({ type: "req", v: "1.0", id: "p3", method: "task.start", systemId, workspaceId: "film-project", params: {} });
+    assert.equal(other.ok, false);
+    assert.equal(other.error?.code, "COMMAND_BLOCKED_READ_ONLY");
   });
 });

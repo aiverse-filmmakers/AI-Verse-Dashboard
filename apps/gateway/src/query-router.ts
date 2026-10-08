@@ -31,7 +31,7 @@ const SUPPORTED_QUERIES = [
   "workspace.health", "workspace.inbox.list", "purpose.get", "task.list", "agent.list",
   "agent.sessions", "run.list", "run.get", "run.logs", "source.preview",
 ] as const;
-const SUPPORTED_PURPOSE_CONTROLS = ["purpose.change.propose"] as const;
+const SUPPORTED_PURPOSE_CONTROLS = ["purpose.change.propose", "purpose.change.confirm"] as const;
 
 export class QueryRouter {
   private sessions?: SessionStore;
@@ -79,6 +79,14 @@ export class QueryRouter {
     };
   }
 
+  private bridge(): PurposeMutationBridge {
+    const bridge = this.purposeMutationBridge;
+    if (!bridge) {
+      throw Object.assign(new Error("canonical Purpose mutation Gateway is not attached"), { code: "PURPOSE_MUTATION_GATEWAY_UNAVAILABLE" });
+    }
+    return bridge;
+  }
+
   private route(req: DashboardRequest): unknown {
     if (!isPurposeControlMethod(req.method)) assertQueryOnly(req.method);
     if (!isKnownMethod(req.method)) throw Object.assign(new Error(`unknown method ${req.method}`), { code: "UNKNOWN_METHOD" });
@@ -121,11 +129,32 @@ export class QueryRouter {
         if (typeof text !== "string" || text.trim().length === 0 || text.length > 4096) {
           throw Object.assign(new Error("purpose.change.propose needs params.text (1-4096 chars)"), { code: "INVALID_ENVELOPE" });
         }
-        const bridge = this.purposeMutationBridge;
-        if (!bridge) {
-          throw Object.assign(new Error("canonical Purpose mutation Gateway is not attached"), { code: "PURPOSE_MUTATION_GATEWAY_UNAVAILABLE" });
+        return this.bridge().proposeOwnerRoutedChange({ systemId, workspaceId, scope: `workspace:${workspaceId}`, text });
+      }
+      case "purpose.change.confirm": {
+        const systemId = req.systemId as string;
+        const workspaceId = req.workspaceId as string;
+        getWorkspace(this.registry, systemId, workspaceId);
+        const params = (req.params ?? {}) as { routedEnvelope?: unknown; grantedBy?: unknown };
+        if (!params.routedEnvelope || typeof params.routedEnvelope !== "object" || Array.isArray(params.routedEnvelope)) {
+          throw Object.assign(new Error("purpose.change.confirm needs params.routedEnvelope"), { code: "INVALID_ENVELOPE" });
         }
-        return bridge.proposeOwnerRoutedChange({ systemId, workspaceId, scope: `workspace:${workspaceId}`, text });
+        if (typeof params.grantedBy !== "string" || params.grantedBy.trim().length === 0 || params.grantedBy.length > 256) {
+          throw Object.assign(new Error("purpose.change.confirm needs params.grantedBy"), { code: "INVALID_ENVELOPE" });
+        }
+        const scope = `workspace:${workspaceId}`;
+        const envelopeScope = (params.routedEnvelope as Record<string, unknown>).scope;
+        if (envelopeScope !== scope) {
+          throw Object.assign(new Error("routed proposal scope does not match selected workspace"), { code: "PURPOSE_CONFIRMATION_SCOPE_MISMATCH" });
+        }
+        return this.bridge().confirmOwnerRoutedChange({
+          systemId,
+          workspaceId,
+          scope,
+          routedEnvelope: structuredClone(params.routedEnvelope as Record<string, unknown>),
+          grantedBy: params.grantedBy.trim(),
+          confirmedAt: new Date().toISOString(),
+        });
       }
       case "workspace.health": {
         const projections = this.projections(req.systemId as string, req.workspaceId as string);
