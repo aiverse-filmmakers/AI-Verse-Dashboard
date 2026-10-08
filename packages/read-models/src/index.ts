@@ -38,7 +38,9 @@ export { buildNowModel, NOW_RUNNING_MAX, NOW_ATTENTION_MAX } from "./now.js";
 
 export type {
   PurposeMissionView,
+  PurposeGoalsView,
   PurposeViewProvenance,
   PurposeMissionModel,
+  PurposeMissionGoalsModel,
 } from "./purpose.js";
-export { buildPurposeMissionModel } from "./purpose.js";
+export { buildPurposeMissionModel, buildPurposeMissionGoalsModel } from "./purpose.js";
