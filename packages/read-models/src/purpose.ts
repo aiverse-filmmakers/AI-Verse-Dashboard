@@ -35,6 +35,11 @@ export interface PurposeKpisView {
   kpis: Record<string, unknown>[];
 }
 
+export interface PurposeCurrentWorkView {
+  available: boolean;
+  work: Record<string, unknown>[];
+}
+
 export interface PurposeViewProvenance {
   projectionOwner: "ai-verse-os";
   scope: string;
@@ -58,6 +63,7 @@ export interface PurposeMissionGoalsStrategiesModel extends PurposeMissionGoalsM
   keyChallenges: PurposeChallengesView;
   keyRisks: PurposeRisksView;
   kpis: PurposeKpisView;
+  currentWork: PurposeCurrentWorkView;
 }
 
 function objects(value: unknown): Record<string, unknown>[] {
@@ -78,6 +84,7 @@ export function buildPurposeMissionModel(projection: PurposeProjection): Purpose
   const challenges = objects(projection.challenges);
   const risks = objects(projection.risks);
   const kpis = objects(projection.kpis);
+  const currentWork = objects(projection.current_work);
   return {
     readOnly: true,
     mission: {
@@ -107,6 +114,10 @@ export function buildPurposeMissionModel(projection: PurposeProjection): Purpose
     kpis: {
       available: kpis.length > 0,
       kpis: kpis.map((item) => structuredClone(item)),
+    },
+    currentWork: {
+      available: currentWork.length > 0,
+      work: currentWork.map((item) => structuredClone(item)),
     },
     provenance: {
       projectionOwner: "ai-verse-os",
