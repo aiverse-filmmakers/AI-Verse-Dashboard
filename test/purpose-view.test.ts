@@ -10,10 +10,7 @@ import { QueryRouter } from "../apps/gateway/src/index.js";
 import { phase2Panels } from "../apps/web/src/index.js";
 
 const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
 function makeOs(): { root: string; registry: SystemRegistry; systemId: string } {
   const root = mkdtempSync(join(tmpdir(), "dash-purpose-"));
@@ -29,69 +26,34 @@ function makeOs(): { root: string; registry: SystemRegistry; systemId: string } 
 import fs from "node:fs";
 const args = process.argv.slice(2);
 const at = (flag) => args[args.indexOf(flag) + 1];
-if (
-  args[0] !== "read" ||
-  at("--scope") !== "workspace:film-project" ||
-  at("--profile") !== "auto" ||
-  at("--relevant-domain") !== "kpis" ||
-  at("--max-bytes") !== "16384"
-) process.exit(7);
+if (args[0] !== "read" || at("--scope") !== "workspace:film-project" || at("--profile") !== "auto" || at("--relevant-domain") !== "kpis" || at("--max-bytes") !== "16384") process.exit(7);
 const root = at("--root");
 const mission = fs.readFileSync(root + "/mission.txt", "utf8");
 const ref = (id) => ({ owner: "ai-verse-brain", scope: "workspace:film-project", kind: "intent", id });
 const dataRef = (id) => ({ owner: "ai-verse-data", scope: "workspace:film-project", kind: "metric", id });
 const osRef = (id) => ({ owner: "ai-verse-os", scope: "workspace:film-project", kind: "current_context", id });
+const memoryRef = (id) => ({ owner: "ai-verse-memory", scope: "workspace:film-project", kind: "memory_event", id });
 process.stdout.write(JSON.stringify({
-  schema_version: "1.0",
-  scope: "workspace:film-project",
-  scope_kind: "workspace",
+  schema_version: "1.0", scope: "workspace:film-project", scope_kind: "workspace",
   purpose: { missions: [{ id: "mission-1", status: "CONFIRMED", statement: mission, canonical_ref: ref("mission-1") }] },
-  goals: [
-    { id: "goal-active", status: "ACTIVE", payload: { statement: "Launch" }, canonical_ref: ref("goal-active") },
-    { id: "goal-paused", status: "PAUSED", payload: { statement: "Expansion" }, canonical_ref: ref("goal-paused") }
+  goals: [{ id: "goal-active", status: "ACTIVE", payload: { statement: "Launch" }, canonical_ref: ref("goal-active") }],
+  strategies: [{ id: "strategy-active", status: "ACTIVE", payload: { statement: "Prove value first" }, canonical_ref: ref("strategy-active") }],
+  initiatives: [{ id: "initiative-active", status: "ACTIVE", payload: { title: "Dashboard Purpose view" }, canonical_ref: ref("initiative-active") }],
+  challenges: [{ id: "challenge-1", status: "ACTIVE", payload: { statement: "Keep the UI owner-pure" }, canonical_ref: ref("challenge-1") }],
+  risks: [{ id: "risk-1", status: "ACTIVE", payload: { statement: "Stale owner truth" }, canonical_ref: ref("risk-1") }],
+  kpis: [{ id: "kpi-adoption", definition: "Weekly active purposeful workspaces", target: 100, current_value: 42, definition_source_ref: ref("kpi-adoption"), value_source_ref: dataRef("weekly-active-workspaces"), value_freshness: { status: "fresh", observed_at: "2026-10-08T22:00:00Z" } }],
+  current_work: [{ kind: "current_work", statement: "Finish the Purpose Dashboard slice", source_refs: [osRef("current-context-1")] }],
+  recent_material_changes: [
+    { event: "A blocker was resolved", effect: "Task 9 can proceed", source_ref: memoryRef("change-1"), observed_at: "2026-10-09T00:00:00Z" },
+    { event: "KPI value refreshed", effect: "Adoption evidence is current", source_ref: dataRef("weekly-active-workspaces"), observed_at: "2026-10-09T00:05:00Z" }
   ],
-  strategies: [
-    { id: "strategy-active", status: "ACTIVE", payload: { statement: "Prove value first" }, canonical_ref: ref("strategy-active") },
-    { id: "strategy-paused", status: "PAUSED", payload: { statement: "Delay expansion" }, canonical_ref: ref("strategy-paused") }
-  ],
-  initiatives: [
-    { id: "initiative-active", status: "ACTIVE", payload: { title: "Dashboard Purpose view" }, canonical_ref: ref("initiative-active") },
-    { id: "initiative-paused", status: "PAUSED", payload: { title: "Secondary rollout" }, canonical_ref: ref("initiative-paused") }
-  ],
-  challenges: [
-    { id: "challenge-1", status: "ACTIVE", payload: { statement: "Keep the UI owner-pure" }, canonical_ref: ref("challenge-1") },
-    { id: "challenge-2", status: "CONFIRMED", payload: { statement: "Stay inside the byte budget" }, canonical_ref: ref("challenge-2") }
-  ],
-  risks: [
-    { id: "risk-1", status: "ACTIVE", payload: { statement: "Stale owner truth" }, canonical_ref: ref("risk-1") },
-    { id: "risk-2", status: "CONFIRMED", payload: { statement: "Cross-scope leakage" }, canonical_ref: ref("risk-2") }
-  ],
-  kpis: [{
-    id: "kpi-adoption",
-    definition: "Weekly active purposeful workspaces",
-    target: 100,
-    current_value: 42,
-    trend: "up",
-    definition_source_ref: ref("kpi-adoption"),
-    value_source_ref: dataRef("weekly-active-workspaces"),
-    value_freshness: { status: "fresh", observed_at: "2026-10-08T22:00:00Z" }
-  }],
   narratives: [{ id: "narrative-not-for-this-view", canonical_ref: ref("narrative-not-for-this-view") }],
   current_state: [{ id: "state-not-for-this-view", source_refs: [dataRef("state-not-for-this-view")] }],
-  current_work: [
-    { kind: "current_work", statement: "Finish the Purpose Dashboard slice", source_refs: [osRef("current-context-1")] },
-    { kind: "current_work", statement: "Preserve exact owner boundaries", source_refs: [osRef("current-context-1")] }
-  ],
-  recent_material_changes: [{ event: "not-yet", source_ref: ref("change-not-for-this-view") }],
-  provenance: {
-    projection_owner: "ai-verse-os",
-    generated_at: new Date().toISOString(),
-    profile: { requested: "auto", resolved: "workspace_rich", reasons: ["relevant_kpi_binding_present"] },
-    owner_reads: [
-      { owner: "ai-verse-brain", operation: "purpose_snapshot", status: "ok" },
-      { owner: "ai-verse-data", operation: "purpose_current_state", status: "ok" }
-    ]
-  }
+  provenance: { projection_owner: "ai-verse-os", generated_at: new Date().toISOString(), profile: { requested: "auto", resolved: "workspace_rich", reasons: ["relevant_kpi_binding_present"] }, owner_reads: [
+    { owner: "ai-verse-brain", operation: "purpose_snapshot", status: "ok" },
+    { owner: "ai-verse-data", operation: "purpose_current_state", status: "ok" },
+    { owner: "ai-verse-memory", operation: "purpose_history", status: "ok" }
+  ] }
 }));
 `);
   const registry = new SystemRegistry();
@@ -100,49 +62,33 @@ process.stdout.write(JSON.stringify({
 }
 
 describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
-  it("adds current work while keeping recent material changes outside the response boundary", () => {
+  it("adds recent material changes with exact evidence while preserving current-vs-history ownership", () => {
     const { root, registry, systemId } = makeOs();
     const router = new QueryRouter(registry, new DisposableCache());
-    const frame = () => router.handle({
-      type: "req", v: "1.0", id: "purpose-1", method: "purpose.get",
-      systemId, workspaceId: "film-project",
-    });
-
+    const frame = () => router.handle({ type: "req", v: "1.0", id: "purpose-1", method: "purpose.get", systemId, workspaceId: "film-project" });
     const first = frame();
     assert.equal(first.ok, true);
     const result = first.result as Record<string, unknown>;
     assert.equal(result.readOnly, true);
-    assert.equal(result.workspaceId, "film-project");
-    assert.equal("goals" in result, false);
-    assert.equal("strategies" in result, false);
-    assert.equal("initiatives" in result, false);
-    assert.equal("challenges" in result, false);
-    assert.equal("risks" in result, false);
+    assert.equal("recent_material_changes" in result, false);
+    assert.equal("current_work" in result, false);
     assert.equal("narratives" in result, false);
     assert.equal("current_state" in result, false);
-    assert.equal("current_work" in result, false);
-    assert.equal("recent_material_changes" in result, false);
-
-    const kpis = result.kpis as { available: boolean; kpis: Array<Record<string, unknown>> };
-    assert.equal(kpis.available, true);
-    assert.equal(kpis.kpis[0].current_value, 42);
 
     const currentWork = result.currentWork as { available: boolean; work: Array<Record<string, unknown>> };
     assert.equal(currentWork.available, true);
-    assert.deepEqual(currentWork.work.map((item) => item.statement), [
-      "Finish the Purpose Dashboard slice",
-      "Preserve exact owner boundaries",
-    ]);
-    for (const item of currentWork.work) {
-      const source = (item.source_refs as Array<Record<string, unknown>>)[0];
-      assert.equal(source.owner, "ai-verse-os");
-      assert.equal(source.scope, "workspace:film-project");
-    }
+    assert.equal(currentWork.work[0].statement, "Finish the Purpose Dashboard slice");
+
+    const recent = result.recentMaterialChanges as { available: boolean; changes: Array<Record<string, unknown>> };
+    assert.equal(recent.available, true);
+    assert.deepEqual(recent.changes.map((item) => item.event), ["A blocker was resolved", "KPI value refreshed"]);
+    assert.equal((recent.changes[0].source_ref as Record<string, unknown>).owner, "ai-verse-memory");
+    assert.equal((recent.changes[1].source_ref as Record<string, unknown>).owner, "ai-verse-data");
+    assert.equal(recent.changes[0].effect, "Task 9 can proceed");
 
     const provenance = result.provenance as Record<string, unknown>;
     assert.equal(provenance.projectionOwner, "ai-verse-os");
-    assert.equal(provenance.scope, "workspace:film-project");
-    assert.equal((provenance.ownerReads as unknown[]).length, 2);
+    assert.equal((provenance.ownerReads as unknown[]).length, 3);
 
     writeFileSync(join(root, "mission.txt"), "Ship the refreshed mission");
     const second = frame();

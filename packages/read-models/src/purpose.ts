@@ -1,44 +1,14 @@
 import type { PurposeProjection } from "../../os-read-adapter/src/purpose.js";
 
-export interface PurposeMissionView {
-  available: boolean;
-  missions: Record<string, unknown>[];
-}
-
-export interface PurposeGoalsView {
-  available: boolean;
-  goals: Record<string, unknown>[];
-}
-
-export interface PurposeStrategiesView {
-  available: boolean;
-  strategies: Record<string, unknown>[];
-}
-
-export interface PurposeInitiativesView {
-  available: boolean;
-  initiatives: Record<string, unknown>[];
-}
-
-export interface PurposeChallengesView {
-  available: boolean;
-  challenges: Record<string, unknown>[];
-}
-
-export interface PurposeRisksView {
-  available: boolean;
-  risks: Record<string, unknown>[];
-}
-
-export interface PurposeKpisView {
-  available: boolean;
-  kpis: Record<string, unknown>[];
-}
-
-export interface PurposeCurrentWorkView {
-  available: boolean;
-  work: Record<string, unknown>[];
-}
+export interface PurposeMissionView { available: boolean; missions: Record<string, unknown>[]; }
+export interface PurposeGoalsView { available: boolean; goals: Record<string, unknown>[]; }
+export interface PurposeStrategiesView { available: boolean; strategies: Record<string, unknown>[]; }
+export interface PurposeInitiativesView { available: boolean; initiatives: Record<string, unknown>[]; }
+export interface PurposeChallengesView { available: boolean; challenges: Record<string, unknown>[]; }
+export interface PurposeRisksView { available: boolean; risks: Record<string, unknown>[]; }
+export interface PurposeKpisView { available: boolean; kpis: Record<string, unknown>[]; }
+export interface PurposeCurrentWorkView { available: boolean; work: Record<string, unknown>[]; }
+export interface PurposeMaterialChangesView { available: boolean; changes: Record<string, unknown>[]; }
 
 export interface PurposeViewProvenance {
   projectionOwner: "ai-verse-os";
@@ -53,9 +23,7 @@ export interface PurposeMissionModel {
   provenance: PurposeViewProvenance;
 }
 
-export interface PurposeMissionGoalsModel extends PurposeMissionModel {
-  activeGoals: PurposeGoalsView;
-}
+export interface PurposeMissionGoalsModel extends PurposeMissionModel { activeGoals: PurposeGoalsView; }
 
 export interface PurposeMissionGoalsStrategiesModel extends PurposeMissionGoalsModel {
   currentStrategies: PurposeStrategiesView;
@@ -64,6 +32,7 @@ export interface PurposeMissionGoalsStrategiesModel extends PurposeMissionGoalsM
   keyRisks: PurposeRisksView;
   kpis: PurposeKpisView;
   currentWork: PurposeCurrentWorkView;
+  recentMaterialChanges: PurposeMaterialChangesView;
 }
 
 function objects(value: unknown): Record<string, unknown>[] {
@@ -72,10 +41,7 @@ function objects(value: unknown): Record<string, unknown>[] {
     : [];
 }
 
-/**
- * The existing Purpose view grows in place. Dashboard preserves owner objects,
- * statuses, payloads, refs, and ordering rather than creating strategic truth.
- */
+/** Dashboard only reshapes the disposable owner-backed Purpose projection. */
 export function buildPurposeMissionModel(projection: PurposeProjection): PurposeMissionGoalsStrategiesModel {
   const missions = objects(projection.purpose?.missions);
   const goals = objects(projection.goals);
@@ -85,47 +51,26 @@ export function buildPurposeMissionModel(projection: PurposeProjection): Purpose
   const risks = objects(projection.risks);
   const kpis = objects(projection.kpis);
   const currentWork = objects(projection.current_work);
+  const recentMaterialChanges = objects(projection.recent_material_changes);
   return {
     readOnly: true,
-    mission: {
-      available: missions.length > 0,
-      missions: missions.map((item) => structuredClone(item)),
-    },
-    activeGoals: {
-      available: goals.length > 0,
-      goals: goals.map((item) => structuredClone(item)),
-    },
-    currentStrategies: {
-      available: strategies.length > 0,
-      strategies: strategies.map((item) => structuredClone(item)),
-    },
-    currentInitiatives: {
-      available: initiatives.length > 0,
-      initiatives: initiatives.map((item) => structuredClone(item)),
-    },
-    keyChallenges: {
-      available: challenges.length > 0,
-      challenges: challenges.map((item) => structuredClone(item)),
-    },
-    keyRisks: {
-      available: risks.length > 0,
-      risks: risks.map((item) => structuredClone(item)),
-    },
-    kpis: {
-      available: kpis.length > 0,
-      kpis: kpis.map((item) => structuredClone(item)),
-    },
-    currentWork: {
-      available: currentWork.length > 0,
-      work: currentWork.map((item) => structuredClone(item)),
+    mission: { available: missions.length > 0, missions: missions.map((item) => structuredClone(item)) },
+    activeGoals: { available: goals.length > 0, goals: goals.map((item) => structuredClone(item)) },
+    currentStrategies: { available: strategies.length > 0, strategies: strategies.map((item) => structuredClone(item)) },
+    currentInitiatives: { available: initiatives.length > 0, initiatives: initiatives.map((item) => structuredClone(item)) },
+    keyChallenges: { available: challenges.length > 0, challenges: challenges.map((item) => structuredClone(item)) },
+    keyRisks: { available: risks.length > 0, risks: risks.map((item) => structuredClone(item)) },
+    kpis: { available: kpis.length > 0, kpis: kpis.map((item) => structuredClone(item)) },
+    currentWork: { available: currentWork.length > 0, work: currentWork.map((item) => structuredClone(item)) },
+    recentMaterialChanges: {
+      available: recentMaterialChanges.length > 0,
+      changes: recentMaterialChanges.map((item) => structuredClone(item)),
     },
     provenance: {
       projectionOwner: "ai-verse-os",
       scope: projection.scope,
       generatedAt: projection.provenance.generated_at,
-      ownerReads: Array.isArray(projection.provenance.owner_reads)
-        ? structuredClone(projection.provenance.owner_reads)
-        : [],
+      ownerReads: Array.isArray(projection.provenance.owner_reads) ? structuredClone(projection.provenance.owner_reads) : [],
     },
   };
 }
