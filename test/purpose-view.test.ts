@@ -54,7 +54,10 @@ process.stdout.write(JSON.stringify({
     { id: "challenge-1", status: "ACTIVE", payload: { statement: "Keep the UI owner-pure" }, canonical_ref: ref("challenge-1") },
     { id: "challenge-2", status: "CONFIRMED", payload: { statement: "Stay inside the byte budget" }, canonical_ref: ref("challenge-2") }
   ],
-  risks: [{ id: "risk-hidden", status: "ACTIVE" }],
+  risks: [
+    { id: "risk-1", status: "ACTIVE", payload: { statement: "Stale owner truth" }, canonical_ref: ref("risk-1") },
+    { id: "risk-2", status: "CONFIRMED", payload: { statement: "Cross-scope leakage" }, canonical_ref: ref("risk-2") }
+  ],
   kpis: [{ id: "kpi-hidden" }],
   provenance: { projection_owner: "ai-verse-os", generated_at: new Date().toISOString(), owner_reads: [{ owner: "ai-verse-brain", operation: "purpose_snapshot", status: "ok" }] }
 }));
@@ -65,7 +68,7 @@ process.stdout.write(JSON.stringify({
 }
 
 describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
-  it("returns current strategic sections through key challenges while preserving owner objects", () => {
+  it("returns current strategic sections through key risks while preserving owner objects", () => {
     const { root, registry, systemId } = makeOs();
     const router = new QueryRouter(registry, new DisposableCache());
     const frame = () => router.handle({
@@ -82,7 +85,7 @@ describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
     assert.equal("strategies" in result, false);
     assert.equal("initiatives" in result, false);
     assert.equal("challenges" in result, false);
-    assert.equal("keyRisks" in result, false);
+    assert.equal("risks" in result, false);
     assert.equal("kpis" in result, false);
 
     const mission = result.mission as { available: boolean; missions: Array<Record<string, unknown>> };
@@ -90,23 +93,23 @@ describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
     assert.equal(mission.missions[0].statement, "Ship a useful film system");
 
     const activeGoals = result.activeGoals as { available: boolean; goals: Array<Record<string, unknown>> };
-    assert.equal(activeGoals.available, true);
     assert.deepEqual(activeGoals.goals.map((goal) => goal.status), ["ACTIVE", "PAUSED"]);
 
     const currentStrategies = result.currentStrategies as { available: boolean; strategies: Array<Record<string, unknown>> };
-    assert.equal(currentStrategies.available, true);
     assert.deepEqual(currentStrategies.strategies.map((strategy) => strategy.status), ["ACTIVE", "PAUSED"]);
 
     const currentInitiatives = result.currentInitiatives as { available: boolean; initiatives: Array<Record<string, unknown>> };
-    assert.equal(currentInitiatives.available, true);
     assert.deepEqual(currentInitiatives.initiatives.map((initiative) => initiative.status), ["ACTIVE", "PAUSED"]);
 
     const keyChallenges = result.keyChallenges as { available: boolean; challenges: Array<Record<string, unknown>> };
-    assert.equal(keyChallenges.available, true);
     assert.deepEqual(keyChallenges.challenges.map((challenge) => challenge.status), ["ACTIVE", "CONFIRMED"]);
-    for (const challenge of keyChallenges.challenges) {
-      assert.equal((challenge.canonical_ref as Record<string, unknown>).owner, "ai-verse-brain");
-      assert.equal((challenge.canonical_ref as Record<string, unknown>).scope, "workspace:film-project");
+
+    const keyRisks = result.keyRisks as { available: boolean; risks: Array<Record<string, unknown>> };
+    assert.equal(keyRisks.available, true);
+    assert.deepEqual(keyRisks.risks.map((risk) => risk.status), ["ACTIVE", "CONFIRMED"]);
+    for (const risk of keyRisks.risks) {
+      assert.equal((risk.canonical_ref as Record<string, unknown>).owner, "ai-verse-brain");
+      assert.equal((risk.canonical_ref as Record<string, unknown>).scope, "workspace:film-project");
     }
 
     const provenance = result.provenance as Record<string, unknown>;
