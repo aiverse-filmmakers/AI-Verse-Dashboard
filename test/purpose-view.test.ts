@@ -42,7 +42,14 @@ process.stdout.write(JSON.stringify({
     { id: "goal-active", status: "ACTIVE", payload: { statement: "Launch" }, canonical_ref: ref("goal-active") },
     { id: "goal-paused", status: "PAUSED", payload: { statement: "Expansion" }, canonical_ref: ref("goal-paused") }
   ],
-  strategies: [{ id: "strategy-hidden", status: "ACTIVE" }],
+  strategies: [
+    { id: "strategy-active", status: "ACTIVE", payload: { statement: "Prove value first" }, canonical_ref: ref("strategy-active") },
+    { id: "strategy-paused", status: "PAUSED", payload: { statement: "Delay expansion" }, canonical_ref: ref("strategy-paused") }
+  ],
+  initiatives: [{ id: "initiative-hidden", status: "ACTIVE" }],
+  challenges: [{ id: "challenge-hidden", status: "ACTIVE" }],
+  risks: [{ id: "risk-hidden", status: "ACTIVE" }],
+  kpis: [{ id: "kpi-hidden" }],
   provenance: { projection_owner: "ai-verse-os", generated_at: new Date().toISOString(), owner_reads: [{ owner: "ai-verse-brain", operation: "purpose_snapshot", status: "ok" }] }
 }));
 `);
@@ -52,7 +59,7 @@ process.stdout.write(JSON.stringify({
 }
 
 describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
-  it("returns mission and current owner goals, preserving owner status/refs", () => {
+  it("returns mission, goals, and current strategies while preserving owner objects", () => {
     const { root, registry, systemId } = makeOs();
     const router = new QueryRouter(registry, new DisposableCache());
     const frame = () => router.handle({
@@ -67,6 +74,10 @@ describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
     assert.equal(result.workspaceId, "film-project");
     assert.equal("goals" in result, false);
     assert.equal("strategies" in result, false);
+    assert.equal("initiatives" in result, false);
+    assert.equal("keyChallenges" in result, false);
+    assert.equal("keyRisks" in result, false);
+    assert.equal("kpis" in result, false);
 
     const mission = result.mission as { available: boolean; missions: Array<Record<string, unknown>> };
     assert.equal(mission.available, true);
@@ -75,9 +86,13 @@ describe("Purpose Slice 10.1: bounded read-only Purpose surface", () => {
     const activeGoals = result.activeGoals as { available: boolean; goals: Array<Record<string, unknown>> };
     assert.equal(activeGoals.available, true);
     assert.deepEqual(activeGoals.goals.map((goal) => goal.status), ["ACTIVE", "PAUSED"]);
-    for (const goal of activeGoals.goals) {
-      assert.equal((goal.canonical_ref as Record<string, unknown>).owner, "ai-verse-brain");
-      assert.equal((goal.canonical_ref as Record<string, unknown>).scope, "workspace:film-project");
+
+    const currentStrategies = result.currentStrategies as { available: boolean; strategies: Array<Record<string, unknown>> };
+    assert.equal(currentStrategies.available, true);
+    assert.deepEqual(currentStrategies.strategies.map((strategy) => strategy.status), ["ACTIVE", "PAUSED"]);
+    for (const strategy of currentStrategies.strategies) {
+      assert.equal((strategy.canonical_ref as Record<string, unknown>).owner, "ai-verse-brain");
+      assert.equal((strategy.canonical_ref as Record<string, unknown>).scope, "workspace:film-project");
     }
 
     const provenance = result.provenance as Record<string, unknown>;
