@@ -33,13 +33,23 @@ function objects(value: unknown): Record<string, unknown>[] {
     : [];
 }
 
-export function buildPurposeMissionModel(projection: PurposeProjection): PurposeMissionModel {
+/**
+ * The existing Purpose view grows in place. Goal objects are already bounded
+ * to current owner state by the canonical Purpose projection, so Dashboard
+ * preserves owner status and refs rather than reclassifying them.
+ */
+export function buildPurposeMissionModel(projection: PurposeProjection): PurposeMissionGoalsModel {
   const missions = objects(projection.purpose?.missions);
+  const goals = objects(projection.goals);
   return {
     readOnly: true,
     mission: {
       available: missions.length > 0,
       missions: missions.map((item) => structuredClone(item)),
+    },
+    activeGoals: {
+      available: goals.length > 0,
+      goals: goals.map((item) => structuredClone(item)),
     },
     provenance: {
       projectionOwner: "ai-verse-os",
@@ -52,21 +62,6 @@ export function buildPurposeMissionModel(projection: PurposeProjection): Purpose
   };
 }
 
-/**
- * Purpose goals are already current-owner projections. Brain's public Purpose
- * snapshot bounds goal intents to current statuses (CONFIRMED/ACTIVE/PAUSED),
- * while OS-owned workspace objectives are current by definition. Dashboard
- * therefore preserves the owner objects/statuses as-is instead of inventing a
- * second active/inactive classification.
- */
 export function buildPurposeMissionGoalsModel(projection: PurposeProjection): PurposeMissionGoalsModel {
-  const base = buildPurposeMissionModel(projection);
-  const goals = objects(projection.goals);
-  return {
-    ...base,
-    activeGoals: {
-      available: goals.length > 0,
-      goals: goals.map((item) => structuredClone(item)),
-    },
-  };
+  return buildPurposeMissionModel(projection);
 }
