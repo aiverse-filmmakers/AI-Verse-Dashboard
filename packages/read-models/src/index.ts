@@ -45,6 +45,7 @@ export type {
   PurposeRisksView,
   PurposeKpisView,
   PurposeCurrentWorkView,
+  PurposeMaterialChangesView,
   PurposeViewProvenance,
   PurposeMissionModel,
   PurposeMissionGoalsModel,
