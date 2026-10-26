@@ -59,6 +59,21 @@ describe("MC1 automation safety and Gateway preflight", () => {
       systemRoot: join(tmpdir(), "aiverse-mc1-github-synthetic-fixture", "synthetic-system"),
     };
     assert.doesNotThrow(() => assertMc1RoutingGate(synthetic));
+    assert.doesNotThrow(() => assertMc1RoutingGate({
+      ...synthetic, ciOsHost: true, runtime: "json-subprocess",
+    }), "the pinned OS host and supported runtime may qualify in synthetic CI");
+    for (const invalid of [
+      { ciOsHost: true, runtime: "deterministic" },
+      { ciOsHost: true, runtime: "openai-compatible" },
+      { ciOsHost: false, runtime: "json-subprocess" },
+      { ciOsHost: true, ciEnvironment: false, runtime: "json-subprocess" },
+      { ciOsHost: true, runtime: "json-subprocess", systemId: "owner-live" },
+      { ciOsHost: true, runtime: "json-subprocess", systemRoot: join(tmpdir(), "real-os") },
+    ]) {
+      assert.throws(() => assertMc1RoutingGate({ ...synthetic, ...invalid }),
+        /synthetic proof requires/,
+        "OS-host synthetic variant must never widen owner acceptance");
+    }
     assert.throws(
       () => assertMc1RoutingGate({ ...synthetic, ciSynthetic: false, pin: MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN }),
       /routes local\/aiverse to Anthropic/,
