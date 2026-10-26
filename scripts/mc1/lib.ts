@@ -606,6 +606,9 @@ export function startMissionControl(
     env,
     stdio: ["ignore", "pipe", "pipe"],
     shell: false,
+    // pnpm dev starts Next.js grandchildren. Give the disposable lab its own
+    // process group so cleanup can stop the whole tree on POSIX.
+    detached: process.platform !== "win32",
   });
 
   let logs = "";
@@ -620,17 +623,30 @@ export function startMissionControl(
 export async function stopChild(
   child: ChildProcess,
 ): Promise<void> {
+  const killGroup = (signal: NodeJS.Signals): void => {
+    if (process.platform !== "win32" && child.pid) {
+      try {
+        process.kill(-child.pid, signal);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+      }
+    } else if (child.exitCode === null) {
+      child.kill(signal);
+    }
+  };
+  // Do not skip cleanup merely because the pnpm parent exited first; Next.js
+  // grandchildren can survive and keep writing disposable lab files.
+  killGroup("SIGTERM");
   if (child.exitCode !== null) return;
-  child.kill("SIGTERM");
   await Promise.race([
     new Promise<void>((resolvePromise) => {
       child.once("close", () => resolvePromise());
     }),
     new Promise<void>((resolvePromise) => {
       setTimeout(() => {
-        if (child.exitCode === null) child.kill("SIGKILL");
+        killGroup("SIGKILL");
         resolvePromise();
-      }, 5000);
+      }, 5000).unref();
     }),
   ]);
 }
