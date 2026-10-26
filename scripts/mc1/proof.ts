@@ -116,6 +116,14 @@ async function main(): Promise<void> {
     });
     report("mission-control-ready");
 
+    // Pinned Mission Control strips "local/" from dispatchModel before
+    // provider classification. Only the disposable deterministic CI check
+    // can use its built-in Ollama catalog alias to exercise local HTTP.
+    // Real owner proof keeps the exact "local/aiverse" request and remains
+    // blocked until that upstream model-selection bug is repaired.
+    const dispatchModel = process.env.AIVERSE_MC1_CI_SYNTHETIC === "1"
+      ? "ollama/deepseek-r1:14b"
+      : "local/aiverse";
     const agentResponse = await requestJson(`${mcBase}/api/agents`, {
       method: "POST",
       apiKey: mcApiKey,
@@ -125,7 +133,7 @@ async function main(): Promise<void> {
         role: "assistant",
         status: "idle",
         config: {
-          dispatchModel: "local/aiverse",
+          dispatchModel,
           mc1Proof: true,
         },
       }),
@@ -134,7 +142,7 @@ async function main(): Promise<void> {
     if (
       !agent ||
       agent.name !== "ai-verse" ||
-      agent.config?.dispatchModel !== "local/aiverse"
+      agent.config?.dispatchModel !== dispatchModel
     ) {
       throw new Error("Mission Control did not create the expected AI-Verse proof agent");
     }
@@ -233,7 +241,8 @@ async function main(): Promise<void> {
       mission_control: {
         pin: lab.pin,
         temporary_agent: "ai-verse",
-        dispatch_model: "local/aiverse",
+        dispatch_model: dispatchModel,
+        local_routing_compatibility_alias: ciSynthetic,
         task_id: createdTask.id,
         final_status: completedTask.status,
         outcome: completedTask.outcome ?? null,
