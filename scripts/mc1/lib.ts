@@ -222,7 +222,8 @@ export function ensurePinnedMissionControlLab(
   mkdirSync(settings.labRoot, { recursive: true });
   assertSafeLabPath(settings.missionControlDir, settings.labRoot);
 
-  if (!existsSync(settings.missionControlDir)) {
+  const freshClone = !existsSync(settings.missionControlDir);
+  if (freshClone) {
     runCommand(
       "git",
       [
@@ -263,12 +264,14 @@ export function ensurePinnedMissionControlLab(
     ["-C", settings.missionControlDir, "status", "--porcelain"],
     { timeoutMs: 10_000 },
   ).stdout;
-  if (dirty && options.resetDirty !== true) {
+  // A --no-checkout fresh clone reports tracked files as deleted until its
+  // audited pin is checked out. That is not an operator's dirty existing lab.
+  if (dirty && !freshClone && options.resetDirty !== true) {
     throw new Error(
       "MC1 Mission Control lab has local changes. Remove/reset the disposable lab or rerun with the explicit reset option.",
     );
   }
-  if (dirty && options.resetDirty === true) {
+  if (dirty && !freshClone && options.resetDirty === true) {
     runCommand(
       "git",
       ["-C", settings.missionControlDir, "reset", "--hard"],
