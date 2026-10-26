@@ -6,7 +6,7 @@ import { mkdtemp, mkdir, readFile, readdir, lstat, rm, writeFile, realpath } fro
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { LOCAL_TRIAL, assertLocalModelTrial } from "../../dist/scripts/mc1/local-model-admission.js";
+import { LOCAL_TRIAL, assertLocalModelTrial, restrictTrialHost } from "../../dist/scripts/mc1/local-model-admission.js";
 
 const gatewaySource = path.resolve(process.env.AIVERSE_MC1_GATEWAY_SOURCE || "gateway-source");
 const osSource = path.resolve(process.env.AIVERSE_MC1_OS_SOURCE || "os-source");
@@ -64,7 +64,7 @@ async function main() {
   const root = await realpath(await mkdtemp(path.join(tmpdir(), "aiverse-mc1-real-local-")));
   const systemRoot = path.join(root, "trial-system");
   const home = path.join(root, "gateway-home");
-  let live, evidence, deniedEffects = 0;
+  let live, evidence;
   try {
     await mkdir(systemRoot);
     const archive = execFileSync("git", ["-C", osSource, "archive", LOCAL_TRIAL.os_revision], { maxBuffer: 100 * 1024 * 1024 });
@@ -93,7 +93,7 @@ async function main() {
     live = await startServer(config, home);
     // An additional experiment guard, never a substitute for canonical reads:
     // any attempted domain mutation fails this read-only trial immediately.
-    live.engine.host.requestAction = async () => { deniedEffects += 1; throw new Error("local model trial forbids owner effects"); };
+    const effectGuard = restrictTrialHost(live.engine.host);
     const noAuth = await fetch(LOCAL_TRIAL.gateway_origin + "/status");
     assert.equal(noAuth.status, 401);
     const wrongAuth = await fetch(LOCAL_TRIAL.gateway_origin + "/status", { headers: { authorization: "Bearer incorrect-trial-token" } });
@@ -112,7 +112,7 @@ async function main() {
     assert.equal(result.mission_control.pin, LOCAL_TRIAL.mission_control_revision);
     assert.equal(result.mission_control.local_routing_compatibility_alias, false);
     await live.close(); live = null;
-    assert.equal(deniedEffects, 0, "the real model or background review attempted a forbidden effect");
+    assert.equal(effectGuard.forbidden_dispatches, 0, "an effect passed the trial's deny policy");
     assert.equal(await fingerprint(systemRoot), before, "canonical trial OS files must remain unchanged");
     evidence = { success: true, trial: LOCAL_TRIAL.id,
       dashboard_revision: git(process.cwd(), "rev-parse", "HEAD"),
@@ -123,7 +123,8 @@ async function main() {
       host_adapter: "ai-verse-os:host", os_setup: "ready", os_doctor: "ready", gateway_doctor: "ready",
       dispatch_model: "local/aiverse", marker_present: true, system_id: LOCAL_TRIAL.system_id,
       workspace_id: "operator", missing_and_wrong_token_rejected: true,
-      guarded_effect_attempts: deniedEffects, canonical_os_unchanged: true,
+      guarded_effect_attempts: effectGuard.forbidden_dispatches,
+      denied_effect_authorizations: effectGuard.denied_authorizations, canonical_os_unchanged: true,
       real_model_proved: true, private_owner_os_proved: false, member_release: false };
   } finally {
     if (live) await live.close();

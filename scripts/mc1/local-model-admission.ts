@@ -36,7 +36,8 @@ export function assertLocalModelTrial(input: {
   try {
     regular(recordPath);
     const bytes = readFileSync(recordPath);
-    if (createHash("sha256").update(bytes).digest("hex") !== RECORD_SHA256 ||
+    // Git may check out JSON as CRLF on Windows; scope content stays identical.
+    if (createHash("sha256").update(bytes.toString().replace(/\r\n/g, "\n")).digest("hex") !== RECORD_SHA256 ||
         JSON.stringify(JSON.parse(bytes.toString())) !== JSON.stringify(LOCAL_TRIAL) ||
         !Number.isFinite(now) || now > Date.parse(LOCAL_TRIAL.expires_at)) refuse();
     const root = realpathSync(input.systemRoot);
@@ -65,4 +66,24 @@ export function assertLocalModelTrial(input: {
         host.command[1] !== join(root, "scripts", "ai_verse_host_adapter.py") ||
         host.command[2] !== "--root" || host.command[3] !== root || host.env_names?.length) refuse();
   } catch { refuse(); }
+}
+
+export function restrictTrialHost(host: {
+  authorizeAction: (request: unknown, signal?: unknown) => Promise<unknown>;
+  requestAction: (...args: unknown[]) => Promise<unknown>;
+}) {
+  const stats = { denied_authorizations: 0, forbidden_dispatches: 0 };
+  const ownerAuthorize = host.authorizeAction.bind(host);
+  host.authorizeAction = async (request, signal) => {
+    await ownerAuthorize(request, signal);
+    // Intersect real owner policy with this trial's stricter no-effect scope.
+    // Context reads use separate unchanged host methods.
+    stats.denied_authorizations += 1;
+    return { allowed: false, decision: "deny", reason: "local real-model trial admits no owner effects" };
+  };
+  host.requestAction = async () => {
+    stats.forbidden_dispatches += 1;
+    throw new Error("local model trial forbids owner effects");
+  };
+  return stats;
 }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { assertLocalModelTrial, LOCAL_TRIAL, LOCAL_TRIAL_RECORD } from "../scripts/mc1/local-model-admission.js";
+import { assertLocalModelTrial, LOCAL_TRIAL, LOCAL_TRIAL_RECORD, restrictTrialHost } from "../scripts/mc1/local-model-admission.js";
 import { assertMc1RoutingGate, MISSION_CONTROL_PIN } from "../scripts/mc1/lib.js";
 
 describe("owner-approved disposable local-model admission", () => {
@@ -36,6 +36,9 @@ describe("owner-approved disposable local-model admission", () => {
         { ...cfg, auth: { required: false } },
       ]) { put(bad); assert.throws(() => assertLocalModelTrial(input, LOCAL_TRIAL_RECORD, now)); }
       put(cfg);
+      const crlf = join(lab, "crlf.json");
+      writeFileSync(crlf, readFileSync(LOCAL_TRIAL_RECORD, "utf8").replace(/\r?\n/g, "\r\n"));
+      assert.doesNotThrow(() => assertLocalModelTrial(input, crlf, now));
       assert.throws(() => assertLocalModelTrial(input, LOCAL_TRIAL_RECORD, Date.parse("2026-10-28T00:00:00Z")));
       const altered = join(lab, "altered.json");
       writeFileSync(altered, readFileSync(LOCAL_TRIAL_RECORD, "utf8").replace("qwen3:0.6b", "other"));
@@ -47,5 +50,19 @@ describe("owner-approved disposable local-model admission", () => {
       assert.throws(() => assertMc1RoutingGate({ pin: MISSION_CONTROL_PIN, ciSynthetic: false, ciEnvironment: false,
         systemId: "personal", runtime: "openai-compatible", systemRoot: process.cwd() }));
     } finally { rmSync(lab, { recursive: true, force: true }); }
+  });
+  it("denies effects before dispatch while retaining the real owner's authorization check", async () => {
+    let checked = 0, dispatched = 0;
+    const host = {
+      async authorizeAction() { checked += 1; return { allowed: true }; },
+      async requestAction() { dispatched += 1; return { status: "succeeded" }; },
+    };
+    const guard = restrictTrialHost(host);
+    const decision = await host.authorizeAction();
+    assert.equal((decision as { allowed: boolean }).allowed, false);
+    assert.equal(checked, 1); assert.equal(dispatched, 0);
+    assert.equal(guard.denied_authorizations, 1);
+    await assert.rejects(host.requestAction(), /forbids owner effects/);
+    assert.equal(dispatched, 0); assert.equal(guard.forbidden_dispatches, 1);
   });
 });

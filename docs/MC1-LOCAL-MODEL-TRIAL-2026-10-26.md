@@ -29,8 +29,9 @@ The same Mission Control proof and pinned AI-Verse routing dependency are used.
 The Gateway and Mission Control credentials are newly generated for the lab;
 package installation subprocesses do not receive them. Missing/wrong Gateway
 bearers must be rejected. A separate experiment guard aborts any OS mutation
-attempt; it preserves real host context reads and does not simulate model output.
-Any guard activation fails the experiment. The canonical OS fingerprint must
+dispatch; it intersects the real owner's authorization with a deny policy before
+optional conversation-summary persistence. Denied authorizations are recorded.
+Any dispatch reaching the final guard fails the experiment. The canonical OS fingerprint must
 remain unchanged, and the lab is removed before success is reported.
 
 ## Verification before the real-model dispatch
