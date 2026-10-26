@@ -52,6 +52,19 @@ describe("MC1 automation safety and Gateway preflight", () => {
       "http://127.0.0.1:8787",
     );
     assert.throws(() => normalizeGatewayUrl("file:///tmp/gateway"));
+    for (const unsafe of [
+      "http://127.0.0.1:8787/v1",
+      "http://127.0.0.1:8787/not-gateway/",
+      "http://127.0.0.1:8787/?token=secret-in-query",
+      "http://127.0.0.1:8787/#secret-in-fragment",
+      "http://username:password@127.0.0.1:8787",
+    ]) {
+      assert.throws(
+        () => normalizeGatewayUrl(unsafe),
+        /Gateway URL must/,
+        `reject ambiguous or credential-bearing Gateway base: ${unsafe}`,
+      );
+    }
   });
 
   it("lab containment is cross-platform and deletion refuses escape", () => {
