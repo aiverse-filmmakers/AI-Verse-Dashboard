@@ -191,6 +191,11 @@ async function main(): Promise<void> {
     } catch (error) {
       if (!ciSynthetic) throw error;
       report("scheduler-response-unavailable");
+      const diagnostic = String((error as Error).message || error);
+      const safeDiagnostic = redactSecrets(diagnostic, [
+        settings.gatewayToken, mcApiKey, adminPassword, authSecret,
+      ]);
+      report("scheduler-error:" + String(safeDiagnostic).slice(0, 450));
       const probe = await requestJson(
         `${mcBase}/api/tasks/${createdTask.id}`,
         { apiKey: mcApiKey, signal: AbortSignal.timeout(5000) },
