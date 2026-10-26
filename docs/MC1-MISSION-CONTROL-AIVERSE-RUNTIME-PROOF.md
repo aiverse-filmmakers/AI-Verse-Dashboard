@@ -14,6 +14,12 @@ GitHub Actions [hosted CI run 40315019683](https://github.com/aiverse-filmmakers
 
 **Not accepted yet:** Dashboard MC1.4 / Gateway G4.1 real local proof. Their independent audit gate remains BLOCKED; the `local/aiverse` routing defect also requires an approved upstream pin update or explicit owner-reviewed adapter design before owner-machine acceptance. Do not silently patch the third-party checkout or present the CI workaround as production-ready. No personal token, system, member release, or Distribution pin was touched.
 
+### Current fail-closed owner behavior
+
+The [routing defect and repair proposal](MC1-LOCAL-MODEL-ROUTING-REPAIR-PROPOSAL-2026-10-26.md) explain why the audited pin still incorrectly sends `local/aiverse` to Anthropic. The existing `npm run mc1:proof` now **rejects the known-broken owner route before installing or starting Mission Control**; do not supply an Anthropic key, switch to an invented model, or bypass this rejection. Every unreviewed future upstream pin remains blocked pending explicit qualification. Synthetic GitHub CI retains only its strictly bounded deterministic compatibility alias and is not local acceptance.
+
+The independent audit release gate remains separate. Neither a successful hosted CI run nor bypassing the model failure authorizes an owner-machine proof.
+
 ## Goal
 
 Prove that stock Builderz Labs Mission Control can dispatch a real task through the canonical AI-Verse Gateway without making Mission Control an AI-Verse owner.
