@@ -7,13 +7,18 @@
 > The earlier upstream routing restriction/CI alias below is historical and
 > superseded by that decision; the separate real OS/runtime gate is retained.
 
-**Date:** 2026-09-15  
-**Status:** canonical local acceptance runbook  
-**Mission Control pin:** `5483a0e1eef15b467c167e95796791112cedbb7c`
+**Date:** 2026-09-15 (updated 2026-10-26)  
+**Status:** canonical local acceptance runbook — **owner proof NOT RELEASED**  
+**Current owned Mission Control pin:** `570b74195b0837131ae015a06fe466472f12001a`  
+**Former Builderz base pin (historical only):** `5483a0e1eef15b467c167e95796791112cedbb7c`
+
+> **Current readiness:** use `npm run mc1:eligibility` for a no-token, no-install local configuration check. `mc1:local` deliberately returns `MC1_GATE_BLOCKED` before requesting a token until a separately approved owner-admission implementation exists. The configuration checker never proves a real model is running. The [scoped approval checklist](MC1-REAL-RUNTIME-SCOPED-APPROVAL-CHECKLIST-2026-10-26.md) specifies the remaining owner decision, and the [readiness handoff](MC1-OWNER-PRETOKEN-READINESS-2026-10-26.md) explains the current safe sequence.
 
 > **Current gate: MC1.4 BLOCKED.** This runbook describes the existing future proof path; it does not authorize running `npm run mc1:local` or `npm run mc1:proof` today. The [canonical Dashboard tracker](MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md) requires explicit audit/repair gate release first. Until then, only source review and credential-free mock/fixture checks are in scope. The human step below applies **after** that release, on a disposable synthetic-data system.
 
-## GitHub synthetic qualification — 2026-10-26
+## Historical GitHub synthetic qualification — 2026-10-26
+
+**Historical evidence:** the following first-hosted-run observations predate the AI-Verse-owned routing revision. Statements describing the upstream `local/aiverse` defect as pending are **superseded**, not currently applicable. Current code uses `aiverse-filmmakers/mission-control@570b74195b0837131ae015a06fe466472f12001a`.
 
 GitHub Actions [hosted CI run 40315019683](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40315019683) **PASSED**: pinned upstream Mission Control, exact merged Gateway `9c42bdc21073020c3d7194446b0f2ae929eb25a2`, disposable synthetic system, real authenticated loopback HTTP, actual task dispatch, returned task marker, scoped Gateway binding and cleanup. Dashboard Node 22 Windows/macOS/Ubuntu CI passed on the same PR revision.
 
@@ -35,7 +40,7 @@ The [real OS host and supported subprocess runtime qualification](MC1-OS-HOST-SU
 
 ## Goal
 
-Prove that stock Builderz Labs Mission Control can dispatch a real task through the canonical AI-Verse Gateway without making Mission Control an AI-Verse owner.
+Prove that the immutable AI-Verse-maintained Mission Control routing revision can dispatch a real task through the canonical AI-Verse Gateway without making Mission Control an AI-Verse owner.
 
 The proof is automated as far as practical.
 
