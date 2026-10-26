@@ -74,6 +74,11 @@ async function waitForTaskResult(
 
 async function main(): Promise<void> {
   const settings = settingsFromEnv();
+  const report = (stage: string) => {
+    if (process.env.AIVERSE_MC1_CI_SYNTHETIC === "1") {
+      process.stderr.write("mc1-ci:" + stage + "\n");
+    }
+  };
   const keepData = process.env.AIVERSE_MC1_KEEP_LAB_DATA === "1";
   const nonce = randomSecret(8).toLowerCase();
   const runDir = join(settings.labRoot, "runs", nonce);
@@ -82,11 +87,13 @@ async function main(): Promise<void> {
 
   try {
     const gateway = await preflightGateway(settings, { smokeChat: false });
-
+    report("authenticated-gateway-preflight-complete");
+    report("installing-existing-pinned-mission-control-lab");
     const lab = ensurePinnedMissionControlLab(settings, {
       install: true,
       resetDirty: process.argv.includes("--reset-lab"),
     });
+    report("pinned-mission-control-lab-ready");
 
     mkdirSync(dataDir, { recursive: true });
     const mcApiKey = randomSecret(32);
@@ -100,12 +107,14 @@ async function main(): Promise<void> {
       authSecret,
     });
 
+    report("starting-mission-control");
     const started = startMissionControl(settings, env);
     child = started.child;
     const mcBase = `http://127.0.0.1:${settings.missionControlPort}`;
     await waitForMissionControl(mcBase, mcApiKey, child, {
       logTail: started.logTail,
     });
+    report("mission-control-ready");
 
     const agentResponse = await requestJson(`${mcBase}/api/agents`, {
       method: "POST",
@@ -158,6 +167,7 @@ async function main(): Promise<void> {
       throw new Error("Mission Control did not return a numeric proof task id");
     }
 
+    report("synthetic-task-created");
     const schedulerResponse = await requestJson(`${mcBase}/api/scheduler`, {
       method: "POST",
       apiKey: mcApiKey,
@@ -166,6 +176,7 @@ async function main(): Promise<void> {
       signal: AbortSignal.timeout(150_000),
     });
 
+    report("scheduler-invoked");
     const completedTask = await waitForTaskResult(
       mcBase,
       mcApiKey,
@@ -176,6 +187,7 @@ async function main(): Promise<void> {
       throw new Error("Mission Control task completed without a resolution");
     }
 
+    report("task-resolution-received");
     const markerPresent = resolution.includes(expectedMarker);
     const result = {
       ok: true,
