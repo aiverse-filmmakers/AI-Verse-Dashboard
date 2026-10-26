@@ -71,11 +71,15 @@ export function normalizeGatewayUrl(raw?: string): string {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error("Gateway URL must use http or https");
   }
-  url.pathname = url.pathname.replace(/\/+$/, "");
-  if (url.pathname === "/") url.pathname = "";
-  url.search = "";
-  url.hash = "";
-  return url.toString().replace(/\/$/, "");
+  // MC1 needs the exact Gateway origin. Do not silently discard a path,
+  // query, fragment or embedded credentials before the token-bearing preflight.
+  if (url.username || url.password) {
+    throw new Error("Gateway URL must not embed credentials");
+  }
+  if (url.pathname.replace(/\/+$/, "") || url.search || url.hash) {
+    throw new Error("Gateway URL must be an origin without path, query or fragment");
+  }
+  return url.origin;
 }
 
 export function isLoopbackHost(hostname: string): boolean {

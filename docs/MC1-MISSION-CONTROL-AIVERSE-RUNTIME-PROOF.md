@@ -4,6 +4,8 @@
 **Status:** canonical local acceptance runbook  
 **Mission Control pin:** `5483a0e1eef15b467c167e95796791112cedbb7c`
 
+> **Current gate: MC1.4 BLOCKED.** This runbook describes the existing future proof path; it does not authorize running `npm run mc1:local` or `npm run mc1:proof` today. The [canonical Dashboard tracker](MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md) requires explicit audit/repair gate release first. Until then, only source review and credential-free mock/fixture checks are in scope. The human step below applies **after** that release, on a disposable synthetic-data system.
+
 ## Goal
 
 Prove that stock Builderz Labs Mission Control can dispatch a real task through the canonical AI-Verse Gateway without making Mission Control an AI-Verse owner.
