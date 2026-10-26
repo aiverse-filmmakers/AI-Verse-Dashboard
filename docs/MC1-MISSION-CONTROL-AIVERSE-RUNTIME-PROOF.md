@@ -48,7 +48,7 @@ The only required secret is the real AI-Verse Gateway bearer token. The preferre
 17. stops Mission Control;
 18. deletes the disposable Mission Control run database unless `AIVERSE_MC1_KEEP_LAB_DATA=1`.
 
-The Gateway token is never written by these scripts.
+The Gateway token is never written by these scripts. The local `npm ci` runner and pinned Mission Control Git/Corepack/pnpm installation subprocesses run without inheriting the Gateway token or a preexisting `LOCAL_LLM_API_KEY`. The credential is provided only to the authenticated proof path and the disposable Mission Control runtime after installation; it must never be supplied to package installation lifecycle scripts.
 
 ## Before running
 
