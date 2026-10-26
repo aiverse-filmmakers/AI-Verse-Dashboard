@@ -95,6 +95,7 @@ async function main(): Promise<void> {
       pin: MISSION_CONTROL_PIN,
       ciSynthetic,
       ciEnvironment: process.env.CI === "true",
+      ciOsHost: process.env.AIVERSE_MC1_CI_OS_HOST === "1",
       systemId: gateway.binding.systemId,
       runtime: String(gateway.status.runtime || ""),
       systemRoot: gateway.binding.root,
