@@ -20,6 +20,7 @@ import {
   readGatewayBinding,
   redactSecrets,
   removeLabPath,
+  runCommand,
   settingsFromEnv,
   type Mc1Settings,
 } from "../scripts/mc1/lib.js";
@@ -233,6 +234,26 @@ describe("MC1 automation safety and Gateway preflight", () => {
     assert.equal(sanitized.nested.password, "[REDACTED]");
     assert.equal(sanitized.nested.ordinary, "safe");
   });
+  it("does not inherit Gateway credentials in Git/Corepack installation commands", () => {
+    const result = runCommand(
+      process.execPath,
+      ["-e", "process.stdout.write(JSON.stringify({ gateway: process.env.AIVERSE_GATEWAY_TOKEN ?? null, llm: process.env.LOCAL_LLM_API_KEY ?? null, retained: process.env.MC1_TOOL_MARKER ?? null }))"],
+      {
+        env: {
+          ...process.env,
+          AIVERSE_GATEWAY_TOKEN: "must-not-reach-installer",
+          LOCAL_LLM_API_KEY: "must-not-reach-installer",
+          MC1_TOOL_MARKER: "safe",
+        },
+      },
+    );
+    assert.deepEqual(JSON.parse(result.stdout), {
+      gateway: null,
+      llm: null,
+      retained: "safe",
+    });
+  });
+
   it("local runner prompts without echoing and clears the token", () => {
     const script = readFileSync(
       resolve("scripts/mc1/run-local.sh"),
@@ -241,6 +262,7 @@ describe("MC1 automation safety and Gateway preflight", () => {
     assert.match(script, /read -r -s AIVERSE_GATEWAY_TOKEN/);
     assert.match(script, /trap cleanup_secret EXIT INT TERM/);
     assert.match(script, /unset AIVERSE_GATEWAY_TOKEN/);
+    assert.match(script, /\(\s*unset AIVERSE_GATEWAY_TOKEN LOCAL_LLM_API_KEY\s+npm ci\s*\)/);
     assert.match(script, /npm ci/);
     assert.match(script, /npm run mc1:proof/);
     assert.doesNotMatch(script, /echo .*AIVERSE_GATEWAY_TOKEN/);
