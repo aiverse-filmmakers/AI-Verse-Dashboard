@@ -74,8 +74,10 @@ async function waitForTaskResult(
 
 async function main(): Promise<void> {
   const settings = settingsFromEnv();
+  const ciSynthetic = process.env.CI === "true" &&
+    process.env.AIVERSE_MC1_CI_SYNTHETIC === "1";
   const report = (stage: string) => {
-    if (process.env.AIVERSE_MC1_CI_SYNTHETIC === "1") {
+    if (ciSynthetic) {
       process.stderr.write("mc1-ci:" + stage + "\n");
     }
   };
@@ -121,7 +123,7 @@ async function main(): Promise<void> {
     // can use its built-in Ollama catalog alias to exercise local HTTP.
     // Real owner proof keeps the exact "local/aiverse" request and remains
     // blocked until that upstream model-selection bug is repaired.
-    const dispatchModel = process.env.AIVERSE_MC1_CI_SYNTHETIC === "1"
+    const dispatchModel = ciSynthetic
       ? "ollama/deepseek-r1:14b"
       : "local/aiverse";
     const agentResponse = await requestJson(`${mcBase}/api/agents`, {
@@ -180,7 +182,6 @@ async function main(): Promise<void> {
     // A delayed HTTP response does not establish that no task was dispatched.
     // In the synthetic CI test only, bound that response and inspect canonical
     // Mission Control task state instead of hanging the entire acceptance job.
-    const ciSynthetic = process.env.AIVERSE_MC1_CI_SYNTHETIC === "1";
     const schedulerAbort = new AbortController();
     const schedulerDeadline = setTimeout(
       () => schedulerAbort.abort(),
