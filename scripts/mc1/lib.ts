@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
+import { assertLocalModelTrial } from "./local-model-admission.js";
 
 export const MISSION_CONTROL_REPO =
   "https://github.com/aiverse-filmmakers/mission-control.git";
@@ -28,6 +29,7 @@ export interface Mc1RoutingGateInput {
   systemId: string;
   runtime: string;
   systemRoot: string;
+  localModelTrial?: { gatewayHome: string; gatewayUrl: string };
 }
 
 /**
@@ -53,6 +55,10 @@ export function assertMc1RoutingGate(input: Mc1RoutingGateInput): void {
         "MC1 synthetic proof requires the qualified AI-Verse pin, CI flag, synthetic-only Gateway, deterministic runtime and disposable synthetic workspace.",
       );
     }
+    return;
+  }
+  if (input.localModelTrial && input.pin === MISSION_CONTROL_PIN) {
+    assertLocalModelTrial({ ...input, ...input.localModelTrial });
     return;
   }
   if (input.pin === MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN) {

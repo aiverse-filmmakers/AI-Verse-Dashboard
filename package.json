@@ -15,7 +15,8 @@
     "mc1:preflight": "npm run build --silent && node dist/scripts/mc1/preflight.js",
     "mc1:proof": "npm run build --silent && node dist/scripts/mc1/proof.js",
     "mc1:local": "bash scripts/mc1/run-local.sh",
-    "mc1:eligibility": "node scripts/mc1/eligibility.mjs"
+    "mc1:eligibility": "node scripts/mc1/eligibility.mjs",
+    "mc1:local-model": "npm run build --silent && node scripts/mc1/local-model-proof.mjs"
   },
   "engines": {
     "node": ">=22.0.0"
