@@ -28,14 +28,30 @@ async function freeLoopbackPort() {
 async function runProof(env, token) {
   const child = spawn(process.execPath, [proofEntry], {
     cwd: process.cwd(), env, shell: false,
+    detached: process.platform !== "win32",
     stdio: ["ignore", "pipe", "pipe"]
   });
+  // Upstream pnpm -> Next spawns grandchildren. The group is CI-only and
+  // disposable: a timeout must terminate the whole tree, not just node proof.
+  const killTree = (signal) => {
+    if (process.platform !== "win32" && child.pid) {
+      try { process.kill(-child.pid, signal); } catch (e) {
+        if (e.code !== "ESRCH") throw e;
+      }
+    } else {
+      child.kill(signal);
+    }
+  };
   let stdout = "";
   let stderr = "";
   const append = (prev, chunk) => (prev + chunk.toString()).slice(-16000);
   child.stdout.on("data", (chunk) => { stdout = append(stdout, chunk); });
   child.stderr.on("data", (chunk) => { stderr = append(stderr, chunk); });
-  const timeout = setTimeout(() => child.kill("SIGKILL"), 18 * 60 * 1000);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    killTree("SIGKILL");
+  }, 12 * 60 * 1000);
   try {
     const exitCode = await new Promise((resolve, reject) => {
       child.once("error", reject);
@@ -44,14 +60,16 @@ async function runProof(env, token) {
     if (stdout.includes(token) || stderr.includes(token)) {
       throw new Error("MC1 proof output exposed a synthetic Gateway bearer credential");
     }
-    if (exitCode !== 0) {
-      throw new Error("Existing MC1 proof exited " + String(exitCode) +
+    if (exitCode !== 0 || timedOut) {
+      throw new Error((timedOut ? "Existing MC1 proof timed out" :
+        "Existing MC1 proof exited " + String(exitCode)) +
         ": " + stderr.slice(-2400).replaceAll(token, "[REDACTED]") +
         "\n" + stdout.slice(-1200).replaceAll(token, "[REDACTED]"));
     }
     return JSON.parse(stdout);
   } finally {
     clearTimeout(timeout);
+    killTree("SIGTERM");
     if (child.exitCode === null) child.kill("SIGKILL");
   }
 }
@@ -76,6 +94,7 @@ async function main() {
   const labRoot = path.join(root, "disposable-mission-control-lab");
   const hostConfig = path.join(root, "synthetic-host.json");
   let live;
+  let primaryError = null;
   try {
     await mkdir(systemRoot, { recursive: true });
     await writeFile(path.join(systemRoot, "AI-VERSE.yaml"), "schema_version: 2.0\n");
@@ -145,9 +164,20 @@ async function main() {
       member_release: false,
       owner_machine_proved: false
     }, null, 2));
+  } catch (error) {
+    primaryError = error;
+    throw error;
   } finally {
-    if (live) await live.close();
-    await rm(root, { recursive: true, force: true });
+    let cleanupError = null;
+    try { if (live) await live.close(); } catch (e) { cleanupError = e; }
+    try {
+      await rm(root, { recursive: true, force: true, maxRetries: 12, retryDelay: 250 });
+    } catch (e) { cleanupError ??= e; }
+    if (cleanupError) {
+      if (!primaryError) throw cleanupError;
+      console.error("CI-only cleanup also failed (original proof failure retained): " +
+        String(cleanupError.code || "unknown"));
+    }
   }
 }
 main().catch((error) => {
