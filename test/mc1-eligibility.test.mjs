@@ -5,10 +5,11 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSyn
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { inspectGatewayConfig, inspectReadiness, evaluateReadiness } from "../scripts/mc1/eligibility.mjs";
+import { inspectRuntimeDescriptor } from "../scripts/mc1/runtime-inspection.mjs";
 
 const validPin = "570b74195b0837131ae015a06fe466472f12001a";
 const gate = { schema_version: "mc1-owner-audit-gate/1.0", mission_control_source_revision: validPin, decision: "BLOCKED", explicit_owner_release: null };
-const inspected = { home: "found", binding: "local_config_matches", runtime: "json-subprocess" };
+const inspected = { home: "found", binding: "local_config_matches", runtime: "json-subprocess", runtime_configuration: "configured_unverified", provider: "local_subprocess" };
 
 describe("MC1 pre-token owner eligibility", () => {
   it("holds the exact audited MC1.4 gate without assuming conditional dogfood is a release", () => {
@@ -40,11 +41,11 @@ describe("MC1 pre-token owner eligibility", () => {
       writeFileSync(join(home, "config.json"), JSON.stringify({
         enabled: true, system: { id: "private-id", root: system, default_workspace: "operator" },
         server: { host: "127.0.0.1", port: 8787 },
-        runtime: { kind: "json-subprocess" },
+        runtime: { kind: "json-subprocess", command: ["node", "real-agent-adapter.mjs"], env_names: [] },
         auth: { keys: [{ verifier: "SENSITIVE_HASH_MUST_NOT_LOG" }] }
       }));
       const good = inspectGatewayConfig(home, "http://127.0.0.1:8787");
-      assert.deepEqual(good, { home: "found", binding: "local_config_matches", runtime: "json-subprocess" });
+      assert.deepEqual(good, { home: "found", binding: "local_config_matches", runtime: "json-subprocess", runtime_configuration: "configured_unverified", provider: "local_subprocess" });
       assert.equal(inspectGatewayConfig(home, "https://example.com:8787").binding, "unverified");
       assert.equal(inspectGatewayConfig(home, "http://127.0.0.1:9999").binding, "unverified");
       assert.equal(inspectGatewayConfig(home, "http://127.0.0.1:8787/?token=x").binding, "unverified");
@@ -66,6 +67,44 @@ describe("MC1 pre-token owner eligibility", () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+  it("does not confuse an adapter declaration, test fixture, or endpoint string with verified AI execution", () => {
+    for (const broken of [
+      null, { kind: "json-subprocess" },
+      { kind: "json-subprocess", command: [] },
+      { kind: "json-subprocess", command: ["node", ""] },
+      { kind: "json-subprocess", command: ["node", "adapter.mjs"], env_names: ["INVALID-ENV"] },
+      { kind: "openai-compatible", base_url: "http://localhost:8000", model: "default" },
+      { kind: "openai-compatible", base_url: "http://user:pw@127.0.0.1:8000", model: "actual" },
+      { kind: "openai-compatible", base_url: "http://remote.test:8000", model: "actual" },
+      { kind: "openai-compatible", base_url: "https://remote.test/?secret=val", model: "actual" },
+      { kind: "unknown", model: "actual" },
+    ]) {
+      assert.equal(inspectRuntimeDescriptor(broken).configuration, "incomplete");
+    }
+    const synthetic = inspectRuntimeDescriptor({
+      kind: "json-subprocess", command: ["node", "/tmp/ci-readonly-runtime.mjs"]
+    });
+    assert.equal(synthetic.configuration, "test_only");
+    assert.equal(evaluateReadiness({ ...gate, decision: "RELEASED", explicit_owner_release: { signed: true } },
+      { ...inspected, runtime_configuration: "test_only" }).code, "MC1_LOCAL_RUNTIME_UNVERIFIED");
+    const adapter = inspectRuntimeDescriptor({
+      kind: "json-subprocess", command: ["/usr/local/bin/agent-adapter"], env_names: ["RUNTIME_API_KEY"]
+    });
+    assert.deepEqual(adapter, { configuration: "configured_unverified", provider: "local_subprocess" });
+    const localEndpoint = inspectRuntimeDescriptor({
+      kind: "openai-compatible", base_url: "http://127.0.0.1:8000", model: "real-model"
+    });
+    assert.deepEqual(localEndpoint, { configuration: "configured_unverified", provider: "local_endpoint" });
+    const external = inspectRuntimeDescriptor({
+      kind: "openai-compatible", base_url: "https://provider.test/v1", model: "real-model",
+      api_key_env: "AUTHORIZED_KEY"
+    });
+    assert.deepEqual(external, { configuration: "configured_unverified", provider: "external_scope_required" });
+    assert.equal(evaluateReadiness({ ...gate, decision: "RELEASED", explicit_owner_release: { signed: true } },
+      { ...inspected, runtime: "openai-compatible", provider: "external_scope_required" }).code, "MC1_LOCAL_RUNTIME_UNVERIFIED");
+    const safeText = JSON.stringify(external) + JSON.stringify(adapter);
+    assert.doesNotMatch(safeText, /AUTHORIZED_KEY|provider.test|agent-adapter|real-model/);
   });
   it("aborts the local runner before token entry, npm install or starting Mission Control", () => {
     const script = readFileSync(resolve("scripts/mc1/run-local.sh"), "utf8");
