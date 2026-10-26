@@ -168,13 +168,46 @@ async function main(): Promise<void> {
     }
 
     report("synthetic-task-created");
-    const schedulerResponse = await requestJson(`${mcBase}/api/scheduler`, {
-      method: "POST",
-      apiKey: mcApiKey,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ task_id: "task_dispatch" }),
-      signal: AbortSignal.timeout(150_000),
-    });
+    // The stock scheduler awaits routing/reconciliation/dispatch before replying.
+    // A delayed HTTP response does not establish that no task was dispatched.
+    // In the synthetic CI test only, bound that response and inspect canonical
+    // Mission Control task state instead of hanging the entire acceptance job.
+    const ciSynthetic = process.env.AIVERSE_MC1_CI_SYNTHETIC === "1";
+    const schedulerAbort = new AbortController();
+    const schedulerDeadline = setTimeout(
+      () => schedulerAbort.abort(),
+      ciSynthetic ? 20_000 : 150_000,
+    );
+    let schedulerResponse: Record<string, unknown> = {};
+    try {
+      schedulerResponse = await requestJson(`${mcBase}/api/scheduler`, {
+        method: "POST",
+        apiKey: mcApiKey,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_id: "task_dispatch" }),
+        signal: schedulerAbort.signal,
+      });
+      report("scheduler-response-received");
+    } catch (error) {
+      if (!ciSynthetic) throw error;
+      report("scheduler-response-unavailable");
+      const probe = await requestJson(
+        `${mcBase}/api/tasks/${createdTask.id}`,
+        { apiKey: mcApiKey, signal: AbortSignal.timeout(5000) },
+      );
+      const observed = taskFromResponse(probe);
+      report("task-state-after-scheduler:" + String(observed.status || "unknown"));
+      if (observed.status === "assigned") {
+        throw new Error(
+          "Scheduler did not dispatch synthetic task within 20s; task remains assigned. " +
+          String((error as Error).message || error),
+        );
+      }
+      // Continue only if the existing task was actually dispatched; its
+      // returned resolution and unique marker remain mandatory below.
+    } finally {
+      clearTimeout(schedulerDeadline);
+    }
 
     report("scheduler-invoked");
     const completedTask = await waitForTaskResult(
