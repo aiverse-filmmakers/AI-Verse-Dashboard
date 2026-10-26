@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "evidence": "disposable synthetic MC1 real HTTP dispatch and response",
+  "gateway_merge": "9c42bdc21073020c3d7194446b0f2ae929eb25a2",
+  "mission_control_pin": "570b74195b0837131ae015a06fe466472f12001a",
+  "system_id": "ci-synthetic",
+  "workspace_id": "operator",
+  "marker_present": true,
+  "dispatch_model": "local/aiverse",
+  "compatibility_alias": false,
+  "executed_platform": "darwin",
+  "member_release": false,
+  "owner_machine_proved": false
+}

@@ -11,10 +11,10 @@ import { homedir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 
 export const MISSION_CONTROL_REPO =
-  "https://github.com/builderz-labs/mission-control.git";
+  "https://github.com/aiverse-filmmakers/mission-control.git";
 export const MISSION_CONTROL_PIN =
-  "5483a0e1eef15b467c167e95796791112cedbb7c";
-// This exact audited upstream pin misroutes dispatchModel=local/aiverse to
+  "570b74195b0837131ae015a06fe466472f12001a";
+// The former upstream pin misroutes dispatchModel=local/aiverse to
 // Anthropic. Do not confuse a CI-only Ollama catalog workaround with a
 // verified first-class owner model route.
 export const MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN =
@@ -30,12 +30,8 @@ export interface Mc1RoutingGateInput {
 }
 
 /**
- * Fail closed until upstream local/aiverse model dispatch and the separate
- * Dashboard audit gate are accepted. Only the fully disposable deterministic
- * GitHub test may use its explicitly marked compatibility route.
- *
- * This is NOT the MC1.4 owner gate release. Future pin qualification must
- * change this source and tests through a separately reviewed owner PR.
+ * AI-Verse owns the patched dependency revision. Permit its bounded disposable
+ * synthetic proof; real owner execution still requires the separate audit gate.
  */
 export function assertMc1RoutingGate(input: Mc1RoutingGateInput): void {
   if (input.ciSynthetic) {
@@ -45,13 +41,13 @@ export function assertMc1RoutingGate(input: Mc1RoutingGateInput): void {
       pathSegments[pathSegments.length - 1] === "synthetic-system";
     if (
       !input.ciEnvironment ||
-      input.pin !== MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN ||
+      input.pin !== MISSION_CONTROL_PIN ||
       input.systemId !== "ci-synthetic" ||
       input.runtime !== "deterministic" ||
       !disposable
     ) {
       throw new Error(
-        "MC1 CI compatibility route requires the pinned synthetic-only Gateway, deterministic runtime and disposable synthetic workspace.",
+        "MC1 synthetic proof requires the qualified AI-Verse pin, CI flag, synthetic-only Gateway, deterministic runtime and disposable synthetic workspace.",
       );
     }
     return;
@@ -60,12 +56,12 @@ export function assertMc1RoutingGate(input: Mc1RoutingGateInput): void {
     throw new Error(
       "MC1.4 real local proof remains blocked: pinned Mission Control routes local/aiverse to Anthropic. " +
       "Do not add an Anthropic key or reuse the CI-only Ollama alias. " +
-      "An audited upstream routing fix or approved first-class adapter and explicit Dashboard MC1.4 audit gate release are required.",
+      "Use the qualified AI-Verse routing pin; explicit Dashboard MC1.4 audit gate release remains required.",
     );
   }
   throw new Error(
-    "MC1.4 real local proof is not authorized for this Mission Control pin; " +
-    "record an approved routing compatibility and independent audit-gate release before running owner acceptance.",
+    "MC1.4 owner acceptance remains blocked by the independent audit gate; " +
+    "the AI-Verse routing pin is available for disposable synthetic qualification.",
   );
 }
 
@@ -305,12 +301,12 @@ export function ensurePinnedMissionControlLab(
   ).stdout;
   const acceptedRemotes = new Set([
     MISSION_CONTROL_REPO,
-    "https://github.com/builderz-labs/mission-control",
-    "git@github.com:builderz-labs/mission-control.git",
+    "https://github.com/aiverse-filmmakers/mission-control",
+    "git@github.com:aiverse-filmmakers/mission-control.git",
   ]);
   if (!acceptedRemotes.has(remote)) {
     throw new Error(
-      `MC1 lab origin is not Builderz Mission Control: ${remote}`,
+      `MC1 lab origin is not the AI-Verse maintained Mission Control copy: ${remote}`,
     );
   }
 

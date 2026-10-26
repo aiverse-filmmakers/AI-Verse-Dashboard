@@ -80,7 +80,7 @@ async function runProof(env, token) {
 }
 
 async function main() {
-  assert.equal(process.env.CI, "true", "Only a disposable hosted CI runner may execute this proof");
+  assert.equal(process.env.CI, "true", "Only the explicitly marked disposable synthetic runner may execute this proof");
   assert.equal(process.env.AIVERSE_GATEWAY_TOKEN, undefined,
     "Never import an owner Gateway token into a synthetic CI run");
   const head = execFileSync("git", ["-C", gatewaySource, "rev-parse", "HEAD"],
@@ -149,10 +149,10 @@ async function main() {
     assert.equal(result.aiverse_gateway.system_id, "ci-synthetic");
     assert.equal(result.aiverse_gateway.workspace_id, "operator");
     assert.equal(result.aiverse_gateway.model, "aiverse");
-    assert.equal(result.mission_control.pin, "5483a0e1eef15b467c167e95796791112cedbb7c");
-    assert.equal(result.mission_control.dispatch_model, "ollama/deepseek-r1:14b");
-    assert.equal(result.mission_control.local_routing_compatibility_alias, true,
-      "a pinned-upstream local routing workaround is CI-only, not owner acceptance");
+    assert.equal(result.mission_control.pin, "570b74195b0837131ae015a06fe466472f12001a");
+    assert.equal(result.mission_control.dispatch_model, "local/aiverse");
+    assert.equal(result.mission_control.local_routing_compatibility_alias, false,
+      "the genuine local/aiverse route must work without a compatibility alias");
     assert.equal(result.mission_control.marker_present, true,
       "a real response must carry the unique task marker; transport-only success is insufficient");
     assert.equal(result.isolation.mission_control_data, "disposable-lab-only");
@@ -163,14 +163,15 @@ async function main() {
       "Mission Control teardown must preserve the canonical Gateway lifecycle");
     console.log(JSON.stringify({
       success: true,
-      evidence: "hosted synthetic MC1 real HTTP dispatch and response",
+      evidence: "disposable synthetic MC1 real HTTP dispatch and response",
       gateway_merge: GATEWAY_SHA,
       mission_control_pin: result.mission_control.pin,
       system_id: result.aiverse_gateway.system_id,
       workspace_id: result.aiverse_gateway.workspace_id,
       marker_present: true,
-      pinned_upstream_model_routing_bug: "local/aiverse prefix misclassified as Anthropic",
-      ci_only_compatible_route: "ollama/deepseek-r1:14b",
+      dispatch_model: "local/aiverse",
+      compatibility_alias: false,
+      executed_platform: process.platform,
       member_release: false,
       owner_machine_proved: false
     }, null, 2));

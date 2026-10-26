@@ -41,15 +41,15 @@ describe("MC1 automation safety and Gateway preflight", () => {
     }
   });
 
-  it("pins the audited Mission Control commit", () => {
+  it("pins the AI-Verse maintained routing repair", () => {
     assert.equal(
       MISSION_CONTROL_PIN,
-      "5483a0e1eef15b467c167e95796791112cedbb7c",
+      "570b74195b0837131ae015a06fe466472f12001a",
     );
   });
 
   it("fails closed for broken local/aiverse routing and permits CI-only synthetic fixture", () => {
-    assert.equal(MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN, MISSION_CONTROL_PIN);
+    assert.notEqual(MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN, MISSION_CONTROL_PIN);
     const synthetic = {
       pin: MISSION_CONTROL_PIN,
       ciSynthetic: true,
@@ -60,7 +60,7 @@ describe("MC1 automation safety and Gateway preflight", () => {
     };
     assert.doesNotThrow(() => assertMc1RoutingGate(synthetic));
     assert.throws(
-      () => assertMc1RoutingGate({ ...synthetic, ciSynthetic: false }),
+      () => assertMc1RoutingGate({ ...synthetic, ciSynthetic: false, pin: MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN }),
       /routes local\/aiverse to Anthropic/,
       "real owner proof must not use the pinned upstream route or CI alias",
     );
@@ -70,17 +70,23 @@ describe("MC1 automation safety and Gateway preflight", () => {
       { runtime: "openai-compatible" },
       { systemRoot: join(tmpdir(), "real-system") },
       { pin: "new-unreviewed-pin" },
+      { pin: MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN },
     ]) {
       assert.throws(
         () => assertMc1RoutingGate({ ...synthetic, ...changes }),
-        /CI compatibility route requires/,
+        /synthetic proof requires/,
         "synthetic bypass must reject non-disposable system, runtime, pin or runner",
       );
     }
     assert.throws(
       () => assertMc1RoutingGate({ ...synthetic, ciSynthetic: false, pin: "new-unreviewed-pin" }),
-      /not authorized for this Mission Control pin/,
-      "a pin update without explicit owner acceptance is not automatic permission",
+      /independent audit gate/,
+      "a routing repair does not automatically release the owner audit gate",
+    );
+    assert.throws(
+      () => assertMc1RoutingGate({ ...synthetic, ciSynthetic: false }),
+      /independent audit gate/,
+      "the repaired pin alone must not enable execution on an owner system",
     );
     const proof = readFileSync(resolve("scripts/mc1/proof.ts"), "utf8");
     assert.ok(proof.indexOf("assertMc1RoutingGate({") < proof.indexOf("ensurePinnedMissionControlLab(settings"),

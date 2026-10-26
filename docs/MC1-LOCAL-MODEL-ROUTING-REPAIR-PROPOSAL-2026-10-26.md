@@ -1,5 +1,12 @@
 # MC1 local/aiverse routing repair proposal (not authorized to deploy)
 
+> **Current routing decision (26 October 2026):** AI-Verse now maintains its own
+> immutable repair on the previously audited baseline. Upstream acceptance is
+> not required. Genuine `local/aiverse` passed the disposable macOS HTTP proof.
+> See [current source, evidence and remaining acceptance](MC1-AIVERSE-OWNED-ROUTING-2026-10-26.md).
+> The earlier upstream routing restriction/CI alias below is historical and
+> superseded by that decision; the separate real OS/runtime gate is retained.
+
 **2026-10-26 — Status: PROPOSAL / NOT AN ACCEPTED PIN OR ROADMAP AMENDMENT**
 
 ## Proven source-level defect
