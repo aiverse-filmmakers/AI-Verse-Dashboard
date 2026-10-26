@@ -17,7 +17,7 @@ if (
   process.exit(3);
 }
 if (process.env.AIVERSE_GATEWAY_TOKEN || process.env.LOCAL_LLM_API_KEY) {
-  process.stderr.write("Runtime subprocess unexpectedly inherited bearer credentials\\n");
+  process.stderr.write("Runtime subprocess unexpectedly inherited bearer credentials\n");
   process.exit(4);
 }
 const userMessages = envelope.payload.messages.filter((m) => m?.role === "user");
@@ -34,4 +34,4 @@ process.stdout.write(JSON.stringify({
   request_id: envelope.request_id,
   ok: true,
   result
-}) + "\\n");
+}) + "\n");
