@@ -150,7 +150,7 @@ export const handshakeParamsSchema = z
 export const handshakeResultSchema = z
   .object({
     serverProtocol: z.literal(PROTOCOL_VERSION),
-    supportedMajors: z.array(z.number().int().nonnegative()),
+    supportedMajors: z.array(z.number().int().nonnegative()).max(16),
     phase: z.enum(["phase-1-read-only", "phase-2-live"]),
   })
   .strict();
