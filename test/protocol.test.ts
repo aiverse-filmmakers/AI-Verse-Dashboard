@@ -4,12 +4,17 @@ import {
   ALL_METHODS, COMMAND_METHODS, MAX_PARAMS_BYTES, PANEL_ID_PATTERN, PRESENTATIONS,
   PROTOCOL_ERRORS, PURPOSE_CONTROL_METHODS, QUERY_METHODS, WORKSPACE_ID_PATTERN,
   assertQueryOnly, eventSchema, isCommandMethod, isPurposeControlMethod, isQueryMethod,
-  negotiateHandshake, panelIdSchema, parseFrame, presentationSchema, requestSchema,
+  handshakeResultSchema, negotiateHandshake, panelIdSchema, parseFrame, presentationSchema, requestSchema,
   requiresSystem, requiresWorkspace, responseSchema, scopeKey, workspaceScopeKey,
 } from "../packages/protocol/src/index.js";
 
 describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () => {
   it("handshake negotiates major 1 and rejects others", () => { const ok = negotiateHandshake(1); assert.equal(ok.serverProtocol, "1.0"); assert.equal(ok.phase, "phase-2-live"); assert.throws(() => negotiateHandshake(2), /VERSION_MISMATCH/); });
+  it("bounds the handshake supported-major array even for malformed responses", () => {
+    const base = { serverProtocol: "1.0", supportedMajors: [1], phase: "phase-2-live" };
+    assert.equal(handshakeResultSchema.safeParse(base).success, true);
+    assert.equal(handshakeResultSchema.safeParse({ ...base, supportedMajors: Array(17).fill(1) }).success, false);
+  });
   it("OS-bound and workspace-bound methods require explicit ids", () => {
     for (const method of ["purpose.get", ...PURPOSE_CONTROL_METHODS]) { assert.equal(requiresSystem(method), true); assert.equal(requiresWorkspace(method), true); }
     assert.equal(requestSchema.safeParse({ type: "req", v: "1.0", id: "a", method: "purpose.get", workspaceId: "ws-1" }).success, false);
