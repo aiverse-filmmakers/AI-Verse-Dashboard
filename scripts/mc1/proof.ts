@@ -99,6 +99,9 @@ async function main(): Promise<void> {
       systemId: gateway.binding.systemId,
       runtime: String(gateway.status.runtime || ""),
       systemRoot: gateway.binding.root,
+      ...(process.env.AIVERSE_MC1_LOCAL_MODEL_TRIAL === "1" ? {
+        localModelTrial: { gatewayHome: settings.gatewayHome, gatewayUrl: settings.gatewayUrl },
+      } : {}),
     });
     report("authenticated-gateway-preflight-complete");
     report("installing-existing-pinned-mission-control-lab");
@@ -166,6 +169,7 @@ async function main(): Promise<void> {
           `Begin your response with exactly: ${expectedMarker}`,
           "Then give one short sentence confirming you are responding through the active AI-Verse context.",
           "Do not modify files. Do not call external side-effect tools.",
+          ...(process.env.AIVERSE_MC1_LOCAL_MODEL_TRIAL === "1" ? ["Return only the requested short answer. /no_think"] : []),
         ].join("\n"),
         status: "assigned",
         priority: "medium",

@@ -1,0 +1,18 @@
+{
+  "id": "mc1-local-qwen-2026-10-26",
+  "consent_ref": "codex:01a174f1-94a3-7c31-93ec-fd95f80c68bd:01a17993-92d8-7550-bd7a-325df757e3b8:user",
+  "dashboard_base": "705e11b81baff6777a4f6409dde153b3e36d0092",
+  "gateway_revision": "81d49a04c14caf2429cc0acd3a77f1072a1465f0",
+  "os_revision": "d490db4c02e7b72c5cc8eae07080eccfa4dc3989",
+  "mission_control_revision": "570b74195b0837131ae015a06fe466472f12001a",
+  "system_id": "mc1-local-real",
+  "workspace_id": "operator",
+  "gateway_origin": "http://127.0.0.1:18787",
+  "runtime_origin": "http://127.0.0.1:11439",
+  "model": "qwen3:0.6b",
+  "model_digest": "7df6b6e09427a769808717c0a93cadc4ae99ed4eb8bf5ca557c90846becea435",
+  "expires_at": "2026-10-27T23:59:59Z",
+  "private_data": false,
+  "external_credentials": false,
+  "effects": false
+}

@@ -7,7 +7,7 @@
 
 ## Pre-dogfood whole-system audit override
 
-AI-Verse-System now owns an independent whole-system public-beta audit gate before MC1.4 and owner dogfood. This Dashboard tracker remains canonical for Dashboard implementation, but its next executable task is intentionally blocked until the System audit verdict and repair gate release it. Dashboard progress remains **11/100**; no accepted Dashboard work is rolled back.
+AI-Verse-System retains the whole-system audit authority. The operator explicitly approved the bounded disposable local Qwen trial recorded in System PR #288 and Dashboard PR #40. Its real Mac proof passed; [scope, evidence and limitations](MC1-REAL-MODEL-ACCEPTANCE-2026-10-26.md) close MC1.4/MC1.5 for this standalone local-model path. Generic/private-owner and credentialed-cloud trials remain blocked. Current Dashboard progress is **15/100**; next is MC2.1.
 
 ## How to use this tracker
 
@@ -35,7 +35,7 @@ Formal program weight totals **100 points**.
 
 A task contributes its points only after its acceptance gate is satisfied and evidence is recorded.
 
-**Current accepted progress: 11 / 100. 89% remaining.**
+**Current accepted progress: 15 / 100. 85% remaining.**
 
 The previously merged canonical adoption plan is prerequisite context, not retroactive execution credit for this tracker.
 
@@ -183,46 +183,22 @@ Evidence:
 
 
 ### MC1.4 - Real local Mission Control -> Gateway proof - 3 points - A/H
-Status: BLOCKED
+Status: COMPLETE — approved disposable standalone local-model scope
 
-Whole-system audit gate:
-- paused by product-owner decision before real local proof/dogfood;
-- canonical audit program lives in `AI-Verse-System/docs/public-beta-audit/PROGRAM-2026-09-15.md`;
-- do not run `npm run mc1:local` as acceptance until the whole-system audit and required blocking repairs release this gate;
-- existing MC1 automation remains accepted and must not be discarded.
+The operator explicitly approved the local Ollama/Qwen setup, required code and test. System PR #288 records the scope; Dashboard PR #40 implements the exact expiring admission and the automated ephemeral-bearer path. Generic/private-owner execution stays blocked.
 
+Acceptance evidence: [real Mac proof](MC1-REAL-MODEL-ACCEPTANCE-2026-10-26.md) and [sanitized result](evidence/mc1-real-model-macos-2026-10-26.json).
 
-Assistant:
-- provides one command/script;
-- interprets result;
-- diagnoses failures;
-- updates code/runbook if needed.
-
-User:
-- from a current local AI-Verse-Dashboard checkout, runs `npm run mc1:local` on the Mac where the real AI-Verse system and Gateway token exist;
-- pastes the Gateway token only into the hidden terminal prompt;
-- returns the sanitized JSON output or sanitized error if needed.
-
-No manual Mission Control admin setup, agent creation, task creation or dashboard clicking is expected.
-
-Acceptance:
-- one real task executes through canonical Gateway;
-- intended system/workspace proven;
-- response returns to Mission Control;
-- deleting the lab does not affect AI-Verse.
+- Real Qwen model response returned through actual Mission Control task dispatch, canonical Gateway and the real installed standalone OS host.
+- Exact system/workspace, unique response marker, missing/wrong-token refusal, unchanged canonical OS fingerprint and lab cleanup passed.
+- The original hidden-personal-token step was explicitly delegated and replaced for this scope with a fresh in-memory lab bearer using the same proof; no personal credential or private OS was used.
+- A background conversation-summary write authorization was denied by the additional read-only trial policy. Zero effect dispatches occurred.
+- No production/private-Core, tool-action, cloud-provider or member-release acceptance is claimed.
 
 ### MC1.5 - MC1 evidence + gate closure - 1 point - A
-Status: PENDING
+Status: COMPLETE
 
-Deliver:
-- sanitized evidence;
-- accepted refs;
-- known limitations;
-- MC2 activation.
-
-Acceptance:
-- tracker updated;
-- no Mission Control state promoted to canonical AI-Verse truth.
+Sanitized evidence, exact refs, execution-path amendment, initial failures and remaining limitations are recorded in the linked acceptance packet. Mission Control state remains disposable. Existing MC2.1 is the next eligible Dashboard task; Gateway G4.2 remains separately owned.
 
 ---
 
@@ -593,7 +569,7 @@ User:
 
 The expected user workload is intentionally small.
 
-H1: run one MC1 local acceptance script with the real local Gateway/system.  
+H1: completed for the explicitly delegated disposable standalone local-model trial; no personal token was requested. Generic/private-owner use remains blocked.  
 H2: complete provider login only if interactive auth is required.  
 H3: macOS approvals/signing secrets when desktop packaging reaches that point.  
 H4: final dogfood/visual acceptance.
