@@ -5,6 +5,6 @@
   "type": "module",
   "description": "Versioned Gateway protocol: zod envelopes, systemId + workspaceId scoping, no raw roots.",
   "dependencies": {
-    "zod": "^4.6.2"
+    "zod": "^4.6.6"
   }
 }
