@@ -13,9 +13,13 @@ permissions:
 
 jobs:
   synthetic:
-    name: Pinned Mission Control to exact Gateway (synthetic Ubuntu)
+    name: Pinned MC to Gateway / ${{ matrix.variant }} (Ubuntu)
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [fixture, os-host-runtime]
     steps:
       - name: Checkout Dashboard
         uses: actions/checkout@v4
@@ -29,6 +33,21 @@ jobs:
           ref: 9c42bdc21073020c3d7194446b0f2ae929eb25a2
           path: gateway-source
           persist-credentials: false
+
+      - name: Checkout exact AI-Verse OS source for real-host variant
+        if: matrix.variant == 'os-host-runtime'
+        uses: actions/checkout@v4
+        with:
+          repository: aiverse-filmmakers/AI-Verse-OS
+          ref: d490db4c02e7b72c5cc8eae07080eccfa4dc3989
+          path: os-source
+          persist-credentials: false
+
+      - name: Setup Python for OS adapter
+        if: matrix.variant == 'os-host-runtime'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
       - name: Setup Node 22
         uses: actions/setup-node@v4
@@ -47,4 +66,5 @@ jobs:
       - name: Run disposable real-HTTP integration through existing MC1 proof
         env:
           CI: "true"
+          AIVERSE_MC1_COMPOSITION_VARIANT: ${{ matrix.variant }}
         run: node scripts/mc1/ci-synthetic-proof.mjs
