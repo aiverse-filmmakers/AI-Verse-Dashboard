@@ -4,7 +4,7 @@
  * Designed to run BEFORE prompting for a Gateway token, npm ci, or cloning MC.
  * A gate record is evidence, NOT executable authorization on its own.
  */
-import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,8 +33,16 @@ export function inspectGatewayConfig(home, declaredUrl = "http://127.0.0.1:8787"
       (url.pathname === "/" || url.pathname === "") &&
       Number(url.port || 80) === Number(server?.port);
     const root = String(config.system?.root || "");
-    const rootOk = root && existsSync(join(root, "AI-VERSE.yaml")) &&
-      realpathSync(root) === resolve(root);
+    // A valid Mac temp root can resolve /var through /private/var. Never
+    // require all *parent* path components to be symlink-free; instead reject
+    // a symlinked OS root or manifest leaf. Do not open any owner OS data.
+    const manifest = join(root, "AI-VERSE.yaml");
+    const rootInfo = root && existsSync(root) ? lstatSync(root) : null;
+    const manifestInfo = rootInfo && existsSync(manifest) ? lstatSync(manifest) : null;
+    const rootOk = Boolean(
+      root && rootInfo?.isDirectory() && !rootInfo?.isSymbolicLink() &&
+      manifestInfo?.isFile() && !manifestInfo?.isSymbolicLink()
+    );
     output.binding = hostOk && urlOk && rootOk && Boolean(config.system?.id) &&
       Boolean(config.system?.default_workspace) && config.enabled !== false
       ? "local_config_matches" : "unverified";
