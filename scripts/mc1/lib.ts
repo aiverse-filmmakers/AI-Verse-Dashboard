@@ -222,7 +222,8 @@ export function ensurePinnedMissionControlLab(
   mkdirSync(settings.labRoot, { recursive: true });
   assertSafeLabPath(settings.missionControlDir, settings.labRoot);
 
-  if (!existsSync(settings.missionControlDir)) {
+  const freshClone = !existsSync(settings.missionControlDir);
+  if (freshClone) {
     runCommand(
       "git",
       [
@@ -263,12 +264,14 @@ export function ensurePinnedMissionControlLab(
     ["-C", settings.missionControlDir, "status", "--porcelain"],
     { timeoutMs: 10_000 },
   ).stdout;
-  if (dirty && options.resetDirty !== true) {
+  // A --no-checkout fresh clone reports tracked files as deleted until its
+  // audited pin is checked out. That is not an operator's dirty existing lab.
+  if (dirty && !freshClone && options.resetDirty !== true) {
     throw new Error(
       "MC1 Mission Control lab has local changes. Remove/reset the disposable lab or rerun with the explicit reset option.",
     );
   }
-  if (dirty && options.resetDirty === true) {
+  if (dirty && !freshClone && options.resetDirty === true) {
     runCommand(
       "git",
       ["-C", settings.missionControlDir, "reset", "--hard"],
@@ -603,6 +606,9 @@ export function startMissionControl(
     env,
     stdio: ["ignore", "pipe", "pipe"],
     shell: false,
+    // pnpm dev starts Next.js grandchildren. Give the disposable lab its own
+    // process group so cleanup can stop the whole tree on POSIX.
+    detached: process.platform !== "win32",
   });
 
   let logs = "";
@@ -617,17 +623,30 @@ export function startMissionControl(
 export async function stopChild(
   child: ChildProcess,
 ): Promise<void> {
+  const killGroup = (signal: NodeJS.Signals): void => {
+    if (process.platform !== "win32" && child.pid) {
+      try {
+        process.kill(-child.pid, signal);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+      }
+    } else if (child.exitCode === null) {
+      child.kill(signal);
+    }
+  };
+  // Do not skip cleanup merely because the pnpm parent exited first; Next.js
+  // grandchildren can survive and keep writing disposable lab files.
+  killGroup("SIGTERM");
   if (child.exitCode !== null) return;
-  child.kill("SIGTERM");
   await Promise.race([
     new Promise<void>((resolvePromise) => {
       child.once("close", () => resolvePromise());
     }),
     new Promise<void>((resolvePromise) => {
       setTimeout(() => {
-        if (child.exitCode === null) child.kill("SIGKILL");
+        killGroup("SIGKILL");
         resolvePromise();
-      }, 5000);
+      }, 5000).unref();
     }),
   ]);
 }

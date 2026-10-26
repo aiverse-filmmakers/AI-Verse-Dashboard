@@ -74,6 +74,13 @@ async function waitForTaskResult(
 
 async function main(): Promise<void> {
   const settings = settingsFromEnv();
+  const ciSynthetic = process.env.CI === "true" &&
+    process.env.AIVERSE_MC1_CI_SYNTHETIC === "1";
+  const report = (stage: string) => {
+    if (ciSynthetic) {
+      process.stderr.write("mc1-ci:" + stage + "\n");
+    }
+  };
   const keepData = process.env.AIVERSE_MC1_KEEP_LAB_DATA === "1";
   const nonce = randomSecret(8).toLowerCase();
   const runDir = join(settings.labRoot, "runs", nonce);
@@ -82,11 +89,13 @@ async function main(): Promise<void> {
 
   try {
     const gateway = await preflightGateway(settings, { smokeChat: false });
-
+    report("authenticated-gateway-preflight-complete");
+    report("installing-existing-pinned-mission-control-lab");
     const lab = ensurePinnedMissionControlLab(settings, {
       install: true,
       resetDirty: process.argv.includes("--reset-lab"),
     });
+    report("pinned-mission-control-lab-ready");
 
     mkdirSync(dataDir, { recursive: true });
     const mcApiKey = randomSecret(32);
@@ -100,13 +109,23 @@ async function main(): Promise<void> {
       authSecret,
     });
 
+    report("starting-mission-control");
     const started = startMissionControl(settings, env);
     child = started.child;
     const mcBase = `http://127.0.0.1:${settings.missionControlPort}`;
     await waitForMissionControl(mcBase, mcApiKey, child, {
       logTail: started.logTail,
     });
+    report("mission-control-ready");
 
+    // Pinned Mission Control strips "local/" from dispatchModel before
+    // provider classification. Only the disposable deterministic CI check
+    // can use its built-in Ollama catalog alias to exercise local HTTP.
+    // Real owner proof keeps the exact "local/aiverse" request and remains
+    // blocked until that upstream model-selection bug is repaired.
+    const dispatchModel = ciSynthetic
+      ? "ollama/deepseek-r1:14b"
+      : "local/aiverse";
     const agentResponse = await requestJson(`${mcBase}/api/agents`, {
       method: "POST",
       apiKey: mcApiKey,
@@ -116,7 +135,7 @@ async function main(): Promise<void> {
         role: "assistant",
         status: "idle",
         config: {
-          dispatchModel: "local/aiverse",
+          dispatchModel,
           mc1Proof: true,
         },
       }),
@@ -125,7 +144,7 @@ async function main(): Promise<void> {
     if (
       !agent ||
       agent.name !== "ai-verse" ||
-      agent.config?.dispatchModel !== "local/aiverse"
+      agent.config?.dispatchModel !== dispatchModel
     ) {
       throw new Error("Mission Control did not create the expected AI-Verse proof agent");
     }
@@ -158,14 +177,53 @@ async function main(): Promise<void> {
       throw new Error("Mission Control did not return a numeric proof task id");
     }
 
-    const schedulerResponse = await requestJson(`${mcBase}/api/scheduler`, {
-      method: "POST",
-      apiKey: mcApiKey,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ task_id: "task_dispatch" }),
-      signal: AbortSignal.timeout(150_000),
-    });
+    report("synthetic-task-created");
+    // The stock scheduler awaits routing/reconciliation/dispatch before replying.
+    // A delayed HTTP response does not establish that no task was dispatched.
+    // In the synthetic CI test only, bound that response and inspect canonical
+    // Mission Control task state instead of hanging the entire acceptance job.
+    const schedulerAbort = new AbortController();
+    const schedulerDeadline = setTimeout(
+      () => schedulerAbort.abort(),
+      ciSynthetic ? 20_000 : 150_000,
+    );
+    let schedulerResponse: Record<string, unknown> = {};
+    try {
+      schedulerResponse = await requestJson(`${mcBase}/api/scheduler`, {
+        method: "POST",
+        apiKey: mcApiKey,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_id: "task_dispatch" }),
+        signal: schedulerAbort.signal,
+      });
+      report("scheduler-response-received");
+    } catch (error) {
+      if (!ciSynthetic) throw error;
+      report("scheduler-response-unavailable");
+      const diagnostic = String((error as Error).message || error);
+      const safeDiagnostic = redactSecrets(diagnostic, [
+        settings.gatewayToken, mcApiKey, adminPassword, authSecret,
+      ]);
+      report("scheduler-error:" + String(safeDiagnostic).slice(0, 450));
+      const probe = await requestJson(
+        `${mcBase}/api/tasks/${createdTask.id}`,
+        { apiKey: mcApiKey, signal: AbortSignal.timeout(5000) },
+      );
+      const observed = taskFromResponse(probe);
+      report("task-state-after-scheduler:" + String(observed.status || "unknown"));
+      if (observed.status === "assigned") {
+        throw new Error(
+          "Scheduler did not dispatch synthetic task within 20s; task remains assigned. " +
+          String((error as Error).message || error),
+        );
+      }
+      // Continue only if the existing task was actually dispatched; its
+      // returned resolution and unique marker remain mandatory below.
+    } finally {
+      clearTimeout(schedulerDeadline);
+    }
 
+    report("scheduler-invoked");
     const completedTask = await waitForTaskResult(
       mcBase,
       mcApiKey,
@@ -176,6 +234,7 @@ async function main(): Promise<void> {
       throw new Error("Mission Control task completed without a resolution");
     }
 
+    report("task-resolution-received");
     const markerPresent = resolution.includes(expectedMarker);
     const result = {
       ok: true,
@@ -183,7 +242,8 @@ async function main(): Promise<void> {
       mission_control: {
         pin: lab.pin,
         temporary_agent: "ai-verse",
-        dispatch_model: "local/aiverse",
+        dispatch_model: dispatchModel,
+        local_routing_compatibility_alias: ciSynthetic,
         task_id: createdTask.id,
         final_status: completedTask.status,
         outcome: completedTask.outcome ?? null,
