@@ -6,19 +6,19 @@ This note follows the two-file [Dashboard PR #36](https://github.com/aiverse-fil
 
 ## Credential-free first check
 
-Run \`npm run mc1:eligibility\` (or \`node scripts/mc1/eligibility.mjs\` without dependencies). The check reads only the local gate record and **sanitized** Gateway installation metadata; it does not fetch credentials, connect to a provider or install dependencies. Status code 2 means **do not enter a bearer token**.
+Run `npm run mc1:eligibility` (or `node scripts/mc1/eligibility.mjs` without dependencies). The check reads only the local gate record and **sanitized** Gateway installation metadata; it does not fetch credentials, connect to a provider or install dependencies. Status code 2 means **do not enter a bearer token**.
 
-\`npm run mc1:local\` now executes the same preflight before prompting for a token, calling \`npm ci\` or bootstrapping Mission Control. While MC1.4 remains paused, the script returns \`MC1_GATE_BLOCKED\`. Even a manually changed gate JSON marked \`RELEASED\` cannot activate owner execution: an independently reviewed owner admission path is not yet implemented, and \`assertMc1RoutingGate\` also continues to deny non-synthetic runs. This is a deliberate fail-closed design.
+`npm run mc1:local` now executes the same preflight before prompting for a token, calling `npm ci` or bootstrapping Mission Control. While MC1.4 remains paused, the script returns `MC1_GATE_BLOCKED`. Even a manually changed gate JSON marked `RELEASED` cannot activate owner execution: an independently reviewed owner admission path is not yet implemented, and `assertMc1RoutingGate` also continues to deny non-synthetic runs. This is a deliberate fail-closed design.
 
 ## Supported runtime discovery / setup (no credentials supplied here)
 
 Gateway's documented non-test adapter kinds are:
 
-- **\`openai-compatible\`** — requires a real compatible runtime endpoint, an explicit model ID, and optionally an authorized upstream API key held only in an environment variable named in \`api_key_env\`. A Codex subscription, logged-in desktop client or executable does **not** imply an API key or compatible provider service.
-- **\`json-subprocess\`** — requires a separately reviewed executable that actually implements \`ai-verse-gateway-runtime/1.0\` request/response envelopes. The existing \`ci-readonly-runtime.mjs\` is a synthetic test fixture and cannot count as a real AI model.
-- **\`deterministic\`** — fixture-only; cannot satisfy a real-runtime acceptance requirement.
+- **`openai-compatible`** — requires a real compatible runtime endpoint, an explicit model ID, and optionally an authorized upstream API key held only in an environment variable named in `api_key_env`. A Codex subscription, logged-in desktop client or executable does **not** imply an API key or compatible provider service.
+- **`json-subprocess`** — requires a separately reviewed executable that actually implements `ai-verse-gateway-runtime/1.0` request/response envelopes. The existing `ci-readonly-runtime.mjs` is a synthetic test fixture and cannot count as a real AI model.
+- **`deterministic`** — fixture-only; cannot satisfy a real-runtime acceptance requirement.
 
-Do **not** create a new provider credential, start an external server, use personal OS data, or run a real provider test on the strength of the October 5 conditional audit verdict alone. After explicit approved scoped gate release, discover any custom \`AIVERSE_GATEWAY_HOME\` and \`AIVERSE_GATEWAY_URL\` on the owner's Mac rather than assuming the default. Verify actual OS root, workspace, runtime and loopback binding, and preserve separate OS/Brain/Memory/Connections authority.
+Do **not** create a new provider credential, start an external server, use personal OS data, or run a real provider test on the strength of the October 5 conditional audit verdict alone. After explicit approved scoped gate release, discover any custom `AIVERSE_GATEWAY_HOME` and `AIVERSE_GATEWAY_URL` on the owner's Mac rather than assuming the default. Verify actual OS root, workspace, runtime and loopback binding, and preserve separate OS/Brain/Memory/Connections authority.
 
 ## Exact acceptance prerequisites
 
@@ -29,6 +29,12 @@ Do **not** create a new provider credential, start an external server, use perso
 
 ## Security advisory
 
-The PR #36 observed npm [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5) in locked Zod 4.6.2. This is an availability/DoS advisory (oversized collection validation). It is not evidence of a successful attack against Dashboard. Upgrade Zod to a fixed version **at least 4.6.6** in a separately tested dependency PR; limit exposed container sizes in schema parsing where sensible. The upgrade requires a reproducible lockfile and npm CI. Do not mark a security finding resolved merely because the version string was edited.
+The version observed in draft PR #36 (locked Zod 4.6.2, [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)) was **remediated** in merged Dashboard [PR #38](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/38): locked Zod 4.6.6, bounded handshake collections, and passing Windows/macOS/Ubuntu CI. This is evidence of dependency remediation, **not** proof that no other application endpoint can be abused.
+
+## Runtime readiness is configuration review, not model qualification
+
+`mc1:eligibility` now reports `runtime_configuration` and `provider` categories only; no local OS root, executable path, model ID, endpoint or provider secret is returned. `configured_unverified` means *syntax plausibly matches* a supported runtime; it does not establish the executable or AI model exists, is reachable, or is authorized. `test_only` includes Gateway's deterministic mode and known synthetic subprocess fixtures. `external_scope_required` explicitly withholds acceptance until separate network/credential scope approval.
+
+See the [non-executable, scoped owner decision checklist](MC1-REAL-RUNTIME-SCOPED-APPROVAL-CHECKLIST-2026-10-26.md). **No approval is inferred** from the existence of these documents.
 
 **Accounting:** Dashboard 11/100, Gateway 8/10, MC1.4 BLOCKED, G4.1 and G4.2 UNACCEPTED; no member or Distribution promotion.

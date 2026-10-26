@@ -4,17 +4,18 @@
  * Designed to run BEFORE prompting for a Gateway token, npm ci, or cloning MC.
  * A gate record is evidence, NOT executable authorization on its own.
  */
-import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { inspectRuntimeDescriptor } from "./runtime-inspection.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const DEFAULT_GATE = join(ROOT, "docs", "mc1-owner-audit-gate.json");
 const REQUIRED_MC_PIN = "570b74195b0837131ae015a06fe466472f12001a";
 
 export function inspectGatewayConfig(home, declaredUrl = "http://127.0.0.1:8787") {
-  const output = { home: "not_found", binding: "unverified", runtime: "unverified" };
+  const output = { home: "not_found", binding: "unverified", runtime: "unverified", runtime_configuration: "unverified", provider: "unverified" };
   const p = join(resolve(home), "config.json");
   try {
     const info = lstatSync(p);
@@ -32,14 +33,25 @@ export function inspectGatewayConfig(home, declaredUrl = "http://127.0.0.1:8787"
       (url.pathname === "/" || url.pathname === "") &&
       Number(url.port || 80) === Number(server?.port);
     const root = String(config.system?.root || "");
-    const rootOk = root && existsSync(join(root, "AI-VERSE.yaml")) &&
-      realpathSync(root) === resolve(root);
+    // A valid Mac temp root can resolve /var through /private/var. Never
+    // require all *parent* path components to be symlink-free; instead reject
+    // a symlinked OS root or manifest leaf. Do not open any owner OS data.
+    const manifest = join(root, "AI-VERSE.yaml");
+    const rootInfo = root && existsSync(root) ? lstatSync(root) : null;
+    const manifestInfo = rootInfo && existsSync(manifest) ? lstatSync(manifest) : null;
+    const rootOk = Boolean(
+      root && rootInfo?.isDirectory() && !rootInfo?.isSymbolicLink() &&
+      manifestInfo?.isFile() && !manifestInfo?.isSymbolicLink()
+    );
     output.binding = hostOk && urlOk && rootOk && Boolean(config.system?.id) &&
       Boolean(config.system?.default_workspace) && config.enabled !== false
       ? "local_config_matches" : "unverified";
     const kind = config.runtime?.kind;
     output.runtime = ["json-subprocess", "openai-compatible", "deterministic"].includes(kind)
       ? kind : "unsupported_or_unconfigured";
+    const descriptor = inspectRuntimeDescriptor(config.runtime);
+    output.runtime_configuration = descriptor.configuration;
+    output.provider = descriptor.provider;
     return output;
   } catch {
     // Deliberately never print paths, raw config, tokens, verifier hashes or JSON errors.
@@ -59,7 +71,9 @@ export function evaluateReadiness(gate, inspection) {
     };
   }
   if (inspection.binding !== "local_config_matches" ||
-      !["json-subprocess", "openai-compatible"].includes(inspection.runtime)) {
+      !["json-subprocess", "openai-compatible"].includes(inspection.runtime) ||
+      inspection.runtime_configuration !== "configured_unverified" ||
+      inspection.provider === "external_scope_required") {
     return {
       ok: false, code: "MC1_LOCAL_RUNTIME_UNVERIFIED",
       message: "Approved local loopback Gateway and supported non-test runtime configuration were not verified."
@@ -81,7 +95,7 @@ export function inspectReadiness({ gatePath = DEFAULT_GATE, env = process.env } 
     if (!f.isFile() || f.isSymbolicLink()) throw new Error("unsafe gate");
     gate = JSON.parse(readFileSync(gatePath, "utf8"));
   } catch {
-    return { ok: false, code: "MC1_GATE_MISSING_OR_INVALID", gateway: { home: "unverified", binding: "unverified", runtime: "unverified" } };
+    return { ok: false, code: "MC1_GATE_MISSING_OR_INVALID", gateway: { home: "unverified", binding: "unverified", runtime: "unverified", runtime_configuration: "unverified", provider: "unverified" } };
   }
   const home = resolve(env.AIVERSE_GATEWAY_HOME || join(homedir(), ".aiverse", "gateway"));
   const inspected = inspectGatewayConfig(home, env.AIVERSE_GATEWAY_URL || "http://127.0.0.1:8787");
