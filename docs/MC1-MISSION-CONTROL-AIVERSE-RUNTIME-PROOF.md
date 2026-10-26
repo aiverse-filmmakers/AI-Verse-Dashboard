@@ -27,6 +27,12 @@ The [routing defect and repair proposal](MC1-LOCAL-MODEL-ROUTING-REPAIR-PROPOSAL
 
 The independent audit release gate remains separate. Neither a successful hosted CI run nor bypassing the model failure authorizes an owner-machine proof.
 
+### 26 October 2026: bounded real OS-host CI qualification
+
+The [real OS host and supported subprocess runtime qualification](MC1-OS-HOST-SUBPROCESS-QUALIFICATION-2026-10-26.md) adds an independent hosted variant to the existing owned-routing proof. It uses the exact pinned AI-Verse OS Python host, verified `describe()` and `read_context(operator)`, invalid-scope refusal, and a supported `json-subprocess` protocol runtime with an intentionally synthetic read-only implementation. Both hosted variants passed, including the original deterministic fixture baseline, without any owner credentials.
+
+**Important:** this proves real OS host adapter integration and a supported runtime *transport*, not a real LLM or owner-installed canonical OS. The existing MC1.4 independent gate and real local supervised acceptance still apply. Do not enter a token in ChatGPT, expose a live listener, or promote this CI result to Distribution release readiness.
+
 ## Goal
 
 Prove that stock Builderz Labs Mission Control can dispatch a real task through the canonical AI-Verse Gateway without making Mission Control an AI-Verse owner.
