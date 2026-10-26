@@ -6,6 +6,14 @@
 
 > **Current gate: MC1.4 BLOCKED.** This runbook describes the existing future proof path; it does not authorize running `npm run mc1:local` or `npm run mc1:proof` today. The [canonical Dashboard tracker](MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md) requires explicit audit/repair gate release first. Until then, only source review and credential-free mock/fixture checks are in scope. The human step below applies **after** that release, on a disposable synthetic-data system.
 
+## GitHub synthetic qualification — 2026-10-26
+
+GitHub Actions [hosted CI run 40315019683](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40315019683) **PASSED**: pinned upstream Mission Control, exact merged Gateway `9c42bdc21073020c3d7194446b0f2ae929eb25a2`, disposable synthetic system, real authenticated loopback HTTP, actual task dispatch, returned task marker, scoped Gateway binding and cleanup. Dashboard Node 22 Windows/macOS/Ubuntu CI passed on the same PR revision.
+
+**Upstream model-selection defect remains:** the pinned `src/lib/task-dispatch.ts` strips `local/` from agent `dispatchModel=local/aiverse` before provider selection; `aiverse` is not a recognized local catalog model, so stock Mission Control mistakenly tries Anthropic. This was reproduced in hosted CI as `ANTHROPIC_API_KEY not set` and **no dispatch**. To separately prove real transport without altering the audited third-party commit, the hosted *deterministic-only* test explicitly uses that upstream version's built-in Ollama routing alias `ollama/deepseek-r1:14b`. The real Gateway itself still advertises `aiverse`; the alias is a dispatch compatibility workaround, **not** a real model choice, production setting, or a claimed fix for the stock `local/aiverse` path. Only the dedicated `CI=true` synthetic runner may activate it.
+
+**Not accepted yet:** Dashboard MC1.4 / Gateway G4.1 real local proof. Their independent audit gate remains BLOCKED; the `local/aiverse` routing defect also requires an approved upstream pin update or explicit owner-reviewed adapter design before owner-machine acceptance. Do not silently patch the third-party checkout or present the CI workaround as production-ready. No personal token, system, member release, or Distribution pin was touched.
+
 ## Goal
 
 Prove that stock Builderz Labs Mission Control can dispatch a real task through the canonical AI-Verse Gateway without making Mission Control an AI-Verse owner.
