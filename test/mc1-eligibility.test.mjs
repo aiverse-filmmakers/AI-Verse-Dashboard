@@ -49,6 +49,16 @@ describe("MC1 pre-token owner eligibility", () => {
       assert.equal(inspectGatewayConfig(home, "https://example.com:8787").binding, "unverified");
       assert.equal(inspectGatewayConfig(home, "http://127.0.0.1:9999").binding, "unverified");
       assert.equal(inspectGatewayConfig(home, "http://127.0.0.1:8787/?token=x").binding, "unverified");
+      const aliasedOs = join(root, "os-link");
+      symlinkSync(system, aliasedOs, process.platform === "win32" ? "junction" : "dir");
+      const normalConfig = readFileSync(join(home, "config.json"), "utf8");
+      writeFileSync(join(home, "config.json"), JSON.stringify({
+        ...JSON.parse(normalConfig),
+        system: { ...JSON.parse(normalConfig).system, root: aliasedOs }
+      }));
+      assert.equal(inspectGatewayConfig(home).binding, "unverified",
+        "a symlinked final OS root must fail closed");
+      writeFileSync(join(home, "config.json"), normalConfig);
       const gatePath = join(root, "gate.json");
       writeFileSync(gatePath, JSON.stringify(gate));
       const actual = inspectReadiness({ gatePath, env: {
