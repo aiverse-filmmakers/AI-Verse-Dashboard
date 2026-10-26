@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout Dashboard
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Checkout exact accepted Gateway source
         uses: actions/checkout@v4
