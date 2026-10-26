@@ -1,0 +1,18 @@
+{
+  "schema_version": "mc1-owner-audit-gate/1.0",
+  "decision": "BLOCKED",
+  "recorded_at": "2026-10-26",
+  "independent_audit_verdict": "CONDITIONAL_GO_CONTROLLED_DOGFOOD",
+  "audit_reference": "AI-Verse-System/docs/public-beta-audit/repairs/FINAL-INDEPENDENT-RECHECK-2026-10-05.md",
+  "dashboard_source_revision": "bf519379ea141d77e182e75ef51872f16750a905",
+  "gateway_source_revision": "9c42bdc21073020c3d7194446b0f2ae929eb25a2",
+  "os_source_revision": "d490db4c02e7b72c5cc8eae07080eccfa4dc3989",
+  "mission_control_source_revision": "570b74195b0837131ae015a06fe466472f12001a",
+  "approved_scope": null,
+  "approved_system_id": null,
+  "approved_workspace_id": null,
+  "approved_runtime_kind": null,
+  "approved_gateway_origin": null,
+  "explicit_owner_release": null,
+  "notes": "The independent recheck allows supervised disposable synthetic-data dogfood only. Dashboard MC1.4 still has an explicit owner pause. PR36 is Mac synthetic transport evidence, not a release. No permission for real provider credentials, personal OS data, Full profile or unreviewed runtime actions."
+}
