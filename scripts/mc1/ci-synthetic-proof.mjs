@@ -150,7 +150,9 @@ async function main() {
     assert.equal(result.aiverse_gateway.workspace_id, "operator");
     assert.equal(result.aiverse_gateway.model, "aiverse");
     assert.equal(result.mission_control.pin, "5483a0e1eef15b467c167e95796791112cedbb7c");
-    assert.equal(result.mission_control.dispatch_model, "local/aiverse");
+    assert.equal(result.mission_control.dispatch_model, "ollama/deepseek-r1:14b");
+    assert.equal(result.mission_control.local_routing_compatibility_alias, true,
+      "a pinned-upstream local routing workaround is CI-only, not owner acceptance");
     assert.equal(result.mission_control.marker_present, true,
       "a real response must carry the unique task marker; transport-only success is insufficient");
     assert.equal(result.isolation.mission_control_data, "disposable-lab-only");
@@ -167,6 +169,8 @@ async function main() {
       system_id: result.aiverse_gateway.system_id,
       workspace_id: result.aiverse_gateway.workspace_id,
       marker_present: true,
+      pinned_upstream_model_routing_bug: "local/aiverse prefix misclassified as Anthropic",
+      ci_only_compatible_route: "ollama/deepseek-r1:14b",
       member_release: false,
       owner_machine_proved: false
     }, null, 2));
