@@ -612,3 +612,16 @@ All other tasks are assistant-owned by default.
 8. Do not resume the historical Dashboard BUILD-MAP as the active sequence.
 9. Do not rely on conversation memory when this tracker has the answer.
 10. At each update, report accepted points and percentage remaining.
+
+
+## 26 October 2026 — Owned routing qualification
+
+The operator explicitly replaced waiting for upstream acceptance with a maintained
+AI-Verse dependency repair. [Current decision and Mac evidence](MC1-AIVERSE-OWNED-ROUTING-2026-10-26.md)
+record the exact owned source, three-line delta, 11 routing checks, Dashboard checks
+and successful genuine `local/aiverse` macOS HTTP composition. The old alias is
+removed from the runner; unknown pins and non-disposable synthetic runs remain
+blocked. This resolves the routing prerequisite, not the real OS/runtime portion
+of MC1.4. Continue with our bounded owner-runtime qualification and its audit
+record; do not wait for Builderz or count the deterministic host as real-runtime
+acceptance. Dashboard progress is unchanged until fixed MC1.4 acceptance is met.

@@ -1,5 +1,12 @@
 # MC1 Runbook: Automated Mission Control -> AI-Verse Runtime Proof
 
+> **Current routing decision (26 October 2026):** AI-Verse now maintains its own
+> immutable repair on the previously audited baseline. Upstream acceptance is
+> not required. Genuine `local/aiverse` passed the disposable macOS HTTP proof.
+> See [current source, evidence and remaining acceptance](MC1-AIVERSE-OWNED-ROUTING-2026-10-26.md).
+> The earlier upstream routing restriction/CI alias below is historical and
+> superseded by that decision; the separate real OS/runtime gate is retained.
+
 **Date:** 2026-09-15  
 **Status:** canonical local acceptance runbook  
 **Mission Control pin:** `5483a0e1eef15b467c167e95796791112cedbb7c`
