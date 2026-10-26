@@ -1,6 +1,8 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import {
+  MISSION_CONTROL_PIN,
+  assertMc1RoutingGate,
   buildMissionControlEnvironment,
   ensurePinnedMissionControlLab,
   preflightGateway,
@@ -89,6 +91,14 @@ async function main(): Promise<void> {
 
   try {
     const gateway = await preflightGateway(settings, { smokeChat: false });
+    assertMc1RoutingGate({
+      pin: MISSION_CONTROL_PIN,
+      ciSynthetic,
+      ciEnvironment: process.env.CI === "true",
+      systemId: gateway.binding.systemId,
+      runtime: String(gateway.status.runtime || ""),
+      systemRoot: gateway.binding.root,
+    });
     report("authenticated-gateway-preflight-complete");
     report("installing-existing-pinned-mission-control-lab");
     const lab = ensurePinnedMissionControlLab(settings, {
