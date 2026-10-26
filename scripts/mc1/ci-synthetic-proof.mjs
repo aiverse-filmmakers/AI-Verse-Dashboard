@@ -46,7 +46,12 @@ async function runProof(env, token) {
   let stderr = "";
   const append = (prev, chunk) => (prev + chunk.toString()).slice(-16000);
   child.stdout.on("data", (chunk) => { stdout = append(stdout, chunk); });
-  child.stderr.on("data", (chunk) => { stderr = append(stderr, chunk); });
+  child.stderr.on("data", (chunk) => {
+    stderr = append(stderr, chunk);
+    for (const line of chunk.toString().split("\n")) {
+      if (line.startsWith("mc1-ci:")) console.error(line);
+    }
+  });
   let timedOut = false;
   const timeout = setTimeout(() => {
     timedOut = true;
@@ -136,6 +141,7 @@ async function main() {
       AIVERSE_MC1_LAB_ROOT: labRoot,
       AIVERSE_MC1_PORT: String(missionControlPort),
       AIVERSE_MC1_KEEP_LAB_DATA: "0",
+      AIVERSE_MC1_CI_SYNTHETIC: "1",
       AIVERSE_MC1_ALLOW_REMOTE: "0"
     }, token);
     assert.equal(result.ok, true);
