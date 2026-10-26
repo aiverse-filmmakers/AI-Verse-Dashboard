@@ -9,6 +9,13 @@ cleanup_secret() {
 }
 trap cleanup_secret EXIT INT TERM
 
+# Run a no-dependency, credential-free audit/installation eligibility check
+# *before* asking for a bearer token or executing npm lifecycle scripts.
+(
+  unset AIVERSE_GATEWAY_TOKEN LOCAL_LLM_API_KEY
+  node scripts/mc1/eligibility.mjs
+)
+
 if [[ -z "${AIVERSE_GATEWAY_TOKEN:-}" ]]; then
   printf "AI-Verse Gateway token (input hidden): " >&2
   IFS= read -r -s AIVERSE_GATEWAY_TOKEN
