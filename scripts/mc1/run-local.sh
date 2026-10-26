@@ -22,7 +22,12 @@ if [[ -z "${AIVERSE_GATEWAY_TOKEN:-}" ]]; then
 fi
 
 echo "Preparing the verified AI-Verse Dashboard MC1 proof..."
-npm ci
+# Install scripts never receive a live Gateway bearer credential.
+# Keep the parent's token available only for the subsequent proof.
+(
+  unset AIVERSE_GATEWAY_TOKEN LOCAL_LLM_API_KEY
+  npm ci
+)
 
 echo "Running the disposable Mission Control -> AI-Verse Gateway proof..."
 npm run mc1:proof
