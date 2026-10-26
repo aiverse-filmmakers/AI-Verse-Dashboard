@@ -24,6 +24,7 @@ export interface Mc1RoutingGateInput {
   pin: string;
   ciSynthetic: boolean;
   ciEnvironment: boolean;
+  ciOsHost?: boolean;
   systemId: string;
   runtime: string;
   systemRoot: string;
@@ -43,7 +44,9 @@ export function assertMc1RoutingGate(input: Mc1RoutingGateInput): void {
       !input.ciEnvironment ||
       input.pin !== MISSION_CONTROL_PIN ||
       input.systemId !== "ci-synthetic" ||
-      input.runtime !== "deterministic" ||
+      (input.ciOsHost
+        ? input.runtime !== "json-subprocess"
+        : input.runtime !== "deterministic") ||
       !disposable
     ) {
       throw new Error(
