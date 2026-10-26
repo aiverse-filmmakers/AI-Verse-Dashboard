@@ -3,13 +3,18 @@
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
 import { createServer } from "node:net";
-import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm, cp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 const GATEWAY_SHA = "9c42bdc21073020c3d7194446b0f2ae929eb25a2";
 const gatewaySource = path.resolve(process.env.AIVERSE_CI_GATEWAY_SOURCE || "gateway-source");
+const OS_SHA = "d490db4c02e7b72c5cc8eae07080eccfa4dc3989";
+const osSource = path.resolve(process.env.AIVERSE_CI_OS_SOURCE || "os-source");
+const variant = process.env.AIVERSE_MC1_COMPOSITION_VARIANT || "fixture";
+assert.ok(["fixture", "os-host-runtime"].includes(variant), "unknown MC1 CI composition variant");
+const realOsHost = variant === "os-host-runtime";
 const proofEntry = path.resolve("dist/scripts/mc1/proof.js");
 
 async function freeLoopbackPort() {
@@ -86,12 +91,19 @@ async function main() {
   const head = execFileSync("git", ["-C", gatewaySource, "rev-parse", "HEAD"],
     { encoding: "utf8" }).trim();
   assert.equal(head, GATEWAY_SHA, "Gateway source must match the exact accepted merge commit");
+  if (realOsHost) {
+    const osHead = execFileSync("git", ["-C", osSource, "rev-parse", "HEAD"],
+      { encoding: "utf8" }).trim();
+    assert.equal(osHead, OS_SHA, "OS source must match the exact qualified revision");
+  }
   const { installComponent, setupComponent } = await import(
     pathToFileURL(path.join(gatewaySource, "src", "lifecycle.mjs")).href);
   const { loadConfig } = await import(
     pathToFileURL(path.join(gatewaySource, "src", "config.mjs")).href);
   const { startServer } = await import(
     pathToFileURL(path.join(gatewaySource, "src", "server.mjs")).href);
+  const { HostClient } = await import(
+    pathToFileURL(path.join(gatewaySource, "src", "host-adapter.mjs")).href);
 
   const root = await mkdtemp(path.join(tmpdir(), "aiverse-mc1-github-synthetic-"));
   const systemRoot = path.join(root, "synthetic-system");
@@ -101,14 +113,25 @@ async function main() {
   let live;
   let primaryError = null;
   try {
-    await mkdir(systemRoot, { recursive: true });
-    await writeFile(path.join(systemRoot, "AI-VERSE.yaml"), "schema_version: 2.0\n");
-    await writeFile(hostConfig, JSON.stringify({
-      transport: "json-subprocess",
-      command: [process.execPath, path.join(gatewaySource, "fixtures", "fake-host.mjs")],
-      timeout_seconds: 10, max_output_bytes: 1048576,
-      max_stderr_bytes: 65536, env_names: [], cwd: systemRoot
-    }));
+    if (realOsHost) {
+      // Copy the exact pinned real OS repository into an isolated synthetic root.
+      // Never run a source checkout as an owner system or share its user state.
+      await cp(osSource, systemRoot, {
+        recursive: true,
+        filter: (source) => path.basename(source) !== ".git"
+      });
+      assert.ok((await readFile(path.join(systemRoot, "AI-VERSE.yaml"), "utf8")).length > 100);
+      assert.ok((await readFile(path.join(systemRoot, "scripts", "ai_verse_host_adapter.py"), "utf8")).length > 100);
+    } else {
+      await mkdir(systemRoot, { recursive: true });
+      await writeFile(path.join(systemRoot, "AI-VERSE.yaml"), "schema_version: 2.0\n");
+      await writeFile(hostConfig, JSON.stringify({
+        transport: "json-subprocess",
+        command: [process.execPath, path.join(gatewaySource, "fixtures", "fake-host.mjs")],
+        timeout_seconds: 10, max_output_bytes: 1048576,
+        max_stderr_bytes: 65536, env_names: [], cwd: systemRoot
+      }));
+    }
     const gatewayPort = await freeLoopbackPort();
     const missionControlPort = await freeLoopbackPort();
     assert.notEqual(missionControlPort, gatewayPort);
@@ -116,9 +139,29 @@ async function main() {
     await installComponent({ home: gatewayHome });
     const setup = await setupComponent({
       home: gatewayHome, system_root: systemRoot,
-      host_config: hostConfig, runtime: "deterministic",
+      ...(realOsHost ? {
+        runtime: "json-subprocess",
+        runtime_command: JSON.stringify([
+          process.execPath, path.resolve("scripts/mc1/ci-readonly-runtime.mjs")
+        ]),
+        runtime_cwd: systemRoot,
+        runtime_env_names: []
+      } : { host_config: hostConfig, runtime: "deterministic" }),
       system_id: "ci-synthetic", workspace: "operator", port: gatewayPort
     });
+    const host = new HostClient(path.join(gatewayHome, "host.json"));
+    const description = await host.describe();
+    assert.equal(description.metadata?.canonical_state_owned, false);
+    if (realOsHost) {
+      assert.equal(description.adapter_id, "ai-verse-os:host",
+        "Gateway must use the real OS-owned Python adapter, not fake-host");
+      assert.ok(description.operations.includes("read_context"));
+      const context = await host.readContext("operator");
+      assert.ok(context && typeof context === "object", "real OS context must resolve");
+      await assert.rejects(host.readContext("workspace:invalid!"),
+        /invalid scope|HOST_REJECTED/,
+        "real OS host must reject invalid workspace scope");
+    }
     const token = setup.api_token;
     assert.ok(typeof token === "string" && token.startsWith("avg_"));
     live = await startServer(await loadConfig(gatewayHome), gatewayHome);
@@ -142,6 +185,7 @@ async function main() {
       AIVERSE_MC1_PORT: String(missionControlPort),
       AIVERSE_MC1_KEEP_LAB_DATA: "0",
       AIVERSE_MC1_CI_SYNTHETIC: "1",
+      AIVERSE_MC1_CI_OS_HOST: realOsHost ? "1" : "0",
       AIVERSE_MC1_ALLOW_REMOTE: "0"
     }, token);
     assert.equal(result.ok, true);
@@ -149,6 +193,8 @@ async function main() {
     assert.equal(result.aiverse_gateway.system_id, "ci-synthetic");
     assert.equal(result.aiverse_gateway.workspace_id, "operator");
     assert.equal(result.aiverse_gateway.model, "aiverse");
+    assert.equal(result.aiverse_gateway.runtime,
+      realOsHost ? "json-subprocess" : "deterministic");
     assert.equal(result.mission_control.pin, "570b74195b0837131ae015a06fe466472f12001a");
     assert.equal(result.mission_control.dispatch_model, "local/aiverse");
     assert.equal(result.mission_control.local_routing_compatibility_alias, false,
@@ -163,7 +209,12 @@ async function main() {
       "Mission Control teardown must preserve the canonical Gateway lifecycle");
     console.log(JSON.stringify({
       success: true,
-      evidence: "disposable synthetic MC1 real HTTP dispatch and response",
+      evidence: realOsHost
+        ? "real pinned AI-Verse OS host and supported read-only subprocess runtime HTTP dispatch"
+        : "disposable synthetic MC1 real HTTP dispatch and response",
+      os_source_sha: realOsHost ? OS_SHA : null,
+      host_adapter: realOsHost ? "ai-verse-os:host" : "fixture",
+      runtime_kind: result.aiverse_gateway.runtime,
       gateway_merge: GATEWAY_SHA,
       mission_control_pin: result.mission_control.pin,
       system_id: result.aiverse_gateway.system_id,
@@ -173,7 +224,8 @@ async function main() {
       compatibility_alias: false,
       executed_platform: process.platform,
       member_release: false,
-      owner_machine_proved: false
+      owner_machine_proved: false,
+      real_model_or_owner_runtime_proved: false
     }, null, 2));
   } catch (error) {
     primaryError = error;
