@@ -169,9 +169,14 @@ export function runCommand(
     timeoutMs?: number;
   } = {},
 ): CommandResult {
+  // Installer and Git tooling do not need runtime Gateway credentials.
+  // Apply this to explicitly supplied envs too, not just process.env.
+  const toolEnv = { ...(options.env ?? process.env) };
+  delete toolEnv.AIVERSE_GATEWAY_TOKEN;
+  delete toolEnv.LOCAL_LLM_API_KEY;
   const result = spawnSync(command, args, {
     cwd: options.cwd,
-    env: options.env ?? process.env,
+    env: toolEnv,
     encoding: "utf8",
     shell: false,
     timeout: options.timeoutMs ?? 120_000,
