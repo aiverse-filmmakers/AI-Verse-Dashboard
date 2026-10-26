@@ -13,6 +13,8 @@ import { join, resolve } from "node:path";
 import {
   DEFAULT_GATEWAY_URL,
   MISSION_CONTROL_PIN,
+  MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN,
+  assertMc1RoutingGate,
   buildMissionControlEnvironment,
   isPathWithin,
   normalizeGatewayUrl,
@@ -44,6 +46,45 @@ describe("MC1 automation safety and Gateway preflight", () => {
       MISSION_CONTROL_PIN,
       "5483a0e1eef15b467c167e95796791112cedbb7c",
     );
+  });
+
+  it("fails closed for broken local/aiverse routing and permits CI-only synthetic fixture", () => {
+    assert.equal(MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN, MISSION_CONTROL_PIN);
+    const synthetic = {
+      pin: MISSION_CONTROL_PIN,
+      ciSynthetic: true,
+      ciEnvironment: true,
+      systemId: "ci-synthetic",
+      runtime: "deterministic",
+      systemRoot: join(tmpdir(), "aiverse-mc1-github-synthetic-fixture", "synthetic-system"),
+    };
+    assert.doesNotThrow(() => assertMc1RoutingGate(synthetic));
+    assert.throws(
+      () => assertMc1RoutingGate({ ...synthetic, ciSynthetic: false }),
+      /routes local\/aiverse to Anthropic/,
+      "real owner proof must not use the pinned upstream route or CI alias",
+    );
+    for (const changes of [
+      { ciEnvironment: false },
+      { systemId: "actual-owner-system" },
+      { runtime: "openai-compatible" },
+      { systemRoot: join(tmpdir(), "real-system") },
+      { pin: "new-unreviewed-pin" },
+    ]) {
+      assert.throws(
+        () => assertMc1RoutingGate({ ...synthetic, ...changes }),
+        /CI compatibility route requires/,
+        "synthetic bypass must reject non-disposable system, runtime, pin or runner",
+      );
+    }
+    assert.throws(
+      () => assertMc1RoutingGate({ ...synthetic, ciSynthetic: false, pin: "new-unreviewed-pin" }),
+      /not authorized for this Mission Control pin/,
+      "a pin update without explicit owner acceptance is not automatic permission",
+    );
+    const proof = readFileSync(resolve("scripts/mc1/proof.ts"), "utf8");
+    assert.ok(proof.indexOf("assertMc1RoutingGate({") < proof.indexOf("ensurePinnedMissionControlLab(settings"),
+      "routing gate must stop lab bootstrap before unapproved local dispatch");
   });
 
   it("normalizes Gateway URLs and defaults to loopback", () => {
