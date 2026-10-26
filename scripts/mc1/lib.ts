@@ -14,6 +14,61 @@ export const MISSION_CONTROL_REPO =
   "https://github.com/builderz-labs/mission-control.git";
 export const MISSION_CONTROL_PIN =
   "5483a0e1eef15b467c167e95796791112cedbb7c";
+// This exact audited upstream pin misroutes dispatchModel=local/aiverse to
+// Anthropic. Do not confuse a CI-only Ollama catalog workaround with a
+// verified first-class owner model route.
+export const MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN =
+  "5483a0e1eef15b467c167e95796791112cedbb7c";
+
+export interface Mc1RoutingGateInput {
+  pin: string;
+  ciSynthetic: boolean;
+  ciEnvironment: boolean;
+  systemId: string;
+  runtime: string;
+  systemRoot: string;
+}
+
+/**
+ * Fail closed until upstream local/aiverse model dispatch and the separate
+ * Dashboard audit gate are accepted. Only the fully disposable deterministic
+ * GitHub test may use its explicitly marked compatibility route.
+ *
+ * This is NOT the MC1.4 owner gate release. Future pin qualification must
+ * change this source and tests through a separately reviewed owner PR.
+ */
+export function assertMc1RoutingGate(input: Mc1RoutingGateInput): void {
+  if (input.ciSynthetic) {
+    const pathSegments = resolve(input.systemRoot).split(/[\\/]+/);
+    const disposable =
+      pathSegments.some((part) => part.startsWith("aiverse-mc1-github-synthetic-")) &&
+      pathSegments[pathSegments.length - 1] === "synthetic-system";
+    if (
+      !input.ciEnvironment ||
+      input.pin !== MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN ||
+      input.systemId !== "ci-synthetic" ||
+      input.runtime !== "deterministic" ||
+      !disposable
+    ) {
+      throw new Error(
+        "MC1 CI compatibility route requires the pinned synthetic-only Gateway, deterministic runtime and disposable synthetic workspace.",
+      );
+    }
+    return;
+  }
+  if (input.pin === MC1_KNOWN_BROKEN_LOCAL_ROUTING_PIN) {
+    throw new Error(
+      "MC1.4 real local proof remains blocked: pinned Mission Control routes local/aiverse to Anthropic. " +
+      "Do not add an Anthropic key or reuse the CI-only Ollama alias. " +
+      "An audited upstream routing fix or approved first-class adapter and explicit Dashboard MC1.4 audit gate release are required.",
+    );
+  }
+  throw new Error(
+    "MC1.4 real local proof is not authorized for this Mission Control pin; " +
+    "record an approved routing compatibility and independent audit-gate release before running owner acceptance.",
+  );
+}
+
 export const DEFAULT_GATEWAY_URL = "http://127.0.0.1:8787";
 export const DEFAULT_MC_PORT = 3017;
 
