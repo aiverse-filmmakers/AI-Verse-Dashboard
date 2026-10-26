@@ -217,6 +217,11 @@ Deliver:
 Acceptance:
 - design review against Gateway protocol and Dashboard invariants.
 
+Local continuation prepared, 26 October 2026:
+- 3/3 design tasks prepared: actual-source seam characterization; [typed client contract draft](MC2.1-AIVERSE-GATEWAY-CLIENT-CONTRACT-2026-10-26.md); source/PRD review and explicit gap dispositions.
+- The [living implementation plan](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md) now uses the current Plan Maker layout, with the original slice IDs, weights, order and accepted history preserved.
+- This is proposed design work pending normal PR acceptance, not an implemented client or accepted MC2.1. Progress remains15/100. After acceptance, its existing2 points bring progress to17/100 and MC2.2 is next.
+
 ### MC2.2 - AI-Verse Gateway client package - 3 points - A
 Status: PENDING
 

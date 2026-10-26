@@ -2,6 +2,8 @@
 
 # AI-Verse-Dashboard
 
+For current execution, read the [living implementation plan](docs/CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md) and its linked tracker. Accepted progress is15/100; MC2.1 is next. Mission Control remains the approved foundation. The completed separate-app task-dispatch proof is not yet the finished integrated Dashboard main Chat.
+
 **Layer 5: the visual Control Room for AI-Verse OS.**
 
 AI-Verse Dashboard is a local-first interface layer for observing and controlling AI-Verse OS without becoming a second source of truth.
