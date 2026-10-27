@@ -82,7 +82,7 @@ test("each composer has model preference, file labels, and canvas references",()
   assert.match(shared,/fileInput\.multiple=true/);
   assert.match(shared,/Files are shown as preview labels only/);
   assert.doesNotMatch(shared,/Attach from canvas/);
-  assert.match(shared,/addCanvasReference:ref=>/);
+  assert.match(shared,/setCanvasSelection:\(workspaceId,nodes\)=>/);
   assert.match(shared,/clearCanvasFromOtherWorkspaces:workspaceId=>/);
   assert.match(addon,/window\.AIVerseCanvasSelectionChanged=/);
   assert.match(css,/\.shared-chat-tools/);
@@ -124,12 +124,12 @@ test("honest static preview has no agent dispatch or credential connection",()=>
 test("last active chat receives automatic scoped canvas references",()=>{
   assert.match(addon,/lastActiveChat/);
   assert.match(addon,/window\.AIVerseCanvasSelectionChanged=/);
-  assert.match(addon,/fallback\.addCanvasReference\(\{id:node\.id,title:node\.title,workspaceId\}\)/);
+  assert.match(addon,/chat\.setCanvasSelection\(liveCanvasSelection\.workspaceId,liveCanvasSelection\.nodes\)/);
   assert.match(core,/function canvasSelectionChanged\(\)/);
   assert.match(core,/canvasSelectionChanged\(\)/);
   assert.match(core,/window\.AIVerseCanvasScopeChanged\?\.\(id\)/);
-  assert.match(shared,/addCanvasReference:ref=>/);
-  assert.match(shared,/state\.canvas\.some\(v=>v\.id===ref\.id&&v\.workspaceId===ref\.workspaceId\)/);
+  assert.match(shared,/setCanvasSelection:\(workspaceId,nodes\)=>/);
+  assert.match(shared,/JSON\.stringify\(next\)!==JSON\.stringify\(state\.canvas\)/);
   assert.doesNotMatch(shared,/toggleCanvas\(\)/);
 });
 
@@ -192,4 +192,72 @@ test("no live generation or upload has been added to the public preview",()=>{
   assert.doesNotMatch(shared,/\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bnavigator\.sendBeacon\b/);
   assert.match(core,/No AI generation was run/);
   assert.match(shared,/Nothing is sent to an AI/);
+});
+
+
+test("click selects a note and first drag on title or body moves the card, not text",()=>{
+  assert.match(core,/el\.onpointerdown=e=>startNodeDrag\(e,id\)/);
+  assert.match(core,/const wasSelected=selectedIds\.has\(id\)/);
+  assert.match(core,/e\.preventDefault\(\)/);
+  assert.match(core,/e\.currentTarget\.focus\(\{preventScroll:true\}\)/);
+  assert.doesNotMatch(core,/e\.target\.closest\('a,button,h3,p/);
+  assert.match(core,/if\(!wasSelected\)setSelection\(\[id\]\)/);
+  assert.match(core,/el\.dataset\.editEligible==='true'/);
+  assert.match(css,/\.canvas-node\s*,\s*\.canvas-node \.node-content h3/);
+  assert.match(css,/user-select:none/);
+  assert.match(css,/\.canvas-node \.inline-editing/);
+});
+
+test("selected canvas context is live, clears on deselection and retargets between chats",()=>{
+  assert.match(core,/window\.AIVerseCanvasSelectionChanged\?\.\(\{workspaceId:w\.id,nodes\}\)/);
+  assert.doesNotMatch(core,/if\(nodes\.length\)window\.AIVerseCanvasSelectionChanged/);
+  assert.match(core,/if\(!e\.shiftKey\)setSelection\(\[\]\)/);
+  assert.match(addon,/for\(const chat of controllers\)/);
+  assert.match(addon,/chat\.clearCanvasSelection\(\)/);
+  assert.match(addon,/window\.AIVerseCanvasRetarget=dispatchCanvasSelection/);
+  assert.match(shared,/setCanvasSelection:\(workspaceId,nodes\)=>/);
+  assert.match(shared,/state\.canvas=next;renderChips\(\)/);
+  assert.match(shared,/clearCanvasSelection:\(\)=>/);
+  assert.doesNotMatch(shared,/input\.value="";state\.files=\[\];state\.canvas=\[\]/);
+});
+
+test("empty canvas drag creates a selection rectangle; trackpad wheel pans",()=>{
+  assert.match(core,/if\(e\.button===1\|\|spacePanHeld\)/);
+  assert.match(core,/type:'select'/);
+  assert.match(core,/type:'pan'/);
+  assert.match(core,/const previous=e\.shiftKey\?\[\.\.\.selectedIds\]:\[\]/);
+  assert.match(core,/if\(movement\.moved\)setSelection\(\[\.\.\.movement\.previous,\.\.\.hits\]\)/);
+  assert.match(core,/workspace\(\)\.view\.x-=e\.deltaX/);
+  assert.match(core,/workspace\(\)\.view\.y-=e\.deltaY/);
+  assert.match(css,/\.canvas-viewport\{cursor:crosshair\}/);
+});
+
+test("connection preview is visible; single-click selects and double-click breaks",()=>{
+  assert.match(core,/function connectPreview\(e\)/);
+  assert.match(core,/path\.classList\.add\('edge-preview'\)/);
+  assert.match(core,/connectPreview\(e\)/);
+  assert.match(core,/path\.onclick=select/);
+  assert.match(core,/path\.ondblclick=e=>/);
+  assert.match(core,/function removeSelectedEdge\(\)/);
+  assert.match(core,/remove\.onclick=removeSelectedEdge/);
+  assert.match(css,/\.edge-hit\{stroke:transparent;stroke-width:19/);
+  assert.match(css,/\.edge-preview\{stroke:var\(--accent\)/);
+  assert.match(css,/\.canvas-viewport \.connections\{width:100%;height:100%/);
+});
+
+test("Delete and Backspace remove selected cards, not editable text",()=>{
+  assert.match(core,/e\.key==='Delete'\|\|e\.key==='Backspace'/);
+  assert.match(core,/if\(selectedIds\.size\)\{e\.preventDefault\(\);deleteSelection\(\)/);
+  assert.match(core,/else if\(Number\.isInteger\(selectedEdge\)\)/);
+  assert.match(core,/e\.target\.closest\('input,textarea,\[contenteditable="true"\]/);
+  assert.match(core,/if\(\$\('#dialog'\)\.open\|\|editing\)return/);
+});
+
+test("new note body remains visible and editable while empty",()=>{
+  assert.match(core,/function addNote\(pos=newPosition\(\),title='New thought',body=''\)/);
+  assert.match(core,/node-content"><h3/);
+  assert.match(core,/n\.type==='link'\?.*'<p>'\+esc\(n\.body\)\+'<\/p>'/);
+  assert.match(css,/\.canvas-node\.note \.node-content p:empty\{display:block;min-height:/);
+  assert.match(css,/Click to add a note/);
+  assert.match(core,/beginInlineEdit\(field,id,field\.tagName==='H3'\?'title':'body'\)/);
 });
