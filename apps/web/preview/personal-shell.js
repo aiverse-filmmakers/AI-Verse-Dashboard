@@ -440,6 +440,16 @@
       }
       pane.append(log);
       const bottom=make("div","chat-bottom");
+      if(!Array.isArray(messages)||!messages.length){
+        const suggested=make("div","suggestions");
+        for(const [title,prompt] of [["Start a film project","Start a film project called The Mountain Within"],["Capture a thought","Add a note: An idea worth exploring"]]){
+          suggested.append(button("","Use example: "+title,()=>{
+            const field=pane.querySelector("textarea");
+            if(field){field.value=prompt;field.dispatchEvent(new Event("input",{bubbles:true}));field.focus();}
+          },null,title));
+        }
+        bottom.append(suggested);
+      }
       const form=make("form","unified-chat-form");
       const input=make("textarea");
       input.rows=2;input.maxLength=1200;
