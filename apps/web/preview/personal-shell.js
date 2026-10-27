@@ -30,7 +30,33 @@
     s.chats && typeof s.chats === "object";
   let data = blank();
   try { const restored = JSON.parse(localStorage.getItem(key)); if (valid(restored)) data = restored; } catch {}
+  data.chatTargets = data.chatTargets && typeof data.chatTargets === "object" ? data.chatTargets : {};
+  data.threads = data.threads && typeof data.threads === "object" ? data.threads : {};
   const id = () => crypto.randomUUID();
+  // Recipient identity is a stable team/member ID, not a pane number or display name.
+  const findRecipient = key => {
+    if (typeof key !== "string") return null;
+    const [type, teamId, memberId] = key.split(":");
+    const team = data.teams.find(t => t.id === teamId);
+    if (!team) return null;
+    if (type === "team" && !memberId) return {key,label:team.name,detail:"Entire team · Preview only",type,teamId};
+    if (type === "agent" && memberId) {
+      const agent = team.members.find(m => m.id === memberId);
+      if (agent) return {key,label:agent.name,detail:team.name + " · " + agent.role + " · Preview only",type,teamId};
+    }
+    return null;
+  };
+  function startTargetChat(key) {
+    const target = findRecipient(key);
+    if (!target) return notify("This team or assistant is no longer available.");
+    let slot = [1,2].find(i => data.chatTargets[String(i)] === key && i <= data.panes);
+    if (!slot) slot = data.panes < 2 ? data.panes + 1 : 2;
+    data.panes = Math.max(data.panes,slot);
+    data.chatTargets[String(slot)] = key;
+    showTeams(false);save();renderPanes();
+    secondaryHost.querySelectorAll(".secondary-chat-pane")[slot-1]?.querySelector("textarea")?.focus();
+  }
+
   const save = () => { try { localStorage.setItem(key, JSON.stringify(data)); } catch { notify("This browser cannot save the extra demo layout."); } };
   const make = (tag, cls, content) => {
     const node = document.createElement(tag);
@@ -151,6 +177,7 @@
     const profileTitle = make("div", "team-profile-title");
     profileTitle.append(make("strong", "", t.name), make("small", "", t.description || "A space for your assistants"));
     profile.append(profileTitle);
+    profile.append(button("team-chat-button", "Chat with the entire " + t.name + " team", () => startTargetChat("team:" + t.id), "teams", "Chat with team"));
     const members = make("div", "team-members");
     if (!t.members.length) members.append(make("p", "empty-members", "Add the first assistant to this team."));
     for (const member of t.members) {
@@ -159,6 +186,7 @@
       const lines = make("div");
       lines.append(make("strong", "", member.name), make("small", "", member.role));
       item.append(dot,lines);
+      item.append(button("member-chat-button", "Chat with " + member.name, () => startTargetChat("agent:" + t.id + ":" + member.id), null, "Chat"));
       members.append(item);
     }
     profile.append(members);
@@ -171,7 +199,9 @@
     if (data.teams.length > 1) actions.append(button("quiet-action remove-team", "Remove " + t.name, () => {
       formDialog("Remove this team?",[{label:"Type the team name to confirm",placeholder:t.name,max:65}],"Remove", ([value]) => {
         if (value !== t.name) { notify("Enter the exact team name to remove it."); return false; }
-        data.teams=data.teams.filter(x=>x.id!==t.id);data.activeTeam=data.teams[0].id;save();renderTeams();
+        data.teams=data.teams.filter(x=>x.id!==t.id);data.activeTeam=data.teams[0].id;
+        if (draftTarget && !findRecipient(draftTarget)) { draftTarget=null; renderDraftTarget(); }
+        save();renderTeams();renderPanes();
       });
     }, null, "Remove team"));
     profile.append(actions);
@@ -213,20 +243,30 @@
       const pane = make("section", "secondary-chat-pane");
       pane.setAttribute("aria-label", "Demo chat " + (i+1));
       const head = make("div", "secondary-chat-heading");
+      const targetKey = data.chatTargets[String(i)] || null;
+      const recipient = findRecipient(targetKey);
+      if (targetKey && !recipient) delete data.chatTargets[String(i)];
       const text = make("div");
-      text.append(make("strong", "", "Chat " + (i+1)), make("small", "", "Independent demo conversation"));
+      text.append(make("strong", "", recipient ? recipient.label : "Chat " + (i+1)),
+        make("small", "", recipient ? recipient.detail : "Independent demo conversation"));
       head.append(text, button("quiet-icon", "Close chat " + (i+1), () => {
-        if (i < data.panes) data.chats[String(i)] = data.chats[String(data.panes)] || [];
+        if (i < data.panes) {
+          data.chats[String(i)] = data.chats[String(data.panes)] || [];
+          data.chatTargets[String(i)] = data.chatTargets[String(data.panes)];
+        }
         delete data.chats[String(data.panes)];
+        delete data.chatTargets[String(data.panes)];
         data.panes--;save();renderPanes();
       }, "close"));
       pane.append(head);
       const log = make("div", "secondary-chat-log");
       log.setAttribute("role", "log");
-      const messages = Array.isArray(data.chats[String(i)]) ? data.chats[String(i)] : [];
+      const source = recipient ? data.threads[recipient.key] : data.chats[String(i)];
+      const messages = Array.isArray(source) ? source : [];
       if (!messages.length) {
         const welcome=make("div","secondary-chat-welcome");
-        welcome.append(make("span","","✳"),make("h3","","A fresh conversation."),make("p","","Another place to think, without closing your work."));
+        welcome.append(make("span","","✳"),make("h3","",recipient ? "Chat with " + recipient.label : "A fresh conversation."),
+          make("p","",recipient ? "A separate preview thread for this " + (recipient.type === "team" ? "team" : "assistant") + ". No real messages are being sent." : "Another place to think, without closing your work."));
         log.append(welcome);
       }
       for (const m of messages) {
@@ -240,7 +280,7 @@
       const input=make("textarea");
       input.rows=2;
       input.maxLength=1200;
-      input.placeholder="Message AI-Verse...";
+      input.placeholder=recipient ? "Message " + recipient.label + "…" : "Message AI-Verse...";
       input.setAttribute("aria-label","Message in chat "+(i+1));
       const foot=make("div");
       foot.append(make("small","","Sample responses"),button("secondary-send","Send message in chat "+(i+1),()=>form.requestSubmit(),null,"↑"));
@@ -249,11 +289,16 @@
         event.preventDefault();
         const message=input.value.trim();
         if (!message) return;
-        if (!Array.isArray(data.chats[String(i)])) data.chats[String(i)]=[];
-        const messages=data.chats[String(i)];
+        const store = recipient ? data.threads : data.chats;
+        const storeKey = recipient ? recipient.key : String(i);
+        if (recipient && !findRecipient(recipient.key)) return notify("This recipient no longer exists. Choose another.");
+        if (!Array.isArray(store[storeKey])) store[storeKey]=[];
+        const messages=store[storeKey];
         if (messages.length>=80) return notify("This demo conversation is full.");
         messages.push({role:"user",text:message});
-        messages.push({role:"assistant",text:"This is a separate design-preview conversation. Real AI, agents and OS tools are not connected yet."});
+        messages.push({role:"assistant",text:recipient ?
+          "Preview only: addressed to " + recipient.label + ". Live team and agent routing are not connected yet." :
+          "This is a separate design-preview conversation. Real AI, agents and OS tools are not connected yet."});
         save();renderPanes();
       });
       input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey&&!event.isComposing){event.preventDefault();form.requestSubmit();}});
