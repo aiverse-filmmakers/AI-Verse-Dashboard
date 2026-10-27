@@ -38,6 +38,10 @@
   data.paneCanvasRefs = data.paneCanvasRefs && typeof data.paneCanvasRefs==="object" ? data.paneCanvasRefs : {};
   data.mainCanvasRefs = Array.isArray(data.mainCanvasRefs) ? data.mainCanvasRefs : [];
   data.mainVisible = data.mainVisible !== false;
+  data.minimizedChat = typeof data.minimizedChat === "string" ? data.minimizedChat : null;
+  data.primaryWidth = Number.isFinite(data.primaryWidth) ? Math.max(260,Math.min(550,data.primaryWidth)) : 300;
+  data.secondaryWidth = Number.isFinite(data.secondaryWidth) ? Math.max(270,Math.min(850,data.secondaryWidth)) : 315;
+  data.secondPaneWidth = Number.isFinite(data.secondPaneWidth) ? Math.max(220,Math.min(500,data.secondPaneWidth)) : 280;
   let lastActiveChat = typeof data.lastActiveChat==="string" ? data.lastActiveChat : "main";
   const id = () => crypto.randomUUID();
   // Recipient identity is a stable team/member ID, not a pane number or display name.
@@ -235,6 +239,40 @@
 
   /* The canonical chat never moves or gets replaced. Additional chats are opt-in. */
   const shell = $(".app-shell");
+  const rail = make("div","chat-minimized-rail");
+  rail.hidden=true;
+  shell.prepend(rail);
+  const chatMinSize=260;
+  function visibleCount(){return (data.mainVisible?1:0)+data.panes;}
+  function persistLayout(){data.lastActiveChat=lastActiveChat;save();}
+  function applyChatWidths(){
+    const max=Math.max(chatMinSize,innerWidth-460);
+    shell.style.setProperty("--primary-chat-size",Math.min(data.primaryWidth,max)+"px");
+    shell.style.setProperty("--secondary-chat-size",Math.min(data.secondaryWidth,max)+"px");
+    shell.style.setProperty("--secondary-first-size",data.secondPaneWidth+"px");
+  }
+  function addResizeGrip(panel,onResize,initialWidth,{minimum=chatMinSize,maximum=550}={}){
+    const grip=make("div","chat-resize-grip");
+    grip.tabIndex=0;grip.setAttribute("role","separator");
+    grip.setAttribute("aria-orientation","vertical");
+    grip.setAttribute("aria-label","Resize conversation width");
+    grip.setAttribute("aria-valuemin",String(minimum));grip.setAttribute("aria-valuemax",String(maximum));
+    const set=n=>{const width=Math.max(minimum,Math.min(maximum,Math.round(n)));grip.setAttribute("aria-valuenow",String(width));onResize(width);applyChatWidths();};
+    grip.setAttribute("aria-valuenow",String(initialWidth()));
+    grip.addEventListener("pointerdown",e=>{
+      if(e.button!==0)return;
+      e.preventDefault();e.stopPropagation();
+      const start=e.clientX,startWidth=initialWidth();
+      grip.setPointerCapture(e.pointerId);
+      const move=ev=>{if(ev.pointerId===e.pointerId)set(startWidth+ev.clientX-start);};
+      const end=ev=>{if(ev.pointerId!==e.pointerId)return;grip.removeEventListener("pointermove",move);grip.removeEventListener("pointerup",end);grip.removeEventListener("pointercancel",end);persistLayout();};
+      grip.addEventListener("pointermove",move);grip.addEventListener("pointerup",end);grip.addEventListener("pointercancel",end);
+    });
+    grip.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"||e.key==="ArrowRight"){e.preventDefault();set(initialWidth()+(e.key==="ArrowRight"?20:-20));persistLayout();}});
+    grip.addEventListener("dblclick",()=>{set(minimum+80);persistLayout();});
+    panel.append(grip);
+    return grip;
+  }
   const main = $("#workspace");
   const secondaryHost = make("div", "secondary-chat-host");
   shell.insertBefore(secondaryHost, main);
@@ -242,22 +280,30 @@
   const originalChat=$(".chat-panel");
   const split = button("quiet-icon split-chat-action", "Open an additional chat", () => {
     if (data.panes >= 2) return notify("Three chat panes are already open.");
-    data.panes++;save();renderPanes();
+    data.minimizedChat=null;
+    data.panes++;lastActiveChat=String(data.panes);persistLayout();renderPanes();window.AIVerseCanvasRetarget?.();
   }, "split");
   const chatHeadingActions = make("div", "chat-heading-actions");
   mainChatHeading.append(chatHeadingActions);
   const closeMain=button("quiet-icon close-primary-chat", "Close this conversation", ()=>{
-    data.mainVisible=false;
-    if(lastActiveChat==="main")lastActiveChat=data.panes?String(data.panes):null;
-    data.lastActiveChat=lastActiveChat;
-    save();renderPanes();window.AIVerseCanvasRetarget?.();
+    if(visibleCount()===1){
+      data.minimizedChat="main";
+      lastActiveChat="main";
+    }else{
+      data.mainVisible=false;
+      data.minimizedChat=null;
+      if(lastActiveChat==="main")lastActiveChat=String(data.panes);
+    }
+    persistLayout();renderPanes();window.AIVerseCanvasRetarget?.();
   },"close");
+  addResizeGrip(originalChat,w=>{data.primaryWidth=w;},()=>data.primaryWidth,{minimum:260,maximum:550});
   chatHeadingActions.append(split, $("#new-chat"),closeMain);
   const topNewChat=button("quiet-chat-new", "Open a chat", ()=>{
-    if(!data.mainVisible){data.mainVisible=true;lastActiveChat="main";}
+    if(data.minimizedChat){data.minimizedChat=null;}
+    else if(!data.mainVisible){data.mainVisible=true;lastActiveChat="main";}
     else if(data.panes<2){data.panes++;lastActiveChat=String(data.panes);}
     else return notify("Three visible preview chats are the current layout limit.");
-    data.lastActiveChat=lastActiveChat;save();renderPanes();window.AIVerseCanvasRetarget?.();
+    persistLayout();renderPanes();window.AIVerseCanvasRetarget?.();
     if(lastActiveChat==="main")$("#message")?.focus();
     else secondaryHost.querySelectorAll(".secondary-chat-pane")[Number(lastActiveChat)-1]?.querySelector("textarea")?.focus();
   },"chat");
@@ -291,8 +337,29 @@
     secondaryHost.replaceChildren();
     document.body.classList.toggle("with-parallel-chats",data.panes>0);
     document.body.classList.toggle("primary-chat-closed",!data.mainVisible);
-    document.body.classList.toggle("zero-chats",!data.mainVisible&&data.panes===0);
-    topNewChat.hidden=data.mainVisible&&data.panes===2;
+    // Never leave the operator with zero conversations. Minimize the last one into a restorable rail.
+    if(visibleCount()===0){data.mainVisible=true;data.minimizedChat="main";}
+    if(data.minimizedChat && !(data.minimizedChat==="main"?data.mainVisible: Number(data.minimizedChat)>0&&Number(data.minimizedChat)<=data.panes)) data.minimizedChat=null;
+    const compact=visibleCount()===1 && Boolean(data.minimizedChat);
+    document.body.classList.toggle("chat-only-rail",compact);
+    document.body.classList.toggle("zero-chats",false);
+    rail.replaceChildren();rail.hidden=!compact;
+    if(compact){
+      const title= data.minimizedChat==="main"?"AI-Verse":"Chat "+(Number(data.minimizedChat)+1);
+      const restore=button("restore-chat-action","Restore "+title,()=>{
+        lastActiveChat=data.minimizedChat;
+        data.minimizedChat=null;persistLayout();renderPanes();window.AIVerseCanvasRetarget?.();
+        if(lastActiveChat==="main")$("#message")?.focus();else secondaryHost.querySelector("textarea")?.focus();
+      },"chat");
+      restore.append(make("span","chat-rail-label","Chat"));
+      rail.append(restore);
+    }
+    closeMain.title=visibleCount()===1?"Minimize chat":"Close this conversation";
+    closeMain.setAttribute("aria-label",closeMain.title);
+    applyChatWidths();
+    topNewChat.hidden=false;
+    topNewChat.title=data.minimizedChat?"Restore chat":"Open another chat";
+    topNewChat.setAttribute("aria-label",topNewChat.title);
     if(lastActiveChat==="main"&&!data.mainVisible)lastActiveChat=data.panes?String(data.panes):null;
     document.body.classList.toggle("with-three-chats",data.panes===2);
     split.disabled=data.panes>=2;
@@ -309,7 +376,11 @@
       identity.append(make("span","assistant-mark","✳"),make("strong","",recipient?recipient.display:"AI-Verse"));
       heading.append(identity);
       const actions=make("div","chat-heading-actions");
-      actions.append(button("quiet-icon","Close chat "+(i+1),()=>{
+      actions.append(button("quiet-icon",visibleCount()===1?"Minimize chat":"Close chat "+(i+1),()=>{
+        if(visibleCount()===1){
+          data.minimizedChat=slot;lastActiveChat=slot;persistLayout();renderPanes();return;
+        }
+        data.minimizedChat=null;
         if(i<data.panes){
           const last=String(data.panes);
           data.chats[slot]=data.chats[last]||[];
@@ -326,6 +397,8 @@
         data.lastActiveChat=lastActiveChat;save();renderPanes();window.AIVerseCanvasRetarget?.();
       },"close"));
       heading.append(actions);pane.append(heading);
+      if(data.panes===2&&i===1) addResizeGrip(pane,w=>{data.secondPaneWidth=w;},()=>data.secondPaneWidth,{minimum:220,maximum:500});
+      if(i===data.panes) addResizeGrip(pane,w=>{data.secondaryWidth=w;},()=>data.secondaryWidth,{minimum:data.panes===2?500:270,maximum:850});
       const scope=make("div","chat-scope");
       scope.append(make("span","scope-dot"),make("span","",recipient?recipient.detail:"Independent demo conversation"));
       pane.append(scope);
@@ -387,6 +460,7 @@
       // Keep individual/team identity legible even after selecting additional recipients.
       log.scrollTop=log.scrollHeight;
     }
+    applyChatWidths();
   }
   const mainComposer=$("#chat-form");
   const mainInput=$("#message");
