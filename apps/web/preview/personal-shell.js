@@ -35,6 +35,7 @@
   data.paneRecipients = data.paneRecipients && typeof data.paneRecipients === "object" ? data.paneRecipients : {};
   data.paneModels = data.paneModels && typeof data.paneModels === "object" ? data.paneModels : {};
   data.mainRecipients = Array.isArray(data.mainRecipients) ? data.mainRecipients : [];
+  data.paneDrafts = data.paneDrafts && typeof data.paneDrafts==="object" ? data.paneDrafts : {};
   data.paneCanvasRefs = data.paneCanvasRefs && typeof data.paneCanvasRefs==="object" ? data.paneCanvasRefs : {};
   data.mainCanvasRefs = Array.isArray(data.mainCanvasRefs) ? data.mainCanvasRefs : [];
   data.mainVisible = data.mainVisible !== false;
@@ -278,11 +279,15 @@
   shell.insertBefore(secondaryHost, main);
   const mainChatHeading = $(".chat-heading");
   const originalChat=$(".chat-panel");
-  const split = button("quiet-icon split-chat-action", "Open an additional chat", () => {
-    if (data.panes >= 2) return notify("Three chat panes are already open.");
+  function openAnotherChat(){
     data.minimizedChat=null;
-    data.panes++;lastActiveChat=String(data.panes);persistLayout();renderPanes();window.AIVerseCanvasRetarget?.();
-  }, "split");
+    if(data.panes<2){data.panes++;lastActiveChat=String(data.panes);}
+    else if(!data.mainVisible){data.mainVisible=true;lastActiveChat="main";}
+    else return notify("Three chat panes are already open.");
+    persistLayout();renderPanes();window.AIVerseCanvasRetarget?.();
+    (lastActiveChat==="main"?$("#message"):secondaryHost.querySelectorAll(".secondary-chat-pane")[Number(lastActiveChat)-1]?.querySelector("textarea"))?.focus();
+  }
+  const split = button("quiet-icon split-chat-action", "Open an additional chat", openAnotherChat, "split");
   const chatHeadingActions = make("div", "chat-heading-actions");
   mainChatHeading.append(chatHeadingActions);
   const closeMain=button("quiet-icon close-primary-chat", "Close this conversation", ()=>{
@@ -332,6 +337,9 @@
   }
   let secondaryControllers=[];
   function renderPanes() {
+    for(const [i,pane] of Array.from(secondaryHost.querySelectorAll(".secondary-chat-pane")).entries()){
+      data.paneDrafts[String(i+1)]=pane.querySelector("textarea")?.value||"";
+    }
     for(const controller of secondaryControllers) controller.destroy();
     secondaryControllers=[];
     secondaryHost.replaceChildren();
@@ -362,7 +370,7 @@
     topNewChat.setAttribute("aria-label",topNewChat.title);
     if(lastActiveChat==="main"&&!data.mainVisible)lastActiveChat=data.panes?String(data.panes):null;
     document.body.classList.toggle("with-three-chats",data.panes===2);
-    split.disabled=data.panes>=2;
+    split.disabled=visibleCount()>=3;
     for(let i=1;i<=data.panes;i++){
       const pane=make("section","chat-panel secondary-chat-pane unified-chat-pane");
       pane.addEventListener("pointerdown",()=>{lastActiveChat=slot;data.lastActiveChat=slot;save();window.AIVerseCanvasRetarget?.();});
@@ -376,6 +384,9 @@
       identity.append(make("span","assistant-mark","✳"),make("strong","",recipient?recipient.display:"AI-Verse"));
       heading.append(identity);
       const actions=make("div","chat-heading-actions");
+      const paneSplit=button("quiet-icon split-chat-action","Open an additional chat",openAnotherChat,"split");
+      paneSplit.disabled=visibleCount()>=3;
+      actions.append(paneSplit);
       actions.append(button("quiet-icon",visibleCount()===1?"Minimize chat":"Close chat "+(i+1),()=>{
         if(visibleCount()===1){
           data.minimizedChat=slot;lastActiveChat=slot;persistLayout();renderPanes();return;
@@ -388,10 +399,11 @@
           data.paneRecipients[slot]=data.paneRecipients[last]||[];
           data.paneModels[slot]=data.paneModels[last]||"Auto";
           data.paneCanvasRefs[slot]=data.paneCanvasRefs[last]||[];
+          data.paneDrafts[slot]=data.paneDrafts[last]||"";
         }
         const last=String(data.panes);
         delete data.chats[last];delete data.chatTargets[last];
-        delete data.paneRecipients[last];delete data.paneModels[last];delete data.paneCanvasRefs[last];
+        delete data.paneRecipients[last];delete data.paneModels[last];delete data.paneCanvasRefs[last];delete data.paneDrafts[last];
         data.panes--;
         if(lastActiveChat===slot||Number(lastActiveChat)>data.panes)lastActiveChat=data.panes?String(Math.min(data.panes,i)):data.mainVisible?"main":null;
         data.lastActiveChat=lastActiveChat;save();renderPanes();window.AIVerseCanvasRetarget?.();
@@ -424,6 +436,8 @@
       input.rows=2;input.maxLength=1200;
       input.setAttribute("aria-label","Message in conversation "+(i+1));
       input.placeholder="What's on your mind?";
+      input.value=data.paneDrafts[slot]||"";
+      input.addEventListener("input",()=>{data.paneDrafts[slot]=input.value;save();});
       const bar=make("div","composer-bottom");
       const hint=make("span","","Chat · Local demo");
       const send=button("send-button","Send message",()=>form.requestSubmit(),"arrow");
@@ -453,7 +467,7 @@
           if(store[storeKey].length>=100){notify("This demo conversation is full.");return true;}
           store[storeKey].push({role:"user",text:message,meta});
           store[storeKey].push({role:"assistant",text:"This is a design preview. The selected model, recipients, attachments and canvas items were not sent to an AI."});
-          save();renderPanes();return true;
+          data.paneDrafts[slot]="";save();renderPanes();return true;
         }
       });
       secondaryControllers.push(ui);
