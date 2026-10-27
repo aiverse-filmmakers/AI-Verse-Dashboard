@@ -107,3 +107,20 @@ Do not treat one message tagged to a team as a request to create a new AI team, 
 The operator clarified that a flat list of every agent across every team creates too much scrolling and visual noise. The @ picker must **show only team names by default**, with all team member lists collapsed. Clicking one team reveals **Entire team** as the first recipient choice, followed by individual agents from **that team only**. Provide a simple **Back to all teams** action. Typing after @ filters **team names**, not a global flattened roster. Keep the existing explicit recipient chip, standalone chat path, and demo-only limitations unchanged.
 
 This is a progressive-disclosure change in the static prototype only. No canonical Bots state, team creation, permissions, conversations or Gateway dispatch changes. Default interface remains the persistent chat plus the current workspace.
+
+
+## Unified advanced chat panels and multiple recipients, 27 October 2026
+
+Operator review of three side-by-side preview chats established a parity requirement: the main AI-Verse chat is the **visual and interaction standard** for every conversation. Opening a chat from a team/agent must not yield a less capable or differently styled panel. A user can address multiple agents or teams in the *same* conversation, and individual recipients must visibly include their parent team, e.g. **Socials / IG Editor**. Preserve the restrained default and opt-in panes.
+
+### Implemented static preview design
+
+- All additional chats now use the same `chat-panel`, `chat-heading`, `chat-scope`, `conversation`, `chat-message`, `chat-bottom`, `composer-bottom` and `send-button` visual structures as the main panel. The reusable `shared-chat.js` enhances the original chat and all spawned panes through one component path.
+- Every pane receives the same **team-first @ mention selector**, with entire-team or individual selection, **multiple removable recipient chips** (up to 12 example recipients), and full team/agent breadcrumb on each individual chip and targeted chat title.
+- Every pane also has a model-family dropdown (Auto, GPT, Claude, Gemini, Local, **all demo choices, not connected models**), a file attachment control (filename/size/type *labels only*: no file upload or file contents), and a picker for current-canvas item references (*IDs/titles only*, no copied workspace files).
+- Tagged sample messages retain structured recipient/file/canvas metadata for presentation in either the main demo conversation or additional demo threads, rather than prepending a fake command string into the message text.
+- Existing standalone chat's local proposal -> apply demo flow remains when there are no advanced selections; contextual chat operates entirely as browser-local sample output. Opt-in team/individual pane histories continue under the original preview-only Personal shell storage key; this is **not** a replacement session or agent thread owner.
+- There are no model calls, uploads, spend, worker routing, Gateway requests or actual canvas reads beyond the current local preview. Production must derive models, reasoning capabilities, attachments/assets and tool actions from their admitted providers/owners and must use canonical session scope/permissions for multiple recipients.
+- Existing 3-pane limit is only a layout-demo constraint and not the product's permanent chat concurrency policy.
+
+This is design implementation and review evidence only; not accepted real runtime, agent team coordination, file processing, model selection or persistence.
