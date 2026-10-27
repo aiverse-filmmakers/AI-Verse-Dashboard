@@ -375,6 +375,14 @@
     mentionMenu.append(list);
     mentionMenu.append(make("p","mention-disclaimer","Design preview only. No real agent messages are sent."));
   }
+  // Enter picks the highlighted suggestion instead of accidentally sending a raw @word.
+  composeInput.addEventListener("keydown",event=>{
+    if(mentionMenu.hidden) return;
+    if(event.key==="Enter"&&!event.shiftKey) {
+      event.preventDefault();event.stopImmediatePropagation();
+      mentionMenu.querySelector(".mention-option")?.click();
+    }
+  },true);
   composeInput.addEventListener("input",()=>{
     const cursor=composeInput.selectionStart;
     const before=composeInput.value.slice(0,cursor);
