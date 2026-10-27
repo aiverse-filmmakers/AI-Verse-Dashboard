@@ -101,7 +101,8 @@ function attention(main){
  right.append(meta("Decisions only affect example records."));main.append(split(left,right));
 }
 function activity(main){
- main.append(stats([[data.runs.filter(x=>x.status==="Running").length,"Active"],[data.runs.filter(x=>x.status==="Review").length,"Review"],[data.runs.filter(x=>x.status==="Done").length,"Completed"],[data.runs.filter(x=>x.status==="Blocked").length,"Blocked"]]),tabs([["all","All runs"],["Running","Running"],["Review","Review"],["Done","Completed"],["Blocked","Blocked"]]));
+ main.append(stats([[data.runs.filter(x=>x.status==="Running").length,"Active"],[data.runs.filter(x=>x.status==="Review").length,"Review"],[data.runs.filter(x=>x.status==="Done").length,"Completed"],[data.runs.filter(x=>x.status==="Blocked").length,"Blocked"]]),tabs([["all","All runs"],["Running","Running"],["Review","Review"],["Done","Completed"],["Blocked","Blocked"],["board","Task board"]]));
+ if(mode==="board"){taskBoard(main);return;}
  const visible=data.runs.filter(x=>mode==="all"||x.status===mode),left=h("div"),cur=chosen(visible),right=card("Run inspector");
  left.append(sec("Execution timeline","Gateway runs, Tasks and owner receipts"));
  visible.forEach(x=>{const v=b("",()=>setActive(x.id),"os-run"+(cur?.id===x.id?" selected":""));v.append(add(h("div","os-row-top"),h("strong","",x.name),tag(x.status)),meta(x.agent+" · "+x.workspace+" · "+x.at),line(x.pct));left.append(v)});
@@ -110,6 +111,43 @@ function activity(main){
  if(cur.status==="Paused")right.append(b("Resume example run",()=>change(()=>cur.status="Running","Sample run resumed."),"os-btn wide"));
  if(cur.status==="Blocked")right.append(b("Retry example run",()=>change(()=>{cur.status="Running";cur.pct=8;cur.events.push("Manual retry requested")}, "Sample retry queued."),"os-btn wide"));}
  main.append(split(left,right));
+}
+function taskBoard(main){
+ main.append(add(h("div","os-toolbar"),sec("Task board","Move sample work between stages to explore the workflow"),meta("Drag cards or use the status menu")));
+ const columns=[["Queued","Queued"],["Running","In progress"],["Review","Awaiting review"],["Done","Completed"],["Blocked","Blocked"]];
+ const board=h("div","os-kanban");
+ columns.forEach(([state,name])=>{
+   const matches=data.runs.filter(x=>x.status===state);
+   const col=h("section","os-kanban-column");col.dataset.status=state;
+   col.append(add(h("div","os-kanban-head"),h("h3","",name),tag(String(matches.length))));
+   col.addEventListener("dragover",event=>{event.preventDefault();col.classList.add("drag-over")});
+   col.addEventListener("dragleave",event=>{if(!col.contains(event.relatedTarget))col.classList.remove("drag-over")});
+   col.addEventListener("drop",event=>{
+     event.preventDefault();col.classList.remove("drag-over");
+     const id=event.dataTransfer?.getData("text/plain");
+     const run=data.runs.find(x=>x.id===id);if(!run)return;
+     change(()=>{run.status=state;run.events.push("Moved to "+name+" in sample board")},"Sample task moved to "+name+".");
+   });
+   matches.forEach(x=>{
+     const card=b("",()=>setActive(x.id),"os-kanban-card");
+     card.draggable=true;
+     card.addEventListener("dragstart",event=>{event.dataTransfer?.setData("text/plain",x.id);event.dataTransfer.effectAllowed="move"});
+     card.append(add(h("div","os-kanban-card-head"),meta(x.id),tag(x.status)),h("strong","",x.name),meta(x.agent+" · "+x.workspace),line(x.pct));
+     const sel=h("select","os-select os-kanban-move");
+     ["Queued","Running","Review","Done","Blocked"].forEach(v=>add(sel,h("option","",v)));
+     sel.value=x.status;
+     sel.setAttribute("aria-label","Move task "+x.id+" to stage");
+     sel.addEventListener("click",e=>e.stopPropagation());
+     sel.addEventListener("change",event=>{event.stopPropagation();change(()=>{x.status=sel.value;x.events.push("Moved to "+sel.value+" from board")}, "Example task moved.")});
+     card.append(add(h("div","os-kanban-control"),meta("Move to"),sel));
+     col.append(card);
+   });
+   if(!matches.length)col.append(h("p","os-kanban-empty","No tasks"));
+   board.append(col);
+ });
+ main.append(board);
+ const current=data.runs.find(x=>x.id===active);
+ if(current)main.append(add(card("Task details"),h("h4","os-detail-title",current.name),row("Owner",current.agent),row("Current stage",current.status),row("Workspace",current.workspace),sec("Latest activity"),...current.events.map(e=>add(h("div","os-event"),h("span","os-event-dot",""),h("span","",e)))));
 }
 function team(main){
  main.append(stats([[data.agents.length,"Coworkers"],[data.agents.filter(x=>x.status==="Working").length,"Working"],[data.agents.filter(x=>x.status==="Blocked"||x.status==="Needs review").length,"Need attention"]]));
