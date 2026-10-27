@@ -17,4 +17,14 @@ Try “Start a film project called The Mountain Within” in chat, then apply th
 
 See [remote development checkpoint](../../../docs/REMOTE-DEVELOPMENT-CHECKPOINT-2026-10-27.md). The gallery is at `/inspiration/` on the same static server. Open a gallery image and use Left/Right arrows to move between pictures; Escape closes it. Third-party screenshot attribution is in [inspiration/SOURCES.md](inspiration/SOURCES.md).
 
-Known mismatch with the new plan: this saved prototype still hides chat in focus mode and uses a mobile drawer. Always-present chat is a requirement for the next iteration, not already implemented. No real sign-in or AI connection is wired here.
+The current Personal preview keeps chat available in desktop Focus mode and uses a mobile chat drawer. The interface is still a **static prototype**; no real sign-in or AI connection is wired here.
+
+## Current preview interactions (27 October 2026)
+
+The quiet initial screen is the main chat and canvas, with multiple AI teams under **Teams**. Open another chat with the split control or from a team/member. Each chat has the same demo-model dropdown, `@` team-first multi-recipient chooser and filename-only attachment control. **Every chat can close, including the original first chat.** The header's new-chat icon lets you open a chat again. Selecting a canvas card automatically adds its titled reference as a removable chip to whichever chat you most recently used. Canvas references are *not* manually attached from inside the composer.
+
+Canvas now supports click-to-edit title/body, Shift/Cmd/Ctrl multiselect, Shift-drag rectangle selection, drag-to-connect via each card's small connector, group/align/duplicate/delete actions and undo/redo. Selected connections can be removed. **Create** opens a small creative brief for text/image/video/audio, with `Choose for me` default model selection, optional example-model picker and aspect ratios for applicable formats. It creates *editable linked draft cards*, clearly marked as **demo**; it does not generate anything.
+
+Browser-local state uses two preview keys: `aiverse-design-preview-v1` for workspaces, notes and demo chat, and `aiverse-personal-shell-preview-v1` for optional chat/team layouts and draft selections. No preview state is canonical AI-Verse storage. File attachments in chat store labels/metadata only and are never uploaded. Actual image imports into the canvas remain browser-local. Model names, cost and creation states are design examples, not provider capability assertions.
+
+Check the design source in `DESIGN.md` and the new verification checklist in `VERIFICATION.md`. It is not proof of real Gateway, agent teams, AI creation or member release.
