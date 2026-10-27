@@ -80,6 +80,9 @@ export class LocalApplicationSession {
   isAuthorizedBrowser(req:IncomingMessage):boolean{
     return this.originIsExact(req)&&this.isSession(req);
   }
+  isAllowedSocketSystem(systemId:string):boolean{
+    return systemId===this.scope.systemId;
+  }
   isAllowedFrame(value:unknown):boolean{
     if(!value||typeof value!=="object"||Array.isArray(value))return false;
     const frame=value as {systemId?:unknown;workspaceId?:unknown;method?:unknown};
