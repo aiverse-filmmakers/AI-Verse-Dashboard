@@ -1,0 +1,161 @@
+import { describe,it,afterEach } from "node:test";
+import assert from "node:assert/strict";
+import { createServer, type Server } from "node:http";
+import { mkdirSync,mkdtempSync,rmSync,writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { SystemRegistry } from "../packages/registry/src/index.js";
+import { DisposableCache } from "../packages/os-read-adapter/src/index.js";
+import { QueryRouter,SubscriptionHub,startGateway } from "../apps/gateway/src/index.js";
+import { CanonicalGatewayBridge } from "../apps/gateway/src/canonical-gateway-bridge.js";
+
+const manifest='schema_version: "2.0"\narchitecture: unified-workspace\n';
+function makeRoot(reg:SystemRegistry,label:string){
+ const root=mkdtempSync(join(tmpdir(),"dashboard-mc2-host-"));
+ writeFileSync(join(root,"AI-VERSE.yaml"),manifest);
+ writeFileSync(join(root,"AGENTS.md"),"# Test OS\n");
+ for(const dir of ["operator","workspaces","system"])mkdirSync(join(root,dir));
+ const w=join(root,"workspaces","film");
+ mkdirSync(w);writeFileSync(join(w,"WORKSPACE.yaml"),
+   'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "active"\n');
+ const {systemId}=reg.register(root,{label});
+ return {root,systemId};
+}
+async function listen(server:Server):Promise<number>{
+ await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+ const address=server.address();if(!address || typeof address==="string")throw Error("Missing port");
+ return address.port;
+}
+function gatewayFixture(){
+ const received:{method:string;path:string;auth:string;key:string;body:unknown}[]=[];
+ const server=createServer(async(req,res)=>{
+   const chunks:Buffer[]=[];for await(const b of req)chunks.push(b as Buffer);
+   let body:unknown;try{body=JSON.parse(Buffer.concat(chunks).toString("utf8"));}catch{body=null;}
+   received.push({method:req.method??"",path:req.url??"",auth:String(req.headers.authorization??""),
+     key:String(req.headers["idempotency-key"]??""),body});
+   const send=(status:number,obj:unknown)=>{res.writeHead(status,{"content-type":"application/json"});res.end(JSON.stringify(obj));};
+   if(req.headers.authorization!=="Bearer actual-host-gateway-token")return send(401,{error:{code:"UNAUTHENTICATED",message:"secret!!"}});
+   if(req.method==="GET"&&req.url==="/status")return send(200,{
+     component:"ai-verse-gateway",system_id:"canonical-a",state:"ready",runtime:"deterministic",
+     at:"2026-10-27T16:00:00Z"});
+   if(req.method==="GET"&&req.url==="/v1/models")return send(200,{
+     object:"list",data:[{id:"aiverse"}]});
+   const run={run_id:"run-a",session_id:"session-a",system_id:"canonical-a",workspace_id:"film",
+     status:"running",principal:"local-operator-secret",messages:[{content:"sensitive"}],
+     output:{content:"Test result"},private_data:"do-not-show"};
+   if(req.method==="POST"&&req.url==="/v1/runs")return send(202,run);
+   if(req.method==="GET"&&req.url==="/v1/runs/run-a")return send(200,run);
+   return send(404,{error:{code:"NOT_FOUND"}});
+ });
+ return {server,received};
+}
+async function rpc(port:number,token:string,frame:unknown,origin?:string){
+ const res=await fetch("http://127.0.0.1:"+port+"/rpc",{
+   method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+token,
+     ...(origin?{origin}:{})},body:JSON.stringify(frame),
+ });
+ return {status:res.status,data:await res.json() as Record<string,unknown>};
+}
+const frame=(method:string,systemId:string,workspaceId="film",params?:unknown)=>({
+ type:"req",v:"1.0",id:"client-1",method,systemId,workspaceId,...(params===undefined?{}:{params}),
+});
+describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
+ const closing:(()=>Promise<void>)[]=[];
+ const roots:string[]=[];
+ afterEach(async()=>{
+   for(const fn of closing.splice(0).reverse())await fn();
+   for(const root of roots.splice(0))rmSync(root,{recursive:true,force:true});
+ });
+ it("authenticates twice, binds root+workspace and preserves legacy /rpc",async()=>{
+   const reg=new SystemRegistry();
+   const a=makeRoot(reg,"A");roots.push(a.root);
+   const upstream=gatewayFixture();
+   const port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",origin:"http://127.0.0.1:"+port,
+     resolveBearer:()=> "actual-host-gateway-token",
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),new SubscriptionHub(),
+     {port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   const unauth=await rpc(dash.port,"wrong-auth-token-0123456789",
+     frame("aiverse.gateway.status",a.systemId));
+   assert.equal(unauth.status,401);
+   assert.equal(upstream.received.length,0);
+   const badOrigin=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.status",a.systemId),
+     "https://evil.example");
+   assert.equal(badOrigin.status,403);
+   assert.equal(upstream.received.length,0);
+   const legacy=await rpc(dash.port,dash.authToken,{type:"req",v:"1.0",id:"legacy",method:"system.list"});
+   assert.equal(legacy.data.ok,true);
+   const status=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.status",a.systemId));
+   assert.equal(status.data.ok,true);
+   const projection=status.data.result as Record<string,unknown>;
+   assert.equal(projection.model,"aiverse");
+   assert.deepEqual(projection.capabilities,{
+     runCreate:true,runGet:true,events:false,controls:false,
+     conversationLibrary:false,providerSelection:false,
+   });
+   assert.equal(upstream.received.length,2);
+   assert.ok(upstream.received.every(r=>r.auth==="Bearer actual-host-gateway-token"));
+   assert.doesNotMatch(JSON.stringify(status.data),/actual-host-gateway-token/);
+   const created=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.run.create",a.systemId,"film",{
+     messages:[{role:"user",content:"Plan this shot"}],idempotencyKey:"req-1",
+   }));
+   assert.equal(created.data.ok,true);
+   assert.equal((created.data.result as Record<string,unknown>).runId,"run-a");
+   assert.equal((created.data.result as Record<string,unknown>).output,"Test result");
+   assert.doesNotMatch(JSON.stringify(created.data),/local-operator-secret|do-not-show|sensitive/);
+   const post=upstream.received.find(r=>r.method==="POST");
+   assert.equal(post?.key,"req-1");
+   assert.deepEqual(post?.body,{
+     model:"aiverse",messages:[{role:"user",content:"Plan this shot"}],
+     metadata:{workspace_id:"film"},
+   });
+   const found=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.run.get",a.systemId,"film",{
+     runId:"run-a",
+   }));
+   assert.equal(found.data.ok,true);
+   assert.equal((found.data.result as Record<string,unknown>).sessionId,"session-a");
+   assert.doesNotMatch(JSON.stringify(found.data),/messages|private_data|principal/);
+ });
+ it("fails closed for wrong system, absent workspace, unconfigured host and invalid params",async()=>{
+   const reg=new SystemRegistry();
+   const a=makeRoot(reg,"A"),b=makeRoot(reg,"B");roots.push(a.root,b.root);
+   const upstream=gatewayFixture();
+   const port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",origin:"http://127.0.0.1:"+port,
+     resolveBearer:()=> "actual-host-gateway-token",
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),new SubscriptionHub(),
+     {port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   for(const [f,code] of [
+     [frame("aiverse.gateway.status",b.systemId),"GATEWAY_NOT_CONFIGURED"],
+     [frame("aiverse.gateway.run.get",a.systemId,"unknown",{runId:"run-a"}),"GATEWAY_UNAVAILABLE"],
+     [frame("aiverse.gateway.run.create",a.systemId,"film",{
+       messages:[{role:"user",content:"hello"}],idempotencyKey:"1",origin:"http://wrong.example",
+     }),"INVALID_ENVELOPE"],
+     [frame("aiverse.gateway.run.get",a.systemId,"film",{runId:"../../other"}),"GATEWAY_UNAVAILABLE"],
+   ] as const){
+     const reply=await rpc(dash.port,dash.authToken,f);
+     assert.equal(reply.data.ok,false);
+     assert.equal((reply.data.error as {code:string}).code,code);
+   }
+   assert.equal(upstream.received.length,0);
+   const missing=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.unknown",a.systemId));
+   assert.equal((missing.data.error as {code:string}).code,"UNKNOWN_METHOD");
+   assert.equal(upstream.received.length,0);
+ });
+ it("keeps the original host disabled when no approved canonical mapping is injected",async()=>{
+   const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),new SubscriptionHub(),{port:0});
+   closing.push(()=>dash.close());
+   const result=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.status",a.systemId));
+   assert.equal(result.data.ok,false);
+   assert.equal((result.data.error as {code:string}).code,"GATEWAY_NOT_CONFIGURED");
+ });
+});
