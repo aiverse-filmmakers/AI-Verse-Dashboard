@@ -34,6 +34,22 @@ describe("MC2.2 browser-safe canonical RPC facade",()=>{
    assert.equal(seen.at(-1)?.body.workspaceId,"film");
    assert.equal(client.cacheStats().entries,0);
  });
+ it("uses ambient HttpOnly host cookie, never sends or fabricates a browser bearer",async()=>{
+   const seen:Array<{headers:Record<string,string>;credentials?:string;body:Record<string,unknown>}>=[];
+   const transport:FetchFn=async(_url,init)=>{
+     seen.push({headers:init.headers,credentials:init.credentials,
+       body:JSON.parse(init.body) as Record<string,unknown>});
+     return {json:async()=>({ok:true,systemId:"aiverse-01",
+       observedAt:"2026-10-27T16:00:00Z",result:{status:"ready"}})};
+   };
+   const client=new DashboardClient("http://127.0.0.1:3100",
+     {systemId:"aiverse-01",workspaceId:"operator"},{mode:"host-cookie"},transport);
+   await client.gatewayStatus();
+   assert.equal(seen[0].credentials,"same-origin");
+   assert.equal(seen[0].headers.authorization,undefined);
+   assert.equal(seen[0].body.workspaceId,"operator");
+   assert.equal(JSON.stringify(seen).includes("test-dashboard-auth"),false);
+ });
  it("rejects late A→B→A HTTP responses without reviving the old selection",async()=>{
    const callbacks:Array<(value:{json():Promise<unknown>})=>void>=[];
    const scopes:string[]=[];
