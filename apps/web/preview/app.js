@@ -11,14 +11,61 @@ function sample(){return {version:1,area:'personal',selected:'personal',theme:'l
 function valid(s){return s?.version===1 && ['personal','film'].includes(s.area) && ['light','dark'].includes(s.theme) && Array.isArray(s.workspaces) && s.workspaces.length>0 && s.workspaces.length<=100 && s.workspaces.some(w=>w.id===s.selected) && s.workspaces.every(w=>typeof w.id==='string' && typeof w.name==='string' && ['personal','film','general'].includes(w.kind) && Array.isArray(w.nodes) && w.nodes.length<=300 && Array.isArray(w.edges) && Array.isArray(w.messages) && w.view && Number.isFinite(w.view.x) && Number.isFinite(w.view.y) && w.view.zoom>=.3 && w.view.zoom<=2 && w.nodes.every(n=>typeof n.id==='string' && ['note','link','art','image'].includes(n.type) && Number.isFinite(n.x) && Number.isFinite(n.y) && (n.type!=='image'||/^data:image\/(png|jpeg|webp);base64,/.test(n.src))) && w.edges.every(e=>Array.isArray(e)&&e.length===2) && w.messages.every(m=>['user','assistant'].includes(m.role)&&typeof m.text==='string'));}
 let state = sample(), storageAvailable = true;
 try {const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(valid(s))state=s;else storageAvailable=false;}}catch{storageAvailable=false;}
-let selectedNode=null, connectMode=false, connectStart=null, toastTimer, undoStack=[], drag=null;
+let selectedNode=null, selectedIds=new Set(), selectedEdge=null, connectMode=false, connectStart=null, toastTimer, undoStack=[], redoStack=[], drag=null;
 const workspace=()=>state.workspaces.find(w=>w.id===state.selected);
 function toast(text){if($('#dialog').open && $('#dialog-error'))$('#dialog-error').textContent=text;$('#toast').textContent=text;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));storageAvailable=true;$('#saved').textContent='Saved on this browser';}catch{storageAvailable=false;$('#saved').textContent='Not saved · browser storage full';toast('Browser storage is unavailable or full. Export your preview from the info menu.');}}
-function snapshot(){undoStack.push({id:state.selected,nodes:structuredClone(workspace().nodes),edges:structuredClone(workspace().edges)});if(undoStack.length>25)undoStack.shift();}
-function undo(){const i=undoStack.findLastIndex(s=>s.id===state.selected);if(i<0){toast('Nothing to undo in this workspace.');return;}const s=undoStack.splice(i,1)[0];workspace().nodes=s.nodes;workspace().edges=s.edges;selectedNode=null;renderBoard();save();toast('Canvas change undone.');}
-function setArea(area){state.area=area;if(area==='film' && workspace().kind!=='film'){const film=state.workspaces.find(w=>w.kind==='film');if(film)state.selected=film.id;else state.selected='personal';}selectedNode=null;stopConnect();render();save();}
-function selectWorkspace(id){if(!state.workspaces.some(w=>w.id===id))return;state.selected=id;selectedNode=null;stopConnect();render();save();}
+function captureCanvas(){return {id:state.selected,nodes:structuredClone(workspace().nodes),edges:structuredClone(workspace().edges)};}
+function snapshot(){undoStack.push(captureCanvas());if(undoStack.length>40)undoStack.shift();redoStack=redoStack.filter(s=>s.id!==state.selected);}
+function restoreCanvas(s){const w=workspace();w.nodes=s.nodes;w.edges=s.edges;selectedIds.clear();selectedNode=null;selectedEdge=null;renderBoard();save();}
+function undo(){const i=undoStack.findLastIndex(s=>s.id===state.selected);if(i<0){toast('Nothing to undo here.');return;}redoStack.push(captureCanvas());restoreCanvas(undoStack.splice(i,1)[0]);toast('Undone.');}
+function redo(){const i=redoStack.findLastIndex(s=>s.id===state.selected);if(i<0){toast('Nothing to redo here.');return;}undoStack.push(captureCanvas());restoreCanvas(redoStack.splice(i,1)[0]);toast('Redone.');}
+function canvasSelectionChanged(){const w=workspace();const nodes=w.nodes.filter(n=>selectedIds.has(n.id)).map(n=>({id:n.id,title:n.title,type:n.type}));if(nodes.length)window.AIVerseCanvasSelectionChanged?.({workspaceId:w.id,nodes});}
+function setSelection(ids,{append=false,notify=true}={}) {
+  if(!append)selectedIds.clear();
+  for(const id of ids)if(workspace().nodes.some(n=>n.id===id))selectedIds.add(id);
+  selectedNode=selectedIds.size===1?[...selectedIds][0]:null;
+  selectedEdge=null;
+  document.querySelectorAll('#nodes [data-node]').forEach(el=>el.classList.toggle('selected',selectedIds.has(el.dataset.node)));
+  renderInspector();renderSelectionTools();
+  if(notify)canvasSelectionChanged();
+}
+function selectedNodes(){return workspace().nodes.filter(n=>selectedIds.has(n.id));}
+function duplicateSelection() {
+  const chosen=selectedNodes();if(!chosen.length)return;
+  if(workspace().nodes.length+chosen.length>300)return toast('Too many canvas cards for this preview.');
+  snapshot();const remap=new Map();
+  const clones=chosen.map(n=>{const copy=structuredClone(n);copy.id=uid();copy.x+=35;copy.y+=38;copy.groupId=undefined;remap.set(n.id,copy.id);return copy;});
+  const edges=workspace().edges.filter(([a,b])=>remap.has(a)&&remap.has(b)).map(([a,b])=>[remap.get(a),remap.get(b)]);
+  workspace().nodes.push(...clones);workspace().edges.push(...edges);selectedIds=new Set(clones.map(n=>n.id));selectedNode=clones.length===1?clones[0].id:null;renderBoard();save();canvasSelectionChanged();
+}
+function deleteSelection(){
+  if(!selectedIds.size)return;snapshot();const ids=new Set(selectedIds);
+  workspace().nodes=workspace().nodes.filter(n=>!ids.has(n.id));
+  workspace().edges=workspace().edges.filter(([a,b])=>!ids.has(a)&&!ids.has(b));
+  selectedIds.clear();selectedNode=null;renderBoard();save();toast('Cards deleted. Undo is available.');
+}
+function alignSelection(){
+  const chosen=selectedNodes();if(chosen.length<2)return;
+  snapshot();const y=Math.min(...chosen.map(n=>n.y));chosen.forEach(n=>n.y=y);renderBoard();save();
+}
+function groupSelection(){
+  const chosen=selectedNodes();if(chosen.length<2)return;
+  snapshot();const groupId=uid();chosen.forEach(n=>n.groupId=groupId);renderBoard();save();toast('Cards grouped. Drag one to move the group.');
+}
+function renderSelectionTools(){
+  let bar=$('#selection-actions');
+  if(!bar){bar=document.createElement('div');bar.id='selection-actions';bar.className='selection-actions';$('#viewport').append(bar);}
+  const count=selectedIds.size;bar.hidden=count<2;
+  if(count<2)return;
+  bar.replaceChildren();
+  const title=document.createElement('span');title.textContent=count+' selected';bar.append(title);
+  for(const [label,fn] of [['Duplicate',duplicateSelection],['Align',alignSelection],['Group',groupSelection],['Delete',deleteSelection]]){
+    const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;bar.append(b);
+  }
+}
+function setArea(area){state.area=area;if(area==='film' && workspace().kind!=='film'){const film=state.workspaces.find(w=>w.kind==='film');if(film)state.selected=film.id;else state.selected='personal';}selectedNode=null;selectedIds.clear();window.AIVerseCanvasScopeChanged?.(state.selected);stopConnect();render();save();}
+function selectWorkspace(id){if(!state.workspaces.some(w=>w.id===id))return;state.selected=id;selectedNode=null;selectedIds.clear();window.AIVerseCanvasScopeChanged?.(id);stopConnect();render();save();}
 function render(){document.body.classList.toggle('dark',state.theme==='dark');$('#theme').innerHTML=icon(state.theme==='dark'?'sun':'moon');$('#theme').setAttribute('aria-label',`Switch to ${state.theme==='dark'?'light':'dark'} appearance`);document.querySelectorAll('[data-area]').forEach(b=>{const on=b.dataset.area===state.area;b.classList.toggle('active',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current');});const film=state.area==='film';$('#breadcrumb').textContent=film?'Filmmaking / Studio':'Personal / Overview';$('#page-title').textContent=film?'Let the story take shape.':'Your space.';$('#page-subtitle').textContent=film?'Your films, from the first thought to the next scene.':'Everything you’re working on. A little more room to think.';$('#create-workspace span').textContent=film?'New film project':'New workspace';$('#workspaces-title').textContent=film?'Your film projects':'Your workspaces';const list=state.workspaces.filter(w=>!film||w.kind==='film');$('#workspace-count').textContent=`${list.length} ${film?'project':'workspace'}${list.length===1?'':'s'}`;$('#workspace-list').innerHTML=list.map(w=>`<button class="workspace-card ${w.id===state.selected?'selected':''}" data-workspace="${esc(w.id)}" ${w.id===state.selected?'aria-current="true"':''}><span class="workspace-symbol">${icon(w.kind==='film'?'film':w.kind==='personal'?'grid':'note')}</span><span><strong>${esc(w.name)}</strong><small>${esc(w.description)}</small></span>${w.id===state.selected?'<span class="selected-check" aria-hidden="true">✓</span>':''}</button>`).join('');$('#workspace-list').querySelectorAll('[data-workspace]').forEach(b=>b.onclick=()=>selectWorkspace(b.dataset.workspace));$('#chat-scope').textContent=workspace().name;renderBoard();renderChat();}
 function nodeMarkup(n){const handle=`<div class="node-handle">${icon(n.type==='art'?'image':n.type==='image'?'image':n.type==='link'?'link':'note')}<span>${n.type==='note'?'Note':n.type==='link'?'Reference':n.type==='image'?'Image':'Visual direction'}</span></div>`;let content;if(n.type==='art')content=`<div class="art-scene">${landscape}</div><div class="art-caption"><small>${esc(n.body)}</small><h3>${esc(n.title)}</h3></div>`;else if(n.type==='image')content=`<img src="${esc(n.src)}" alt="${esc(n.title)}" draggable="false">${handle}<div class="node-content"><h3>${esc(n.title)}</h3></div>`;else content=`${handle}<div class="node-content"><h3>${esc(n.title)}</h3>${n.type==='link'?`<a href="${esc(safeUrl(n.body)||'#')}" target="_blank" rel="noopener noreferrer">${esc(n.body)}</a>`:`<p>${esc(n.body)}</p>`}</div>`;return `<article tabindex="0" role="button" aria-label="Edit ${esc(n.title)}" class="canvas-node ${n.type} ${n.id===selectedNode?'selected':''}" data-node="${esc(n.id)}" style="left:${n.x}px;top:${n.y}px">${content}</article>`;}
 function renderBoard(){const w=workspace();$('#board-title').textContent=w.name;$('#board-subtitle').textContent=w.kind==='film'?'Story, references and shot ideas, together.':'A place for the things taking shape.';$('#canvas-empty').hidden=w.nodes.length>0;$('#nodes').innerHTML=w.nodes.map(nodeMarkup).join('');$('#nodes').querySelectorAll('[data-node]').forEach(el=>{el.onpointerdown=e=>startNodeDrag(e,el.dataset.node);el.onclick=e=>{if(e.target.closest('a'))return;if(el.dataset.dragged==='true'){el.dataset.dragged='false';return;}chooseNode(el.dataset.node);};el.onkeydown=e=>{if(e.target!==el)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();chooseNode(el.dataset.node);}if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();snapshot();const n=w.nodes.find(n=>n.id===el.dataset.node),d=e.shiftKey?20:5;n.x+=e.key==='ArrowRight'?d:e.key==='ArrowLeft'?-d:0;n.y+=e.key==='ArrowDown'?d:e.key==='ArrowUp'?-d:0;el.style.left=n.x+'px';el.style.top=n.y+'px';drawConnections();save();}};});transform();drawConnections();renderInspector();}
