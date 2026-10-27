@@ -63,7 +63,7 @@
     data.paneRecipients[String(slot)] = [key];
     lastActiveChat=String(slot);
     data.lastActiveChat=lastActiveChat;
-    showTeams(false);save();renderPanes();
+    showTeams(false);save();renderPanes();window.AIVerseCanvasRetarget?.();
     secondaryHost.querySelectorAll(".secondary-chat-pane")[slot-1]?.querySelector("textarea")?.focus();
   }
 
@@ -250,21 +250,21 @@
     data.mainVisible=false;
     if(lastActiveChat==="main")lastActiveChat=data.panes?String(data.panes):null;
     data.lastActiveChat=lastActiveChat;
-    save();renderPanes();
+    save();renderPanes();window.AIVerseCanvasRetarget?.();
   },"close");
   chatHeadingActions.append(split, $("#new-chat"),closeMain);
   const topNewChat=button("quiet-chat-new", "Open a chat", ()=>{
     if(!data.mainVisible){data.mainVisible=true;lastActiveChat="main";}
     else if(data.panes<2){data.panes++;lastActiveChat=String(data.panes);}
     else return notify("Three visible preview chats are the current layout limit.");
-    data.lastActiveChat=lastActiveChat;save();renderPanes();
+    data.lastActiveChat=lastActiveChat;save();renderPanes();window.AIVerseCanvasRetarget?.();
     if(lastActiveChat==="main")$("#message")?.focus();
     else secondaryHost.querySelectorAll(".secondary-chat-pane")[Number(lastActiveChat)-1]?.querySelector("textarea")?.focus();
   },"chat");
   topNewChat.title="New chat";
   $(".top-actions").insertBefore(topNewChat,teamsButton);
-  originalChat.addEventListener("pointerdown",()=>{if(data.mainVisible){lastActiveChat="main";data.lastActiveChat="main";save();}});
-  originalChat.addEventListener("focusin",()=>{if(data.mainVisible){lastActiveChat="main";data.lastActiveChat="main";save();}});
+  originalChat.addEventListener("pointerdown",()=>{if(data.mainVisible){lastActiveChat="main";data.lastActiveChat="main";save();window.AIVerseCanvasRetarget?.();}});
+  originalChat.addEventListener("focusin",()=>{if(data.mainVisible){lastActiveChat="main";data.lastActiveChat="main";save();window.AIVerseCanvasRetarget?.();}});
 
   // The same chat shell, composer and controls are used by main and every extra pane.
   function activeCanvasItems() {
@@ -298,8 +298,8 @@
     split.disabled=data.panes>=2;
     for(let i=1;i<=data.panes;i++){
       const pane=make("section","chat-panel secondary-chat-pane unified-chat-pane");
-      pane.addEventListener("pointerdown",()=>{lastActiveChat=slot;data.lastActiveChat=slot;save();});
-      pane.addEventListener("focusin",()=>{lastActiveChat=slot;data.lastActiveChat=slot;save();});
+      pane.addEventListener("pointerdown",()=>{lastActiveChat=slot;data.lastActiveChat=slot;save();window.AIVerseCanvasRetarget?.();});
+      pane.addEventListener("focusin",()=>{lastActiveChat=slot;data.lastActiveChat=slot;save();window.AIVerseCanvasRetarget?.();});
       pane.setAttribute("aria-label","Conversation "+(i+1));
       const slot=String(i);
       const key=data.chatTargets[slot]||null;
@@ -323,7 +323,7 @@
         delete data.paneRecipients[last];delete data.paneModels[last];delete data.paneCanvasRefs[last];
         data.panes--;
         if(lastActiveChat===slot||Number(lastActiveChat)>data.panes)lastActiveChat=data.panes?String(Math.min(data.panes,i)):data.mainVisible?"main":null;
-        data.lastActiveChat=lastActiveChat;save();renderPanes();
+        data.lastActiveChat=lastActiveChat;save();renderPanes();window.AIVerseCanvasRetarget?.();
       },"close"));
       heading.append(actions);pane.append(heading);
       const scope=make("div","chat-scope");
@@ -406,19 +406,29 @@
   });
 
   // Canvas clicks are routed exclusively to the last chat the user interacted with.
+  let liveCanvasSelection={workspaceId:null,nodes:[]};
+  function dispatchCanvasSelection(){
+    const controllers=[mainUI,...secondaryControllers];
+    let target=lastActiveChat==="main"&&data.mainVisible?mainUI:null;
+    if(!target&&lastActiveChat!==null&&/^[1-9]\d*$/.test(String(lastActiveChat)))
+      target=secondaryControllers[Number(lastActiveChat)-1]||null;
+    if(!target)target=data.mainVisible?mainUI:secondaryControllers[0]||null;
+    for(const chat of controllers){
+      if(chat===target && liveCanvasSelection.workspaceId)
+        chat.setCanvasSelection(liveCanvasSelection.workspaceId,liveCanvasSelection.nodes);
+      else chat.clearCanvasSelection();
+    }
+  }
   window.AIVerseCanvasSelectionChanged=({workspaceId,nodes})=>{
-    if(!Array.isArray(nodes)||!nodes.length)return;
-    const target=lastActiveChat==="main"&&data.mainVisible ? mainUI :
-      Number.isInteger(Number(lastActiveChat))&&Number(lastActiveChat)>0 ?
-        secondaryControllers[Number(lastActiveChat)-1] : null;
-    const fallback=target||(data.mainVisible?mainUI:secondaryControllers[0]);
-    if(!fallback){notify("Open a chat to use selected canvas cards as context.");return;}
-    for(const node of nodes) fallback.addCanvasReference({id:node.id,title:node.title,workspaceId});
+    if(typeof workspaceId!=="string")return;
+    liveCanvasSelection={workspaceId,nodes:Array.isArray(nodes)?nodes:[]};
+    dispatchCanvasSelection();
   };
   window.AIVerseCanvasScopeChanged=workspaceId=>{
-    mainUI.clearCanvasFromOtherWorkspaces(workspaceId);
-    secondaryControllers.forEach(ui=>ui.clearCanvasFromOtherWorkspaces(workspaceId));
+    liveCanvasSelection={workspaceId,nodes:[]};
+    dispatchCanvasSelection();
   };
+  window.AIVerseCanvasRetarget=dispatchCanvasSelection;
   /* Existing canvas stays the default application panel, new surfaces are selected on demand. */
   const board = $(".board-section");
   const headerActions = $(".board-header-actions");
@@ -508,5 +518,5 @@
   // Re-render the optional note/reference list when the current canvas is edited or workspace changes.
   const nodes=$("#nodes");
   new MutationObserver(()=>{if(data.app!=="canvas")renderAppSurface();}).observe(nodes,{childList:true});
-  renderPanes();renderAppSurface();
+  renderPanes();renderAppSurface();window.AIVerseCanvasRetarget?.();
 })();
