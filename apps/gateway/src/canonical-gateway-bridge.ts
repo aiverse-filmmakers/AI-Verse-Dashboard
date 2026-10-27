@@ -84,6 +84,63 @@ export class CanonicalGatewayBridge {
       && typeof (raw as {method?:unknown}).method==="string"
       && (raw as {method:string}).method.startsWith("aiverse.gateway."));
   }
+  /**
+   * Trusted host projection of an upstream run-event stream. Scope and Gateway
+   * bearer never derive from the socket's payload. Caller must already have
+   * authenticated the Dashboard WebSocket and bound it to systemId.
+   */
+  openEventStream(
+    systemId:string, workspaceId:string, runId:string,
+    send:(projection:Record<string,unknown>)=>void,
+    failed:(code:string)=>void,
+  ):()=>void {
+    const abort=new AbortController();
+    let finished=false, sequence=0;
+    let client:CanonicalGatewayClient|undefined;
+    const cancel=()=>{finished=true;abort.abort();client?.invalidate();};
+    void (async()=>{
+      try{
+        if(!identifier.safeParse(runId).success)throw new GatewayTransportError("INVALID_ENVELOPE");
+        const registered=this.connections.get(systemId);
+        if(!registered)throw new GatewayTransportError("GATEWAY_NOT_CONFIGURED");
+        if(this.registry.resolveRoot(systemId)!==registered.root)
+          throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
+        if(!/^(operator|[a-z0-9][a-z0-9-]{0,127})$/.test(workspaceId))
+          throw new GatewayTransportError("INVALID_ENVELOPE");
+        if(workspaceId!=="operator")getWorkspace(this.registry,systemId,workspaceId);
+        client=new CanonicalGatewayClient({
+          origin:registered.binding.origin,workspaceId,
+          canonicalSystemId:registered.binding.canonicalSystemId,
+          resolveBearer:registered.binding.resolveBearer,
+        },this.transportOptions);
+        const allowed=new Set(["run.created","run.started","run.completed","run.failed",
+          "run.canceled","run.blocked","run.paused","run.resumed","run.parked",
+          "run.budget_limited","run.no_progress","approval.required","assistant.delta"]);
+        const terminal=new Set(["run.completed","run.failed","run.canceled","run.blocked",
+          "run.budget_limited","run.parked"]);
+        await client.subscribeRun(runId,event=>{
+          if(finished || !allowed.has(event.type))return;
+          try{
+            if(this.registry.resolveRoot(systemId)!==registered.root)throw new Error("binding changed");
+          }catch{cancel();return;}
+          const projection:Record<string,unknown>={
+            runId,eventId:event.event_id,kind:event.type,at:event.at,
+            ...(event.type==="assistant.delta" && typeof event.data.text==="string"
+              ? {text:event.data.text.slice(0,8192)} : {}),
+          };
+          send({type:"event",v:PROTOCOL_VERSION,event:"aiverse.gateway.run.event",
+            systemId,workspaceId,seq:++sequence,observedAt:new Date().toISOString(),
+            payload:projection});
+          if(terminal.has(event.type))cancel();
+        },abort.signal);
+        // Upstream EOF does not mean successful completion. Reconcile by GET.
+        if(!finished)failed("EVENT_STREAM_INTERRUPTED");
+      }catch(error){
+        if(!finished)failed(failureCode(error));
+      }finally{cancel();}
+    })();
+    return cancel;
+  }
   async handle(raw:unknown, signal?:AbortSignal):Promise<DashboardResponse> {
     const tagged=raw && typeof raw==="object" ? raw as Record<string,unknown> : {};
     const id=typeof tagged.id==="string" && tagged.id.length<=128 && tagged.id.length>0 ? tagged.id : "unparseable";
