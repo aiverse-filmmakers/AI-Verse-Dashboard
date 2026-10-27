@@ -323,3 +323,6 @@ body.dark{color-scheme:dark;--bg:#1d1d20;--surface:#262629;--canvas:#212124;--in
 
 /* Selected links show a restrained accent behind the contextual remove action. */
 .canvas-viewport .connections .edge-hit.is-selected + .edge-visual{stroke:var(--accent);stroke-width:2.5;opacity:.96}
+
+/* Cards stay above interactive edge hit targets, while links remain clickable in empty space. */
+.canvas-world .canvas-node{z-index:2}
