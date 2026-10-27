@@ -122,6 +122,7 @@ async function pageFor(t){
   const context=await browser.newContext({viewport:{width:1500,height:900}});
   t.after(()=>context.close());
   const page=await context.newPage();
+  page.setDefaultTimeout(6500);
   const errors=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto(origin,{waitUntil:"networkidle"});
@@ -133,7 +134,13 @@ test("MC2.5 actual browser interface sends canonical RPC, receives WS, and rende
   assert.equal(await page.locator(".live-chat-pane").count(),1);
   await page.locator(".live-chat-input").fill("Can you draft a film brief?");
   await page.locator(".live-chat-send").click();
-  await page.getByText("Authoritative answer 1").waitFor();
+  try{await page.getByText("Authoritative answer 1").waitFor();}catch(error){
+    const rendered=await page.locator(".live-chat-pane").first().innerText();
+    throw new Error("Chat runtime diagnostic: "+JSON.stringify({
+      errors,requests:requests.map(x=>({method:x.method,scope:x.workspaceId})),
+      rendered:rendered.slice(0,900),runs:[...runs.keys()],
+    })+" / "+String(error));
+  }
   assert.equal(await page.locator(".live-chat-message.user").count(),1);
   assert.equal(await page.locator(".live-chat-message.assistant p").innerText(),"Authoritative answer 1");
   assert.equal(requests.at(0).method,"aiverse.gateway.run.create");
