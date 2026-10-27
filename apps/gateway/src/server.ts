@@ -252,10 +252,6 @@ function handleSocket(
       }
       // A socket has one active workspace at a time. Don't leave a legacy
       // workspace subscription alive after selecting a canonical run scope.
-      if(selectedWorkspaceScope!==nextWorkspace){
-        canonicalEpoch++;canonicalCancel?.();canonicalCancel=undefined;
-      }
-      selectedWorkspaceScope=nextWorkspace;
       if (activeSubId !== undefined) {
         hub.unsubscribe(activeSubId);
         socketSubIds.delete(activeSubId);
@@ -314,6 +310,10 @@ function handleSocket(
         return;
       }
 
+      if(selectedWorkspaceScope!==nextWorkspace){
+        canonicalEpoch++;canonicalCancel?.();canonicalCancel=undefined;
+      }
+      selectedWorkspaceScope=nextWorkspace;
       if (activeSubId !== undefined) {
         hub.unsubscribe(activeSubId);
         socketSubIds.delete(activeSubId);
