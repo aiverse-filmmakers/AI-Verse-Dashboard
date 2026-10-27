@@ -141,12 +141,13 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       ws.once("open",resolve);ws.once("error",reject);
     });
     assert.equal(ws.protocol,DASHBOARD_WS_PROTOCOL);
-    ws.close();
-    await new Promise<void>(resolve=>ws.once("close",resolve));
+    const revoked=new Promise<void>(resolve=>ws.once("close",()=>resolve()));
     const logout=await fetch(base+"/local-app/logout",{
       method:"POST",headers:{origin:base,cookie},
     });
     assert.equal(logout.status,200);
+    await revoked;
+    assert.equal(ws.readyState,WebSocket.CLOSED,"logout revokes existing event sockets");
     assert.match(logout.headers.get("set-cookie")??"",/Max-Age=0/);
     const expired=await rpc(server.port,makeFrame(systemId),{cookie,origin:base});
     assert.equal(expired.status,401);
