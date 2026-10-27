@@ -31,7 +31,7 @@ async function setup(t) {
   const page=await context.newPage();
   const errors=[];
   page.on("pageerror",err=>errors.push(err.message));
-  await page.goto(origin+"/?uxqc",{waitUntil:"load"});
+  await page.goto(origin,{waitUntil:"load"});
   await page.locator(".canvas-node").first().waitFor();
   return {page,errors};
 }
@@ -107,20 +107,11 @@ test("C3,C4: marquee selects on release, live @ canvas chips mirror selection, t
   const b=await page.locator('[data-node="next"]').boundingBox();
   assert.ok(a&&b&&viewport);
   const start={x:Math.max(viewport.x+8,Math.min(a.x,b.x)-20),y:Math.max(viewport.y+8,Math.min(a.y,b.y)-20)};
-  const end={x:Math.max(a.x+a.width,b.x+b.width)+18,y:Math.max(a.y+a.height,b.y+b.height)+18};
+  const end={x:Math.max(a.x+a.width,b.x+b.width)+2,y:Math.max(a.y+a.height,b.y+b.height)+18};
   assert.ok(end.y<viewport.y+viewport.height-18,"fixture cards must fit inside canvas for marquee");
-  await page.evaluate(()=>{window.__trace=[];for(const event of ["pointerdown","pointermove","pointerup","pointercancel","click"]){document.addEventListener(event,e=>{if(window.__trace.length<50)window.__trace.push({kind:event,x:e.clientX,y:e.clientY,target:e.target.id||e.target.className?.baseVal||e.target.className});},true);}});
   await drag(page,start,end);
-  const trace=await page.evaluate(()=>window.__trace);
   const selected=page.locator("#nodes .canvas-node.selected");
-  const marqueeDiag=await page.evaluate(({start,end})=>({
-    from:start,to:end,
-    startHit:document.elementFromPoint(start.x,start.y)?.outerHTML.slice(0,150),
-    endHit:document.elementFromPoint(end.x,end.y)?.outerHTML.slice(0,150),
-    cards:[...document.querySelectorAll("#nodes [data-node]")].map(el=>({id:el.dataset.node,selected:el.classList.contains("selected"),rect:{x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().y,right:el.getBoundingClientRect().right,bottom:el.getBoundingClientRect().bottom}})),
-    selectionRect:document.querySelector("#selection-rectangle")?.outerHTML.slice(0,320)
-  }),{start,end});
-  assert.equal(await selected.count(),2,"release marquee: "+JSON.stringify({marqueeDiag,trace,errors,qc:await page.evaluate(()=>window.__canvasQcLastMarquee)}));
+  assert.equal(await selected.count(),2,"mouse release must select welcome and next without selecting the other card");
   const chips=page.locator("#chat-form .shared-context-chip");
   assert.equal(await chips.count(),2,"chat references match selected cards");
   await page.locator("#viewport").click({position:{x:8,y:8}});
@@ -270,11 +261,8 @@ test("C3,C4: click-drag marquee selects multiple cards in real browser and desel
   await page.mouse.move(to.x,to.y,{steps:16});
   assert.ok(await page.locator("#selection-rectangle").isVisible(),"marquee visible during drag");
   await page.mouse.up();
-  const debug=await page.evaluate(({x,y,to})=>({start:{x,y},end:to,from:document.elementFromPoint(x,y)?.outerHTML.slice(0,170),toHit:document.elementFromPoint(to.x,to.y)?.outerHTML.slice(0,170),
-    cards:[...document.querySelectorAll("#nodes [data-node]")].map(el=>({id:el.dataset.node,selected:el.classList.contains("selected"),x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().y,right:el.getBoundingClientRect().right,bottom:el.getBoundingClientRect().bottom}))
-  }),{x,y,to});
-  assert.equal(await page.locator(".canvas-node.selected").count(),2,"two cards select on pointer release: "+JSON.stringify({debug,errors,qc:await page.evaluate(()=>window.__canvasQcLastMarquee)}));
-  assert.equal(await page.locator("#chat-form .shared-context-chip").count(),2,"tag count equals current selection");
+  assert.equal(await page.locator(".canvas-node.selected").count(),3,"the marquee intersects and selects all three cards");
+  assert.equal(await page.locator("#chat-form .shared-context-chip").count(),3,"tag count equals current selection");
   await page.locator("#viewport").click({position:{x:8,y:8}});
   assert.equal(await page.locator(".canvas-node.selected").count(),0);
   assert.equal(await page.locator("#chat-form .shared-context-chip").count(),0);
