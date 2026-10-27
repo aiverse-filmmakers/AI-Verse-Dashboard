@@ -186,8 +186,9 @@ function drawConnections(){
     const eb=Array.from($('#nodes').children).find(el=>el.dataset.node===b);
     if(!ea||!eb)return '';
     const x1=na.x+ea.offsetWidth/2,y1=na.y+ea.offsetHeight/2,x2=nb.x+eb.offsetWidth/2,y2=nb.y+eb.offsetHeight/2;
-    return '<path tabindex="0" role="button" aria-label="Select connection" data-edge="'+i+'" d="M'+x1+' '+y1+
-      ' C'+(x1+x2)/2+' '+y1+','+(x1+x2)/2+' '+y2+','+x2+' '+y2+'"/>';
+    const d='M'+x1+' '+y1+' C'+(x1+x2)/2+' '+y1+','+(x1+x2)/2+' '+y2+','+x2+' '+y2;
+    return '<path class="edge-hit" tabindex="0" role="button" aria-label="Select connection" data-edge="'+i+'" d="'+d+'"/>'+
+      '<path class="edge-visual" d="'+d+'" aria-hidden="true"/>';
   }).join('');
   svg.querySelectorAll('[data-edge]').forEach(path=>{
     const select=e=>{e.preventDefault();e.stopPropagation();selectedEdge=Number(path.dataset.edge);showEdgeActions();};
