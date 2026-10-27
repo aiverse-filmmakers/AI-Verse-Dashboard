@@ -100,3 +100,10 @@ Implemented as **preview interactions only**:
 - All text is local DOM text, not external AI output. **No real agent receives any message.** Real-team routing must later go through owner-verified Multiple Bots/Rooms/Threads/Team Runs and Gateway, with correct user/system/workspace scope, authority, membership, approvals, concurrency and receipts; this visual design is not proof of that backend path.
 
 Do not treat one message tagged to a team as a request to create a new AI team, grant permissions, or copy private chat history to every member. That requires explicit, verified policy and recipient resolution by the canonical owner.
+
+
+## Team-first @ mention refinement, 27 October 2026
+
+The operator clarified that a flat list of every agent across every team creates too much scrolling and visual noise. The @ picker must **show only team names by default**, with all team member lists collapsed. Clicking one team reveals **Entire team** as the first recipient choice, followed by individual agents from **that team only**. Provide a simple **Back to all teams** action. Typing after @ filters **team names**, not a global flattened roster. Keep the existing explicit recipient chip, standalone chat path, and demo-only limitations unchanged.
+
+This is a progressive-disclosure change in the static prototype only. No canonical Bots state, team creation, permissions, conversations or Gateway dispatch changes. Default interface remains the persistent chat plus the current workspace.
