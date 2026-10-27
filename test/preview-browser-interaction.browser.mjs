@@ -460,15 +460,16 @@ test("Functional workspace pages: navigate actual domain layouts and operate sam
  assert.equal(await page.locator(".os-file-card").count(),2);
  // Cost: a chart and attribution table, with period control.
  await page.getByRole("button",{name:"Open Usage & cost page"}).click();
- assert.equal(await page.locator(".os-bar-col").count(),7);
- await page.getByRole("button",{name:"30 days"}).click();
- assert.equal(await page.locator(".os-bar-col").count(),4);
+ assert.match(await page.locator(".os-card").innerText(),/No verified token or cost records/);
+ assert.match(await page.locator(".os-card").innerText(),/Unknown/);
  // Health and connections have actual inspectors and permission detail.
  await page.getByRole("button",{name:"Open System health page"}).click();
- assert.equal(await page.locator(".os-health-row").count(),7);
+ assert.equal(await page.locator(".os-table tbody tr").count(),8);
+ assert.match(await page.locator(".os-card").innerText(),/not been checked/i);
  await page.getByRole("button",{name:"Open Connections page"}).click();
- assert.equal(await page.locator(".os-connection-row").count(),4);
- assert.match(await page.locator(".os-card").last().innerText(),/permissions/i);
+ assert.equal(await page.locator(".os-connection-row").count(),3);
+ assert.match(await page.locator(".os-card").last().innerText(),/Not connected/);
+ assert.ok(await page.getByRole("button",{name:"Connect ChatGPT"}).isDisabled());
  assert.equal(errors.length,0,errors.join("\n"));
 });
 test("Functional pages preserve chat, canvas, visibility on reload and narrow layout",async t=>{
@@ -478,7 +479,7 @@ test("Functional pages preserve chat, canvas, visibility on reload and narrow la
  await page.locator(".quiet-feature-toggle").click();
  assert.ok(await page.locator(".os-real-shell").isVisible());
  await page.getByRole("button",{name:"Open Conversations page"}).click();
- assert.match(await page.locator(".os-transcript").innerText(),/EXAMPLE/);
+ assert.match(await page.locator(".os-card").first().innerText(),/Conversations in/);
  await page.reload();
  assert.ok(await page.locator(".os-real-shell").isVisible(),"feature view persists via existing app selection");
  assert.equal(await page.locator("#message").inputValue(),"Draft left untouched");
@@ -518,7 +519,7 @@ test("Task board: native drag and accessible stage control both move sample task
  assert.ok(movedTexts.some(text=>text.includes("Build production shot list")),"correct selected task moved, not a different card: "+JSON.stringify(movedTexts));
  await page.locator('.os-kanban-column[data-status="Done"] .os-kanban-card').filter({hasText:"Build production shot list"}).getByRole("button",{name:"View task details"}).click();
  assert.match(await page.locator(".os-card").last().innerText(),/Build production shot list/,"details open without interrupting drag or edit controls");
- assert.match(await page.locator(".os-source").innerText(),/sample workspace/i,"never claims a live OS effect");
+ assert.match(await page.locator(".os-source").innerText(),/Design preview only/i,"never claims a live OS effect");
  assert.equal(errors.length,0,errors.join("\n"));
 });
 
@@ -605,6 +606,71 @@ test("Teams popup and Features control stay contained at desktop and narrow widt
  assert.match(menu,/Canvases/);
  await page.locator(".quiet-feature-toggle").click();
  assert.ok(await page.locator(".os-real-shell").isVisible(),"real feature pages remain available from dedicated top button");
+ assert.equal(errors.length,0,errors.join("\n"));
+});
+
+
+test("Stage 1 essentials: all eleven entry points and truthful provider and health states",async t=>{
+ const {page,errors}=await setup(t);
+ await page.locator(".quiet-feature-toggle").click();
+ assert.equal(await page.locator(".os-essential").count(),11);
+ const names=await page.locator(".os-essential h4").allInnerTexts();
+ assert.deepEqual(names,[
+  "Clean Personal interface","Contextual AI chat","AI connection","Saved conversations",
+  "Workspaces","Files and notes","Memory and Skills","Agent app control",
+  "Live activity and Stop","Usage and health","Saving and recovery"
+ ]);
+ await page.locator(".os-essential").filter({hasText:"AI connection"}).getByRole("button",{name:"Open"}).click();
+ assert.match(await page.locator(".os-card").first().innerText(),/No provider connected/);
+ assert.ok(await page.getByRole("button",{name:"Connect ChatGPT"}).isDisabled());
+ await page.getByRole("button",{name:"Open System health page"}).click();
+ assert.match(await page.locator(".os-card").first().innerText(),/Live health has not been checked/);
+ await page.getByRole("button",{name:"Open Usage & cost page"}).click();
+ assert.match(await page.locator(".os-card").first().innerText(),/unknown, not zero/);
+ assert.equal(errors.length,0,errors.join("\n"));
+});
+test("Stage 1 saved conversation library: create, rename, reopen and archive without losing messages",async t=>{
+ const {page,errors}=await setup(t);
+ await page.locator("#message").fill("Original conversation content");
+ await page.locator("#chat-form").evaluate(el=>el.requestSubmit());
+ await page.locator(".quiet-feature-toggle").click();
+ await page.getByRole("button",{name:"Open Conversations page"}).click();
+ assert.equal(await page.locator(".os-session").count(),1);
+ await page.getByRole("button",{name:"+ New conversation"}).click();
+ await page.locator("#message").fill("Second conversation draft");
+ await page.locator("#chat-form").evaluate(el=>el.requestSubmit());
+ await page.reload();
+ assert.equal(await page.locator(".os-session").count(),2);
+ await page.locator(".os-session").filter({hasText:"Second conversation draft"}).click();
+ await page.getByRole("button",{name:"Rename",exact:true}).click();
+ await page.locator(".os-dialog input").fill("Client planning");
+ await page.getByRole("button",{name:"Save in preview"}).click();
+ await page.locator(".os-session").filter({hasText:"Original conversation content"}).click();
+ await page.getByRole("button",{name:"Open in chat"}).click();
+ assert.match(await page.locator("#conversation").innerText(),/Original conversation content/);
+ assert.doesNotMatch(await page.locator("#conversation").innerText(),/Second conversation draft/);
+ await page.locator(".os-session").filter({hasText:"Client planning"}).click();
+ await page.getByRole("button",{name:"Archive",exact:true}).click();
+ await page.getByRole("button",{name:"Archived",exact:true}).click();
+ assert.match(await page.locator(".os-session").innerText(),/Client planning/);
+ await page.getByRole("button",{name:"Restore",exact:true}).click();
+ await page.getByRole("button",{name:"Current",exact:true}).click();
+ assert.equal(await page.locator(".os-session").count(),2);
+ assert.equal(errors.length,0,errors.join("\n"));
+});
+test("Stage 1 recovery: validates backup before replacing saved browser state",async t=>{
+ const {page,errors}=await setup(t);
+ await page.locator("#add-note").click();
+ const before=await state(page);
+ await page.locator("#preview-info").click();
+ assert.ok(await page.getByRole("button",{name:"Export preview backup"}).isVisible());
+ const download=page.waitForEvent("download");
+ await page.getByRole("button",{name:"Export preview backup"}).click();
+ const file=await download;
+ assert.match(file.suggestedFilename(),/backup\.json/);
+ await page.locator("#import-preview-file").setInputFiles({name:"invalid.json",mimeType:"application/json",buffer:Buffer.from('{"broken":true}')});
+ assert.match(await page.locator("#toast").innerText(),/Invalid Dashboard preview backup/);
+ assert.deepEqual(await state(page),before);
  assert.equal(errors.length,0,errors.join("\n"));
 });
 
