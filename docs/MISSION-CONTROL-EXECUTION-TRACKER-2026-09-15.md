@@ -210,7 +210,7 @@ Sanitized evidence, exact refs, execution-path amendment, initial failures and r
 # MC2 - First-class AI-Verse adapter - 15 points
 
 ### MC2.1 - Adapter contract design - 2 points - A
-Status: PENDING
+Status: REVIEW READY / PENDING PR ACCEPTANCE (no points awarded)
 
 Deliver:
 - exact Dashboard <-> AI-Verse Gateway client contract;
@@ -228,7 +228,7 @@ Local continuation prepared, 26 October 2026:
 - This is proposed design work pending normal PR acceptance, not an implemented client or accepted MC2.1. Progress remains15/100. After acceptance, its existing2 points bring progress to17/100 and MC2.2 is next.
 
 ### MC2.2 - AI-Verse Gateway client package - 3 points - A
-Status: PENDING
+Status: IN PROGRESS / SLICE 1 SOURCE + CI, NOT INTEGRATED (no points awarded)
 
 Deliver:
 - typed client for models/chat/runs/events/cancel/pause/resume/approval;
