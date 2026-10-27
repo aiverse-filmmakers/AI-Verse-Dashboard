@@ -597,7 +597,7 @@
     appSurface.replaceChildren();
     featuresButton.setAttribute("aria-current",data.app==="features"?"page":"false");
     if(data.app==="features"){
-      if(window.AIVerseFeatureExplorer)window.AIVerseFeatureExplorer.mount(appSurface);
+      if(window.AIVerseFunctionalWorkspace)window.AIVerseFunctionalWorkspace.mount(appSurface);
       else appSurface.append(make("p","app-surface-disclaimer","The feature tour is not available in this preview."));
       return;
     }
