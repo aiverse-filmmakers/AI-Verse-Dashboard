@@ -113,8 +113,9 @@ export class PersonalChatApplication {
     const actions=el("div","live-pane-actions");
     const open=button("Split chat",()=>{this.openPane();},"live-chat-split");
     const clear=button("New chat",()=>this.newConversation(paneId),"");
+    const retry=button("Retry request",()=>{void this.retry(paneId);},"live-chat-retry");
     const close=button("Close chat",()=>this.closePane(paneId),"");
-    actions.append(open,clear,close);heading.append(name,actions);
+    actions.append(open,clear,retry,close);heading.append(name,actions);
     const scope=el("div","live-chat-scope","Workspace: "+this.selected.workspaceId);
     const log=el("div","live-chat-log");
     log.setAttribute("role","log");log.setAttribute("aria-live","polite");
@@ -187,6 +188,9 @@ export class PersonalChatApplication {
     if(send)send.disabled=pane.busy;
     const recover=pane.node.querySelector(".live-chat-recovery button") as HTMLButtonElement;
     if(recover)recover.disabled=pane.busy;
+    const retry=pane.node.querySelector(".live-chat-retry") as HTMLButtonElement;
+    if(retry)retry.disabled=pane.busy || pane.run.snapshot().phase!=="interrupted"
+      || Boolean(pane.run.snapshot().runId);
     const split=pane.node.querySelector(".live-pane-actions .live-chat-split") as HTMLButtonElement;
     if(split)split.disabled=this.panes.size>=MAX_PANES;
   }
@@ -208,6 +212,15 @@ export class PersonalChatApplication {
       pane.busy=false;pane.status.textContent="Request could not start · "+errorCode(err);
       this.render(pane);
     }
+  }
+  async retry(paneId:string):Promise<void>{
+    const pane=this.panes.get(paneId);
+    if(!pane||this.destroyed||pane.busy)return;
+    if(pane.run.snapshot().phase!=="interrupted"||pane.run.snapshot().runId)return;
+    pane.busy=true;this.render(pane);
+    try{await pane.run.retrySubmission();}
+    catch(err){pane.busy=false;pane.status.textContent="Retry unavailable · "+errorCode(err);
+      this.render(pane);}
   }
   async recover(paneId:string,runId:string):Promise<void>{
     const pane=this.panes.get(paneId);
