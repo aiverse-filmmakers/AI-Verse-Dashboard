@@ -316,6 +316,45 @@ $('#viewport').addEventListener('dblclick',e=>{if(e.target.closest('.canvas-node
 function newPosition(){const r=$('#viewport').getBoundingClientRect(),v=workspace().view;return {x:(r.width*.4-v.x)/v.zoom,y:(r.height*.3-v.y)/v.zoom};}
 function addNode(n){if(workspace().nodes.length>=300){toast('This preview supports up to 300 cards per canvas.');return;}snapshot();workspace().nodes.push(n);selectedIds=new Set([n.id]);selectedNode=n.id;renderBoard();save();}
 function addNote(pos=newPosition(),title='New thought',body=''){addNode({id:uid(),type:'note',title,body,...pos});}
+function createCanvasDraft(){
+  const refs=selectedNodes().map(n=>({id:n.id,title:n.title}));
+  const referenceNames=refs.length?refs.map(n=>esc(n.title)).join(', '):'None selected. Click canvas cards first if you want references.';
+  openDialog('Create on canvas',
+    '<p class="creation-intro">Start with an idea. This preview will add editable planning cards, not generate media.</p>'+
+    '<label for="creation-kind">What are we making?</label><select id="creation-kind">'+
+    '<option value="text">Text</option><option value="image" selected>Image</option><option value="video">Video</option><option value="audio">Audio</option></select>'+
+    '<label for="creation-prompt">Describe what you want</label>'+
+    '<textarea id="creation-prompt" maxlength="1400" required placeholder="Describe your scene, image, story or sound"></textarea>'+
+    '<p class="creation-references"><strong>Canvas references:</strong> '+referenceNames+'</p>'+
+    '<details class="creation-more"><summary>More choices</summary>'+
+    '<label for="creation-model">Model</label><select id="creation-model">'+
+    '<option value="auto" selected>Choose for me (default)</option><option value="manual">Specify a model later (demo)</option></select>'+
+    '<label for="creation-ratio">Shape</label><select id="creation-ratio">'+
+    '<option value="auto">Auto</option><option value="16:9">Landscape · 16:9</option>'+
+    '<option value="9:16">Portrait · 9:16</option><option value="1:1">Square · 1:1</option></select></details>'+
+    '<p class="local-state-note">Provider: not connected. Cost: unavailable. No credits will be spent.</p>',
+    'Add demo draft',()=>{
+      const kind=$('#creation-kind').value;
+      const prompt=$('#creation-prompt').value.trim();
+      if(!prompt)return false;
+      const model=$('#creation-model').value;
+      const aspect=$('#creation-ratio').value;
+      const w=workspace();
+      if(w.nodes.length+2>300){toast('Canvas is full.');return false;}
+      const pos=newPosition(),promptCard={id:uid(),type:'note',title:'Creation brief',body:prompt,x:pos.x,y:pos.y};
+      const output={id:uid(),type:'note',title:kind[0].toUpperCase()+kind.slice(1)+' · Draft',
+        body:'Demo planning card only. No provider or model has generated this '+kind+'.\n\n'+prompt,
+        x:pos.x+320,y:pos.y, generation:{kind,model,aspect,prompt,provider:null,status:'demo-draft',references:refs.map(r=>r.id)}};
+      snapshot();w.nodes.push(promptCard,output);
+      w.edges.push([promptCard.id,output.id]);
+      for(const ref of refs) if(w.nodes.some(n=>n.id===ref.id))w.edges.push([ref.id,promptCard.id]);
+      selectedIds=new Set([output.id]);selectedNode=output.id;
+      renderBoard();save();canvasSelectionChanged();
+      toast('Editable demo draft added. No AI generation was run.');
+    });
+  const kindSelect=$('#creation-kind'),ratioSelect=$('#creation-ratio');
+  kindSelect.onchange=()=>{ratioSelect.disabled=['text','audio'].includes(kindSelect.value);if(ratioSelect.disabled)ratioSelect.value='auto';};
+}
 function safeUrl(s){try{const u=new URL(s);return ['http:','https:'].includes(u.protocol)?u.href:null;}catch{return null;}}
 function openDialog(title,body,action,handler){$('#dialog-title').textContent=title;$('#dialog-body').innerHTML=body+'<p id="dialog-error" class="error-text" role="alert"></p>';$('#dialog-actions').innerHTML=action?`<button class="primary-button" type="submit">${esc(action)}</button>`:'';$('#dialog-form').onsubmit=e=>{e.preventDefault();if(handler?.()===false)return;$('#dialog').close();};$('#dialog').showModal();}
 function createWorkspaceDialog(filmDefault=state.area==='film'){openDialog(filmDefault?'Start a film project':'New workspace',`<label for="workspace-name">Name</label><input id="workspace-name" placeholder="${filmDefault?'Your next film':'A space for…'}" maxlength="80" required><label for="workspace-kind">Type</label><select id="workspace-kind"><option value="general" ${!filmDefault?'selected':''}>Personal or general</option><option value="film" ${filmDefault?'selected':''}>Film project</option></select><p class="local-state-note">Created in this browser preview only.</p>`,'Create workspace',()=>{const name=$('#workspace-name').value.trim();if(!name)return false;createWorkspace(name,$('#workspace-kind').value);});}
@@ -344,6 +383,10 @@ $('#message').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e
 function stopConnect(){connectMode=false;connectStart=null;$('#connect').setAttribute('aria-pressed','false');$('#canvas-hint').textContent='Drag to explore · Double-click to add a note';}
 $('#connect').onclick=()=>{connectMode=!connectMode;connectStart=null;$('#connect').setAttribute('aria-pressed',String(connectMode));$('#canvas-hint').textContent=connectMode?'Select two cards to connect them. Escape to cancel.':'Drag to explore · Double-click to add a note';if(connectMode){selectedNode=null;renderBoard();toast('Select the first card, then the second.');}};
 $('#empty-note').onclick=()=>addNote();$('#add-note').onclick=()=>addNote();$('#add-link').onclick=()=>openDialog('Add a reference',`<label for="link-title">Title</label><input id="link-title" required maxlength="100" placeholder="Something to come back to"><label for="link-url">Web address</label><input id="link-url" type="url" required placeholder="https://">`,'Add link',()=>{const url=safeUrl($('#link-url').value);if(!url){toast('Use an https:// or http:// web address.');return false;}addNode({id:uid(),type:'link',title:$('#link-title').value.trim()||'Reference',body:url,...newPosition()});});
+const createButton=document.createElement('button');
+createButton.id='add-draft';createButton.type='button';createButton.className='tool';createButton.title='Plan a creative draft';
+createButton.innerHTML=icon('plus')+'<span>Create</span>';createButton.onclick=createCanvasDraft;
+$('#add-image').after(createButton);
 $('#add-image').onclick=()=>$('#image-input').click();$('#image-input').onchange=e=>{const file=e.target.files[0],targetId=state.selected;e.target.value='';if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>1500000){toast('Choose a PNG, JPEG or WebP image under 1.5 MB.');return;}const reader=new FileReader();reader.onload=()=>{if(targetId!==state.selected){toast('Workspace changed. Add the image again in the intended workspace.');return;}addNode({id:uid(),type:'image',title:file.name,src:reader.result,...newPosition()});};reader.onerror=()=>toast('The image could not be read. Try another file.');reader.readAsDataURL(file);};
 $('#zoom-in').onclick=()=>zoom(.1);$('#zoom-out').onclick=()=>zoom(-.1);$('#zoom-reset').onclick=()=>{const w=workspace(),r=$('#viewport').getBoundingClientRect();if(!w.nodes.length){w.view={x:0,y:0,zoom:1};}else{const minX=Math.min(...w.nodes.map(n=>n.x)),minY=Math.min(...w.nodes.map(n=>n.y)),maxX=Math.max(...w.nodes.map(n=>n.x+($(`[data-node="${n.id}"]`)?.offsetWidth||235))),maxY=Math.max(...w.nodes.map(n=>n.y+($(`[data-node="${n.id}"]`)?.offsetHeight||200))),z=Math.max(.3,Math.min(1,(r.width-70)/(maxX-minX),(r.height-135)/(maxY-minY)));w.view={zoom:z,x:(r.width-(maxX-minX)*z)/2-minX*z,y:35-minY*z};}transform();save();};
 $('#focus').onclick=()=>{document.body.classList.toggle('focus-mode');const on=document.body.classList.contains('focus-mode');$('#focus span').textContent=on?'Exit focus':'Focus';$('#focus').setAttribute('aria-pressed',String(on));};
