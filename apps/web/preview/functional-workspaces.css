@@ -139,3 +139,19 @@ body.dark .os-status.os-running,body.dark .os-status.os-working{background:#2736
 @media(max-width:1070px){.os-split{grid-template-columns:1fr}.os-card{padding:15px}.os-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.os-calendar{overflow-x:auto;grid-template-columns:repeat(7,minmax(100px,1fr))}}
 @media(max-width:820px){.os-real-shell{grid-template-columns:1fr;margin:-24px -18px}.os-real-sidebar{display:flex;gap:5px;overflow-x:auto;align-items:center;max-width:100%;min-width:0;padding:10px 12px;border-bottom:1px solid var(--line);border-right:0}.os-sidebar-heading,.os-nav-group{display:none}.os-nav-item{flex:none;min-width:fit-content;width:auto;padding:7px 10px}.os-real-content{padding:16px 13px 28px}.os-real-header{align-items:flex-start;flex-direction:column}.os-agent-grid,.os-file-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.os-real-shell{margin:-24px -18px}.os-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.os-stat{padding:10px;min-height:66px}.os-stat strong{font-size:16px}.os-toolbar{align-items:stretch}.os-agent-grid,.os-file-grid{grid-template-columns:1fr}.os-real-header h2{font-size:24px}.os-source{margin:13px 0}.os-table{font-size:10px}}
+
+/* Real task board: horizontal scroll preserves five workflow stages on a MacBook. */
+.os-kanban{display:grid;grid-template-columns:repeat(5,minmax(180px,1fr));gap:10px;overflow-x:auto;padding-bottom:10px;align-items:stretch;max-width:100%}
+.os-kanban-column{min-width:180px;min-height:285px;border:1px solid var(--line);background:color-mix(in srgb,var(--bg) 74%,var(--surface));border-radius:11px;padding:9px}
+.os-kanban-column.drag-over{outline:2px dashed var(--accent);outline-offset:-2px}
+.os-kanban-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 5px 12px;border-bottom:1px solid var(--line);margin-bottom:9px}
+.os-kanban-head h3{margin:0;font-size:11px;font-weight:650}
+.os-kanban-card{display:flex;flex-direction:column;align-items:flex-start;gap:10px;text-align:left;width:100%;padding:13px 11px;background:var(--surface);border:1px solid var(--line);border-radius:9px;cursor:grab;margin-bottom:8px}
+.os-kanban-card:active{cursor:grabbing}
+.os-kanban-card:hover{border-color:#b2a5a0}
+.os-kanban-card strong{font-size:11px;line-height:1.45;font-weight:650}
+.os-kanban-card-head{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
+.os-kanban-empty{font-size:10px;color:var(--muted);text-align:center;padding:30px 10px}
+.os-kanban-control{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;padding-top:9px;border-top:1px solid var(--line);width:100%}
+.os-kanban-move{max-width:105px;padding:4px 5px;font-size:10px}
+@media(max-width:1250px){.os-kanban{grid-template-columns:repeat(5,minmax(180px,190px));}}
