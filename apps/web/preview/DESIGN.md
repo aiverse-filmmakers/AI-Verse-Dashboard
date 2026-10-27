@@ -85,3 +85,18 @@ Operator refinement: **Teams must not replace or overtake chat.** The default Pe
 - The preview remains publicly hosted, sample-only and no provider calls/secret input are introduced. The existing canvas and original workspace/chat source are preserved.
 
 This is reviewable visual design work, not connected product acceptance. The team selector reflects the product owner's **multiple teams**, not a single hardwired global team. Team management, chat continuity and app context need trusted owner-backed contracts before the real product can claim to run those capabilities.
+
+
+## Per-team, individual and @ chat targeting, 27 October 2026
+
+Operator clarification: from any AI team the user must be able to start a conversation with the **whole team** or an **individual agent**, and from the persistent main chat they must be able to **tag a team or agent directly** without visiting a separate settings page. The selected message recipient must be visible before sending. Extra controls stay hidden until requested to preserve the clean Apple-like first-load composition.
+
+Implemented as **preview interactions only**:
+
+- The optional Teams popover contains **Chat with team**, and each individual row has a **Chat** action. This opens a named, independent demo conversation in an optional secondary pane; it never takes over the main chat.
+- Team and individual target identities use stable `team:<teamId>` and `agent:<teamId>:<memberId>` keys, not display names. Each target's separate demo history is kept under the existing optional Personal shell browser storage key, independent from the original workspace-based chat.
+- The original chat composer now has a small **@** control and typed-`@` suggestions. Select a team or individual to show a removable **Team: ...** or **Agent: ...** recipient chip. Addressed demo messages appear in both the original sample chat (annotated visibly) and that target's preview history; an unselected raw mention is rejected rather than silently routed.
+- The `@` picker and optional additional chat panes start closed, with Escape/outside click behavior and keyboard Enter to select a suggestion.
+- All text is local DOM text, not external AI output. **No real agent receives any message.** Real-team routing must later go through owner-verified Multiple Bots/Rooms/Threads/Team Runs and Gateway, with correct user/system/workspace scope, authority, membership, approvals, concurrency and receipts; this visual design is not proof of that backend path.
+
+Do not treat one message tagged to a team as a request to create a new AI team, grant permissions, or copy private chat history to every member. That requires explicit, verified policy and recipient resolution by the canonical owner.
