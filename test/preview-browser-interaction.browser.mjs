@@ -464,7 +464,7 @@ test("Functional workspace pages: navigate actual domain layouts and operate sam
  assert.equal(await page.locator(".os-health-row").count(),7);
  await page.getByRole("button",{name:"Open Connections page"}).click();
  assert.equal(await page.locator(".os-connection-row").count(),4);
- assert.match(await page.locator(".os-card").last().innerText(),/Permission/);
+ assert.match(await page.locator(".os-card").last().innerText(),/permissions/i);
  assert.equal(errors.length,0,errors.join("\n"));
 });
 test("Functional pages preserve chat, canvas, visibility on reload and narrow layout",async t=>{
