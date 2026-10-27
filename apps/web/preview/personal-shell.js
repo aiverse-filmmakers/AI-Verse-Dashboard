@@ -387,6 +387,15 @@
       const paneSplit=button("quiet-icon split-chat-action","Open an additional chat",openAnotherChat,"split");
       paneSplit.disabled=visibleCount()>=3;
       actions.append(paneSplit);
+      actions.append(button("quiet-icon new-chat-action","Clear current demo conversation",()=>{
+        const target=data.chatTargets[slot];
+        const store=target?data.threads:data.chats;
+        const key=target||slot;
+        store[key]=[];
+        data.paneDrafts[slot]="";
+        save();renderPanes();window.AIVerseCanvasRetarget?.();
+        secondaryHost.querySelectorAll(".secondary-chat-pane")[i-1]?.querySelector("textarea")?.focus();
+      },"plus"));
       actions.append(button("quiet-icon",visibleCount()===1?"Minimize chat":"Close chat "+(i+1),()=>{
         if(visibleCount()===1){
           data.minimizedChat=slot;lastActiveChat=slot;persistLayout();renderPanes();return;
