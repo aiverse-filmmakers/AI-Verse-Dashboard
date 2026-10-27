@@ -134,6 +134,20 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
         {headers:{"content-type":"text/event-stream"}}):json(run()));
     await errorCode(wrong.client.subscribeRun("run-1",()=>{}),"EVENT_BINDING_MISMATCH");
   });
+  it("parses CRLF SSE even when transport chunks divide the line ending",async()=>{
+    const message={event_id:"ev-2",run_id:"run-1",type:"run.started",
+      at:"2026-10-27T12:00:00Z",data:{phase:"running"}};
+    const raw="event: run.started\r\ndata: "+JSON.stringify(message)+"\r\n\r\n";
+    const parts=[raw.slice(0,19),raw.slice(19,37),raw.slice(37,raw.length-3),raw.slice(raw.length-3)];
+    const stream=new ReadableStream<Uint8Array>({
+      start(controller){for(const p of parts)controller.enqueue(new TextEncoder().encode(p));controller.close();}
+    });
+    const {client}=fixture(url=>url.pathname.endsWith("/events")
+      ?new Response(stream,{headers:{"content-type":"text/event-stream"}}):json(run()));
+    const seen:string[]=[];
+    await client.subscribeRun("run-1",e=>seen.push(e.event_id));
+    assert.deepEqual(seen,["ev-2"]);
+  });
   it("invalidates an in-flight request on host binding change",async()=>{
     const {client}=fixture((_url,init)=>new Promise<Response>((_resolve,reject)=>{
       init.signal?.addEventListener("abort",()=>reject(new Error("aborted")),{once:true});
