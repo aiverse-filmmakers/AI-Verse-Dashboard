@@ -32,6 +32,8 @@ async function setup(t) {
   const errors=[];
   page.on("pageerror",err=>errors.push(err.message));
   await page.goto(origin,{waitUntil:"load"});
+  await page.locator(".canvas-library-card").first().waitFor();
+  await page.locator(".canvas-library-card .canvas-library-open").first().click();
   await page.locator(".canvas-node").first().waitFor();
   return {page,errors};
 }
@@ -479,7 +481,9 @@ test("Functional pages preserve chat, canvas, visibility on reload and narrow la
  assert.ok(await page.locator(".os-real-shell").isVisible(),"feature view persists via existing app selection");
  assert.equal(await page.locator("#message").inputValue(),"Draft left untouched");
  await page.locator(".app-picker-toggle").click();
- await page.getByRole("button",{name:"Open Canvas",exact:true}).click();
+ await page.getByRole("button",{name:"Open Canvases",exact:true}).click();
+ assert.ok(await page.locator(".canvas-library-grid").isVisible(),"app picker opens the canvas library");
+ await page.locator(".canvas-library-card .canvas-library-open").first().click();
  assert.equal(await page.locator(".canvas-node").count(),before,"canvas unaffected");
  await page.locator(".app-picker-toggle").click();
  await page.getByRole("button",{name:"Open Activity",exact:true}).click();
