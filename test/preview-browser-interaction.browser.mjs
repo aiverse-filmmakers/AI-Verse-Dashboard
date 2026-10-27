@@ -402,9 +402,11 @@ test("Functional workspace pages: navigate actual domain layouts and operate sam
  const {page,errors}=await setup(t);
  await page.locator(".quiet-feature-toggle").click();
  assert.ok(await page.locator(".os-real-shell").isVisible(),"new real-world app shell replaces PowerPoint-like tour");
- assert.equal(await page.locator(".os-nav-item").count(),13,"all 13 owner-backed workspaces are discoverable");
- assert.match(await page.locator(".os-source").innerText(),/illustrative/i);
- // Attention: a real approval queue layout with mutable sample decisions.
+ assert.equal(await page.locator(".os-nav-item").count(),14,"Essentials and thirteen optional feature pages are discoverable");
+ assert.match(await page.locator(".os-source").innerText(),/Design preview only/i);
+ assert.equal(await page.locator(".os-essential").count(),11);
+ // Attention: a preview approval queue with mutable sample decisions.
+ await page.getByRole("button",{name:"Open Needs attention page"}).click();
  assert.equal(await page.locator(".os-queue").count(),4);
  await page.getByRole("button",{name:"Approve",exact:true}).click();
  assert.match(await page.locator(".os-toast").innerText(),/Example request approved/);
