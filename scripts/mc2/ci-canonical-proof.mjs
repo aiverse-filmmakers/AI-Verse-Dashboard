@@ -64,7 +64,7 @@ try {
     workspace:"operator",port:0});
   token=setup.api_token;
   assert.ok(typeof token==="string"&&token.startsWith("avg_"));
-  canonical=await startServer(await loadConfig(home),home);
+  canonical=await startServer(await loadConfig(home),home,{port:0});
   const canonicalOrigin="http://127.0.0.1:"+canonical.port;
   const registry=new SystemRegistry();
   const systemId=registry.register(osRoot).systemId;
