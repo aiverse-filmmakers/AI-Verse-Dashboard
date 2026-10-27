@@ -90,6 +90,8 @@ export class PersonalChatApplication {
       pane.generation++;
       pane.turns=[];pane.activeTurn=-1;
       pane.run.retarget(this.selected);
+      const scopeLabel=pane.node.querySelector(".live-chat-scope");
+      if(scopeLabel)scopeLabel.textContent="Workspace: "+next.workspaceId;
       pane.input.value="";
       pane.busy=false;
       this.render(pane);
