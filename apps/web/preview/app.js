@@ -170,9 +170,9 @@ function beginInlineEdit(field,id,key){
   let done=false;
   const finish=cancel=>{
     if(done)return;done=true;
-    const next=field.textContent.trim().slice(0,key==='title'?100:3000);
+    const next=field.innerText.replace(/\r\n?/g,'\n').trim().slice(0,key==='title'?100:3000);
     field.contentEditable='false';field.classList.remove('inline-editing');
-    if(!cancel&&next!==before&&next){snapshot();n[key]=next;save();}
+    if(!cancel&&next!==before&&(next||key==='body')){snapshot();n[key]=next;save();}
     renderBoard();
   };
   field.addEventListener('keydown',e=>{
@@ -331,8 +331,24 @@ $('#viewport').addEventListener('pointermove',e=>{
     if(hit&&hit.dataset.node!==drag.from)hit.classList.add('connection-hover');
   }
 });
+function cancelCanvasGesture(){
+  if(!drag)return;
+  if(drag.type==='node'&&drag.moved){
+    for(const original of drag.originals){
+      const n=workspace().nodes.find(n=>n.id===original.id);
+      if(n){n.x=original.x;n.y=original.y;}
+    }
+    if(undoStack.at(-1)?.id===state.selected)undoStack.pop();
+    renderBoard();
+  }
+  $('#selection-rectangle')?.setAttribute('hidden','');
+  $('#connections .edge-preview')?.remove();
+  $('#nodes').querySelectorAll('.connection-hover').forEach(el=>el.classList.remove('connection-hover'));
+  drag=null;
+}
 function finishDrag(e){
   if(!drag||e.pointerId!==drag.pointer)return;
+  if(e.type==='pointercancel'){cancelCanvasGesture();return;}
   const movement=drag;
   if(movement.type==='select'){
     const r=$('#selection-rectangle').getBoundingClientRect();
@@ -465,6 +481,7 @@ document.addEventListener('keydown',e=>{
     if(e.type==='keydown'){spacePanHeld=true;$('#viewport').classList.add('space-panning');e.preventDefault();}
   }
   if(e.key==='Escape'){
+    if(drag){cancelCanvasGesture();e.preventDefault();}
     stopConnect();
     if(!$('#dialog').open&&!editing){
       selectedNode=null;selectedIds.clear();selectedEdge=null;renderBoard();
