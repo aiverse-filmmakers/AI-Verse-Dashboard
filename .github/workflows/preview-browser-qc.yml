@@ -8,6 +8,9 @@ on:
       - apps/web/preview/**
       - apps/web/src/personal-chat-ui.ts
       - apps/web/src/personal-chat.css
+      - apps/web/local-app/**
+      - apps/gateway/src/local-app-session.ts
+      - test/local-app-launch.browser.mjs
       - test/live-personal-chat-ui.browser.mjs
       - test/preview-browser-interaction.browser.mjs
       - .github/workflows/preview-browser-qc.yml
@@ -42,4 +45,4 @@ jobs:
           npm run build
           npx esbuild apps/web/src/personal-chat-ui.ts --bundle --platform=browser --format=esm --target=es2022 --outfile=dist/apps/web/personal-chat.bundle.js
       - name: Test static preview independently from real host chat UI
-        run: node --test test/preview-browser-interaction.browser.mjs test/live-personal-chat-ui.browser.mjs
+        run: node --test test/preview-browser-interaction.browser.mjs test/live-personal-chat-ui.browser.mjs test/local-app-launch.browser.mjs
