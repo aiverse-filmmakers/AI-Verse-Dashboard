@@ -32,6 +32,9 @@
   try { const restored = JSON.parse(localStorage.getItem(key)); if (valid(restored)) data = restored; } catch {}
   data.chatTargets = data.chatTargets && typeof data.chatTargets === "object" ? data.chatTargets : {};
   data.threads = data.threads && typeof data.threads === "object" ? data.threads : {};
+  data.paneRecipients = data.paneRecipients && typeof data.paneRecipients === "object" ? data.paneRecipients : {};
+  data.paneModels = data.paneModels && typeof data.paneModels === "object" ? data.paneModels : {};
+  data.mainRecipients = Array.isArray(data.mainRecipients) ? data.mainRecipients : [];
   const id = () => crypto.randomUUID();
   // Recipient identity is a stable team/member ID, not a pane number or display name.
   const findRecipient = key => {
@@ -39,10 +42,10 @@
     const [type, teamId, memberId] = key.split(":");
     const team = data.teams.find(t => t.id === teamId);
     if (!team) return null;
-    if (type === "team" && !memberId) return {key,label:team.name,detail:"Entire team · Preview only",type,teamId};
+    if (type === "team" && !memberId) return {key,label:team.name,display:team.name+" (team)",detail:"Entire team · Preview only",type,teamId};
     if (type === "agent" && memberId) {
       const agent = team.members.find(m => m.id === memberId);
-      if (agent) return {key,label:agent.name,detail:team.name + " · " + agent.role + " · Preview only",type,teamId};
+      if (agent) return {key,label:agent.name,display:team.name+" / "+agent.name,detail:team.name + " · " + agent.role + " · Preview only",type,teamId};
     }
     return null;
   };
@@ -53,6 +56,7 @@
     if (!slot) slot = data.panes < 2 ? data.panes + 1 : 2;
     data.panes = Math.max(data.panes,slot);
     data.chatTargets[String(slot)] = key;
+    data.paneRecipients[String(slot)] = [key];
     showTeams(false);save();renderPanes();
     secondaryHost.querySelectorAll(".secondary-chat-pane")[slot-1]?.querySelector("textarea")?.focus();
   }
@@ -234,230 +238,129 @@
   const chatHeadingActions = make("div", "chat-heading-actions");
   mainChatHeading.append(chatHeadingActions);
   chatHeadingActions.append(split, $("#new-chat"));
+  // The same chat shell, composer and controls are used by main and every extra pane.
+  function activeCanvasItems() {
+    try {
+      const saved=JSON.parse(localStorage.getItem("aiverse-design-preview-v1"));
+      const workspace=saved?.workspaces?.find(w=>w.id===saved.selected);
+      if (workspace?.nodes) return workspace.nodes.map(n=>({id:n.id,title:n.title,type:n.type}));
+    } catch {}
+    return Array.from(document.querySelectorAll("#nodes [data-node]")).map(el=>({
+      id:el.dataset.node,title:el.querySelector("h3")?.textContent||"Untitled",type:"Canvas item"
+    }));
+  }
+  function showChatContext(meta) {
+    const container=make("div","chat-message-context");
+    for (const r of meta?.recipients||[]) container.append(make("span","message-context-tag","@ "+r.label));
+    for (const f of meta?.files||[]) container.append(make("span","message-context-tag","＋ "+f.name));
+    for (const c of meta?.canvas||[]) container.append(make("span","message-context-tag","▧ "+c.title));
+    return container;
+  }
   function renderPanes() {
     secondaryHost.replaceChildren();
-    document.body.classList.toggle("with-parallel-chats", data.panes > 0);
-    document.body.classList.toggle("with-three-chats", data.panes === 2);
-    split.disabled = data.panes >= 2;
-    for (let i=1;i<=data.panes;i++) {
-      const pane = make("section", "secondary-chat-pane");
-      pane.setAttribute("aria-label", "Demo chat " + (i+1));
-      const head = make("div", "secondary-chat-heading");
-      const targetKey = data.chatTargets[String(i)] || null;
-      const recipient = findRecipient(targetKey);
-      if (targetKey && !recipient) delete data.chatTargets[String(i)];
-      const text = make("div");
-      text.append(make("strong", "", recipient ? recipient.label : "Chat " + (i+1)),
-        make("small", "", recipient ? recipient.detail : "Independent demo conversation"));
-      head.append(text, button("quiet-icon", "Close chat " + (i+1), () => {
-        if (i < data.panes) {
-          data.chats[String(i)] = data.chats[String(data.panes)] || [];
-          data.chatTargets[String(i)] = data.chatTargets[String(data.panes)];
+    document.body.classList.toggle("with-parallel-chats",data.panes>0);
+    document.body.classList.toggle("with-three-chats",data.panes===2);
+    split.disabled=data.panes>=2;
+    for(let i=1;i<=data.panes;i++){
+      const pane=make("section","chat-panel secondary-chat-pane unified-chat-pane");
+      pane.setAttribute("aria-label","Conversation "+(i+1));
+      const slot=String(i);
+      const key=data.chatTargets[slot]||null;
+      const recipient=findRecipient(key);
+      const heading=make("div","chat-heading");
+      const identity=make("div","pane-assistant-identity");
+      identity.append(make("span","assistant-mark","✳"),make("strong","",recipient?recipient.display:"AI-Verse"));
+      heading.append(identity);
+      const actions=make("div","chat-heading-actions");
+      actions.append(button("quiet-icon","Close chat "+(i+1),()=>{
+        if(i<data.panes){
+          const last=String(data.panes);
+          data.chats[slot]=data.chats[last]||[];
+          data.chatTargets[slot]=data.chatTargets[last];
+          data.paneRecipients[slot]=data.paneRecipients[last]||[];
+          data.paneModels[slot]=data.paneModels[last]||"Auto";
         }
-        delete data.chats[String(data.panes)];
-        delete data.chatTargets[String(data.panes)];
+        const last=String(data.panes);
+        delete data.chats[last];delete data.chatTargets[last];
+        delete data.paneRecipients[last];delete data.paneModels[last];
         data.panes--;save();renderPanes();
-      }, "close"));
-      pane.append(head);
-      const log = make("div", "secondary-chat-log");
-      log.setAttribute("role", "log");
-      const source = recipient ? data.threads[recipient.key] : data.chats[String(i)];
-      const messages = Array.isArray(source) ? source : [];
-      if (!messages.length) {
-        const welcome=make("div","secondary-chat-welcome");
-        welcome.append(make("span","","✳"),make("h3","",recipient ? "Chat with " + recipient.label : "A fresh conversation."),
-          make("p","",recipient ? "A separate preview thread for this " + (recipient.type === "team" ? "team" : "assistant") + ". No real messages are being sent." : "Another place to think, without closing your work."));
+      },"close"));
+      heading.append(actions);pane.append(heading);
+      const scope=make("div","chat-scope");
+      scope.append(make("span","scope-dot"),make("span","",recipient?recipient.detail:"Independent demo conversation"));
+      pane.append(scope);
+      const log=make("div","conversation");
+      log.setAttribute("role","log");log.setAttribute("aria-label","Demo conversation");
+      const messages=recipient?data.threads[recipient.key]:data.chats[slot];
+      if(!Array.isArray(messages)||!messages.length){
+        const welcome=make("div","chat-welcome");
+        welcome.append(make("span","tiny-mark","✳"),make("h2","",recipient?"Chat with "+recipient.display:"A fresh conversation."));
+        welcome.append(make("p","",recipient?"This conversation is addressed to "+recipient.display+". Nothing is sent to a real AI.":"Another place to think, without closing your work."));
         log.append(welcome);
-      }
-      for (const m of messages) {
-        const bubble=make("div","secondary-message "+m.role);
-        if (m.role==="assistant") bubble.append(make("small","","AI-Verse · Demo"));
-        bubble.append(make("p","",m.text));
-        log.append(bubble);
+      }else for(const msg of messages){
+        const item=make("div","chat-message "+msg.role);
+        if(msg.role==="assistant")item.append(make("span","role","AI-Verse · Demo"));
+        item.append(make("p","",msg.text));
+        if(msg.role==="user"&&msg.meta)item.append(showChatContext(msg.meta));
+        log.append(item);
       }
       pane.append(log);
-      const form=make("form","secondary-composer");
+      const bottom=make("div","chat-bottom");
+      const form=make("form","unified-chat-form");
       const input=make("textarea");
-      input.rows=2;
-      input.maxLength=1200;
-      input.placeholder=recipient ? "Message " + recipient.label + "…" : "Message AI-Verse...";
-      input.setAttribute("aria-label","Message in chat "+(i+1));
-      const foot=make("div");
-      foot.append(make("small","","Sample responses"),button("secondary-send","Send message in chat "+(i+1),()=>form.requestSubmit(),null,"↑"));
-      form.append(input,foot);
-      form.addEventListener("submit",event=>{
-        event.preventDefault();
-        const message=input.value.trim();
-        if (!message) return;
-        const store = recipient ? data.threads : data.chats;
-        const storeKey = recipient ? recipient.key : String(i);
-        if (recipient && !findRecipient(recipient.key)) return notify("This recipient no longer exists. Choose another.");
-        if (!Array.isArray(store[storeKey])) store[storeKey]=[];
-        const messages=store[storeKey];
-        if (messages.length>=80) return notify("This demo conversation is full.");
-        messages.push({role:"user",text:message});
-        messages.push({role:"assistant",text:recipient ?
-          "Preview only: addressed to " + recipient.label + ". Live team and agent routing are not connected yet." :
-          "This is a separate design-preview conversation. Real AI, agents and OS tools are not connected yet."});
-        save();renderPanes();
-      });
-      input.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey&&!event.isComposing){event.preventDefault();form.requestSubmit();}});
-      pane.append(form);
+      input.rows=2;input.maxLength=1200;
+      input.setAttribute("aria-label","Message in conversation "+(i+1));
+      input.placeholder="What's on your mind?";
+      const bar=make("div","composer-bottom");
+      const hint=make("span","","Chat · Local demo");
+      const send=button("send-button","Send message",()=>form.requestSubmit(),"arrow");
+      // Keep the exact same send-button styling and icon as the main conversation.
+      send.replaceChildren();
+      send.innerHTML='<svg aria-hidden="true"><use href="#i-arrow"/></svg>';
+      bar.append(hint,send);
+      form.append(input,bar);
+      bottom.append(form,make("p","chat-footnote","Sample responses. Your real OS is not connected."));
+      pane.append(bottom);
       secondaryHost.append(pane);
+      const initKeys=data.paneRecipients[slot]|| (recipient?[recipient.key]:[]);
+      const ui=window.AIVerseChatUI.mount({
+        form,input,teams:()=>data.teams,canvasItems:activeCanvasItems,
+        initialRecipients:initKeys,initialModel:data.paneModels[slot]||"Auto",
+        notify,onChange:meta=>{
+          data.paneRecipients[slot]=meta.recipients.map(r=>r.key);
+          data.paneModels[slot]=meta.model;
+          save();
+        },
+        onSubmit:({message,meta})=>{
+          const store=recipient?data.threads:data.chats;
+          const storeKey=recipient?recipient.key:slot;
+          if(recipient&&!findRecipient(recipient.key)){notify("This assistant or team no longer exists.");return false;}
+          if(!Array.isArray(store[storeKey]))store[storeKey]=[];
+          if(store[storeKey].length>=100){notify("This demo conversation is full.");return false;}
+          store[storeKey].push({role:"user",text:message,meta});
+          store[storeKey].push({role:"assistant",text:"This is a design preview. The selected model, recipients, attachments and canvas items were not sent to an AI."});
+          save();renderPanes();return true;
+        }
+      });
+      // Keep individual/team identity legible even after selecting additional recipients.
       log.scrollTop=log.scrollHeight;
     }
   }
-
-
-  /* A compact @ picker on the original composer. No routing to real OS agents. */
-  let draftTarget = null;
-  const composer = $("#chat-form");
-  const composeInput = $("#message");
-  const composeBar = $(".composer-bottom");
-  const mentionTrigger = button("mention-trigger", "Mention a team or assistant", () => showMentionPicker(mentionMenu.hidden), null, "@");
-  mentionTrigger.setAttribute("aria-controls","mention-recipient-menu");
-  mentionTrigger.setAttribute("aria-expanded","false");
-  composeBar.insertBefore(mentionTrigger,$(".send-button"));
-  const chip=make("div","draft-recipient-chip");
-  chip.hidden=true;
-  composer.insertBefore(chip,composeInput);
-  const mentionMenu=make("div","mention-recipient-menu");
-  mentionMenu.id="mention-recipient-menu";
-  mentionMenu.hidden=true;
-  mentionMenu.setAttribute("role","group");
-  mentionMenu.setAttribute("aria-label","Choose a team or assistant");
-  composer.append(mentionMenu);
-  let mentionToken=null;
-  function renderDraftTarget() {
-    chip.replaceChildren();
-    const target=findRecipient(draftTarget);
-    if (!target) {draftTarget=null;chip.hidden=true;return;}
-    chip.hidden=false;
-    chip.append(make("span","recipient-symbol","@"),
-      make("span","", (target.type==="team" ? "Team: " : "Agent: ") + target.label));
-    chip.append(button("recipient-clear","Remove tagged recipient",()=>{
-      draftTarget=null;renderDraftTarget();
-    },"close"));
-  }
-  // Start with a short team list. Only the selected team's assistants are shown.
-  let mentionTeamId = null;
-  function chooseMentionRecipient(key) {
-    const selected = findRecipient(key);
-    if (!selected) return notify("That team or assistant is no longer available.");
-    draftTarget = key;
-    if (mentionToken) {
-      const previous = composeInput.value;
-      composeInput.value = previous.slice(0, mentionToken.start) + previous.slice(mentionToken.end);
-      mentionToken = null;
+  const mainComposer=$("#chat-form");
+  const mainInput=$("#message");
+  const mainUI=window.AIVerseChatUI.mount({
+    form:mainComposer,input:mainInput,teams:()=>data.teams,canvasItems:activeCanvasItems,
+    initialRecipients:data.mainRecipients,initialModel:data.paneModels.main||"Auto",
+    notify,onChange:meta=>{
+      data.mainRecipients=meta.recipients.map(r=>r.key);
+      data.paneModels.main=meta.model;save();
+    },
+    onSubmit:({message,meta})=>{
+      const enhanced=meta.recipients.length||meta.files.length||meta.canvas.length||meta.model!=="Auto";
+      if(!enhanced)return false; // Original chat's demo proposals still work without additions.
+      if(typeof window.AIVerseDemoPost!=="function"){notify("Chat demo is not ready.");return false;}
+      window.AIVerseDemoPost(message,meta);return true;
     }
-    renderDraftTarget();
-    showMentionPicker(false);
-    composeInput.focus();
-  }
-  function showMentionPicker(on, filter="", keepTeam=false) {
-    mentionMenu.hidden = !on;
-    mentionTrigger.setAttribute("aria-expanded", String(on));
-    if (!on) { mentionTeamId = null; return; }
-    if (!keepTeam) mentionTeamId = null;
-    mentionMenu.replaceChildren();
-    const list = make("div", "mention-options");
-    const selectedTeam = data.teams.find(t => t.id === mentionTeamId);
-    if (!selectedTeam) {
-      mentionTeamId = null;
-      mentionMenu.append(make("div", "mention-menu-title", "Choose a team"));
-      const query = filter.toLocaleLowerCase();
-      const teams = data.teams.filter(t => t.name.toLocaleLowerCase().includes(query));
-      if (!teams.length) list.append(make("p", "mention-empty", "No matching teams."));
-      for (const team of teams) {
-        const choice = button("mention-option mention-team-row", "Open " + team.name + " team", () => {
-          mentionTeamId = team.id;
-          showMentionPicker(true, "", true);
-        });
-        choice.append(make("span", "mention-icon", "◎"));
-        const labels = make("span", "mention-option-labels");
-        labels.append(make("strong", "", team.name));
-        labels.append(make("small", "", team.members.length + " assistant" + (team.members.length === 1 ? "" : "s")));
-        choice.append(labels, make("span", "mention-row-arrow", "›"));
-        list.append(choice);
-      }
-    } else {
-      const header = make("div", "mention-team-heading");
-      header.append(button("mention-back", "Back to all teams", () => showMentionPicker(true), null, "‹ Teams"));
-      header.append(make("strong", "", selectedTeam.name));
-      mentionMenu.append(header);
-      const all = button("mention-option mention-entire-team", "Tag the entire " + selectedTeam.name + " team", () => {
-        chooseMentionRecipient("team:" + selectedTeam.id);
-      });
-      all.append(make("span", "mention-icon", "◎"));
-      const labels = make("span", "mention-option-labels");
-      labels.append(make("strong", "", "Entire team"), make("small", "", "Address everyone in " + selectedTeam.name));
-      all.append(labels);
-      list.append(all);
-      if (selectedTeam.members.length) {
-        list.append(make("div", "mention-members-label", "Individual assistants"));
-        for (const agent of selectedTeam.members) {
-          const choice = button("mention-option mention-agent-row", "Tag " + agent.name, () => {
-            chooseMentionRecipient("agent:" + selectedTeam.id + ":" + agent.id);
-          });
-          choice.append(make("span", "mention-icon", "@"));
-          const agentLabels = make("span", "mention-option-labels");
-          agentLabels.append(make("strong", "", agent.name), make("small", "", agent.role));
-          choice.append(agentLabels);
-          list.append(choice);
-        }
-      }
-    }
-    mentionMenu.append(list);
-    mentionMenu.append(make("p", "mention-disclaimer", "Design preview only. No real agent messages are sent."));
-  }
-  // Enter picks the highlighted suggestion instead of accidentally sending a raw @word.
-  composeInput.addEventListener("keydown",event=>{
-    if(mentionMenu.hidden) return;
-    if(event.key==="Enter"&&!event.shiftKey) {
-      event.preventDefault();event.stopImmediatePropagation();
-      mentionMenu.querySelector(".mention-option")?.click();
-    }
-  },true);
-  composeInput.addEventListener("input",()=>{
-    const cursor=composeInput.selectionStart;
-    const before=composeInput.value.slice(0,cursor);
-    const match=/(?:^|\s)@([^\s@]*)$/.exec(before);
-    if (!match) {mentionToken=null;showMentionPicker(false);return;}
-    mentionToken={start:cursor-match[0].length+(match[0].startsWith("@")?0:1),end:cursor};
-    showMentionPicker(true,match[1]);
-  });
-  document.addEventListener("pointerdown",event=>{
-    if(!mentionMenu.hidden&&!mentionMenu.contains(event.target)&&!mentionTrigger.contains(event.target)&&event.target!==composeInput)
-      showMentionPicker(false);
-  });
-  // Capture before app.js demo submit handler. The selected recipient is explicit in
-  // the visible message and saved only in demo thread history, never sent to an AI.
-  composer.addEventListener("submit",event=>{
-    const target=findRecipient(draftTarget);
-    if(draftTarget&&!target) {
-      event.preventDefault();event.stopImmediatePropagation();
-      draftTarget=null;renderDraftTarget();return notify("Recipient unavailable. Select again.");
-    }
-    const message=composeInput.value.trim();
-    if(!message) return;
-    if(!target && /(^|\s)@[^\s@]+/.test(message)) {
-      event.preventDefault();event.stopImmediatePropagation();
-      return notify("Choose a recipient from the @ menu before sending.");
-    }
-    if(!target) return;
-    const thread=Array.isArray(data.threads[target.key])?data.threads[target.key]:[];
-    if(thread.length>=80) {
-      event.preventDefault();event.stopImmediatePropagation();return notify("This preview thread is full.");
-    }
-    thread.push({role:"user",text:message});
-    thread.push({role:"assistant",text:"Preview only: addressed to "+target.label+". Live agent routing is not connected yet."});
-    data.threads[target.key]=thread;
-    save();
-    renderPanes();
-    composeInput.value="[Demo to "+(target.type==="team"?"team":"agent")+" @"+target.label+"]\n"+message;
-  },true);
-  document.addEventListener("keydown",event=>{
-    if(event.key==="Escape"){mentionToken=null;showMentionPicker(false);}
   });
 
   /* Existing canvas stays the default application panel, new surfaces are selected on demand. */
