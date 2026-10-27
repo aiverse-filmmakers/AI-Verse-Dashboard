@@ -19,7 +19,7 @@
       { id: "c2", name: "Writer", role: "Scripts and copy" }
     ] }
   ];
-  const blank = () => ({ version: 1, teams: demoTeams(), activeTeam: "personal", panes: 0, chats: {}, app: "canvas-library" });
+  const blank = () => ({ version: 1, teams: demoTeams(), activeTeam: "personal", panes: 0, chats: {}, app: "canvas" });
   const valid = s => s && s.version === 1 && Array.isArray(s.teams) && s.teams.length > 0 && s.teams.length <= 20 &&
     s.teams.every(t => typeof t.id === "string" && typeof t.name === "string" && t.name.length <= 65 &&
       Array.isArray(t.members) && t.members.length <= 20 &&
@@ -36,10 +36,11 @@
   data.paneModels = data.paneModels && typeof data.paneModels === "object" ? data.paneModels : {};
   data.mainRecipients = Array.isArray(data.mainRecipients) ? data.mainRecipients : [];
   data.mainDraft = typeof data.mainDraft === "string" ? data.mainDraft.slice(0,1200) : "";
-  // Upgrade the old one-canvas picker once, but remember deliberate board-editor selection.
-  if(!data.canvasLibraryReady){
-    if(data.app==="canvas")data.app="canvas-library";
-    data.canvasLibraryReady=true;
+  // New defaults show the editor next to chat. Existing preview library selections
+  // migrate once, without interfering with later deliberate library navigation.
+  if(!data.canvasEditorDefaultV2){
+    if(data.app==="canvas-library")data.app="canvas";
+    data.canvasEditorDefaultV2=true;
   }
   data.paneDrafts = data.paneDrafts && typeof data.paneDrafts==="object" ? data.paneDrafts : {};
   data.paneCanvasRefs = data.paneCanvasRefs && typeof data.paneCanvasRefs==="object" ? data.paneCanvasRefs : {};
@@ -635,6 +636,25 @@
       if(window.AIVerseCanvasLibrary?.remove(id))renderAppSurface();
     });
   }
+  function moveCanvas(id){
+    const choices=window.AIVerseCanvasLibrary?.targets()||[];
+    if(!choices.length){notify("Create another workspace or film project before moving this canvas.");return;}
+    const dialog=make("dialog","personal-mini-dialog canvas-move-dialog");
+    const form=make("form");form.method="dialog";
+    form.append(make("h2","","Move canvas to another space"),make("p","","Choose the destination project or workspace. Its content and connections will stay intact."));
+    const label=make("label","","Destination workspace"),select=make("select");
+    select.setAttribute("aria-label","Destination workspace");
+    for(const choice of choices){const option=make("option","",choice.area+" · "+choice.name);option.value=choice.id;select.append(option);}
+    label.append(select);form.append(label);
+    const actions=make("div","mini-dialog-actions");
+    actions.append(button("quiet-action","Cancel move",()=>dialog.close(),null,"Cancel"));
+    const submit=make("button","mini-submit","Move canvas");submit.type="submit";actions.append(submit);form.append(actions);
+    form.addEventListener("submit",event=>{
+      event.preventDefault();
+      if(window.AIVerseCanvasLibrary?.move(id,select.value)){dialog.close();renderAppSurface();}
+    });
+    dialog.addEventListener("close",()=>dialog.remove());dialog.append(form);document.body.append(dialog);dialog.showModal();
+  }
   function renderCanvasLibrary(){
     const info=window.AIVerseCanvasLibrary?.list();
     if(!info){appSurface.append(make("p","app-surface-disclaimer","Canvas library is not available."));return;}
@@ -660,12 +680,15 @@
       name.append(make("strong","",item.name),make("small","",item.count+" card"+(item.count===1?"":"s")+" · "+item.connections+" link"+(item.connections===1?"":"s")));
       details.append(name);
       if(item.id===info.activeId)details.append(make("span","canvas-library-active","Current"));
+      if(item.favorite)details.append(make("span","canvas-library-active","★"));
       card.append(details);
       const actions=make("div","canvas-library-actions");
       actions.append(
         button("canvas-library-open","Open "+item.name,()=>openCanvas(item.id),null,"Open"),
         button("canvas-library-action","Rename "+item.name,()=>renameCanvas(item.id,item.name),null,"Rename"),
         button("canvas-library-action","Duplicate "+item.name,()=>{if(window.AIVerseCanvasLibrary?.duplicate(item.id))renderAppSurface();},null,"Duplicate"),
+        button("canvas-library-action","Move "+item.name,()=>moveCanvas(item.id),null,"Move to…"),
+        button("canvas-library-action","Favorite "+item.name,()=>{if(window.AIVerseCanvasLibrary?.favorite(item.id,!item.favorite))renderAppSurface();},null,item.favorite?"★ Starred":"☆ Favorite"),
         button("canvas-library-action danger","Delete "+item.name,()=>removeCanvas(item.id,item.name),null,"Delete")
       );
       card.append(actions);grid.append(card);
