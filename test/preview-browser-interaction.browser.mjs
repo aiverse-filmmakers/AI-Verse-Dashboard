@@ -31,7 +31,7 @@ async function setup(t) {
   const page=await context.newPage();
   const errors=[];
   page.on("pageerror",err=>errors.push(err.message));
-  await page.goto(origin,{waitUntil:"load"});
+  await page.goto(origin+"/?uxqc",{waitUntil:"load"});
   await page.locator(".canvas-node").first().waitFor();
   return {page,errors};
 }
@@ -120,7 +120,7 @@ test("C3,C4: marquee selects on release, live @ canvas chips mirror selection, t
     cards:[...document.querySelectorAll("#nodes [data-node]")].map(el=>({id:el.dataset.node,selected:el.classList.contains("selected"),rect:{x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().y,right:el.getBoundingClientRect().right,bottom:el.getBoundingClientRect().bottom}})),
     selectionRect:document.querySelector("#selection-rectangle")?.outerHTML.slice(0,320)
   }),{start,end});
-  assert.equal(await selected.count(),2,"release marquee: "+JSON.stringify({marqueeDiag,trace,errors}));
+  assert.equal(await selected.count(),2,"release marquee: "+JSON.stringify({marqueeDiag,trace,errors,qc:await page.evaluate(()=>window.__canvasQcLastMarquee)}));
   const chips=page.locator("#chat-form .shared-context-chip");
   assert.equal(await chips.count(),2,"chat references match selected cards");
   await page.locator("#viewport").click({position:{x:8,y:8}});
@@ -273,7 +273,7 @@ test("C3,C4: click-drag marquee selects multiple cards in real browser and desel
   const debug=await page.evaluate(({x,y,to})=>({start:{x,y},end:to,from:document.elementFromPoint(x,y)?.outerHTML.slice(0,170),toHit:document.elementFromPoint(to.x,to.y)?.outerHTML.slice(0,170),
     cards:[...document.querySelectorAll("#nodes [data-node]")].map(el=>({id:el.dataset.node,selected:el.classList.contains("selected"),x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().y,right:el.getBoundingClientRect().right,bottom:el.getBoundingClientRect().bottom}))
   }),{x,y,to});
-  assert.equal(await page.locator(".canvas-node.selected").count(),2,"two cards select on pointer release: "+JSON.stringify({debug,errors}));
+  assert.equal(await page.locator(".canvas-node.selected").count(),2,"two cards select on pointer release: "+JSON.stringify({debug,errors,qc:await page.evaluate(()=>window.__canvasQcLastMarquee)}));
   assert.equal(await page.locator("#chat-form .shared-context-chip").count(),2,"tag count equals current selection");
   await page.locator("#viewport").click({position:{x:8,y:8}});
   assert.equal(await page.locator(".canvas-node.selected").count(),0);
