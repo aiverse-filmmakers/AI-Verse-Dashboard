@@ -166,3 +166,9 @@ Operator screenshots exposed a bright blue rectangular focus treatment on the ch
 **Important separate demo boundary:** The original Activity, agent roster and other illustrative feature examples continue to exist for UX exploration. They are not evidence of live runs or actual owner-backed actions. The new Connections, Usage and Health default pages intentionally show not connected/unknown/not checked.
 
 **CI note:** The latest browser and Node runs must be read from the final committed head before claiming this slice is passed or publicly deployed. Older green runs do not certify the new behavior. The next plan gate is still MC2.1 pending (15 accepted historical MC0/MC1 points).
+
+### Stage 1 completed automated browser gate
+
+**Latest verified head:** `eee403ed0f3afae5cd5a11cbdd81985af007cdb4`. Real Chromium interaction workflow [run 40518393498](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40518393498) completed **19/19 passed, 0 failed**, including the three new Stage 1 journeys and retained chat/canvas/workspace/task-board interactions. Cross-platform Node CI [run 40518403285](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40518403285) passed on the same head. The first Stage 1 UI deployment build uses source commit `47fd6c5f61c15f5b13f5b230823161fac50f85cc`, but **its Pages result was still pending at this checkpoint**; do not assert the live website updated until publication succeeds.
+
+Failures caught during the slice were corrected: the feature navigation count was updated for the new Essentials entry, a saved feature page now persists on reload, and the asynchronous backup-validation test waits for its actual toast before asserting. Those are not ignored historical red runs. Only the browser-local UX slice is verified; no real AI/runtime/OS/Stop/credential action.
