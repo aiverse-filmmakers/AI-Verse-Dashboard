@@ -10,6 +10,12 @@ The operator has requested Personal-first delivery with always-present agent cha
 **PRD:** `docs/PRD-MISSION-CONTROL-AIVERSE-DASHBOARD-2026-09-15.md`  
 **Canonical plan:** `docs/CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md`
 
+## Standing execution preference: browser agent / GitHub-first (operator decision, 27 October 2026)
+
+The operator wants the browser agent to **continue the real implementation through GitHub and disposable GitHub Actions runners for as long as practical, aiming for roughly 90–93% of the existing 100-point roadmap before asking to test locally**. This includes a working downloadable app, secure local launcher and extensive real-component/negative CI tests, not just UI mock-ups. The browser agent **does not access the Mac**. Preserve the already-accepted MC0/MC1 work and continue building safely even when a single member-local acceptance gate is deferred. See the [canonical plan's standing decision](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md#standing-operator-decision-github-first-to-the-9093-pre-local-target-27-october-2026) for the full workflow and boundaries.
+
+**100% includes local owner acceptance.** The 90–93% is an *aspirational pre-local preparation target*, not currently earned points or permission to skip acceptance, account consent, real-Mac testing or security checks. Historical A/H weighted tasks still involving human acceptance: MC2.6 (1), MC5.4 (2), MC6.4 (3), MC7.3 (1), total 7 points; member/private-Core conditions may cause other gates. Current formal accepted score **15/100** until independently documented gate closure. The revised Personal scope still requires weight reconciliation. New chats must inspect the actual branch/PR/CI and this tracker, avoid repeating completed slices, and keep deferred local steps recorded without blocking independently testable GitHub work.
+
 ## Pre-dogfood whole-system audit override
 
 AI-Verse-System retains the whole-system audit authority. The operator explicitly approved the bounded disposable local Qwen trial recorded in System PR #288 and Dashboard PR #40. Its real Mac proof passed; [scope, evidence and limitations](MC1-REAL-MODEL-ACCEPTANCE-2026-10-26.md) close MC1.4/MC1.5 for this standalone local-model path. Generic/private-owner and credentialed-cloud trials remain blocked. Current Dashboard progress is **15/100**; next is MC2.1.
