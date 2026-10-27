@@ -204,7 +204,8 @@
       formDialog("Remove this team?",[{label:"Type the team name to confirm",placeholder:t.name,max:65}],"Remove", ([value]) => {
         if (value !== t.name) { notify("Enter the exact team name to remove it."); return false; }
         data.teams=data.teams.filter(x=>x.id!==t.id);data.activeTeam=data.teams[0].id;
-        if (draftTarget && !findRecipient(draftTarget)) { draftTarget=null; renderDraftTarget(); }
+        data.mainRecipients=data.mainRecipients.filter(k=>!!findRecipient(k));
+        for(const slot of Object.keys(data.paneRecipients)) data.paneRecipients[slot]=data.paneRecipients[slot].filter(k=>!!findRecipient(k));
         save();renderTeams();renderPanes();
       });
     }, null, "Remove team"));
@@ -256,7 +257,10 @@
     for (const c of meta?.canvas||[]) container.append(make("span","message-context-tag","▧ "+c.title));
     return container;
   }
+  let secondaryControllers=[];
   function renderPanes() {
+    for(const controller of secondaryControllers) controller.destroy();
+    secondaryControllers=[];
     secondaryHost.replaceChildren();
     document.body.classList.toggle("with-parallel-chats",data.panes>0);
     document.body.classList.toggle("with-three-chats",data.panes===2);
@@ -334,14 +338,15 @@
         onSubmit:({message,meta})=>{
           const store=recipient?data.threads:data.chats;
           const storeKey=recipient?recipient.key:slot;
-          if(recipient&&!findRecipient(recipient.key)){notify("This assistant or team no longer exists.");return false;}
+          if(recipient&&!findRecipient(recipient.key)){notify("This assistant or team no longer exists.");return true;}
           if(!Array.isArray(store[storeKey]))store[storeKey]=[];
-          if(store[storeKey].length>=100){notify("This demo conversation is full.");return false;}
+          if(store[storeKey].length>=100){notify("This demo conversation is full.");return true;}
           store[storeKey].push({role:"user",text:message,meta});
           store[storeKey].push({role:"assistant",text:"This is a design preview. The selected model, recipients, attachments and canvas items were not sent to an AI."});
           save();renderPanes();return true;
         }
       });
+      secondaryControllers.push(ui);
       // Keep individual/team identity legible even after selecting additional recipients.
       log.scrollTop=log.scrollHeight;
     }
