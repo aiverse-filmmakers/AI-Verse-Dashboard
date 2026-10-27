@@ -117,7 +117,7 @@ describe("Personal Chat canonical run controller",()=>{
    const fetchFn:FetchFn=async(_url,init)=>{
      const req=JSON.parse(init.body) as {systemId:string};
      return new Promise(resolve=>{
-       release=result=>resolve({json:async()=>({...await result.json(),systemId:req.systemId})});
+       release=result=>resolve({json:async()=>({...(await result.json() as Record<string,unknown>),systemId:req.systemId})});
      });
    };
    const client=new DashboardClient("http://127.0.0.1:3100",SCOPE,TOKEN,fetchFn);
