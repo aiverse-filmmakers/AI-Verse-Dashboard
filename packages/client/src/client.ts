@@ -68,6 +68,30 @@ export class DashboardClient {
     this.cache.clear();
   }
 
+  /**
+   * Canonical AI-Verse projections through the existing authenticated Dashboard
+   * /rpc host, NEVER directly to the upstream Gateway. No provider bearer
+   * leaves the host; the trusted host must explicitly opt in to the bridge.
+   */
+  async gatewayStatus():Promise<{result:unknown;systemId?:string;observedAt:string}> {
+    if(!this.scope.workspaceId)throw new Error("Select a workspace or operator scope first");
+    return this.query("aiverse.gateway.status",{noCache:true});
+  }
+
+  async createGatewayRun(args:{
+    messages:Array<{role:"system"|"user"|"assistant"|"tool";content:string|null}>;
+    idempotencyKey:string;
+    sessionId?:string;
+  }):Promise<{result:unknown;systemId?:string;observedAt:string}> {
+    if(!this.scope.workspaceId)throw new Error("Select a workspace or operator scope first");
+    return this.query("aiverse.gateway.run.create",{noCache:true,params:args});
+  }
+
+  async getGatewayRun(runId:string):Promise<{result:unknown;systemId?:string;observedAt:string}> {
+    if(!this.scope.workspaceId)throw new Error("Select a workspace or operator scope first");
+    return this.query("aiverse.gateway.run.get",{noCache:true,params:{runId}});
+  }
+
   /** Query the Gateway. Read-only methods only in Phase 1. */
   async query(
     method: DashboardMethod,
