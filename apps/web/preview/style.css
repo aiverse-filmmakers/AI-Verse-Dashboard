@@ -130,3 +130,6 @@ body.dark{color-scheme:dark;--bg:#1d1d20;--surface:#262629;--canvas:#212124;--in
  .focus-mode main{padding:20px}
  .focus-mode .board-section{margin:0}
 }
+
+/* Keep the mobile chat drawer reachable while canvas focus mode is on. */
+@media(max-width:820px){.focus-mode .mobile-chat{display:flex}.focus-mode.chat-open .chat-panel{display:flex}}
