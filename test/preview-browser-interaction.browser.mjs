@@ -32,8 +32,10 @@ async function setup(t) {
   const errors=[];
   page.on("pageerror",err=>errors.push(err.message));
   await page.goto(origin,{waitUntil:"load"});
-  await page.locator(".canvas-library-card").first().waitFor();
-  await page.locator(".canvas-library-card .canvas-library-open").first().click();
+  await page.locator("#viewport:not([hidden])").waitFor();
+  assert.equal(await page.locator(".canvas-node").count(),0,"new sessions start with empty Scratch canvas beside chat");
+  await page.locator(".canvas-library-back").click();
+  await page.getByRole("button",{name:"Open Personal canvas"}).click();
   await page.locator(".canvas-node").first().waitFor();
   return {page,errors};
 }
@@ -517,6 +519,92 @@ test("Task board: native drag and accessible stage control both move sample task
  await page.locator('.os-kanban-column[data-status="Done"] .os-kanban-card').filter({hasText:"Build production shot list"}).getByRole("button",{name:"View task details"}).click();
  assert.match(await page.locator(".os-card").last().innerText(),/Build production shot list/,"details open without interrupting drag or edit controls");
  assert.match(await page.locator(".os-source").innerText(),/sample workspace/i,"never claims a live OS effect");
+ assert.equal(errors.length,0,errors.join("\n"));
+});
+
+
+test("Canvas library: keep scratch open by default, create isolated canvases, duplicate/rename/delete and move to Filmmaking",async t=>{
+ const {page,errors}=await setup(t);
+ const original=await state(page);
+ const personal=original.workspaces.find(w=>w.id==="personal");
+ assert.equal(personal.canvases.length,2,"fresh personal workspace keeps sample plus an empty scratch board");
+ const originalTitles=personal.nodes.map(n=>n.title);
+ await page.locator(".canvas-library-back").click();
+ assert.equal(await page.locator(".canvas-library-card").count(),2);
+ await page.getByRole("button",{name:"Create new canvas"}).click();
+ await page.locator(".personal-mini-dialog input").fill("Campaign storyboard");
+ await page.getByRole("button",{name:"Save",exact:true}).click();
+ assert.equal(await page.locator(".canvas-node").count(),0,"new canvas is empty and opens beside chat");
+ await page.locator("#add-note").click();
+ assert.equal(await page.locator(".canvas-node.note").count(),1,"new board can receive notes");
+ const newId=(await state(page)).workspaces.find(w=>w.id==="personal").activeCanvasId;
+ await page.locator(".canvas-library-back").click();
+ assert.equal(await page.locator(".canvas-library-card").count(),3);
+ await page.getByRole("button",{name:"Duplicate Campaign storyboard"}).click();
+ assert.equal(await page.locator(".canvas-library-card").count(),4);
+ const copy=page.locator(".canvas-library-card").filter({hasText:"Copy of Campaign storyboard"});
+ assert.equal(await copy.count(),1);
+ await copy.getByRole("button",{name:"Rename Copy of Campaign storyboard"}).click();
+ await page.locator(".personal-mini-dialog input").fill("Shot alternatives");
+ await page.getByRole("button",{name:"Save",exact:true}).click();
+ await page.getByRole("button",{name:"Favorite Shot alternatives"}).click();
+ assert.match(await page.locator(".canvas-library-card").filter({hasText:"Shot alternatives"}).innerText(),/Starred/);
+ await page.getByRole("button",{name:"Delete Shot alternatives"}).click();
+ await page.locator(".personal-mini-dialog input").fill("Incorrect");
+ await page.getByRole("button",{name:"Delete",exact:true}).click();
+ assert.equal(await page.locator(".canvas-library-card").count(),4,"wrong name cannot delete");
+ await page.locator(".personal-mini-dialog input").fill("Shot alternatives");
+ await page.getByRole("button",{name:"Delete",exact:true}).click();
+ assert.equal(await page.locator(".canvas-library-card").count(),3);
+ await page.getByRole("button",{name:"Move Campaign storyboard"}).click();
+ await page.getByRole("combobox",{name:"Destination workspace"}).selectOption("film-silent-horizon");
+ await page.getByRole("button",{name:"Move canvas",exact:true}).click();
+ assert.equal(await page.locator(".canvas-library-card").count(),2);
+ const afterMove=await state(page);
+ const source=afterMove.workspaces.find(w=>w.id==="personal");
+ const destination=afterMove.workspaces.find(w=>w.id==="film-silent-horizon");
+ assert.ok(!source.canvases.some(c=>c.id===newId));
+ assert.ok(destination.canvases.some(c=>c.id===newId),"same board ID and content moved without a copy");
+ assert.equal(destination.canvases.find(c=>c.id===newId).nodes.length,1);
+ await page.getByRole("button",{name:"Open Personal canvas"}).click();
+ for(const title of originalTitles)assert.ok((await page.locator(".canvas-node h3").allInnerTexts()).includes(title),"original canvas content preserved: "+title);
+ await page.locator('[data-area="film"]').click();
+ await page.locator(".canvas-library-back").click();
+ await page.getByRole("button",{name:"Open Campaign storyboard"}).click();
+ assert.equal(await page.locator(".canvas-node.note").count(),1,"moving to filmmaking preserves editable notes");
+ await page.reload();
+ assert.equal(await page.locator(".canvas-node.note").count(),1,"selected board editor and content persist across reload");
+ await page.locator('[data-area="personal"]').click();
+ assert.equal((await state(page)).selected,"personal","returning from filmmaking restores Personal workspace");
+ assert.equal(errors.length,0,errors.join("\n"));
+});
+test("Teams popup and Features control stay contained at desktop and narrow width",async t=>{
+ const {page,errors}=await setup(t);
+ for(const width of [1280,720,390]){
+   await page.setViewportSize({width,height:900});
+   await page.locator(".quiet-teams-toggle").click();
+   const fit=await page.evaluate(()=>{
+     const panel=document.querySelector(".personal-teams-popover");
+     const box=panel.getBoundingClientRect();
+     const bad=[...panel.querySelectorAll("button")].filter(x=>{
+       const r=x.getBoundingClientRect();
+       return r.left<box.left-2||r.right>box.right+2;
+     });
+     return {panelLeft:box.left,panelRight:box.right,viewport:innerWidth,overflow:bad.map(x=>x.textContent)};
+   });
+   assert.ok(fit.panelLeft>=-2&&fit.panelRight<=fit.viewport+2,"Teams popup within viewport at "+width+"px: "+JSON.stringify(fit));
+   assert.equal(fit.overflow.length,0,"all Teams buttons remain inside their popup at "+width+"px");
+   await page.locator(".quiet-teams-toggle").click();
+   const iconSize=await page.locator(".quiet-feature-toggle svg").evaluate(e=>({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height}));
+   assert.ok(iconSize.w>=15&&iconSize.w<=18,"Features icon has intentional dimensions");
+   assert.ok(iconSize.h>=15&&iconSize.h<=18);
+ }
+ await page.locator(".app-picker-toggle").click();
+ const menu=await page.locator(".app-picker-menu").innerText();
+ assert.ok(!menu.includes("Explore features"),"Features is removed from Canvas picker");
+ assert.match(menu,/Canvases/);
+ await page.locator(".quiet-feature-toggle").click();
+ assert.ok(await page.locator(".os-real-shell").isVisible(),"real feature pages remain available from dedicated top button");
  assert.equal(errors.length,0,errors.join("\n"));
 });
 
