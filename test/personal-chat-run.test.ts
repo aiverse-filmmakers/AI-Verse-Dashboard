@@ -211,7 +211,7 @@ describe("authenticated local Dashboard run event feed",()=>{
  });
  it("opens a scoped WebSocket using ambient HttpOnly cookie without bearer protocols",()=>{
    const socket=new TestSocket();
-   const requests:Array<{url:string;protocols:string[]}=[];
+   const requests:Array<{url:string;protocols:string[]}>=[];
    const feed=new DashboardChatEventFeed("http://127.0.0.1:3100",
      {mode:"host-cookie"},(url,protocols)=>{requests.push({url,protocols});return socket;});
    const stop=feed.subscribe(SCOPE,"run-a",{event:()=>{},interrupted:()=>{}});
