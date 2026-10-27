@@ -35,6 +35,8 @@
   data.paneRecipients = data.paneRecipients && typeof data.paneRecipients === "object" ? data.paneRecipients : {};
   data.paneModels = data.paneModels && typeof data.paneModels === "object" ? data.paneModels : {};
   data.mainRecipients = Array.isArray(data.mainRecipients) ? data.mainRecipients : [];
+  data.paneCanvasRefs = data.paneCanvasRefs && typeof data.paneCanvasRefs==="object" ? data.paneCanvasRefs : {};
+  data.mainCanvasRefs = Array.isArray(data.mainCanvasRefs) ? data.mainCanvasRefs : [];
   data.mainVisible = data.mainVisible !== false;
   let lastActiveChat = typeof data.lastActiveChat==="string" ? data.lastActiveChat : "main";
   const id = () => crypto.randomUUID();
@@ -312,12 +314,13 @@
           data.chatTargets[slot]=data.chatTargets[last];
           data.paneRecipients[slot]=data.paneRecipients[last]||[];
           data.paneModels[slot]=data.paneModels[last]||"Auto";
+          data.paneCanvasRefs[slot]=data.paneCanvasRefs[last]||[];
         }
         const last=String(data.panes);
         delete data.chats[last];delete data.chatTargets[last];
-        delete data.paneRecipients[last];delete data.paneModels[last];
+        delete data.paneRecipients[last];delete data.paneModels[last];delete data.paneCanvasRefs[last];
         data.panes--;
-        if(lastActiveChat===slot)lastActiveChat=data.panes?String(Math.min(data.panes,i)):data.mainVisible?"main":null;
+        if(lastActiveChat===slot||Number(lastActiveChat)>data.panes)lastActiveChat=data.panes?String(Math.min(data.panes,i)):data.mainVisible?"main":null;
         save();renderPanes();
       },"close"));
       heading.append(actions);pane.append(heading);
@@ -360,10 +363,11 @@
       const initKeys=data.paneRecipients[slot]|| (recipient?[recipient.key]:[]);
       const ui=window.AIVerseChatUI.mount({
         form,input,teams:()=>data.teams,canvasItems:activeCanvasItems,
-        initialRecipients:initKeys,initialModel:data.paneModels[slot]||"Auto",
+        initialRecipients:initKeys,initialCanvas:data.paneCanvasRefs[slot]||[],initialModel:data.paneModels[slot]||"Auto",
         notify,onChange:meta=>{
           data.paneRecipients[slot]=meta.recipients.map(r=>r.key);
           data.paneModels[slot]=meta.model;
+          data.paneCanvasRefs[slot]=meta.canvas;
           save();
         },
         onSubmit:({message,meta})=>{
@@ -386,10 +390,10 @@
   const mainInput=$("#message");
   const mainUI=window.AIVerseChatUI.mount({
     form:mainComposer,input:mainInput,teams:()=>data.teams,canvasItems:activeCanvasItems,
-    initialRecipients:data.mainRecipients,initialModel:data.paneModels.main||"Auto",
+    initialRecipients:data.mainRecipients,initialCanvas:data.mainCanvasRefs,initialModel:data.paneModels.main||"Auto",
     notify,onChange:meta=>{
       data.mainRecipients=meta.recipients.map(r=>r.key);
-      data.paneModels.main=meta.model;save();
+      data.paneModels.main=meta.model;data.mainCanvasRefs=meta.canvas;save();
     },
     onSubmit:({message,meta})=>{
       const enhanced=meta.recipients.length||meta.files.length||meta.canvas.length||meta.model!=="Auto";
