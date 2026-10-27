@@ -1,5 +1,11 @@
 # Resume Dashboard development — 27 October 2026
 
+## Operator handoff directive for a new chat: maximize GitHub work before local testing
+
+**Explicit 27 October decision:** the browser agent is expected to implement and test as much of the existing 100-point Dashboard plan as possible in GitHub, targeting roughly **90–93% pre-local implementation/readiness** before requesting the next Mac checkpoint. That range is an ambition based on the historical weighted work, **not formal accepted progress**. **100% includes owner-local installation, account authorization, clean-machine/usability tests and final sign-off.** The browser agent cannot use the Mac or its private credentials. GitHub CI *can* run real Dashboard/Gateway/OS and owner APIs against disposable installations. Never conflate the Pages preview, CI runtime tests and private member installation.
+
+**Do not ask for routine local testing after each task.** Continue the original canonical MC sequence and safely independent tasks, with real code/tests, documented blocked owner gates and a prepared downloadable build/launcher. Defer necessary Mac actions into one later consolidated acceptance session. Read the [standing decision in the living plan](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md) and [execution tracker](MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md). At this checkpoint MC0+MC1 historical accepted progress remains **15/100**. Do not falsely upgrade acceptance, invent credential access, merge the draft PR without authorization or claim the public preview is connected.
+
 ## Where to continue
 
 This code checkpoint builds on the documentation in Dashboard PR #41. Fetch this PR branch, not just main. Do not assume a draft PR has been merged. The detailed plan remains [the living plan](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md); System PR #294 is its coordination summary.
