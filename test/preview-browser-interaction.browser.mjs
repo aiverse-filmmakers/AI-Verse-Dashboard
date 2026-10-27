@@ -394,60 +394,102 @@ test("Visual focus QC: primary and secondary composers have no blue boxes; canva
 });
 
 
-test("Feature tour: inspect all audited OS capabilities, filter and navigate without claiming a live connection",async t=>{
-  const {page,errors}=await setup(t);
-  await page.locator(".quiet-feature-toggle").click();
-  const explorer=page.locator(".feature-explorer");
-  assert.ok(await explorer.isVisible(),"feature tour opens from top bar");
-  assert.equal(await page.locator(".feature-nav-item").count(),13,"all audited capability examples are discoverable");
-  assert.match(await explorer.innerText(),/design examples, not live data/i);
-  assert.match(await page.locator(".feature-detail h3").innerText(),/Needs attention/);
-  assert.match(await page.locator(".feature-mock-tag").innerText(),/EXAMPLE INTERFACE/);
-  assert.match(await page.locator(".feature-detail-bottom").innerText(),/Preview only/);
-  await page.getByRole("button",{name:"Preview Scheduled work"}).click();
-  assert.match(await page.locator(".feature-detail h3").innerText(),/Scheduled work/);
-  assert.match(await page.locator(".feature-mock-inner").innerText(),/Mac or server running/);
-  await page.locator(".feature-search").fill("cost");
-  assert.ok((await page.locator(".feature-nav-item").count())>=1);
-  await page.locator(".feature-search").fill("absolutely-no-such-feature");
-  assert.match(await page.locator(".feature-no-results").innerText(),/No matches/);
-  assert.equal(await page.locator(".feature-detail").innerText(),"","no fake detail on an empty result");
-  await page.locator(".feature-search").press("Escape");
-  assert.equal(await page.locator(".feature-nav-item").count(),13,"Escape clears query");
-  await page.getByRole("button",{name:"More tools",exact:true}).click();
-  assert.equal(await page.locator(".feature-nav-item").count(),5,"advanced group is filtered");
-  await page.getByRole("button",{name:"Essentials",exact:true}).click();
-  assert.equal(await page.locator(".feature-nav-item").count(),3,"essential group is filtered");
-  await page.locator(".feature-next").click();
-  assert.match(await page.locator(".feature-detail h3").innerText(),/Live activity/);
-  await page.getByRole("button",{name:"All",exact:true}).click();
-  assert.equal(await page.locator(".feature-nav-item").count(),13);
-  assert.equal(errors.length,0,errors.join("\n"));
+test("Functional workspace pages: navigate actual domain layouts and operate sample records",async t=>{
+ const {page,errors}=await setup(t);
+ await page.locator(".quiet-feature-toggle").click();
+ assert.ok(await page.locator(".os-real-shell").isVisible(),"new real-world app shell replaces PowerPoint-like tour");
+ assert.equal(await page.locator(".os-nav-item").count(),13,"all 13 owner-backed workspaces are discoverable");
+ assert.match(await page.locator(".os-source").innerText(),/Illustrative/);
+ // Attention: a real approval queue layout with mutable sample decisions.
+ assert.equal(await page.locator(".os-queue").count(),4);
+ await page.getByRole("button",{name:"Approve",exact:true}).click();
+ assert.match(await page.locator(".os-toast").innerText(),/Example request approved/);
+ assert.equal(await page.locator(".os-stat strong").first().innerText(),"2");
+ // Activity: real progress and timeline inspector, with sample run state control.
+ await page.getByRole("button",{name:"Open Activity page"}).click();
+ assert.equal(await page.locator(".os-run").count(),4);
+ assert.match(await page.locator(".os-log").innerText(),/Scope checked/);
+ await page.getByRole("button",{name:"Pause example run"}).click();
+ assert.match(await page.locator(".os-toast").innerText(),/paused/);
+ // Teams: real roster, task counts, searchable roles.
+ await page.getByRole("button",{name:"Open AI team page"}).click();
+ assert.equal(await page.locator(".os-agent").count(),5);
+ await page.getByRole("searchbox",{name:"Search agents"}).fill("Editor");
+ assert.equal(await page.locator(".os-agent").count(),1);
+ // Goals: checklist changes status without touching backend.
+ await page.getByRole("button",{name:"Open Goals page"}).click();
+ assert.equal(await page.locator(".os-goal").count(),3);
+ await page.locator(".os-check input").first().uncheck();
+ assert.match(await page.locator(".os-toast").innerText(),/Example milestone/);
+ // Calendar: actual seven-day grid, change enabled schedule.
+ await page.getByRole("button",{name:"Open Scheduled work page"}).click();
+ assert.equal(await page.locator(".os-day").count(),7);
+ await page.locator(".os-table .os-small-btn").first().click();
+ assert.match(await page.locator(".os-toast").innerText(),/Example data updated/);
+ // Skills: a package list and real proposal decision controls.
+ await page.getByRole("button",{name:"Open Skills page"}).click();
+ assert.equal(await page.locator(".os-skill-item").count(),5);
+ await page.getByRole("button",{name:"Learning proposals"}).click();
+ assert.equal(await page.locator(".os-card").count(),2);
+ await page.getByRole("button",{name:"Approve example"}).first().click();
+ assert.match(await page.locator(".os-card").first().innerText(),/Accepted/);
+ // Knowledge: source-oriented search, not fake universal cards.
+ await page.getByRole("button",{name:"Open Knowledge page"}).click();
+ await page.getByRole("searchbox",{name:"Search memory"}).fill("captions");
+ assert.equal(await page.locator(".os-memory-item").count(),1);
+ assert.match(await page.locator(".os-card").innerText(),/Evidence source/);
+ // Editable Data grid: working status change and record creation.
+ await page.getByRole("button",{name:"Open Project data page"}).click();
+ assert.equal(await page.locator(".os-table tbody tr").count(),6);
+ await page.locator(".os-table select").first().selectOption("Review");
+ assert.match(await page.locator(".os-toast").innerText(),/Example data updated/);
+ await page.getByRole("button",{name:"+ Add shot"}).click();
+ await page.locator(".os-dialog input").first().fill("04A");
+ await page.locator(".os-dialog input").nth(1).fill("Follow camera through room");
+ await page.locator(".os-dialog select").selectOption("FPV");
+ await page.getByRole("button",{name:"Save in preview"}).click();
+ assert.equal(await page.locator(".os-table tbody tr").count(),7);
+ // Outputs: actual file-browser shape, filter, selected details.
+ await page.getByRole("button",{name:"Open Outputs page"}).click();
+ assert.equal(await page.locator(".os-file-card").count(),5);
+ await page.getByRole("button",{name:"Documents",exact:true}).click();
+ assert.equal(await page.locator(".os-file-card").count(),2);
+ // Cost: a chart and attribution table, with period control.
+ await page.getByRole("button",{name:"Open Usage & cost page"}).click();
+ assert.equal(await page.locator(".os-bar-col").count(),7);
+ await page.getByRole("button",{name:"30 days"}).click();
+ assert.equal(await page.locator(".os-bar-col").count(),4);
+ // Health and connections have actual inspectors and permission detail.
+ await page.getByRole("button",{name:"Open System health page"}).click();
+ assert.equal(await page.locator(".os-health-row").count(),7);
+ await page.getByRole("button",{name:"Open Connections page"}).click();
+ assert.equal(await page.locator(".os-connection-row").count(),4);
+ assert.match(await page.locator(".os-card").last().innerText(),/Permission/);
+ assert.equal(errors.length,0,errors.join("\n"));
 });
-
-test("Feature tour neighbors: canvas, chat, app picker, reload, Activity and narrow viewport",async t=>{
-  const {page,errors}=await setup(t);
-  const before=await page.locator("#nodes .canvas-node").count();
-  await page.locator("#message").fill("Keep my draft while I look around");
-  await page.locator(".quiet-feature-toggle").click();
-  assert.ok(await page.locator(".feature-explorer").isVisible());
-  assert.equal(await page.locator("#message").inputValue(),"Keep my draft while I look around");
-  await page.reload();
-  assert.ok(await page.locator(".feature-explorer").isVisible(),"feature view survives reload");
-  await page.locator(".app-picker-toggle").click();
-  await page.getByRole("button",{name:"Open Canvas",exact:true}).click();
-  assert.ok(await page.locator("#viewport").isVisible(),"canvas restored via existing app picker");
-  assert.equal(await page.locator("#nodes .canvas-node").count(),before,"feature explorer does not mutate canvas");
-  await page.locator(".app-picker-toggle").click();
-  await page.getByRole("button",{name:"Open Activity",exact:true}).click();
-  assert.match(await page.locator(".app-empty-card").innerText(),/Nothing running here yet/,"Activity remains truthful");
-  await page.getByRole("button",{name:"Explore planned OS features"}).click();
-  assert.ok(await page.locator(".feature-explorer").isVisible(),"Activity links to discoverable feature tour");
-  await page.setViewportSize({width:760,height:920});
-  assert.ok(await page.locator(".feature-detail").isVisible(),"feature details usable at narrow width");
-  const size=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,win:innerWidth}));
-  assert.ok(size.doc<=size.win+1,"feature tour does not introduce horizontal document overflow");
-  assert.equal(errors.length,0,errors.join("\n"));
+test("Functional pages preserve chat, canvas, visibility on reload and narrow layout",async t=>{
+ const {page,errors}=await setup(t);
+ const before=await page.locator(".canvas-node").count();
+ await page.locator("#message").fill("Draft left untouched");
+ await page.locator(".quiet-feature-toggle").click();
+ assert.ok(await page.locator(".os-real-shell").isVisible());
+ await page.getByRole("button",{name:"Open Conversations page"}).click();
+ assert.match(await page.locator(".os-transcript").innerText(),/EXAMPLE/);
+ await page.reload();
+ assert.ok(await page.locator(".os-real-shell").isVisible(),"feature view persists via existing app selection");
+ assert.equal(await page.locator("#message").inputValue(),"Draft left untouched");
+ await page.locator(".app-picker-toggle").click();
+ await page.getByRole("button",{name:"Open Canvas",exact:true}).click();
+ assert.equal(await page.locator(".canvas-node").count(),before,"canvas unaffected");
+ await page.locator(".app-picker-toggle").click();
+ await page.getByRole("button",{name:"Open Activity",exact:true}).click();
+ assert.match(await page.locator(".app-empty-card").innerText(),/Nothing running here yet/);
+ await page.getByRole("button",{name:"Explore planned OS features"}).click();
+ await page.setViewportSize({width:760,height:950});
+ assert.ok(await page.locator(".os-real-shell").isVisible());
+ const widths=await page.evaluate(()=>({actual:document.documentElement.scrollWidth,window:innerWidth}));
+ assert.ok(widths.actual<=widths.window+1,"no horizontal document overflow");
+ assert.equal(errors.length,0,errors.join("\n"));
 });
 
 test.after(async()=>{await browser.close();await new Promise(resolve=>server.close(resolve));});
