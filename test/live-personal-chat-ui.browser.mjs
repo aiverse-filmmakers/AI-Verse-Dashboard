@@ -25,7 +25,7 @@ const html=String.raw`<!doctype html><html lang="en"><head>
 <title>Real Personal Chat QC</title></head><body style="margin:0">
 <main id="app" style="height:85vh"></main>
 <script type="module">
-import {mountAuthenticatedPersonalChat} from "/dist/apps/web/src/personal-chat-ui.js";
+import {mountAuthenticatedPersonalChat} from "/dist/apps/web/personal-chat.bundle.js";
 window.chatApp=mountAuthenticatedPersonalChat(document.querySelector("#app"),{
  dashboardOrigin:location.origin,dashboardBearer:"test-dashboard-auth-0011223344556677",
  selected:{systemId:"aiverse-01",workspaceId:"operator"},
