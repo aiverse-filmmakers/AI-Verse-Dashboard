@@ -92,7 +92,7 @@ const TERMINAL = new Set<ChatRunPhase>(["completed","failed","canceled","blocked
 /** Real WebSocket event adapter, connected only to the authenticated local Dashboard host. */
 export class DashboardChatEventFeed implements ChatEventFeed {
   private readonly url: string;
-  constructor(base: string, private readonly authToken: string,
+  constructor(base: string, private readonly authToken: string | {mode:"host-cookie"},
     private readonly socketFactory: ChatWebSocketFactory =
       (url,protocols)=>new WebSocket(url,protocols)) {
     let uri: URL;
@@ -101,13 +101,16 @@ export class DashboardChatEventFeed implements ChatEventFeed {
       || uri.username || uri.password || uri.search || uri.hash || uri.pathname!=="/")
       fail("CHAT_HOST_ORIGIN_INVALID");
     this.url=uri.origin.replace(/^http:/,"ws:");
-    dashboardWsAuthProtocol(authToken); // enforce host-session format before connecting
+    if(typeof authToken==="string")dashboardWsAuthProtocol(authToken);
+    else if(authToken?.mode!=="host-cookie")fail("CHAT_AUTH_MODE_INVALID");
   }
   subscribe(scope: Required<ClientScope>, runId: string,
     callbacks:{event(event:ChatRunEvent):void;interrupted(code:string):void}):()=>void {
     if(!SAFE_ID.test(runId))fail("CHAT_RUN_ID_INVALID");
     const socket=this.socketFactory(this.url+"/ws?systemId="+encodeURIComponent(scope.systemId),
-      [DASHBOARD_WS_PROTOCOL,dashboardWsAuthProtocol(this.authToken)]);
+      typeof this.authToken==="string"
+        ?[DASHBOARD_WS_PROTOCOL,dashboardWsAuthProtocol(this.authToken)]
+        :[DASHBOARD_WS_PROTOCOL]);
     let stopped=false, reported=false;
     const interrupted=(code:string)=>{
       if(stopped || reported)return;
