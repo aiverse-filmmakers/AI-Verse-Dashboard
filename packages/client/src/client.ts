@@ -46,7 +46,7 @@ export class DashboardClient {
     private readonly gatewayBase: string,
     scope: ClientScope,
     private readonly authToken: string,
-    private readonly fetchFn: FetchFn = fetch as unknown as FetchFn,
+    private readonly fetchFn: FetchFn = (url,init) => globalThis.fetch(url,init),
   ) {
     assertDashboardAuthToken(authToken);
     this.scope = { ...scope };
