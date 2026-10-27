@@ -56,6 +56,11 @@ export class DashboardClient {
     return { ...this.scope };
   }
 
+  /** Client-local monotonic scope epoch, including A→B→A selection changes. */
+  selectionVersion(): number {
+    return this.selectionEpoch;
+  }
+
   /** Explicit user action retargets the client; never silent. */
   retarget(scope: ClientScope): void {
     this.scope = { ...scope };
