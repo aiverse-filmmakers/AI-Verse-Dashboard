@@ -37,7 +37,9 @@ jobs:
         run: npm install --no-save --package-lock=false playwright@1.58.2 esbuild@0.25.12
       - name: Provision headless Chromium and system libraries
         run: npx playwright install --with-deps chromium
-      - name: Build authenticated runtime UI modules
-        run: npm run build
+      - name: Build and bundle authenticated runtime UI modules
+        run: |
+          npm run build
+          npx esbuild apps/web/src/personal-chat-ui.ts --bundle --platform=browser --format=esm --target=es2022 --outfile=dist/apps/web/personal-chat.bundle.js
       - name: Test static preview independently from real host chat UI
         run: node --test test/preview-browser-interaction.browser.mjs test/live-personal-chat-ui.browser.mjs
