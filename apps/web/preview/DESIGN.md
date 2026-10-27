@@ -71,3 +71,17 @@ The operator challenged the assistant's introduction of “workflow” as an ext
 ## Confirmed direction — Personal foundation, 27 October 2026
 
 Personal comes first. Chat must stay visible across Personal, workspace/canvas and Filmmaking views, understand bounded current app/selection context, and perform scoped app actions through the same validated operations as manual edits. Focus mode must preserve chat. Add real supported provider/model/reasoning selection, attachments, commands and skill mentions; keep conversations, capabilities and usage consistent across tabs without leaking private workspace content. Canvas arrangement/connections and real image creation are separate verified action gates. These are product requirements, not claims that the current demo implements them. See the Dashboard living plan for the local scope amendment and pending backend contracts.
+
+
+## Personal progressive-disclosure design checkpoint, 27 October 2026
+
+Operator refinement: **Teams must not replace or overtake chat.** The default Personal view remains the original quiet two-column composition: persistent AI-Verse chat plus current workspace/canvas. Advanced options are discoverable rather than permanently visible.
+
+- A small **Teams** button in the top bar opens an anchored popover only when requested. The user can select among three example teams, create additional teams (up to 20 for the demo), add example assistant members and remove a team with explicit name confirmation. The team menu starts closed. Selecting a team does not change the chat's scope or enable a real Bot.
+- A small split-chat icon in the chat header opens a second or third **independent demo chat pane**, each with its own local sample conversation and close control. It does not replace the original chat and starts with zero extra panes.
+- A discreet **Canvas** picker within the workspace header opens the optional **Notes**, **References** and **Activity** app panels. Canvas stays the default and retains drag/edit/pan/zoom; note/reference cards can return to the relevant canvas item. Activity honestly says it is not connected.
+- The prototype saves only extra demo presentation/team state under \`aiverse-personal-shell-preview-v1\`, separate from the pre-existing \`aiverse-design-preview-v1\` store. It does not create canonical Bots, teams, rooms, chat sessions, assets, spend, connection auth or real provider actions. A menu selection does not grant authority.
+- Focus mode continues to show the main chat on desktop. On narrow screens the original chat drawer remains because two permanently open columns do not fit.
+- The preview remains publicly hosted, sample-only and no provider calls/secret input are introduced. The existing canvas and original workspace/chat source are preserved.
+
+This is reviewable visual design work, not connected product acceptance. The team selector reflects the product owner's **multiple teams**, not a single hardwired global team. Team management, chat continuity and app context need trusted owner-backed contracts before the real product can claim to run those capabilities.
