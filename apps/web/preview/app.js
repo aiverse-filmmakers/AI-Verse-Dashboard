@@ -627,4 +627,4 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('keyup',e=>{if(e.code==='Space'){spacePanHeld=false;$('#viewport').classList.remove('space-panning');}});
 window.addEventListener('blur',()=>{spacePanHeld=false;$('#viewport').classList.remove('space-panning');});
-window.addEventListener('resize',drawConnections);render();if(!storageAvailable)toast('Could not load saved preview data. Sample workspaces are shown; export any new work to keep it.');
+window.addEventListener('resize',drawConnections);render();if(storageAvailable&&!hadSavedPreview)save();if(!storageAvailable)toast('Could not load saved preview data. Sample workspaces are shown; export any new work to keep it.');
