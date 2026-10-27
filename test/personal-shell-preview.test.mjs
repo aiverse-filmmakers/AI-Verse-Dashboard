@@ -116,5 +116,5 @@ test("honest static preview has no agent dispatch or credential connection",()=>
   assert.match(core,/not sent to a live AI/);
   assert.match(shared,/Nothing is sent to an AI/);
   assert.match(addon,/Nothing is sent to a real AI/);
-  assert.match(shared,/No real agent messages/);
+  assert.match(shared,/Team messages are not dispatched/);
 });
