@@ -26,7 +26,7 @@
       t.members.every(m => typeof m.id === "string" && typeof m.name === "string" && typeof m.role === "string")) &&
     s.teams.some(t => t.id === s.activeTeam) &&
     Number.isInteger(s.panes) && s.panes >= 0 && s.panes <= 2 &&
-    ["canvas","notes","assets","activity"].includes(s.app) &&
+    ["canvas","notes","assets","activity","features"].includes(s.app) &&
     s.chats && typeof s.chats === "object";
   let data = blank();
   try { const restored = JSON.parse(localStorage.getItem(key)); if (valid(restored)) data = restored; } catch {}
@@ -160,6 +160,10 @@
   teamsButton.setAttribute("aria-expanded", "false");
   teamsButton.setAttribute("aria-controls", "personal-teams-popover");
   top.insertBefore(teamsButton, $("#theme"));
+  const featuresButton = button("quiet-feature-toggle", "Explore OS features", () => {
+    data.app="features"; save(); showTeams(false); renderAppSurface();
+  }, "grid", "Features");
+  top.insertBefore(featuresButton, $("#theme"));
   const popover = make("section", "personal-teams-popover");
   popover.id = "personal-teams-popover";
   popover.hidden = true;
@@ -553,7 +557,8 @@
   const available = [{id:"canvas",label:"Canvas",summary:"Your spatial workspace"},
     {id:"notes",label:"Notes",summary:"Words and ideas in one place"},
     {id:"assets",label:"References",summary:"Images and visual ideas"},
-    {id:"activity",label:"Activity",summary:"Preview of future run controls"}];
+    {id:"activity",label:"Activity",summary:"Preview of future run controls"},
+    {id:"features",label:"Explore features",summary:"Discover what your AI-Verse OS can do"}];
   function toggleApps() { appMenu.hidden=!appMenu.hidden;appToggle.setAttribute("aria-expanded",String(!appMenu.hidden));if(!appMenu.hidden)renderAppMenu(); }
   function renderAppMenu() {
     appMenu.replaceChildren();
@@ -590,6 +595,12 @@
     appSurface.hidden=isCanvas;
     if (isCanvas) { window.dispatchEvent(new Event("resize")); return; }
     appSurface.replaceChildren();
+    featuresButton.setAttribute("aria-current",data.app==="features"?"page":"false");
+    if(data.app==="features"){
+      if(window.AIVerseFeatureExplorer)window.AIVerseFeatureExplorer.mount(appSurface);
+      else appSurface.append(make("p","app-surface-disclaimer","The feature tour is not available in this preview."));
+      return;
+    }
     const w=currentWorkspace();
     const head=make("div","app-surface-heading");
     const h=make("div");
@@ -599,6 +610,7 @@
     if (data.app==="activity") {
       const empty=make("div","app-empty-card");
       empty.append(make("div","app-empty-icon","✳"),make("h3","","Nothing running here yet."),make("p","","Future agent progress, approvals and recent actions will appear here when the real Gateway is connected. No activity is simulated as real."));
+      empty.append(button("quiet-action feature-activity-link","Explore planned OS features",()=>{data.app="features";save();renderAppSurface();},null,"Explore OS features"));
       appSurface.append(empty);return;
     }
     const nodes=(w?.nodes||[]).filter(n=>data.app==="notes"?n.type==="note":n.type==="image"||n.type==="art"||n.type==="link");
@@ -624,6 +636,6 @@
   });
   // Re-render the optional note/reference list when the current canvas is edited or workspace changes.
   const nodes=$("#nodes");
-  new MutationObserver(()=>{if(data.app!=="canvas")renderAppSurface();}).observe(nodes,{childList:true});
+  new MutationObserver(()=>{if(data.app==="notes"||data.app==="assets")renderAppSurface();}).observe(nodes,{childList:true});
   renderPanes();renderAppSurface();window.AIVerseCanvasRetarget?.();
 })();
