@@ -9,7 +9,8 @@ import {DashboardClient,DashboardChatEventFeed,PersonalChatRunController,
  */
 export interface TrustedLocalChatSession {
   dashboardOrigin: string;
-  dashboardBearer: string;
+  dashboardBearer?: string;
+  authentication?: "host-cookie";
   selected: Required<ClientScope>;
 }
 type Role = "user"|"assistant"|"status";
@@ -64,7 +65,8 @@ export class PersonalChatApplication {
   private destroyed=false;
   constructor(container:HTMLElement,private readonly session:TrustedLocalChatSession){
     this.selected=scopeOf(session);
-    const feed=new DashboardChatEventFeed(session.dashboardOrigin,session.dashboardBearer);
+    const feed=new DashboardChatEventFeed(session.dashboardOrigin,
+      session.authentication==="host-cookie" ? {mode:"host-cookie"} : this.requireBearer(session));
     this.feed=feed;
     this.parent=container;
     container.replaceChildren();
@@ -98,10 +100,15 @@ export class PersonalChatApplication {
       pane.status.textContent="New workspace selected. Previous runs remain in Gateway.";
     }
   }
+  private requireBearer(s:TrustedLocalChatSession):string{
+    if(typeof s.dashboardBearer!=="string")throw Error("Trusted native host session missing");
+    return s.dashboardBearer;
+  }
   private controller(changed:(v:ChatRunView)=>void):PersonalChatRunController{
     return new PersonalChatRunController(
       new DashboardClient(this.session.dashboardOrigin,this.selected,
-        this.session.dashboardBearer),this.feed,changed);
+        this.session.authentication==="host-cookie"
+          ? {mode:"host-cookie"} : this.requireBearer(this.session)),this.feed,changed);
   }
   openPane():string|undefined{
     if(this.destroyed)throw Error("Chat application closed");
