@@ -111,7 +111,14 @@ test("C3,C4: marquee selects on release, live @ canvas chips mirror selection, t
   assert.ok(end.y<viewport.y+viewport.height-18,"fixture cards must fit inside canvas for marquee");
   await drag(page,start,end);
   const selected=page.locator("#nodes .canvas-node.selected");
-  assert.equal(await selected.count(),2,"release of normal left-drag marquee selects both cards");
+  const marqueeDiag=await page.evaluate(({start,end})=>({
+    from:start,to:end,
+    startHit:document.elementFromPoint(start.x,start.y)?.outerHTML.slice(0,150),
+    endHit:document.elementFromPoint(end.x,end.y)?.outerHTML.slice(0,150),
+    cards:[...document.querySelectorAll("#nodes [data-node]")].map(el=>({id:el.dataset.node,selected:el.classList.contains("selected"),rect:{x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().y,right:el.getBoundingClientRect().right,bottom:el.getBoundingClientRect().bottom}})),
+    selectionRect:document.querySelector("#selection-rectangle")?.outerHTML.slice(0,320)
+  }),{start,end});
+  assert.equal(await selected.count(),2,"release marquee: "+JSON.stringify(marqueeDiag));
   const chips=page.locator("#chat-form .shared-context-chip");
   assert.equal(await chips.count(),2,"chat references match selected cards");
   await page.locator("#viewport").click({position:{x:8,y:8}});
@@ -138,7 +145,7 @@ test("C4,C5: second chat gets current selection, closing active chat falls back 
   await page.locator('[data-node="welcome"] .node-handle').click();
   assert.equal(await page.locator(".secondary-chat-pane .shared-context-chip").count(),1);
   assert.equal(await page.locator("#chat-form .shared-context-chip").count(),0);
-  await page.locator(".secondary-chat-pane .chat-heading-actions button").click(); // close active pane
+  await page.locator(".secondary-chat-pane .chat-heading-actions button").last().click(); // close active pane
   await page.locator('[data-node="next"] .node-handle').click();
   assert.equal(await page.locator(".secondary-chat-pane").count(),0);
   assert.equal(await page.locator("#chat-form .shared-context-chip").count(),1,"context retargets to remaining chat");
@@ -261,11 +268,47 @@ test("C3,C4: click-drag marquee selects multiple cards in real browser and desel
   await page.mouse.move(to.x,to.y,{steps:16});
   assert.ok(await page.locator("#selection-rectangle").isVisible(),"marquee visible during drag");
   await page.mouse.up();
-  assert.equal(await page.locator(".canvas-node.selected").count(),2,"two cards select on pointer release");
+  const debug=await page.evaluate(({x,y,to})=>({start:{x,y},end:to,from:document.elementFromPoint(x,y)?.outerHTML.slice(0,170),toHit:document.elementFromPoint(to.x,to.y)?.outerHTML.slice(0,170),
+    cards:[...document.querySelectorAll("#nodes [data-node]")].map(el=>({id:el.dataset.node,selected:el.classList.contains("selected"),x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().y,right:el.getBoundingClientRect().right,bottom:el.getBoundingClientRect().bottom}))
+  }),{x,y,to});
+  assert.equal(await page.locator(".canvas-node.selected").count(),2,"two cards select on pointer release: "+JSON.stringify(debug));
   assert.equal(await page.locator("#chat-form .shared-context-chip").count(),2,"tag count equals current selection");
   await page.locator("#viewport").click({position:{x:8,y:8}});
   assert.equal(await page.locator(".canvas-node.selected").count(),0);
   assert.equal(await page.locator("#chat-form .shared-context-chip").count(),0);
   assert.equal(errors.length,0,errors.join("\n"));
 });
+
+test("Every chat keeps full composer tools and Split after promoting second chat to sole pane",async t=>{
+  const {page,errors}=await setup(t);
+  const selector=".split-chat-action";
+  await page.locator(".chat-heading-actions "+selector).first().click();
+  assert.equal(await page.locator(".secondary-chat-pane").count(),1);
+  await page.locator(".close-primary-chat").click();
+  const only=page.locator(".secondary-chat-pane").first();
+  assert.ok(await only.isVisible(),"secondary survives closing original");
+  const parity=async pane=>{
+    assert.equal(await pane.locator(".shared-tool-at").count(),1,"team @ picker");
+    assert.equal(await pane.locator('input[type="file"]').count(),1,"file attachment input");
+    assert.equal(await pane.locator(".shared-model-choice").count(),1,"model dropdown");
+    assert.equal(await pane.locator(".shared-chat-tools .shared-tool").count(),2,"tag plus file controls");
+    assert.equal(await pane.locator(".send-button").count(),1,"send");
+    assert.equal(await pane.locator(".chat-heading-actions .split-chat-action").count(),1,"split");
+    assert.equal(await pane.locator(".chat-heading-actions .new-chat-action").count(),1,"new chat/clear");
+    assert.ok(await pane.locator(".shared-tool-at").isVisible());
+  };
+  await parity(only);
+  await only.locator(".chat-heading-actions .split-chat-action").click();
+  assert.equal(await page.locator(".secondary-chat-pane").count(),2,"split still works when the original was closed");
+  for(const pane of await page.locator(".secondary-chat-pane").all()) await parity(pane);
+  await page.locator(".secondary-chat-pane").last().locator(".chat-heading-actions button").last().click();
+  assert.equal(await page.locator(".secondary-chat-pane").count(),1);
+  await parity(page.locator(".secondary-chat-pane"));
+  await page.locator(".secondary-chat-pane").locator(".chat-heading-actions button").last().click();
+  assert.ok(await page.locator(".chat-minimized-rail").isVisible(),"last pane minimizes");
+  await page.locator(".restore-chat-action").click();
+  await parity(page.locator(".secondary-chat-pane"));
+  assert.equal(errors.length,0,errors.join("\n"));
+});
+
 test.after(async()=>{await browser.close();await new Promise(resolve=>server.close(resolve));});
