@@ -67,12 +67,138 @@ function renderSelectionTools(){
 function setArea(area){state.area=area;if(area==='film' && workspace().kind!=='film'){const film=state.workspaces.find(w=>w.kind==='film');if(film)state.selected=film.id;else state.selected='personal';}selectedNode=null;selectedIds.clear();window.AIVerseCanvasScopeChanged?.(state.selected);stopConnect();render();save();}
 function selectWorkspace(id){if(!state.workspaces.some(w=>w.id===id))return;state.selected=id;selectedNode=null;selectedIds.clear();window.AIVerseCanvasScopeChanged?.(id);stopConnect();render();save();}
 function render(){document.body.classList.toggle('dark',state.theme==='dark');$('#theme').innerHTML=icon(state.theme==='dark'?'sun':'moon');$('#theme').setAttribute('aria-label',`Switch to ${state.theme==='dark'?'light':'dark'} appearance`);document.querySelectorAll('[data-area]').forEach(b=>{const on=b.dataset.area===state.area;b.classList.toggle('active',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current');});const film=state.area==='film';$('#breadcrumb').textContent=film?'Filmmaking / Studio':'Personal / Overview';$('#page-title').textContent=film?'Let the story take shape.':'Your space.';$('#page-subtitle').textContent=film?'Your films, from the first thought to the next scene.':'Everything you’re working on. A little more room to think.';$('#create-workspace span').textContent=film?'New film project':'New workspace';$('#workspaces-title').textContent=film?'Your film projects':'Your workspaces';const list=state.workspaces.filter(w=>!film||w.kind==='film');$('#workspace-count').textContent=`${list.length} ${film?'project':'workspace'}${list.length===1?'':'s'}`;$('#workspace-list').innerHTML=list.map(w=>`<button class="workspace-card ${w.id===state.selected?'selected':''}" data-workspace="${esc(w.id)}" ${w.id===state.selected?'aria-current="true"':''}><span class="workspace-symbol">${icon(w.kind==='film'?'film':w.kind==='personal'?'grid':'note')}</span><span><strong>${esc(w.name)}</strong><small>${esc(w.description)}</small></span>${w.id===state.selected?'<span class="selected-check" aria-hidden="true">✓</span>':''}</button>`).join('');$('#workspace-list').querySelectorAll('[data-workspace]').forEach(b=>b.onclick=()=>selectWorkspace(b.dataset.workspace));$('#chat-scope').textContent=workspace().name;renderBoard();renderChat();}
-function nodeMarkup(n){const handle=`<div class="node-handle">${icon(n.type==='art'?'image':n.type==='image'?'image':n.type==='link'?'link':'note')}<span>${n.type==='note'?'Note':n.type==='link'?'Reference':n.type==='image'?'Image':'Visual direction'}</span></div>`;let content;if(n.type==='art')content=`<div class="art-scene">${landscape}</div><div class="art-caption"><small>${esc(n.body)}</small><h3>${esc(n.title)}</h3></div>`;else if(n.type==='image')content=`<img src="${esc(n.src)}" alt="${esc(n.title)}" draggable="false">${handle}<div class="node-content"><h3>${esc(n.title)}</h3></div>`;else content=`${handle}<div class="node-content"><h3>${esc(n.title)}</h3>${n.type==='link'?`<a href="${esc(safeUrl(n.body)||'#')}" target="_blank" rel="noopener noreferrer">${esc(n.body)}</a>`:`<p>${esc(n.body)}</p>`}</div>`;return `<article tabindex="0" role="button" aria-label="Edit ${esc(n.title)}" class="canvas-node ${n.type} ${n.id===selectedNode?'selected':''}" data-node="${esc(n.id)}" style="left:${n.x}px;top:${n.y}px">${content}</article>`;}
-function renderBoard(){const w=workspace();$('#board-title').textContent=w.name;$('#board-subtitle').textContent=w.kind==='film'?'Story, references and shot ideas, together.':'A place for the things taking shape.';$('#canvas-empty').hidden=w.nodes.length>0;$('#nodes').innerHTML=w.nodes.map(nodeMarkup).join('');$('#nodes').querySelectorAll('[data-node]').forEach(el=>{el.onpointerdown=e=>startNodeDrag(e,el.dataset.node);el.onclick=e=>{if(e.target.closest('a'))return;if(el.dataset.dragged==='true'){el.dataset.dragged='false';return;}chooseNode(el.dataset.node);};el.onkeydown=e=>{if(e.target!==el)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();chooseNode(el.dataset.node);}if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();snapshot();const n=w.nodes.find(n=>n.id===el.dataset.node),d=e.shiftKey?20:5;n.x+=e.key==='ArrowRight'?d:e.key==='ArrowLeft'?-d:0;n.y+=e.key==='ArrowDown'?d:e.key==='ArrowUp'?-d:0;el.style.left=n.x+'px';el.style.top=n.y+'px';drawConnections();save();}};});transform();drawConnections();renderInspector();}
+function nodeMarkup(n){
+  const handle='<div class="node-handle">'+icon(n.type==='art'||n.type==='image'?'image':n.type==='link'?'link':'note')+
+    '<span>'+({note:'Note',link:'Reference',image:'Image',art:'Visual direction'}[n.type]||'Card')+'</span></div>';
+  let content;
+  if(n.type==='art')content='<div class="art-scene">'+landscape+'</div><div class="art-caption"><small>'+esc(n.body)+'</small><h3>'+esc(n.title)+'</h3></div>';
+  else if(n.type==='image')content='<img src="'+esc(n.src)+'" alt="'+esc(n.title)+'" draggable="false">'+handle+
+    '<div class="node-content"><h3>'+esc(n.title)+'</h3></div>';
+  else content=handle+'<div class="node-content"><h3>'+esc(n.title)+'</h3>'+
+    (n.type==='link'?'<a href="'+esc(safeUrl(n.body)||'#')+'" target="_blank" rel="noopener noreferrer">'+esc(n.body)+'</a>':'<p>'+esc(n.body)+'</p>')+'</div>';
+  const actions='<div class="node-quick-actions" aria-label="Card actions">'+
+    '<button type="button" data-action="duplicate" title="Duplicate">Duplicate</button>'+
+    '<button type="button" data-action="connect" title="Connect to another card">Connect</button>'+
+    '<button type="button" data-action="delete" title="Delete card">Delete</button></div>';
+  const generation=n.generation?'<div class="node-generation-tag">'+esc(n.generation.kind)+' · Demo draft</div>':'';
+  return '<article tabindex="0" role="group" aria-label="'+esc(n.title)+'" class="canvas-node '+n.type+
+    (selectedIds.has(n.id)?' selected':'')+'" data-node="'+esc(n.id)+'" style="left:'+n.x+'px;top:'+n.y+'px">'+
+    content+generation+actions+'<button type="button" class="node-connector" aria-label="Drag to connect; click to make linked note" title="Drag to connect or click to create linked note">＋</button></article>';
+}
+function renderBoard(){
+  const w=workspace();$('#board-title').textContent=w.name;
+  $('#board-subtitle').textContent=w.kind==='film'?'Story, references and shot ideas, together.':'A place for the things taking shape.';
+  $('#canvas-empty').hidden=w.nodes.length>0;
+  $('#nodes').innerHTML=w.nodes.map(nodeMarkup).join('');
+  $('#nodes').querySelectorAll('[data-node]').forEach(el=>{
+    const id=el.dataset.node;
+    el.onpointerdown=e=>startNodeDrag(e,id);
+    el.onclick=e=>{
+      if(e.target.closest('a,.node-quick-actions,.node-connector'))return;
+      if(el.dataset.dragged==='true'){el.dataset.dragged='false';return;}
+      if(e.target.closest('h3,p')&&el.querySelector('.node-content'))return;
+      chooseNode(id,e);
+    };
+    el.querySelectorAll('.node-content h3,.node-content p,.art-caption h3').forEach(field=>{
+      field.title='Click to edit on canvas';
+      field.onclick=e=>{
+        e.preventDefault();e.stopPropagation();
+        chooseNode(id,e);beginInlineEdit(field,id,field.tagName==='H3'?'title':'body');
+      };
+    });
+    el.querySelectorAll('[data-action]').forEach(button=>{
+      button.onclick=e=>{
+        e.preventDefault();e.stopPropagation();
+        if(!selectedIds.has(id))setSelection([id]);
+        if(button.dataset.action==='duplicate')duplicateSelection();
+        if(button.dataset.action==='delete')deleteSelection();
+        if(button.dataset.action==='connect'){
+          connectMode=true;connectStart=id;$('#connect').setAttribute('aria-pressed','true');
+          $('#canvas-hint').textContent='Choose another card to connect · Escape to cancel';
+          toast('Select another card to connect.');
+        }
+      };
+    });
+    const connector=el.querySelector('.node-connector');
+    connector.onpointerdown=e=>{
+      e.preventDefault();e.stopPropagation();
+      if(e.button!==0)return;
+      drag={type:'connect',from:id,pointer:e.pointerId,sx:e.clientX,sy:e.clientY,moved:false};
+      connector.setPointerCapture(e.pointerId);
+    };
+    connector.onclick=e=>{
+      e.preventDefault();e.stopPropagation();
+      if(connector.dataset.dragged==='true'){connector.dataset.dragged='false';return;}
+      const source=w.nodes.find(n=>n.id===id);if(!source)return;
+      if(w.nodes.length>=300)return toast('Canvas is full.');
+      snapshot();
+      const next={id:uid(),type:'note',title:'Linked thought',body:'',x:source.x+300,y:source.y+28};
+      w.nodes.push(next);w.edges.push([id,next.id]);
+      selectedIds=new Set([next.id]);selectedNode=next.id;renderBoard();save();canvasSelectionChanged();
+    };
+    el.onkeydown=e=>{
+      if(e.target!==el)return;
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();chooseNode(id,e);}
+      if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
+        e.preventDefault();if(!selectedIds.has(id))setSelection([id],{notify:false});
+        snapshot();const step=e.shiftKey?20:5;
+        for(const n of selectedNodes()){
+          n.x+=e.key==='ArrowRight'?step:e.key==='ArrowLeft'?-step:0;
+          n.y+=e.key==='ArrowDown'?step:e.key==='ArrowUp'?-step:0;
+        }renderBoard();save();
+      }
+    };
+  });
+  transform();drawConnections();renderInspector();renderSelectionTools();
+}
+function beginInlineEdit(field,id,key){
+  if(field.isContentEditable)return;
+  const n=workspace().nodes.find(n=>n.id===id);if(!n||n.type==='image'&&key==='body')return;
+  const before=n[key]||'';
+  field.contentEditable='plaintext-only';
+  field.setAttribute('role','textbox');field.setAttribute('aria-label','Edit '+key);
+  field.classList.add('inline-editing');
+  field.focus();
+  const range=document.createRange();range.selectNodeContents(field);range.collapse(false);
+  const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
+  let done=false;
+  const finish=cancel=>{
+    if(done)return;done=true;
+    const next=field.textContent.trim().slice(0,key==='title'?100:3000);
+    field.contentEditable='false';field.classList.remove('inline-editing');
+    if(!cancel&&next!==before&&next){snapshot();n[key]=next;save();}
+    renderBoard();
+  };
+  field.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();finish(true);}
+    else if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.stopPropagation();finish(false);}
+  });
+  field.addEventListener('blur',()=>finish(false),{once:true});
+}
 function transform(){const v=workspace().view;$('#world').style.transform=`translate(${v.x}px,${v.y}px) scale(${v.zoom})`;$('#zoom-reset').textContent=Math.round(v.zoom*100)+'%';$('#viewport').style.backgroundPosition=`${v.x}px ${v.y}px`;$('#viewport').style.backgroundSize=`${20*v.zoom}px ${20*v.zoom}px`;}
 function drawConnections(){const w=workspace();$('#connections').innerHTML=w.edges.map(([a,b])=>{const na=w.nodes.find(n=>n.id===a),nb=w.nodes.find(n=>n.id===b);if(!na||!nb)return '';const ea=$(`[data-node="${a}"]`),eb=$(`[data-node="${b}"]`);if(!ea||!eb)return '';const x1=na.x+ea.offsetWidth/2,y1=na.y+ea.offsetHeight/2,x2=nb.x+eb.offsetWidth/2,y2=nb.y+eb.offsetHeight/2;return `<path d="M${x1} ${y1} C${(x1+x2)/2} ${y1},${(x1+x2)/2} ${y2},${x2} ${y2}"/>`;}).join('');}
-function chooseNode(id){if(connectMode){if(!connectStart){connectStart=id;toast('Now select the second card.');}else if(connectStart!==id){if(!workspace().edges.some(e=>e.includes(id)&&e.includes(connectStart))){snapshot();workspace().edges.push([connectStart,id]);save();}stopConnect();drawConnections();toast('Cards connected.');}return;}selectedNode=id;$('#nodes').querySelectorAll('[data-node]').forEach(el=>el.classList.toggle('selected',el.dataset.node===id));renderInspector();}
-function renderInspector(){const panel=$('#inspector'),n=workspace().nodes.find(n=>n.id===selectedNode);panel.hidden=!n;if(!n)return;panel.innerHTML=`<div class="inspector-header"><strong>Edit ${n.type==='art'?'visual':n.type}</strong><button class="icon-button" id="close-inspector" aria-label="Close editor">${icon('close')}</button></div><form id="edit-form"><label for="node-title">Title</label><input id="node-title" maxlength="100" required value="${esc(n.title)}">${n.type!=='image'?`<label for="node-body">${n.type==='link'?'Web address':'Notes'}</label><textarea id="node-body" maxlength="3000" ${n.type==='link'?'required':''}>${esc(n.body)}</textarea>`:''}<div class="inspector-footer"><button type="button" id="delete-node" class="delete" aria-label="Delete card">${icon('trash')}</button><button type="submit">Save changes</button></div></form>`;$('#close-inspector').onclick=()=>{selectedNode=null;renderBoard();};$('#edit-form').onsubmit=e=>{e.preventDefault();const title=$('#node-title').value.trim();if(!title)return;const body=$('#node-body')?.value||'';if(n.type==='link'&&!safeUrl(body)){toast('Use a complete https:// or http:// web address.');return;}snapshot();n.title=title;if(n.type!=='image')n.body=body;selectedNode=null;renderBoard();save();toast('Card updated.');};$('#delete-node').onclick=()=>{snapshot();const w=workspace();w.nodes=w.nodes.filter(x=>x.id!==n.id);w.edges=w.edges.filter(e=>!e.includes(n.id));selectedNode=null;renderBoard();save();toast('Card deleted. Press ⌘Z or Ctrl+Z to undo.');};}
+function chooseNode(id,event={}){
+  if(connectMode){
+    if(!connectStart){connectStart=id;toast('Choose the second card.');}
+    else if(connectStart!==id){
+      if(!workspace().edges.some(([a,b])=>(a===id&&b===connectStart)||(a===connectStart&&b===id))){
+        snapshot();workspace().edges.push([connectStart,id]);save();
+      }
+      stopConnect();renderBoard();toast('Cards connected.');
+    }
+    return;
+  }
+  const additive=Boolean(event.shiftKey||event.metaKey||event.ctrlKey);
+  if(additive){
+    if(selectedIds.has(id))selectedIds.delete(id);else selectedIds.add(id);
+    setSelection([...selectedIds]);
+  }else setSelection([id]);
+}
+function renderInspector(){
+  const panel=$('#inspector');
+  panel.hidden=true;
+  panel.replaceChildren();
+}
 function startNodeDrag(e,id){if(e.button!==0||e.target.closest('a')||connectMode)return;const n=workspace().nodes.find(n=>n.id===id);drag={type:'node',id,pointer:e.pointerId,sx:e.clientX,sy:e.clientY,x:n.x,y:n.y,moved:false};e.currentTarget.setPointerCapture(e.pointerId);}
 $('#viewport').addEventListener('pointerdown',e=>{if(e.button!==0||e.target.closest('.canvas-node,button,.inspector,.canvas-toolbar'))return;selectedNode=null;renderInspector();$('#nodes').querySelectorAll('.selected').forEach(el=>el.classList.remove('selected'));drag={type:'pan',pointer:e.pointerId,sx:e.clientX,sy:e.clientY,x:workspace().view.x,y:workspace().view.y,moved:false};$('#viewport').setPointerCapture(e.pointerId);});
 $('#viewport').addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.pointer)return;const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;if(Math.hypot(dx,dy)<4&&!drag.moved)return;if(!drag.moved&&drag.type==='node')snapshot();drag.moved=true;if(drag.type==='pan'){workspace().view.x=drag.x+dx;workspace().view.y=drag.y+dy;transform();}else{const n=workspace().nodes.find(n=>n.id===drag.id);n.x=drag.x+dx/workspace().view.zoom;n.y=drag.y+dy/workspace().view.zoom;const el=$(`[data-node="${drag.id}"]`);el.style.left=n.x+'px';el.style.top=n.y+'px';el.dataset.dragged='true';drawConnections();}});
