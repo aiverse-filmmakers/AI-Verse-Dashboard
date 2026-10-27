@@ -492,4 +492,26 @@ test("Functional pages preserve chat, canvas, visibility on reload and narrow la
  assert.equal(errors.length,0,errors.join("\n"));
 });
 
+test("Task board: native drag and accessible stage control both move sample tasks across columns",async t=>{
+ const {page,errors}=await setup(t);
+ await page.locator(".quiet-feature-toggle").click();
+ await page.getByRole("button",{name:"Open Activity page"}).click();
+ await page.getByRole("button",{name:"Task board"}).click();
+ assert.equal(await page.locator(".os-kanban-column").count(),5,"five operational board stages");
+ assert.equal(await page.locator(".os-kanban-card").count(),4,"existing example runs are shown, not generated cards");
+ const running=page.locator('.os-kanban-column[data-status="Running"]');
+ assert.equal(await running.locator(".os-kanban-card").count(),1);
+ await running.locator("select").selectOption("Review");
+ assert.equal(await running.locator(".os-kanban-card").count(),0,"select control moved task from Running");
+ const review=page.locator('.os-kanban-column[data-status="Review"]');
+ assert.equal(await review.locator(".os-kanban-card").count(),2);
+ const dragged=review.locator(".os-kanban-card").filter({hasText:"Build production shot list"});
+ await dragged.dragTo(page.locator('.os-kanban-column[data-status="Done"]'));
+ assert.equal(await page.locator('.os-kanban-column[data-status="Done"] .os-kanban-card').count(),2,"drag-to-stage transitions the same task");
+ await page.locator('.os-kanban-column[data-status="Done"] .os-kanban-card').filter({hasText:"Build production shot list"}).getByRole("button",{name:"View task details"}).click();
+ assert.match(await page.locator(".os-card").last().innerText(),/Build production shot list/,"details open without interrupting drag or edit controls");
+ assert.match(await page.locator(".os-source").innerText(),/sample workspace/i,"never claims a live OS effect");
+ assert.equal(errors.length,0,errors.join("\n"));
+});
+
 test.after(async()=>{await browser.close();await new Promise(resolve=>server.close(resolve));});
