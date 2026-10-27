@@ -447,3 +447,6 @@ body.dark{color-scheme:dark;--bg:#1d1d20;--surface:#262629;--canvas:#212124;--in
 .app-list-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .app-item-origin{font-size:9px;color:var(--accent);margin-top:7px;display:block}
 @media(max-width:680px){.app-surface-heading{align-items:flex-start;flex-wrap:wrap;gap:12px}.canvas-library-filters{align-items:stretch}.canvas-library-search{width:100%}}
+
+/* Keep Teams popup inside viewport even at phone widths. */
+@media(max-width:600px){.personal-teams-popover{right:12px;left:auto;width:calc(100vw - 24px);max-width:calc(100vw - 24px)}}
