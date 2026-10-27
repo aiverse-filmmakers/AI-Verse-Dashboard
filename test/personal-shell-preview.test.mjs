@@ -41,3 +41,37 @@ test("additional panes and app views are opt-in while focus retains main chat", 
   assert.match(css, /\.focus-mode \.chat-panel\s*\{\s*display:flex/);
   assert.match(css, /personal-teams-popover\[hidden\]/);
 });
+
+
+test("team and agent start a stable recipient thread without replacing primary chat", () => {
+  assert.match(js, /"Chat with the entire " \+ t\.name \+ " team"/);
+  assert.match(js, /startTargetChat\("team:" \+ t\.id\)/);
+  assert.match(js, /startTargetChat\("agent:" \+ t\.id \+ ":" \+ member\.id\)/);
+  assert.match(js, /const findRecipient = key =>/);
+  assert.match(js, /data\.chatTargets\[String\(slot\)\] = key/);
+  assert.match(js, /const source = recipient \? data\.threads\[recipient\.key\]/);
+  assert.match(js, /data\.threads = data\.threads && typeof data\.threads/);
+  assert.match(js, /if \(targetKey && !recipient\) delete data\.chatTargets/);
+  assert.match(js, /if \(recipient && !findRecipient\(recipient\.key\)\)/);
+});
+
+test("main chat offers explicit @ recipient selection and preserves normal chat by default", () => {
+  assert.match(js, /"Mention a team or assistant"/);
+  assert.match(js, /"mention-recipient-menu"/);
+  assert.match(js, /composeInput\.addEventListener\("input"/);
+  assert.match(js, /composeInput\.addEventListener\("keydown",event=>/);
+  assert.match(js, /composer\.addEventListener\("submit",event=>/);
+  assert.match(js, /"Choose a recipient from the @ menu before sending\."/);
+  assert.match(js, /if\(!target\) return; \/\/ Original standalone demo chat remains unmodified\./);
+  assert.match(js, /"Demo to "/);
+  assert.match(js, /data\.threads\[target\.key\]=thread/);
+  assert.match(css, /\.draft-recipient-chip\[hidden\]/);
+  assert.match(css, /\.mention-recipient-menu\[hidden\]/);
+});
+
+test("the public preview never claims a live team dispatch", () => {
+  assert.match(js, /No real messages are being sent\./);
+  assert.match(js, /Live team and agent routing are not connected yet\./);
+  assert.match(js, /No real agent messages are sent\./);
+  assert.doesNotMatch(js, /\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bnavigator\.sendBeacon\b/);
+});
