@@ -35,7 +35,7 @@ async function setup(t) {
   await page.locator("#viewport:not([hidden])").waitFor();
   assert.equal(await page.locator(".canvas-node").count(),0,"new sessions start with empty Scratch canvas beside chat");
   await page.locator(".canvas-library-back").click();
-  await page.getByRole("button",{name:"Open Personal canvas"}).click();
+  await page.getByRole("button",{name:"Open Personal canvas,exact:true}}).click();
   await page.locator(".canvas-node").first().waitFor();
   return {page,errors};
 }
@@ -566,11 +566,11 @@ test("Canvas library: keep scratch open by default, create isolated canvases, du
  assert.ok(!source.canvases.some(c=>c.id===newId));
  assert.ok(destination.canvases.some(c=>c.id===newId),"same board ID and content moved without a copy");
  assert.equal(destination.canvases.find(c=>c.id===newId).nodes.length,1);
- await page.getByRole("button",{name:"Open Personal canvas"}).click();
+ await page.getByRole("button",{name:"Open Personal canvas,exact:true}}).click();
  for(const title of originalTitles)assert.ok((await page.locator(".canvas-node h3").allInnerTexts()).includes(title),"original canvas content preserved: "+title);
  await page.locator('[data-area="film"]').click();
  await page.locator(".canvas-library-back").click();
- await page.getByRole("button",{name:"Open Campaign storyboard"}).click();
+ await page.getByRole("button",{name:"Open Campaign storyboard,exact:true}}).click();
  assert.equal(await page.locator(".canvas-node.note").count(),1,"moving to filmmaking preserves editable notes");
  await page.reload();
  assert.equal(await page.locator(".canvas-node.note").count(),1,"selected board editor and content persist across reload");
