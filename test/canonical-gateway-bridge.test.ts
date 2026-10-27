@@ -211,6 +211,28 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
    await wait(()=>messages.some(m=>m.id==="gateway-run-unsubscribe"&&m.ok===true));
    assert.equal(upstream.received.some(x=>x.path==="/v1/runs/run-a/events"),true);
  });
+ it("refuses a previously approved Gateway lease after same-root OS rebind",async()=>{
+   const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+   const upstream=gatewayFixture(),port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",
+     origin:"http://127.0.0.1:"+port,resolveBearer:()=>"actual-host-gateway-token",
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),
+     new SubscriptionHub(),{port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   const first=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.status",a.systemId));
+   assert.equal(first.data.ok,true);
+   const observed=upstream.received.length;
+   reg.rebind(a.systemId,a.root);
+   const next=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.status",a.systemId));
+   assert.equal(next.data.ok,false);
+   assert.equal((next.data.error as {code:string}).code,"GATEWAY_MAPPING_STALE");
+   assert.equal(upstream.received.length,observed,"stale lease must never touch canonical Gateway");
+ });
  it("keeps the original host disabled when no approved canonical mapping is injected",async()=>{
    const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
    const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),new SubscriptionHub(),{port:0});
