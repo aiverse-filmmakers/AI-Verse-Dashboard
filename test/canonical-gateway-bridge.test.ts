@@ -139,7 +139,7 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
      [frame("aiverse.gateway.run.create",a.systemId,"film",{
        messages:[{role:"user",content:"hello"}],idempotencyKey:"1",origin:"http://wrong.example",
      }),"INVALID_ENVELOPE"],
-     [frame("aiverse.gateway.run.get",a.systemId,"film",{runId:"../../other"}),"GATEWAY_UNAVAILABLE"],
+     [frame("aiverse.gateway.run.get",a.systemId,"film",{runId:"../../other"}),"INVALID_ENVELOPE"],
    ] as const){
      const reply=await rpc(dash.port,dash.authToken,f);
      assert.equal(reply.data.ok,false);
