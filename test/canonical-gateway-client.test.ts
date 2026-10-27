@@ -53,6 +53,7 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
     assert.equal(ready.model,"aiverse");
     assert.deepEqual(requests.map(x=>x.path),["/status","/v1/models"]);
     for(const item of requests) assert.equal((item.init.headers as Record<string,string>).authorization,"Bearer host-token-123");
+    for(const item of requests) assert.equal(item.init.redirect,"error","upstream bearer must not follow redirects");
   });
   it("fails closed on a swapped Gateway system, absent model or unavailable host credentials",async()=>{
     const wrong=fixture(()=>json({component:"ai-verse-gateway",system_id:"system-b",state:"ready"}));
