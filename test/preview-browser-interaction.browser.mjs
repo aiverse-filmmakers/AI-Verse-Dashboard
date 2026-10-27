@@ -109,7 +109,9 @@ test("C3,C4: marquee selects on release, live @ canvas chips mirror selection, t
   const start={x:Math.max(viewport.x+8,Math.min(a.x,b.x)-20),y:Math.max(viewport.y+8,Math.min(a.y,b.y)-20)};
   const end={x:Math.max(a.x+a.width,b.x+b.width)+18,y:Math.max(a.y+a.height,b.y+b.height)+18};
   assert.ok(end.y<viewport.y+viewport.height-18,"fixture cards must fit inside canvas for marquee");
+  await page.evaluate(()=>{window.__trace=[];for(const event of ["pointerdown","pointermove","pointerup","pointercancel","click"]){document.addEventListener(event,e=>{if(window.__trace.length<50)window.__trace.push({kind:event,x:e.clientX,y:e.clientY,target:e.target.id||e.target.className?.baseVal||e.target.className});},true);}});
   await drag(page,start,end);
+  const trace=await page.evaluate(()=>window.__trace);
   const selected=page.locator("#nodes .canvas-node.selected");
   const marqueeDiag=await page.evaluate(({start,end})=>({
     from:start,to:end,
@@ -118,7 +120,7 @@ test("C3,C4: marquee selects on release, live @ canvas chips mirror selection, t
     cards:[...document.querySelectorAll("#nodes [data-node]")].map(el=>({id:el.dataset.node,selected:el.classList.contains("selected"),rect:{x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().y,right:el.getBoundingClientRect().right,bottom:el.getBoundingClientRect().bottom}})),
     selectionRect:document.querySelector("#selection-rectangle")?.outerHTML.slice(0,320)
   }),{start,end});
-  assert.equal(await selected.count(),2,"release marquee: "+JSON.stringify(marqueeDiag));
+  assert.equal(await selected.count(),2,"release marquee: "+JSON.stringify({marqueeDiag,trace}));
   const chips=page.locator("#chat-form .shared-context-chip");
   assert.equal(await chips.count(),2,"chat references match selected cards");
   await page.locator("#viewport").click({position:{x:8,y:8}});
