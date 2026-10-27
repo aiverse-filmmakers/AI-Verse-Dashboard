@@ -308,6 +308,115 @@
     }
   }
 
+
+  /* A compact @ picker on the original composer. No routing to real OS agents. */
+  let draftTarget = null;
+  const composer = $("#chat-form");
+  const composeInput = $("#message");
+  const composeBar = $(".composer-bottom");
+  const mentionTrigger = button("mention-trigger", "Mention a team or assistant", () => showMentionPicker(mentionMenu.hidden), null, "@");
+  mentionTrigger.setAttribute("aria-controls","mention-recipient-menu");
+  mentionTrigger.setAttribute("aria-expanded","false");
+  composeBar.insertBefore(mentionTrigger,$(".send-button"));
+  const chip=make("div","draft-recipient-chip");
+  chip.hidden=true;
+  composer.insertBefore(chip,composeInput);
+  const mentionMenu=make("div","mention-recipient-menu");
+  mentionMenu.id="mention-recipient-menu";
+  mentionMenu.hidden=true;
+  mentionMenu.setAttribute("role","group");
+  mentionMenu.setAttribute("aria-label","Choose a team or assistant");
+  composer.append(mentionMenu);
+  let mentionToken=null;
+  function renderDraftTarget() {
+    chip.replaceChildren();
+    const target=findRecipient(draftTarget);
+    if (!target) {draftTarget=null;chip.hidden=true;return;}
+    chip.hidden=false;
+    chip.append(make("span","recipient-symbol","@"),
+      make("span","", (target.type==="team" ? "Team: " : "Agent: ") + target.label));
+    chip.append(button("recipient-clear","Remove tagged recipient",()=>{
+      draftTarget=null;renderDraftTarget();
+    },"close"));
+  }
+  function showMentionPicker(on,filter="") {
+    mentionMenu.hidden=!on;
+    mentionTrigger.setAttribute("aria-expanded",String(on));
+    if (!on) return;
+    mentionMenu.replaceChildren();
+    mentionMenu.append(make("div","mention-menu-title","Send to a team or assistant"));
+    const query=filter.toLocaleLowerCase();
+    const recipients=[];
+    for(const t of data.teams) {
+      recipients.push({key:"team:"+t.id,label:t.name,type:"team",detail:"Entire team"});
+      for(const a of t.members)
+        recipients.push({key:"agent:"+t.id+":"+a.id,label:a.name,type:"agent",detail:t.name+" · "+a.role});
+    }
+    const filtered=recipients.filter(r=>!query||r.label.toLocaleLowerCase().includes(query)||r.detail.toLocaleLowerCase().includes(query));
+    const list=make("div","mention-options");
+    if (!filtered.length) list.append(make("p","mention-empty","No matching teams or assistants."));
+    for(const entry of filtered.slice(0,45)) {
+      const choice=button("mention-option","Tag "+entry.label,()=>{
+        if (!findRecipient(entry.key)) return notify("Recipient no longer available.");
+        draftTarget=entry.key;
+        if (mentionToken) {
+          const previous=composeInput.value;
+          composeInput.value=previous.slice(0,mentionToken.start)+previous.slice(mentionToken.end);
+          mentionToken=null;
+        }
+        renderDraftTarget();showMentionPicker(false);composeInput.focus();
+      });
+      choice.append(make("span","mention-icon",entry.type==="team"?"◎":"@"));
+      const labels=make("span","mention-option-labels");
+      labels.append(make("strong","",entry.label),make("small","",entry.detail));
+      choice.append(labels);
+      list.append(choice);
+    }
+    mentionMenu.append(list);
+    mentionMenu.append(make("p","mention-disclaimer","Design preview only. No real agent messages are sent."));
+  }
+  composeInput.addEventListener("input",()=>{
+    const cursor=composeInput.selectionStart;
+    const before=composeInput.value.slice(0,cursor);
+    const match=/(?:^|\s)@([^\s@]*)$/.exec(before);
+    if (!match) {mentionToken=null;showMentionPicker(false);return;}
+    mentionToken={start:cursor-match[0].length+(match[0].startsWith("@")?0:1),end:cursor};
+    showMentionPicker(true,match[1]);
+  });
+  document.addEventListener("pointerdown",event=>{
+    if(!mentionMenu.hidden&&!mentionMenu.contains(event.target)&&!mentionTrigger.contains(event.target)&&event.target!==composeInput)
+      showMentionPicker(false);
+  });
+  // Capture before app.js demo submit handler. The selected recipient is explicit in
+  // the visible message and saved only in demo thread history, never sent to an AI.
+  composer.addEventListener("submit",event=>{
+    const target=findRecipient(draftTarget);
+    if(draftTarget&&!target) {
+      event.preventDefault();event.stopImmediatePropagation();
+      draftTarget=null;renderDraftTarget();return notify("Recipient unavailable. Select again.");
+    }
+    const message=composeInput.value.trim();
+    if(!message) return;
+    if(!target && /(^|\s)@[^\s@]+/.test(message)) {
+      event.preventDefault();event.stopImmediatePropagation();
+      return notify("Choose a recipient from the @ menu before sending.");
+    }
+    if(!target) return;
+    const thread=Array.isArray(data.threads[target.key])?data.threads[target.key]:[];
+    if(thread.length>=80) {
+      event.preventDefault();event.stopImmediatePropagation();return notify("This preview thread is full.");
+    }
+    thread.push({role:"user",text:message});
+    thread.push({role:"assistant",text:"Preview only: addressed to "+target.label+". Live agent routing is not connected yet."});
+    data.threads[target.key]=thread;
+    save();
+    renderPanes();
+    composeInput.value="[Demo to "+(target.type==="team"?"team":"agent")+" @"+target.label+"]\n"+message;
+  },true);
+  document.addEventListener("keydown",event=>{
+    if(event.key==="Escape"){mentionToken=null;showMentionPicker(false);}
+  });
+
   /* Existing canvas stays the default application panel, new surfaces are selected on demand. */
   const board = $(".board-section");
   const headerActions = $(".board-header-actions");
