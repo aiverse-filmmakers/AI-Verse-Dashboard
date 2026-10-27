@@ -215,6 +215,7 @@ function handleSocket(
 ): void {
   let canonicalCancel: (()=>void)|undefined;
   let canonicalEpoch=0;
+  let selectedWorkspaceScope:string|undefined;
   let activeSubId: string | undefined;
   const socketSubIds = new Set<string>();
   ws.on("message", (data) => {
@@ -249,6 +250,18 @@ function handleSocket(
           observedAt:new Date().toISOString()}));
         return;
       }
+      // A socket has one active workspace at a time. Don't leave a legacy
+      // workspace subscription alive after selecting a canonical run scope.
+      if(selectedWorkspaceScope!==nextWorkspace){
+        canonicalEpoch++;canonicalCancel?.();canonicalCancel=undefined;
+      }
+      selectedWorkspaceScope=nextWorkspace;
+      if (activeSubId !== undefined) {
+        hub.unsubscribe(activeSubId);
+        socketSubIds.delete(activeSubId);
+        activeSubId=undefined;
+      }
+      selectedWorkspaceScope=request.workspaceId as string;
       const epoch=canonicalEpoch;
       canonicalCancel=canonicalBridge.openEventStream(boundSystem,request.workspaceId as string,
         request.runId as string,
