@@ -9,6 +9,7 @@
  */
 import {randomBytes,timingSafeEqual} from "node:crypto";
 import type {IncomingMessage,ServerResponse} from "node:http";
+import type {WebSocket} from "ws";
 
 const COOKIE="aiverse_local_session";
 const MAX_PAIR_ATTEMPTS=5;
@@ -36,6 +37,12 @@ function readCookie(req:IncomingMessage):string|null{
   return /^[A-Za-z0-9_-]{32,256}$/.test(value)?value:null;
 }
 
+export interface LocalApplicationAssets{
+  html:string;
+  boot:string;
+  css:string;
+  chat:string;
+}
 export interface LocalApplicationScope{
   systemId:string;
   workspaceId:string;
@@ -48,7 +55,10 @@ export class LocalApplicationSession {
   private sessionsUntil=0;
   private attempts=0;
   private used=false;
-  constructor(private readonly scope:LocalApplicationScope){
+  private readonly sockets=new Set<WebSocket>();
+  private expiryTimer?:ReturnType<typeof setTimeout>;
+  constructor(private readonly scope:LocalApplicationScope,
+    private readonly assets?:LocalApplicationAssets){
     if(!ID.test(scope.systemId)||!WS.test(scope.workspaceId))
       throw Error("LOCAL_APP_SCOPE_INVALID");
   }
@@ -57,6 +67,21 @@ export class LocalApplicationSession {
       throw Error("LOCAL_APP_PORT_INVALID");
     this.port=port;
   }
+  /** Previously paired browser sockets may not survive logout or expiry. */
+  trackBrowserSocket(ws:WebSocket):void{
+    if(!this.active()){ws.close(1008,"Session inactive");return;}
+    this.sockets.add(ws);
+    ws.once("close",()=>this.sockets.delete(ws));
+  }
+  private active():boolean{return this.port!==0&&Date.now()<this.sessionsUntil;}
+  private revoke():void{
+    this.sessionsUntil=0;
+    if(this.expiryTimer)clearTimeout(this.expiryTimer);
+    this.expiryTimer=undefined;
+    for(const ws of this.sockets)ws.close(1008,"Session ended");
+    this.sockets.clear();
+  }
+  close():void{this.revoke();}
   /** Reveal only to an approved local launcher/native host, never HTTP. */
   pairingCode():string{
     if(this.used||this.attempts>=MAX_PAIR_ATTEMPTS||Date.now()-this.born>PAIR_TTL)
@@ -73,8 +98,7 @@ export class LocalApplicationSession {
   }
   isSession(req:IncomingMessage):boolean{
     const cookie=readCookie(req);
-    return this.port!==0&&Date.now()<this.sessionsUntil
-      && cookie!==null&&equal(cookie,this.sessionToken);
+    return this.active() && cookie!==null&&equal(cookie,this.sessionToken);
   }
   /** Cookie auth is valid only for browser requests from the exact app origin. */
   isAuthorizedBrowser(req:IncomingMessage):boolean{
@@ -90,12 +114,37 @@ export class LocalApplicationSession {
       && frame.systemId===this.scope.systemId
       && frame.workspaceId===this.scope.workspaceId;
   }
-  /** Routes are intentionally limited; UI document/assets are a later seam. */
+  /** Exact allowlisted same-origin assets. No filesystem path comes from HTTP. */
+  private serveAsset(res:ServerResponse,body:string,media:string):void{
+    res.writeHead(200,{"content-type":media,"cache-control":"no-store",
+      "x-content-type-options":"nosniff","referrer-policy":"no-referrer",
+      "cross-origin-resource-policy":"same-origin","x-frame-options":"DENY",
+      "content-security-policy":"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' ws://127.0.0.1:"+this.port+"; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+    });
+    res.end(body);
+  }
+  /** Session routes and optional source-reviewed local app assets. */
   async handle(req:IncomingMessage,res:ServerResponse):Promise<boolean>{
     const url=new URL(req.url??"/","http://127.0.0.1");
     if(!url.pathname.startsWith("/local-app/"))return false;
     if(req.headers.host!=="127.0.0.1:"+this.port || url.search || url.hash){
       fail(res,403,"LOCAL_APP_ORIGIN_DENIED");return true;
+    }
+    if(this.assets && req.method==="GET"){
+      const asset=url.pathname;
+      if(asset==="/local-app/" || asset==="/local-app/index.html"){
+        this.serveAsset(res,this.assets.html,"text/html; charset=utf-8");return true;
+      }
+      if(asset==="/local-app/boot.js"){
+        this.serveAsset(res,this.assets.boot,"text/javascript; charset=utf-8");return true;
+      }
+      if(asset==="/local-app/chat.css"){
+        this.serveAsset(res,this.assets.css,"text/css; charset=utf-8");return true;
+      }
+      if(asset==="/local-app/chat.js"){
+        if(!this.isSession(req)){fail(res,401,"LOCAL_APP_UNPAIRED");return true;}
+        this.serveAsset(res,this.assets.chat,"text/javascript; charset=utf-8");return true;
+      }
     }
     if(url.pathname==="/local-app/session"&&req.method==="GET"){
       // Cross-site reads cannot discover even the permitted system identity.
@@ -133,6 +182,8 @@ export class LocalApplicationSession {
       }
       this.used=true;
       this.sessionsUntil=Date.now()+SESSION_TTL;
+      this.expiryTimer=setTimeout(()=>this.revoke(),SESSION_TTL);
+      this.expiryTimer.unref();
       res.writeHead(200,{"content-type":"application/json; charset=utf-8",
         "cache-control":"no-store","x-content-type-options":"nosniff",
         "referrer-policy":"no-referrer","cross-origin-resource-policy":"same-origin",
@@ -145,7 +196,7 @@ export class LocalApplicationSession {
       if(!this.isAuthorizedBrowser(req)){
         fail(res,403,"LOCAL_APP_ORIGIN_DENIED");return true;
       }
-      this.sessionsUntil=0;
+      this.revoke();
       res.writeHead(200,{"content-type":"application/json; charset=utf-8",
         "cache-control":"no-store","set-cookie":COOKIE+"=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"});
       res.end(JSON.stringify({ok:true}));
