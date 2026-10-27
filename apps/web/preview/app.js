@@ -261,7 +261,7 @@ function startNodeDrag(e,id){
     node.groupId?workspace().nodes.filter(n=>n.groupId===node.groupId).map(n=>n.id):[id];
   drag={type:'node',id,ids,pointer:e.pointerId,sx:e.clientX,sy:e.clientY,
     originals:workspace().nodes.filter(n=>ids.includes(n.id)).map(n=>({id:n.id,x:n.x,y:n.y})),moved:false};
-  e.currentTarget.setPointerCapture(e.pointerId);
+  // Do not capture on pointerdown: native click must still reach title/body for deliberate editing.
 }
 $('#viewport').addEventListener('pointerdown',e=>{
   // Mouse drag on empty space selects; trackpad two-finger wheel scroll pans.
@@ -304,7 +304,11 @@ $('#viewport').addEventListener('pointermove',e=>{
   if(!drag||e.pointerId!==drag.pointer)return;
   const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;
   if(Math.hypot(dx,dy)<4&&!drag.moved)return;
-  if(!drag.moved&&drag.type==='node')snapshot();
+  if(!drag.moved&&drag.type==='node'){
+    snapshot();
+    // Capture only once the gesture is definitely a drag, not a text-editing click.
+    try{$('#viewport').setPointerCapture(e.pointerId);}catch{}
+  }
   drag.moved=true;
   if(drag.type==='pan'){
     workspace().view.x=drag.x+dx;workspace().view.y=drag.y+dy;transform();
@@ -351,7 +355,9 @@ function finishDrag(e){
   if(e.type==='pointercancel'){cancelCanvasGesture();return;}
   const movement=drag;
   if(movement.type==='select'){
-    const r=$('#selection-rectangle').getBoundingClientRect();
+    // Compute collision from pointer coordinates, not the temporary overlay's layout.
+    const r={left:Math.min(movement.sx,e.clientX),right:Math.max(movement.sx,e.clientX),
+      top:Math.min(movement.sy,e.clientY),bottom:Math.max(movement.sy,e.clientY)};
     const hits=movement.moved?Array.from($('#nodes [data-node]')).filter(el=>{
       const n=el.getBoundingClientRect();
       return n.right>=r.left&&n.left<=r.right&&n.bottom>=r.top&&n.top<=r.bottom;
