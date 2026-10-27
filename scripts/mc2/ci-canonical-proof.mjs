@@ -4,7 +4,8 @@
  * fixture. No provider, OS owner or personal credential is accessed.
  */
 import assert from "node:assert/strict";
-import {execFileSync} from "node:child_process";
+import {execFileSync,spawn} from "node:child_process";
+import {createServer as createPortProbe} from "node:net";
 import {mkdtemp, mkdir, writeFile, rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
@@ -46,6 +47,53 @@ async function rpc(port,auth,body) {
   return res.json();
 }
 const pause=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
+async function availableLocalPort(){
+  const server=createPortProbe();
+  await new Promise((resolve,reject)=>{server.once("error",reject);
+    server.listen(0,"127.0.0.1",resolve)});
+  const addr=server.address();
+  const port=addr&&typeof addr==="object"?addr.port:0;
+  await new Promise(resolve=>server.close(resolve));
+  assert.ok(port>0);
+  return port;
+}
+async function checkInstalledLocalLaunch(origin,gatewayHome,bearer){
+  const hostPort=await availableLocalPort();
+  const child=spawn(process.execPath,["dist/scripts/mc2/start-connected.js"],{
+    env:{...process.env,AIVERSE_GATEWAY_HOME:gatewayHome,AIVERSE_GATEWAY_URL:origin,
+      AIVERSE_GATEWAY_TOKEN:bearer,AIVERSE_DASHBOARD_PORT:String(hostPort)},
+    stdio:["ignore","pipe","pipe"],
+  });
+  let stdout="",stderr="";
+  child.stdout.on("data",d=>stdout=(stdout+String(d)).slice(-8192));
+  child.stderr.on("data",d=>stderr=(stderr+String(d)).slice(-8192));
+  try{
+    let info;
+    for(let i=0;i<120;i++){
+      if(stdout.includes("\\n")){info=JSON.parse(stdout.trim().split("\\n")[0]);break;}
+      if(child.exitCode!==null)throw new Error("local host exited before readiness");
+      await pause(50);
+    }
+    assert.ok(info,"local host startup must report readiness");
+    assert.equal(info.state,"ready");
+    assert.equal(info.gatewayModel,"aiverse");
+    assert.equal(info.gatewayRuntimeKind,"deterministic");
+    assert.equal(info.personalUIEnabled,false);
+    assert.equal(info.connectionStorageWritten,false);
+    assert.equal(info.privateBearerExported,false);
+    assert.doesNotMatch(stdout+stderr, new RegExp(bearer.replace(/[.*+?^${}()|[\]\\]/g,"\\const pause=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));")));
+    const denied=await fetch("http://127.0.0.1:"+hostPort+"/health",{
+      signal:AbortSignal.timeout(4000),redirect:"error"
+    });
+    assert.equal(denied.status,401,"real locally launched Dashboard host must require bearer");
+  }finally{
+    child.kill("SIGTERM");
+    await Promise.race([
+      new Promise(resolve=>child.once("close",resolve)),
+      pause(3000).then(()=>{child.kill("SIGKILL")})
+    ]);
+  }
+}
 let primaryError;
 try {
   await mkdir(osRoot);
@@ -131,6 +179,7 @@ try {
   assert.equal(terminalEvent.workspaceId,"operator");
   assert.ok(received.some(x=>x.type==="event"&&x.payload?.kind==="assistant.delta"));
   assert.doesNotMatch(JSON.stringify(received),/avg_|Bearer |private_data/);
+  await checkInstalledLocalLaunch(canonicalOrigin,home,token);
   console.log(JSON.stringify({ok:true,kind:"mc2-real-gateway-ci",
     gateway_revision:GATEWAY_REVISION,
     scope:"disposable-operator",model:"aiverse",
@@ -138,6 +187,8 @@ try {
     canonical_run_completed:true,
     authenticated_ws_events:true,
     idempotent_run_replay:true,
+    installed_local_host_startup:true,
+    local_host_authentication_denial:true,
     private_member_system_access:false,real_provider_access:false,
     member_machine_verified:false},null,2));
 } catch(e) {
