@@ -209,6 +209,16 @@ describe("authenticated local Dashboard run event feed",()=>{
    assert.equal(events.length,1);
    stop();
  });
+ it("opens a scoped WebSocket using ambient HttpOnly cookie without bearer protocols",()=>{
+   const socket=new TestSocket();
+   const requests:Array<{url:string;protocols:string[]}=[];
+   const feed=new DashboardChatEventFeed("http://127.0.0.1:3100",
+     {mode:"host-cookie"},(url,protocols)=>{requests.push({url,protocols});return socket;});
+   const stop=feed.subscribe(SCOPE,"run-a",{event:()=>{},interrupted:()=>{}});
+   assert.deepEqual(requests[0].protocols,["aiverse.dashboard.v1"]);
+   assert.equal(requests[0].url,"ws://127.0.0.1:3100/ws?systemId=aiverse-01");
+   stop();
+ });
  it("reports malformed or denied subscriptions without displaying fabricated text",()=>{
    const socket=new TestSocket();
    const feed=new DashboardChatEventFeed("http://localhost:3100",TOKEN,()=>socket);
