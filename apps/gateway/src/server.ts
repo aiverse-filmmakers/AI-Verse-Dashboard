@@ -106,6 +106,7 @@ export async function startGateway(
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
+      if(cookieAuthorized && !bearerAuthorized)opts?.localApp?.trackBrowserSocket(ws);
       void handleSocket(ws, systemId, router, hub, opts?.canonicalBridge);
     });
   });
@@ -122,6 +123,7 @@ export async function startGateway(
     port: actual,
     authToken,
     async close() {
+      opts?.localApp?.close();
       wss.close();
       await new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
