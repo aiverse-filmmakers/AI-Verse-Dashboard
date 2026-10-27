@@ -12,6 +12,7 @@ import {
   hasWebSocketAuthorization,
 } from "./auth.js";
 import { SubscriptionHub } from "./subscriptions.js";
+import { CanonicalGatewayBridge } from "./canonical-gateway-bridge.js";
 
 /**
  * Localhost HTTP + WebSocket server (Task 4).
@@ -54,7 +55,7 @@ export interface GatewayServer {
 export async function startGateway(
   router: QueryRouter,
   hub: SubscriptionHub,
-  opts?: { port?: number; host?: string; authToken?: string },
+  opts?: { port?: number; host?: string; authToken?: string; canonicalBridge?: CanonicalGatewayBridge },
 ): Promise<GatewayServer> {
   const host = "127.0.0.1";
   const authToken = createGatewayAuthToken(opts?.authToken);
@@ -62,7 +63,7 @@ export async function startGateway(
     throw new Error("gateway binds loopback only; remote access must use a tunnel");
   }
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    void handleHttp(req, res, router, authToken);
+    void handleHttp(req, res, router, authToken, opts?.canonicalBridge);
   });
   const wss = new WebSocketServer({
     noServer: true,
@@ -137,6 +138,7 @@ async function handleHttp(
   res: ServerResponse,
   router: QueryRouter,
   authToken: string,
+  canonicalBridge?: CanonicalGatewayBridge,
 ): Promise<void> {
   try {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -166,6 +168,31 @@ async function handleHttp(
         return;
       }
       const frame = JSON.parse(await readBody(req)) as unknown;
+      // Canonical operations are authenticated, deliberately opt-in and
+      // host-injected. Existing synchronous QueryRouter remains unchanged.
+      if (CanonicalGatewayBridge.recognizes(frame)) {
+        if (!canonicalBridge) {
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({
+            type:"res",v:"1.0",id:typeof (frame as {id?:unknown}).id==="string"
+              ?(frame as {id:string}).id.slice(0,128):"unparseable",
+            ok:false,error:{code:"GATEWAY_NOT_CONFIGURED",message:"Canonical Gateway not configured"},
+            observedAt:new Date().toISOString(),
+          }));
+          return;
+        }
+        const abort=new AbortController();
+        const stop=()=>abort.abort();
+        res.on("close",stop);
+        try {
+          const out=await canonicalBridge.handle(frame,abort.signal);
+          if (!res.writableEnded && !res.destroyed) {
+            res.writeHead(200, { "content-type": "application/json" });
+            res.end(JSON.stringify(out));
+          }
+        } finally {res.off("close",stop);}
+        return;
+      }
       const out = router.handle(frame);
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(out));
