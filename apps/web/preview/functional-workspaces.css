@@ -155,3 +155,7 @@ body.dark .os-status.os-running,body.dark .os-status.os-working{background:#2736
 .os-kanban-control{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:7px;padding-top:9px;border-top:1px solid var(--line);width:100%}
 .os-kanban-move{max-width:105px;padding:4px 5px;font-size:10px}
 @media(max-width:1250px){.os-kanban{grid-template-columns:repeat(5,minmax(180px,190px));}}
+
+.os-task-detail-button{font-size:10px;font-weight:600;color:var(--accent);text-align:left;margin-top:2px;padding:4px 0}
+.os-task-detail-button:hover{text-decoration:underline;text-underline-offset:3px}
+.os-task-detail-button:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
