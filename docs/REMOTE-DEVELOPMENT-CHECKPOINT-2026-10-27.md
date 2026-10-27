@@ -54,3 +54,9 @@ On the current Dashboard PR #42, the preview now has an Essentials landing page 
 Review the source-pinned [MC2.1 packet](MC2.1-SOURCE-REVIEW-2026-10-27.md) and host-only `packages/client/src/canonical-gateway-client.ts` with its focused synthetic tests. No real host-to-Gateway credential binding, browser fetch or model call has been wired. The accepted project total remains 15 historical points; MC2.1 awaits PR acceptance and MC2.2 is in progress.
 
 Do not confuse Dashboard-local `/rpc` with canonical Gateway HTTP/SSE. Before wiring the app, use `SystemRegistry.resolveRoot()` against a trusted selected system and an explicit approved canonical Gateway ID+origin+credential mapping; authenticate scope at the existing host boundary; ensure A→B→A stale events never render; prove run-control workspace-rebind behavior. Avoid browser bearer injection and a duplicate Connections or Token store.
+
+## Next after MC2.2 bridge and event transport
+
+The code checkpoint provides an opt-in authenticated Dashboard-host bridge for canonical Gateway status/create/get and scoped WS run events, plus browser-safe typed /rpc methods. See `apps/gateway/src/canonical-gateway-bridge.ts` and synthetic fixture tests. **It is not attached to the published static UI**. `startGateway()` continues with no canonical bridge by default. No upstream bearer, provider account or native OS data is published.
+
+Next gate: resolve an actual installed system's Gateway ID/origin and secret reference through the trusted credential/runtime owner, inject the binding explicitly, and execute one real local canonical run with events and correct scope. Only after this succeeds, wire real Personal chat to use it. Check workspace-rebind control races before exposing Stop; no restart of MC0/MC1 and no new plan.
