@@ -32,7 +32,7 @@ Check the design source in `DESIGN.md` and the new verification checklist in `VE
 
 ## Functional AI-Verse workspace pages (UI/UX preview, 27 October 2026)
 
-**Features** in the top bar or **Explore features** in the app picker opens a full embedded application area alongside existing shared chat. The previous repeated feature-tour panels were replaced and their dead CSS/module removed. Every feature is now a task-shaped interactive workspace based on useful operational patterns from Mission Control and the side-by-side app pattern in holaOS, shaped around real AI-Verse owner APIs.
+**Features** in the top bar opens a full embedded application area alongside existing shared chat. It now starts on **Essentials**, with 11 clear destinations and truthful states rather than making every sample page look connected. The previous repeated feature-tour panels were replaced and their dead CSS/module removed. Every feature is now a task-shaped interactive workspace based on useful operational patterns from Mission Control and the side-by-side app pattern in holaOS, shaped around real AI-Verse owner APIs.
 
 - **Needs attention:** queue and inspector with example approve/decline controls, Pending/Approved/Declined filters.
 - **Activity:** live-run-style timeline, progress, event log, pause/retry examples, and a five-stage **Task board** with drag-to-move and accessible status dropdown.
