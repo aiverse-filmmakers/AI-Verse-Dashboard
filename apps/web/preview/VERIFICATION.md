@@ -49,3 +49,36 @@ The older "Observed passes" above describe **the original preview**, before the 
 8. Check macOS, Windows/browser keyboard differences, phone/tablet responsiveness, focus mode, screen-reader labeling and layout with all chats closed.
 
 No screenshots or interactive browser execution of the latest preview are claimed by this document. Backend Gateway/model/OS execution, credits, authorization, real uploads and release qualification remain out of scope.
+
+
+## Dashboard UX QC plan execution — 27 October 2026, latest verification
+
+**Source revision:** `99513960a610f45939cd4b66249b05deba801eeb` (branch `codex/dashboard-source-checkpoint`). **Live static preview revision:** `900dc11dfb83c7d9b6777dbcf5288895f059f0c1` (same unchanged preview app files; later commits updated tests only). Live Pages deployment [run #40490145129](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40490145129) **success**. Preview https://aiverse-filmmakers.github.io/AI-Verse-Dashboard/ .
+
+### Passed in browser — executable interaction evidence
+
+**Runner:** GitHub-hosted Ubuntu 24.04, Node 22, Playwright 1.58.2 headless Chromium, fresh and isolated browser context per journey, desktop viewport 1680×1150. The tests load the **actual static preview** from a local no-cache HTTP server with its real `app.js`, `personal-shell.js`, `shared-chat.js`, CSS and DOM, not a re-created interaction model. They assert visible outcomes, data persistence and page exceptions. [Browser QC run #40490470748](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40490470748): **10 tests passed, 0 failed**, around 8 seconds of test time. [Full Dashboard CI run #40490479163](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40490479163): **passed**.
+
+- **C1/C2/C8:** Empty workspace → new note with visible empty body → select then edit title and body → reload retained text → drag from card title without selecting text → Backspace edits text while in editor → Escape edit → Delete removes selected card → Undo restores it.
+- **C3/C4:** Mouse press-and-drag empty canvas → visible marquee → mouse release selects precisely the cards inside (both a 2-card box and a 3-card box verified); selected cards appear as chat canvas chips; clicking empty canvas removes selection **and** chips; repeated click does not duplicate chips. Synthetic browser wheel moved the canvas transform.
+- **C4/C5:** A second chat receives the current canvas selection if it was last active; closing that pane redirects subsequent context to the remaining chat; creating/switching workspace removes stale chip context.
+- **C6/C7:** Dragging from connector → temporary connection visible during gesture → release links cards → preview line disappears → single click selects link and reveals removal → clicking remove breaks it → Undo restores → double-click breaks it again.
+- **C1/C9/C10:** Three repeated create → select → Delete → Undo cycles, followed by reload; all three cards remain.
+- **C5:** Last chat minimizes rather than permanently disappearing and shows a **restore rail**; opening second chat, closing original first, minimizing/restoring second, and restoring its **unsent draft** all work.
+- **C10:** Primary and secondary chat resize by pointer drag or keyboard arrows. Widths survive reload.
+- **Cross-chat parity:** Close original first, continue with second, split it into another pane, close and restore without losing the Split action or shared controls. All panes expose the same `@` team-first picker, model dropdown, file input, send, Split and new-conversation controls. Actions tested: multiple team/individual tags, full team breadcrumb, model change, file-name-only attachment label, sample suggestions, send and independent new-chat clearing, with the original chat's recipient/model state unaffected.
+
+**Root cause repaired from actual failing browser evidence:** The canvas marquee and connector hit tests used `Array.from($(selector))`, where `$` returns only one HTMLElement; `Array.from` silently produced an empty collection. Replaced both with `document.querySelectorAll`. Earlier source-pattern tests could not detect this. Another failure, a secondary chat losing its unsent draft during pane rerender, was fixed through explicit `paneDrafts` state. Both were retested in real Chromium.
+
+### Automated source/CI evidence
+
+`npm run check` / Dashboard CI passed for Node on Ubuntu, macOS and Windows. `test/personal-shell-preview.test.mjs` remains source-level structural coverage; it **does not** establish browser behavior. `.github/workflows/preview-browser-qc.yml` now runs `test/preview-browser-interaction.browser.mjs` on relevant Dashboard preview changes. Browser dependency was installed in CI without committing a new runtime/production dependency or granting external service access.
+
+### Still unverified / limits
+
+- **Physical MacBook trackpad and Safari/macOS interaction feel** (especially two-finger panning inertia and multitouch), beyond the synthetic Chromium wheel and pointer behaviors.
+- **Narrow desktop and mobile for these new chat-resize/lifecycle interactions**, detailed visual styling/readability, native accessibility/screen-reader behavior, and actual touch hardware. Historical responsive checks above apply to an older preview revision.
+- **Storage exhaustion, concurrent tabs, cross-browser differences**, and edge-case file chooser behavior outside the tested filename-only demo.
+- **Real AI provider model selection, file processing, agent dispatch, paid creative generation, canonical OS filesystem, authorization** are not connected and were not tested. These previews do not supply backend acceptance.
+
+The browser suite and exact tested behaviors are part of **every future relevant UI change** as required by `AGENTS.md` and `docs/DASHBOARD-UX-QC-PLAN.md`. Run applicable behavior journeys and check neighbors before a change is presented as complete. Do not use the source-pattern checks in place of actual interactions.
