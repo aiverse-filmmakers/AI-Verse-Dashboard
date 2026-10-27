@@ -204,3 +204,23 @@ System main inspected at `21bf92a3ca5bf767cbffaab9a7f7701f8943d783` now records 
 ## Published source checkpoint — 27 October 2026
 
 The prototype, full inspiration gallery and AUTH-1 source/tests are now published in [Dashboard PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42), branch `codex/dashboard-source-checkpoint`, initially at `e152acf474290acf856f2d86852dad99d7b59dfe`. That branch contains the plan and code together; it is stacked on plan PR #41. Earlier “local only” statements describe the previous checkpoint and are superseded for source availability, not feature acceptance. The [remote handoff](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/blob/codex/dashboard-source-checkpoint/docs/REMOTE-DEVELOPMENT-CHECKPOINT-2026-10-27.md) has run instructions, known gaps and next work. No sign-in or AI runtime is wired into the preview yet. Operator requires meaningful local Dashboard work/checkpoints to be synced to GitHub for browser continuation; inspect remote changes before updating branches and never publish secrets or browser state. This does not authorize automatic merges/releases.
+
+## Stage 1 essentials and return to MC2.1, 27 October 2026
+
+**Operator instruction:** First expose the 11 essential experiences in the Personal-first Dashboard, then return to the existing accepted implementation sequence. This is a small **reconciliation of the existing living plan**, not a new MC/C0 phase or an independent roadmap.
+
+### Stage 1 UI checkpoint (not backend acceptance)
+
+On branch `codex/dashboard-source-checkpoint` / draft PR #42, the static design preview now includes an **Essentials** start page with 11 visible destinations. Existing Personal chat/canvas/workspace controls are reused. The current workspace's original browser-local chat now has create, reopen, rename and archive operations with preserved message history; export/restore is available for preview data and the optional chat shell. Provider setup has an explicit secure-host-unavailable state; Usage/Health show unknown/not checked rather than manufactured metrics; connection setup never asks for secrets in the public preview. All edits are source work pending latest-head CI and browser verification; no actual provider, live run, private Memory/Skills or canonical OS API was connected by this stage.
+
+**Stage 1 is considered complete only as UI design once browser QC passes for:** first-use access to all 11, true local conversation lifecycle, scoped notes/canvas/workspaces, backup/restore validation and non-fabricated offline/unknown states. The feature examples elsewhere remain clearly separate and never count as connected components. No accepted roadmap points are earned for a visible prototype.
+
+### Continue at MC2.1, not MC0/MC1
+
+- **MC0:** COMPLETE (5 points), preserve evidence.
+- **MC1:** COMPLETE within the recorded standalone local-Qwen proof (10 points), preserve evidence.
+- **MC2.1:** next PENDING gate (2 points). Source-reviewed Gateway HTTP/SSE transport exists in the draft, but owner-backed Personal context, conversation recovery, controlled UI actions and supported provider capability/status need an amended contract and an accepted review.
+- **MC2.2 onward:** unaccepted. Start typed canonical Gateway client only after the MC2.1 owner/host boundary has been checked and reviewed. Do not silently promote sample UI or AUTH-1 PKCE to a verified sign-in.
+- **Plan amendment:** lift the smallest already-developed Personal visual shell forward as non-accepted presentation evidence without inheriting the old MC3 full-Mission-Control-shell dependency; keep MC3 reference/features inventory and MC5 polish where applicable. Do not rescore the old 100-point programme until the pending amended PRD/tracker gates are reconciled explicitly.
+
+**Immediately next narrow integration slice:** MC2.1 reviewed owner/transport contract, followed by MC2.2 typed host-only Gateway status/models/createRun/events/controls with stable authenticated identity, no provider keys in browser, and refusal of unsupported session/asset/workspace routes. Then MC2.3–MC2.5 connect one real Chat and Stop path. Provider account login remains AUTH-2/3 under the trusted host and Connections/credential owner review.
