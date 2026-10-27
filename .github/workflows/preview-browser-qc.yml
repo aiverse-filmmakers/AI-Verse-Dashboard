@@ -43,6 +43,6 @@ jobs:
       - name: Build and bundle authenticated runtime UI modules
         run: |
           npm run build
-          npx esbuild apps/web/src/personal-chat-ui.ts --bundle --platform=browser --format=esm --target=es2022 --outfile=dist/apps/web/personal-chat.bundle.js
+          npm run mc2:bundle
       - name: Test static preview independently from real host chat UI
         run: node --test test/preview-browser-interaction.browser.mjs test/live-personal-chat-ui.browser.mjs test/local-app-launch.browser.mjs
