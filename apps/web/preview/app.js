@@ -12,9 +12,87 @@ function valid(s){return s?.version===1 && ['personal','film'].includes(s.area) 
 let state = sample(), storageAvailable = true;
 try {const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(valid(s))state=s;else storageAvailable=false;}}catch{storageAvailable=false;}
 let selectedNode=null, selectedIds=new Set(), selectedEdge=null, connectMode=false, connectStart=null, toastTimer, undoStack=[], redoStack=[], drag=null, spacePanHeld=false;
+/* Canvas library: one workspace may contain many independent boards.
+ * Keep the original w.nodes/edges/view as a backwards-compatible active-board
+ * projection for the existing editor, and migrate old browser saves without loss.
+ */
+function boardDefaults(){return {nodes:[],edges:[],view:{x:0,y:0,zoom:1}};}
+function ensureBoardLibrary(w){
+  if(!Array.isArray(w.canvases)){
+    const now=Date.now();
+    w.canvases=[{id:uid(),name:w.name||"Main canvas",nodes:structuredClone(w.nodes),edges:structuredClone(w.edges),view:structuredClone(w.view),createdAt:now,updatedAt:now}];
+    w.activeCanvasId=w.canvases[0].id;
+  }
+  if(!w.canvases.some(c=>c.id===w.activeCanvasId)){
+    w.activeCanvasId=w.canvases[0]?.id||null;
+    if(w.activeCanvasId)loadBoard(w,w.canvases[0]);
+  }
+}
+function loadBoard(w,board){
+  w.nodes=structuredClone(board.nodes);w.edges=structuredClone(board.edges);w.view=structuredClone(board.view);
+}
+function syncBoard(w){
+  if(!w)return;
+  ensureBoardLibrary(w);
+  const board=w.canvases.find(c=>c.id===w.activeCanvasId);
+  if(!board)return;
+  if(JSON.stringify([board.nodes,board.edges,board.view])!==JSON.stringify([w.nodes,w.edges,w.view])){
+    board.nodes=structuredClone(w.nodes);board.edges=structuredClone(w.edges);board.view=structuredClone(w.view);board.updatedAt=Date.now();
+  }
+}
+for(const w of state.workspaces)ensureBoardLibrary(w);
+function boardLibrary(){
+  const w=workspace();syncBoard(w);
+  return {workspaceId:w.id,workspaceName:w.name,activeId:w.activeCanvasId,boards:w.canvases.map(c=>({
+    id:c.id,name:c.name,updatedAt:c.updatedAt,createdAt:c.createdAt,count:c.nodes.length,
+    connections:c.edges.length,items:c.nodes.slice(0,5).map(n=>({type:n.type,title:n.title,body:n.body||""}))
+  }))};
+}
+function switchBoard(id){
+  const w=workspace(),target=w.canvases.find(c=>c.id===id);
+  if(!target)return false;
+  syncBoard(w);w.activeCanvasId=id;loadBoard(w,target);
+  selectedNode=null;selectedEdge=null;selectedIds.clear();undoStack=[];redoStack=[];
+  window.AIVerseCanvasScopeChanged?.(w.id);stopConnect();renderBoard();renderChat();save();
+  return true;
+}
+function createBoard(name){
+  const w=workspace();if(w.canvases.length>=60){toast("Maximum 60 canvases per workspace.");return null;}
+  syncBoard(w);const now=Date.now(),d=boardDefaults();
+  const created={id:uid(),name:(name||"Untitled canvas").trim().slice(0,80)||"Untitled canvas",...d,createdAt:now,updatedAt:now};
+  w.canvases.push(created);switchBoard(created.id);toast("Canvas created in this browser.");return created.id;
+}
+function duplicateBoard(id){
+  const w=workspace();syncBoard(w);
+  if(w.canvases.length>=60){toast("Maximum 60 canvases per workspace.");return false;}
+  const index=w.canvases.findIndex(c=>c.id===id);if(index<0)return false;
+  const original=w.canvases[index],now=Date.now();
+  w.canvases.splice(index+1,0,{...structuredClone(original),id:uid(),name:("Copy of "+original.name).slice(0,80),createdAt:now,updatedAt:now});
+  save();toast("Canvas duplicated.");return true;
+}
+function renameBoard(id,name){
+  const w=workspace(),board=w.canvases.find(c=>c.id===id);
+  const clean=(name||"").trim().slice(0,80);if(!board||!clean)return false;
+  board.name=clean;board.updatedAt=Date.now();renderBoard();save();toast("Canvas renamed.");return true;
+}
+function deleteBoard(id){
+  const w=workspace(),index=w.canvases.findIndex(c=>c.id===id);
+  if(index<0)return false;
+  if(w.canvases.length===1){toast("Create another canvas before deleting the last one.");return false;}
+  syncBoard(w);w.canvases.splice(index,1);undoStack=[];redoStack=[];
+  if(w.activeCanvasId===id){
+    w.activeCanvasId=w.canvases[Math.min(index,w.canvases.length-1)].id;
+    loadBoard(w,w.canvases.find(c=>c.id===w.activeCanvasId));
+    selectedNode=null;selectedEdge=null;selectedIds.clear();
+    window.AIVerseCanvasScopeChanged?.(w.id);stopConnect();renderBoard();
+  }
+  save();toast("Canvas deleted.");return true;
+}
+window.AIVerseCanvasLibrary={list:boardLibrary,open:switchBoard,create:createBoard,duplicate:duplicateBoard,rename:renameBoard,remove:deleteBoard};
+
 const workspace=()=>state.workspaces.find(w=>w.id===state.selected);
 function toast(text){if($('#dialog').open && $('#dialog-error'))$('#dialog-error').textContent=text;$('#toast').textContent=text;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));storageAvailable=true;$('#saved').textContent='Saved on this browser';}catch{storageAvailable=false;$('#saved').textContent='Not saved · browser storage full';toast('Browser storage is unavailable or full. Export your preview from the info menu.');}}
+function save(){try{syncBoard(workspace());localStorage.setItem(KEY,JSON.stringify(state));storageAvailable=true;$('#saved').textContent='Saved on this browser';}catch{storageAvailable=false;$('#saved').textContent='Not saved · browser storage full';toast('Browser storage is unavailable or full. Export your preview from the info menu.');}}
 function captureCanvas(){return {id:state.selected,nodes:structuredClone(workspace().nodes),edges:structuredClone(workspace().edges)};}
 function snapshot(){undoStack.push(captureCanvas());if(undoStack.length>40)undoStack.shift();redoStack=redoStack.filter(s=>s.id!==state.selected);}
 function restoreCanvas(s){const w=workspace();w.nodes=s.nodes;w.edges=s.edges;selectedIds.clear();selectedNode=null;selectedEdge=null;renderBoard();save();}
@@ -87,7 +165,7 @@ function nodeMarkup(n){
     content+generation+actions+'<button type="button" class="node-connector" aria-label="Drag to connect; click to make linked note" title="Drag to connect or click to create linked note">＋</button></article>';
 }
 function renderBoard(){
-  const w=workspace();$('#board-title').textContent=w.name;
+  const w=workspace();$('#board-title').textContent=w.canvases?.find(c=>c.id===w.activeCanvasId)?.name||w.name;
   $('#board-subtitle').textContent=w.kind==='film'?'Story, references and shot ideas, together.':'A place for the things taking shape.';
   $('#canvas-empty').hidden=w.nodes.length>0;
   $('#nodes').innerHTML=w.nodes.map(nodeMarkup).join('');
@@ -445,7 +523,7 @@ function createCanvasDraft(){
 function safeUrl(s){try{const u=new URL(s);return ['http:','https:'].includes(u.protocol)?u.href:null;}catch{return null;}}
 function openDialog(title,body,action,handler){$('#dialog-title').textContent=title;$('#dialog-body').innerHTML=body+'<p id="dialog-error" class="error-text" role="alert"></p>';$('#dialog-actions').innerHTML=action?`<button class="primary-button" type="submit">${esc(action)}</button>`:'';$('#dialog-form').onsubmit=e=>{e.preventDefault();if(handler?.()===false)return;$('#dialog').close();};$('#dialog').showModal();}
 function createWorkspaceDialog(filmDefault=state.area==='film'){openDialog(filmDefault?'Start a film project':'New workspace',`<label for="workspace-name">Name</label><input id="workspace-name" placeholder="${filmDefault?'Your next film':'A space for…'}" maxlength="80" required><label for="workspace-kind">Type</label><select id="workspace-kind"><option value="general" ${!filmDefault?'selected':''}>Personal or general</option><option value="film" ${filmDefault?'selected':''}>Film project</option></select><p class="local-state-note">Created in this browser preview only.</p>`,'Create workspace',()=>{const name=$('#workspace-name').value.trim();if(!name)return false;createWorkspace(name,$('#workspace-kind').value);});}
-function createWorkspace(name,kind){if(state.workspaces.length>=100){toast('This preview supports up to 100 workspaces.');return;}const w={id:uid(),name,kind,description:kind==='film'?'Film project · Just beginning':'A new space',nodes:[],edges:[],messages:[],view:{x:0,y:0,zoom:1}};state.workspaces.push(w);state.selected=w.id;state.area=kind==='film'?'film':'personal';selectedNode=null;selectedIds.clear();window.AIVerseCanvasScopeChanged?.(w.id);render();save();toast(`${name} created in this preview.`);}
+function createWorkspace(name,kind){if(state.workspaces.length>=100){toast('This preview supports up to 100 workspaces.');return;}const w={id:uid(),name,kind,description:kind==='film'?'Film project · Just beginning':'A new space',nodes:[],edges:[],messages:[],view:{x:0,y:0,zoom:1}};ensureBoardLibrary(w);state.workspaces.push(w);state.selected=w.id;state.area=kind==='film'?'film':'personal';selectedNode=null;selectedIds.clear();window.AIVerseCanvasScopeChanged?.(w.id);render();save();toast(`${name} created in this preview.`);}
 function renderMessageContext(m) {
   if (!m.meta) return '';
   const meta=m.meta, badges=[
@@ -474,7 +552,7 @@ const createButton=document.createElement('button');
 createButton.id='add-draft';createButton.type='button';createButton.className='tool';createButton.title='Plan a creative draft';
 createButton.innerHTML=icon('plus')+'<span>Create</span>';createButton.onclick=createCanvasDraft;
 $('#add-image').after(createButton);
-$('#add-image').onclick=()=>$('#image-input').click();$('#image-input').onchange=e=>{const file=e.target.files[0],targetId=state.selected;e.target.value='';if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>1500000){toast('Choose a PNG, JPEG or WebP image under 1.5 MB.');return;}const reader=new FileReader();reader.onload=()=>{if(targetId!==state.selected){toast('Workspace changed. Add the image again in the intended workspace.');return;}addNode({id:uid(),type:'image',title:file.name,src:reader.result,...newPosition()});};reader.onerror=()=>toast('The image could not be read. Try another file.');reader.readAsDataURL(file);};
+$('#add-image').onclick=()=>$('#image-input').click();$('#image-input').onchange=e=>{const file=e.target.files[0],targetId=state.selected,targetBoard=workspace().activeCanvasId;e.target.value='';if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>1500000){toast('Choose a PNG, JPEG or WebP image under 1.5 MB.');return;}const reader=new FileReader();reader.onload=()=>{if(targetId!==state.selected||targetBoard!==workspace().activeCanvasId){toast('Canvas changed. Add the image again in the intended canvas.');return;}addNode({id:uid(),type:'image',title:file.name,src:reader.result,...newPosition()});};reader.onerror=()=>toast('The image could not be read. Try another file.');reader.readAsDataURL(file);};
 $('#zoom-in').onclick=()=>zoom(.1);$('#zoom-out').onclick=()=>zoom(-.1);$('#zoom-reset').onclick=()=>{const w=workspace(),r=$('#viewport').getBoundingClientRect();if(!w.nodes.length){w.view={x:0,y:0,zoom:1};}else{const minX=Math.min(...w.nodes.map(n=>n.x)),minY=Math.min(...w.nodes.map(n=>n.y)),maxX=Math.max(...w.nodes.map(n=>n.x+($(`[data-node="${n.id}"]`)?.offsetWidth||235))),maxY=Math.max(...w.nodes.map(n=>n.y+($(`[data-node="${n.id}"]`)?.offsetHeight||200))),z=Math.max(.3,Math.min(1,(r.width-70)/(maxX-minX),(r.height-135)/(maxY-minY)));w.view={zoom:z,x:(r.width-(maxX-minX)*z)/2-minX*z,y:35-minY*z};}transform();save();};
 $('#focus').onclick=()=>{document.body.classList.toggle('focus-mode');const on=document.body.classList.contains('focus-mode');$('#focus span').textContent=on?'Exit focus':'Focus';$('#focus').setAttribute('aria-pressed',String(on));};
 $('#theme').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();save();};document.querySelectorAll('[data-area]').forEach(b=>b.onclick=()=>setArea(b.dataset.area));$('.brand').onclick=e=>{e.preventDefault();state.area='personal';selectWorkspace('personal');};$('#create-workspace').onclick=()=>createWorkspaceDialog();$('#dialog-close').onclick=()=>$('#dialog').close();$('#dialog').addEventListener('click',e=>{if(e.target===$('#dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
