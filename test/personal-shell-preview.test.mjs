@@ -222,7 +222,7 @@ test("selected canvas context is live, clears on deselection and retargets betwe
 });
 
 test("empty canvas drag creates a selection rectangle; trackpad wheel pans",()=>{
-  assert.match(core,/if\(e\.button===1\|\|spacePanHeld\)/);
+  assert.match(core,/if\(e\.button===1\|\|spacePanHeld\|\|e\.pointerType===\x27touch\x27\)/);
   assert.match(core,/type:'select'/);
   assert.match(core,/type:'pan'/);
   assert.match(core,/const previous=e\.shiftKey\?\[\.\.\.selectedIds\]:\[\]/);
@@ -238,6 +238,7 @@ test("connection preview is visible; single-click selects and double-click break
   assert.match(core,/connectPreview\(e\)/);
   assert.match(core,/path\.onclick=select/);
   assert.match(core,/path\.ondblclick=e=>/);
+  assert.match(core,/closest\(\x27\.canvas-node,button,\.inspector,\.canvas-toolbar,\.selection-actions,\.edge-actions,\[data-edge\]\x27\)/);
   assert.match(core,/function removeSelectedEdge\(\)/);
   assert.match(core,/remove\.onclick=removeSelectedEdge/);
   assert.match(css,/\.edge-hit\{stroke:transparent;stroke-width:19/);
@@ -260,4 +261,14 @@ test("new note body remains visible and editable while empty",()=>{
   assert.match(css,/\.canvas-node\.note \.node-content p:empty\{display:block;min-height:/);
   assert.match(css,/Click to add a note/);
   assert.match(core,/beginInlineEdit\(field,id,field\.tagName==='H3'\?'title':'body'\)/);
+});
+
+
+test("selected link removal does not cascade into selected-card deletion",()=>{
+  assert.match(core,/path\.onkeydown=e=>/);
+  assert.match(core,/e\.preventDefault\(\);e\.stopPropagation\(\);selectedEdge=Number\(path\.dataset\.edge\);removeSelectedEdge\(\)/);
+  assert.match(core,/path\.ondblclick=e=>/);
+  assert.match(core,/remove\.textContent='× Remove link'/);
+  assert.match(core,/path\.classList\.toggle\('is-selected'/);
+  assert.match(css,/edge-hit\.is-selected \+ \.edge-visual/);
 });
