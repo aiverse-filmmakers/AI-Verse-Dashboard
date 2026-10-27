@@ -598,7 +598,8 @@
       body: el.querySelector(".node-content p, .node-content a, .art-caption small")?.textContent || ""
     })) };
   }
-  function openNode(nodeId) {
+  function openNode(nodeId,canvasId) {
+    if(canvasId)window.AIVerseCanvasLibrary?.open(canvasId);
     data.app="canvas";save();renderAppSurface();
     const el=Array.from(document.querySelectorAll("#nodes [data-node]")).find(x=>x.dataset.node===nodeId);
     el?.click();el?.focus();
@@ -655,6 +656,7 @@
     });
     dialog.addEventListener("close",()=>dialog.remove());dialog.append(form);document.body.append(dialog);dialog.showModal();
   }
+  let canvasSearch="",canvasFavoritesOnly=false;
   function renderCanvasLibrary(){
     const info=window.AIVerseCanvasLibrary?.list();
     if(!info){appSurface.append(make("p","app-surface-disclaimer","Canvas library is not available."));return;}
@@ -663,8 +665,19 @@
       make("p","",info.workspaceName+" · "+info.boards.length+" canvas"+(info.boards.length===1?"":"es")));
     header.append(heading,button("canvas-library-create","Create new canvas",newCanvas,"plus","New canvas"));
     appSurface.append(header);
+    const filters=make("div","canvas-library-filters");
+    const search=make("input","canvas-library-search");
+    search.type="search";search.value=canvasSearch;search.placeholder="Search canvases…";
+    search.setAttribute("aria-label","Search canvases");
+    search.addEventListener("input",()=>{canvasSearch=search.value;renderAppSurface();appSurface.querySelector(".canvas-library-search")?.focus();});
+    const favorites=button("canvas-library-filter"+(canvasFavoritesOnly?" active":""),"Show starred canvases",()=>{
+      canvasFavoritesOnly=!canvasFavoritesOnly;renderAppSurface();
+    },null,canvasFavoritesOnly?"★ Starred only":"☆ All canvases");
+    favorites.setAttribute("aria-pressed",String(canvasFavoritesOnly));
+    filters.append(search,favorites);appSurface.append(filters);
     const grid=make("div","canvas-library-grid");
-    for(const item of info.boards){
+    const shown=info.boards.filter(item=>(!canvasFavoritesOnly||item.favorite)&&item.name.toLowerCase().includes(canvasSearch.trim().toLowerCase()));
+    for(const item of shown){
       const card=make("article","canvas-library-card");
       const preview=button("canvas-library-preview","Preview and open "+item.name,()=>openCanvas(item.id));
       const paper=make("div","canvas-library-paper");
@@ -693,6 +706,7 @@
       );
       card.append(actions);grid.append(card);
     }
+    if(!shown.length)grid.append(make("div","app-empty-card","No canvases match this search."));
     appSurface.append(grid);
     appSurface.append(make("p","app-surface-disclaimer","This is a browser-local canvas library, not your live OS."));
   }
@@ -716,7 +730,13 @@
     const head=make("div","app-surface-heading");
     const h=make("div");
     h.append(make("span","app-surface-kicker","PERSONAL APPS"),make("h2","",available.find(x=>x.id===data.app).label));
-    head.append(h,make("span","app-surface-subtitle", w ? w.name : "Local design preview"));
+    const createActions=make("div","app-list-actions");
+    if(data.app==="notes")createActions.append(button("canvas-library-create","Create note",()=>{data.app="canvas";save();renderAppSurface();$("#add-note")?.click();}, "plus","New note"));
+    if(data.app==="assets"){
+      createActions.append(button("canvas-library-create","Add reference link",()=>{data.app="canvas";save();renderAppSurface();$("#add-link")?.click();}, "plus","Add link"));
+      createActions.append(button("quiet-action","Upload reference image",()=>{data.app="canvas";save();renderAppSurface();$("#add-image")?.click();}, null,"Upload image"));
+    }
+    head.append(h,createActions);
     appSurface.append(head);
     if (data.app==="activity") {
       const empty=make("div","app-empty-card");
@@ -724,7 +744,9 @@
       empty.append(button("quiet-action feature-activity-link","Explore planned OS features",()=>{data.app="features";save();renderAppSurface();},null,"Explore OS features"));
       appSurface.append(empty);return;
     }
-    const nodes=(w?.nodes||[]).filter(n=>data.app==="notes"?n.type==="note":n.type==="image"||n.type==="art"||n.type==="link");
+    const allBoards=Array.isArray(w?.canvases)?w.canvases: [{id:null,name:"Current canvas",nodes:w?.nodes||[]}];
+    const nodes=allBoards.flatMap(board=>board.nodes.map(n=>({...n,canvasId:board.id,canvasName:board.name})))
+      .filter(n=>data.app==="notes"?n.type==="note":n.type==="image"||n.type==="art"||n.type==="link");
     const list=make("div","app-items-grid");
     if (!nodes.length) {
       const empty=make("div","app-empty-card");
@@ -732,10 +754,11 @@
       list.append(empty);
     }
     for(const n of nodes) {
-      const item=button("app-content-card","Open "+n.title+" on canvas",()=>openNode(n.id));
+      const item=button("app-content-card","Open "+n.title+" on canvas",()=>openNode(n.id,n.canvasId));
       item.append(make("small","",data.app==="notes"?"NOTE":n.type==="link"?"LINK":"REFERENCE"));
       item.append(make("strong","",n.title));
       item.append(make("p","",(n.body||"Open in canvas").slice(0,175)));
+      item.append(make("small","app-item-origin",n.canvasName));
       list.append(item);
     }
     appSurface.append(list);
