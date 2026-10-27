@@ -32,7 +32,13 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
     assert.equal(isCommandMethod("chat.send"), true); assert.equal(isQueryMethod("purpose.get"), true); assert.equal(isPurposeControlMethod("purpose.change.apply"), true);
     assert.deepEqual([...PURPOSE_CONTROL_METHODS], ["purpose.change.propose", "purpose.change.confirm", "purpose.change.apply"]);
     assert.throws(() => assertQueryOnly("chat.send"), /blocked/); assert.throws(() => assertQueryOnly("purpose.change.apply"), /blocked/); assert.doesNotThrow(() => assertQueryOnly("purpose.get"));
-    assert.equal(COMMAND_METHODS.length, 15); assert.equal(QUERY_METHODS.length, 24); assert.equal(ALL_METHODS.length, 41);
+    assert.equal(COMMAND_METHODS.length, 16); assert.equal(QUERY_METHODS.length, 26); assert.equal(ALL_METHODS.length, 44);
+    assert.equal(isCommandMethod("aiverse.gateway.run.create"),true);
+    assert.equal(isQueryMethod("aiverse.gateway.status"),true);
+    assert.equal(isQueryMethod("aiverse.gateway.run.get"),true);
+    for(const method of ["aiverse.gateway.status","aiverse.gateway.run.create","aiverse.gateway.run.get"]) {
+      assert.equal(requiresSystem(method),true);assert.equal(requiresWorkspace(method),true);
+    }
   });
   it("responses and events round-trip with systemId provenance", () => {
     const res = responseSchema.parse({ type: "res", v: "1.0", id: "i", ok: true, systemId: "aiverse-01", result: { tasks: [] }, observedAt: new Date().toISOString() }); assert.equal(res.ok, true);
