@@ -25,7 +25,7 @@
     }
     return null;
   }
-  function mount({form,input,teams,canvasItems,initialRecipients=[],initialModel="Auto",onSubmit,notify}) {
+  function mount({form,input,teams,canvasItems,initialRecipients=[],initialModel="Auto",onSubmit,onChange=()=>{},notify}) {
     if (!form || !input) throw Error("Chat form and textarea are required");
     const getTeams=()=>teams();
     const state={recipients:[],files:[],canvas:[],model:initialModel,stage:null,mention:null};
@@ -68,7 +68,7 @@
       option.value=name;model.append(option);
     }
     if (["Auto","Fast","Detailed"].includes(state.model)) model.value=state.model;
-    model.addEventListener("change",()=>{state.model=model.value;});
+    model.addEventListener("change",()=>{state.model=model.value;onChange(metadata());});
     toolbar.append(at,file,board,model);
     if (send) footer.insertBefore(toolbar,send);else footer.append(toolbar);
     form.append(fileInput,picker);
@@ -108,6 +108,7 @@
       }
       chips.hidden=!chips.childElementCount;
       note.hidden=true;
+      onChange(metadata());
     }
     function closeMenu() {
       picker.hidden=true;at.setAttribute("aria-expanded","false");state.stage=null;
