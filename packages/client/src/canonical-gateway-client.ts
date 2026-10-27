@@ -286,7 +286,7 @@ export class CanonicalGatewayClient {
         this.check();
         const next=await reader.read();
         if(next.done)break;
-        buffer+=decoder.decode(next.value,{stream:true}).replace(/\r\n/g,"\n");
+        buffer=(buffer+decoder.decode(next.value,{stream:true})).replace(/\r\n/g,"\n");
         if(buffer.length>MAX_EVENT_BYTES)throw new GatewayTransportError("EVENT_TOO_LARGE");
         let at:number;
         while((at=buffer.indexOf("\n\n"))>=0) {
