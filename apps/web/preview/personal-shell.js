@@ -35,6 +35,7 @@
   data.paneRecipients = data.paneRecipients && typeof data.paneRecipients === "object" ? data.paneRecipients : {};
   data.paneModels = data.paneModels && typeof data.paneModels === "object" ? data.paneModels : {};
   data.mainRecipients = Array.isArray(data.mainRecipients) ? data.mainRecipients : [];
+  data.mainDraft = typeof data.mainDraft === "string" ? data.mainDraft.slice(0,1200) : "";
   data.paneDrafts = data.paneDrafts && typeof data.paneDrafts==="object" ? data.paneDrafts : {};
   data.paneCanvasRefs = data.paneCanvasRefs && typeof data.paneCanvasRefs==="object" ? data.paneCanvasRefs : {};
   data.mainCanvasRefs = Array.isArray(data.mainCanvasRefs) ? data.mainCanvasRefs : [];
@@ -501,6 +502,15 @@
   }
   const mainComposer=$("#chat-form");
   const mainInput=$("#message");
+  // Preserve the primary composer draft across app switches and browser reloads.
+  // Secondary chat drafts already use paneDrafts, so keep parity here.
+  if (mainInput) {
+    mainInput.value=data.mainDraft;
+    mainInput.addEventListener("input",()=>{ data.mainDraft=mainInput.value.slice(0,1200); save(); });
+    mainComposer?.addEventListener("submit",()=>queueMicrotask(()=>{
+      data.mainDraft=mainInput.value.slice(0,1200); save();
+    }));
+  }
   const mainUI=window.AIVerseChatUI.mount({
     form:mainComposer,input:mainInput,teams:()=>data.teams,canvasItems:activeCanvasItems,
     initialRecipients:data.mainRecipients,initialCanvas:data.mainCanvasRefs,initialModel:data.paneModels.main||"Auto",
