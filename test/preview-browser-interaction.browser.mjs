@@ -506,8 +506,10 @@ test("Task board: native drag and accessible stage control both move sample task
  const review=page.locator('.os-kanban-column[data-status="Review"]');
  assert.equal(await review.locator(".os-kanban-card").count(),2);
  const dragged=review.locator(".os-kanban-card").filter({hasText:"Build production shot list"});
- await dragged.dragTo(page.locator('.os-kanban-column[data-status="Done"]'));
- assert.equal(await page.locator('.os-kanban-column[data-status="Done"] .os-kanban-card').count(),2,"drag-to-stage transitions the same task");
+ await dragged.dragTo(page.locator('.os-kanban-column[data-status="Done"] .os-kanban-head'));
+ const movedTexts=await page.locator('.os-kanban-column[data-status="Done"] .os-kanban-card').allInnerTexts();
+ assert.equal(movedTexts.length,2,"dragging changes the number of tasks in target stage");
+ assert.ok(movedTexts.some(text=>text.includes("Build production shot list")),"correct selected task moved, not a different card: "+JSON.stringify(movedTexts));
  await page.locator('.os-kanban-column[data-status="Done"] .os-kanban-card').filter({hasText:"Build production shot list"}).getByRole("button",{name:"View task details"}).click();
  assert.match(await page.locator(".os-card").last().innerText(),/Build production shot list/,"details open without interrupting drag or edit controls");
  assert.match(await page.locator(".os-source").innerText(),/sample workspace/i,"never claims a live OS effect");
