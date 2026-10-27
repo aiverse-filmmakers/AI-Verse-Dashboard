@@ -79,6 +79,7 @@ function nodeMarkup(n){
   const actions='<div class="node-quick-actions" aria-label="Card actions">'+
     '<button type="button" data-action="duplicate" title="Duplicate">Duplicate</button>'+
     '<button type="button" data-action="connect" title="Connect to another card">Connect</button>'+
+    (n.generation?'<button type="button" data-action="variation" title="Create a non-destructive demo variation">Variation</button>':'')+
     '<button type="button" data-action="delete" title="Delete card">Delete</button></div>';
   const generation=n.generation?'<div class="node-generation-tag">'+esc(n.generation.kind)+' · Demo draft</div>':'';
   return '<article tabindex="0" role="group" aria-label="'+esc(n.title)+'" class="canvas-node '+n.type+
@@ -110,7 +111,7 @@ function renderBoard(){
       button.onclick=e=>{
         e.preventDefault();e.stopPropagation();
         if(!selectedIds.has(id))setSelection([id]);
-        if(button.dataset.action==='duplicate')duplicateSelection();
+        if(button.dataset.action==='duplicate'||button.dataset.action==='variation')duplicateSelection();
         if(button.dataset.action==='delete')deleteSelection();
         if(button.dataset.action==='connect'){
           connectMode=true;connectStart=id;$('#connect').setAttribute('aria-pressed','true');
@@ -139,6 +140,7 @@ function renderBoard(){
     el.onkeydown=e=>{
       if(e.target!==el)return;
       if(e.key==='Enter'||e.key===' '){e.preventDefault();chooseNode(id,e);}
+      if(e.key==='F2'){e.preventDefault();chooseNode(id);const title=el.querySelector('.node-content h3,.art-caption h3');if(title)beginInlineEdit(title,id,'title');}
       if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
         e.preventDefault();if(!selectedIds.has(id))setSelection([id],{notify:false});
         snapshot();const step=e.shiftKey?20:5;
@@ -329,7 +331,7 @@ function createCanvasDraft(){
     '<p class="creation-references"><strong>Canvas references:</strong> '+referenceNames+'</p>'+
     '<details class="creation-more"><summary>More choices</summary>'+
     '<label for="creation-model">Model</label><select id="creation-model">'+
-    '<option value="auto" selected>Choose for me (default)</option><option value="manual">Specify a model later (demo)</option></select>'+
+    '<option value="auto" selected>Choose for me (default)</option></select>'+
     '<label for="creation-ratio">Shape</label><select id="creation-ratio">'+
     '<option value="auto">Auto</option><option value="16:9">Landscape · 16:9</option>'+
     '<option value="9:16">Portrait · 9:16</option><option value="1:1">Square · 1:1</option></select></details>'+
@@ -354,7 +356,21 @@ function createCanvasDraft(){
       toast('Editable demo draft added. No AI generation was run.');
     });
   const kindSelect=$('#creation-kind'),ratioSelect=$('#creation-ratio');
-  kindSelect.onchange=()=>{ratioSelect.disabled=['text','audio'].includes(kindSelect.value);if(ratioSelect.disabled)ratioSelect.value='auto';};
+  const modelSelect=$('#creation-model');
+  const models={text:['Text model A · demo','Text model B · demo'],
+    image:['Image model A · demo','Image model B · demo'],
+    video:['Video model A · demo','Video model B · demo'],
+    audio:['Audio model A · demo','Audio model B · demo']};
+  kindSelect.onchange=()=>{
+    ratioSelect.disabled=['text','audio'].includes(kindSelect.value);
+    if(ratioSelect.disabled)ratioSelect.value='auto';
+    modelSelect.replaceChildren();
+    for(const label of ['Choose for me (default)',...models[kindSelect.value]]){
+      const option=document.createElement('option');option.value=label.startsWith('Choose')?'auto':label;
+      option.textContent=label;modelSelect.append(option);
+    }
+  };
+  kindSelect.onchange();
 }
 function safeUrl(s){try{const u=new URL(s);return ['http:','https:'].includes(u.protocol)?u.href:null;}catch{return null;}}
 function openDialog(title,body,action,handler){$('#dialog-title').textContent=title;$('#dialog-body').innerHTML=body+'<p id="dialog-error" class="error-text" role="alert"></p>';$('#dialog-actions').innerHTML=action?`<button class="primary-button" type="submit">${esc(action)}</button>`:'';$('#dialog-form').onsubmit=e=>{e.preventDefault();if(handler?.()===false)return;$('#dialog').close();};$('#dialog').showModal();}
