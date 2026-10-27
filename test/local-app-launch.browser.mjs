@@ -45,7 +45,11 @@ test("locally packaged first-party app pairs, mounts real chat, and revokes sess
  const page=await context.newPage();
  const errors=[];
  page.on("pageerror",e=>errors.push(e.message));
- const response=await page.goto(base+"/local-app/",{waitUntil:"networkidle"});
+ const direct=await fetch(base+"/local-app/",{signal:AbortSignal.timeout(5000)});
+ assert.equal(direct.status,200,"packaged local page must answer unauthenticated GET");
+ assert.match(await direct.text(),/id="pair-form"/);
+ const response=await page.goto(base+"/local-app/",{waitUntil:"domcontentloaded",timeout:10000});
+ await page.locator("#pair-form").waitFor({state:"visible",timeout:10000});
  assert.equal(response.status(),200);
  assert.match(response.headers()["content-security-policy"],/frame-ancestors 'none'/);
  assert.equal(await page.locator(".live-chat-pane").count(),0);
