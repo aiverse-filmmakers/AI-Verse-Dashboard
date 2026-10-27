@@ -328,7 +328,7 @@ $('#viewport').addEventListener('pointermove',e=>{
     rect.style.width=Math.abs(x-drag.x)+'px';rect.style.height=Math.abs(y-drag.y)+'px';
   }else if(drag.type==='connect'){
     connectPreview(e);
-    const connector=Array.from($('#nodes [data-node]')).find(el=>el.dataset.node===drag.from)?.querySelector('.node-connector');
+    const connector=Array.from(document.querySelectorAll('#nodes [data-node]')).find(el=>el.dataset.node===drag.from)?.querySelector('.node-connector');
     if(connector)connector.dataset.dragged='true';
     const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-node]');
     $('#nodes').querySelectorAll('.connection-hover').forEach(el=>el.classList.remove('connection-hover'));
@@ -358,20 +358,13 @@ function finishDrag(e){
     // Compute collision from pointer coordinates, not the temporary overlay's layout.
     const r={left:Math.min(movement.sx,e.clientX),right:Math.max(movement.sx,e.clientX),
       top:Math.min(movement.sy,e.clientY),bottom:Math.max(movement.sy,e.clientY)};
-    const hits=movement.moved?Array.from($('#nodes [data-node]')).filter(el=>{
+    const hits=movement.moved?Array.from(document.querySelectorAll('#nodes [data-node]')).filter(el=>{
       const n=el.getBoundingClientRect();
       return n.right>=r.left&&n.left<=r.right&&n.bottom>=r.top&&n.top<=r.bottom;
     }).map(el=>el.dataset.node):[];
     $('#selection-rectangle').hidden=true;
     if(movement.moved)setSelection([...movement.previous,...hits]);
-    if(location.search.includes('uxqc')){
-      window.__canvasQcLastMarquee={
-        pointer:{startX:movement.sx,startY:movement.sy,endX:e.clientX,endY:e.clientY},
-        hitIds:hits,moved:movement.moved,
-        selectedIds:[...selectedIds],
-        selectedElements:document.querySelectorAll('#nodes .canvas-node.selected').length
-      };
-    }
+
   }else if(movement.type==='connect'){
     const target=movement.moved&&!e.type.includes('cancel')?
       document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-node]')?.dataset.node:null;
