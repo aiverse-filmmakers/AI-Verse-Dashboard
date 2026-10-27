@@ -39,6 +39,7 @@ const SAFE_CODES = new Set([
   "TRANSPORT_UNAVAILABLE", "ABORTED", "INVALID_RESPONSE", "RESPONSE_TOO_LARGE",
   "WORKSPACE_INVALID", "WORKSPACE_NOT_REGISTERED", "SYSTEM_NOT_REGISTERED",
   "GATEWAY_MAPPING_STALE", "GATEWAY_NOT_CONFIGURED", "RUN_NOT_FOUND",
+  "INVALID_ENVELOPE", "UNKNOWN_METHOD",
   "SESSION_BINDING_MISMATCH", "IDEMPOTENCY_CONFLICT", "FORBIDDEN", "UNAUTHENTICATED",
   "HTTP_401", "HTTP_403", "HTTP_404", "HTTP_409", "HTTP_429", "HTTP_503",
 ]);
@@ -117,7 +118,7 @@ export class CanonicalGatewayBridge {
       try{
         if(signal?.aborted)throw new GatewayTransportError("ABORTED");
         if(frame.method==="aiverse.gateway.status"){
-          if(frame.params!==undefined && Object.keys(z.object({}).strict().parse(frame.params)).length)
+          if(frame.params!==undefined && !z.object({}).strict().safeParse(frame.params).success)
             throw new GatewayTransportError("INVALID_ENVELOPE");
           const value=await client.preflight(signal);
           return respond(true,{...value,workspaceId:workspace,
@@ -126,13 +127,17 @@ export class CanonicalGatewayBridge {
             source:"canonical-gateway"});
         }
         if(frame.method==="aiverse.gateway.run.create"){
-          const args=input.parse(frame.params);
+          const parse=input.safeParse(frame.params);
+          if(!parse.success)throw new GatewayTransportError("INVALID_ENVELOPE");
+          const args=parse.data;
           // A real Gateway status/identity check, not an inferred browser state.
           await client.preflight(signal);
           return respond(true,boundedRun(await client.createRun({...args,signal})));
         }
         if(frame.method==="aiverse.gateway.run.get"){
-          const args=getInput.parse(frame.params);
+          const parse=getInput.safeParse(frame.params);
+          if(!parse.success)throw new GatewayTransportError("INVALID_ENVELOPE");
+          const args=parse.data;
           return respond(true,boundedRun(await client.getRun(args.runId,signal)));
         }
         return respond(false,undefined,"UNKNOWN_METHOD");
