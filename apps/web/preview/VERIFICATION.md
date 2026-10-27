@@ -103,3 +103,37 @@ Operator screenshots exposed a bright blue rectangular focus treatment on the ch
 **QC views used:** first-use discoverable Features entry, examples explicitly non-live, keyboard-search/escape and button navigation, restoring canvas/app switch, returning browser layout after reload, split chat/draft regressions via existing browser suite, narrow view and dark-theme-independent CSS variables. CSS depends on existing color tokens to avoid blue selection frames or dense monitoring on the initial screen.
 
 **Remaining limits:** this is a **designed feature tour**, not user-accepted art direction or production UI/backend integration. No physical Safari/MacBook trackpad, screen reader or mobile touch hardware test; no actual private Mac OS, live provider, paid request, owner approvals, cross-service orchestration, persisted owner sessions or release artifact test. The source audit is a roadmap for later owner-backed replacement of example content. The standalone UI preview cannot assert service readiness or working scheduler from its sample cards.
+
+
+## Superseding UI/UX correction: operational application pages instead of repeated feature-tour panels, 27 October 2026
+
+**Operator report:** The previous "Explore features" tour was not an actual usable dashboard: the same three fake text rows appeared for every feature. The requested correction was to inspect the real patterns of Builderz Labs Mission Control and holaOS and design **each AI-Verse feature as a task-appropriate, functioning screen**. Retiring the uniform feature cards was explicitly required.
+
+**Source and scope:** Implemented entirely in the current Dashboard preview review branch (no Core, Distribution, Gateway or other backend changes). Introduced functional-workspaces.js and functional-workspaces.css, reused the existing top-bar Features button, app picker, Personal shell, split chats and Canvas. Removed the previous feature-explorer.js and its unused styling. The CSS uses the existing restrained system color tokens rather than a new theme/framework. The new application area is an embedded sidebar with separately shaped operational pages, rather than a full replacement of Personal.
+
+**Working local-only UI interactions and data shapes:**
+- Needs attention: selectable pending/approved/declined requests with real inspector layout; Approve/Decline alters only the sample record.
+- Activity: running/blocked/review/completed timeline, progress, event log, pause/resume/retry examples; added five-stage **Task Board** with draggable cards and a keyboard-selectable stage control, plus detailed task inspection.
+- AI team: searchable roster, tasks and workload, new assistant planning form.
+- Goals: milestones with checkboxes/progress, add goal, pause/resume preview.
+- Scheduled work: weekday grid, next/last run table, pause/enable, add schedule and sample wake receipt.
+- Conversations: session list with Gateway run/state and transcript example next to real existing shared chat.
+- Skills: searchable library, readiness/generation, learning proposal queue and approval examples.
+- Knowledge: scoped search and memory source/evidence detail.
+- Project data: dense shot-list table with inline status changes, filter/search, add/edit/delete.
+- Outputs: artifact gallery and detail/filter views; safe separation between metadata and actual file bytes.
+- Usage: seven-/thirty-day token usage bars, attribution and UNKNOWN cost treatment.
+- System health: component list, per-service inspector, missing runtime guidance.
+- Connections: provider/channel list and explicit authorization/scope inspector.
+
+**Truth and permission:** These records are intentionally realistic **sample fixtures** in memory, NOT the user's personal OS, external provider/account, an installed service, a connected cost API or real file. Nothing in these pages invokes an external model, authorizes a request, changes OS workspaces, grants credentials, schedules a wake, moves a real Bot task or persists canonical Data. The UI is a prototype for the existing owner contracts until C1-C6 integration. The action feedback explicitly says "sample" or "example". No mock owner effect is represented as success from a canonical service. Editing sample records is interactive, but resetting or reloading restores examples; the real apps will need their own authenticated persistence adapters.
+
+**Actual browser interaction proof:** 14/14 headless Playwright Chromium tests passed at branch revision **082a6ec95fff11add0e913c0f57ea965aeca3e0c** on [Dashboard browser interaction QC run 40507672053](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40507672053) (14 pass, zero fail). Includes 11 pre-existing canvas/chat/focus regressions and three replacement/added journeys:
+1. Interact with all 13 app-specific pages: approve a sample decision, inspect/pause run, search teams, toggle goal checklist, edit schedule, approve proposed Skill, search Memory, edit/add shot records, filter Outputs, switch chart timeframe and inspect Health/Connections.
+2. Preserve draft while navigating, reload, restore Canvas with unchanged nodes, switch via existing app picker, use Activity-to-Features route and maintain no horizontal document overflow at 760px width.
+3. **Task Board**: move a task through native select from Running to Review, drag the exact same task into Done via a genuine browser drag/drop gesture onto the destination column header, verify task identity and reopen its detail inspector.
+**Dashboard cross-platform CI** also passed for the same exact commit on [run 40507676961](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40507676961). Older intermediate browser runs failed while this behavior was being corrected: main-chat unsent draft loss was fixed in personal-shell.js; a brittle drag target in the browser test was changed to the stage header with exact-task identity assertions; capitalization-only assertions were corrected. Passing results above are on the latest fully exercised runtime revision, not on those earlier failed revisions.
+
+**Pages publication:** The actual UI source had already been successfully deployed in [Publish Dashboard design preview run 40507343871](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40507343871) at source revision **03dd47ed63956d595a4ea6dfad62f8dc354868a3**; the later **082a6ec95f** commit changed only browser tests, so the publicly hosted UI files are unchanged. Preview: https://aiverse-filmmakers.github.io/AI-Verse-Dashboard/ . New docs/QA edits after this section do not change the live behavior.
+
+**Remaining limitations:** No physical Safari/Mac trackpad or screenshot-based aesthetic/user evaluation was completed; Chromium interaction assertion is not owner visual acceptance. No live owner/Gateway/Core/Automations/Bots/Token/Connections integration is implied; no Mac install or provider secrets touched. C1 real Gateway chat and subsequent owner-backed surfaces remain separately gated and unimplemented. Clean UI examples do not substitute for those authenticated runtime contracts.
