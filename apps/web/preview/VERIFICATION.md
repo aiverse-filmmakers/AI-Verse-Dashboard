@@ -156,3 +156,13 @@ Operator screenshots exposed a bright blue rectangular focus treatment on the ch
 **Testing:** \`test/preview-browser-interaction.browser.mjs\` now traverses the library to enter the seeded board for existing 14 canvas/chat/tool regressions; additional suites exercise fresh empty Personal scratch, per-board isolation, duplicate/rename/favorite/delete, movement into Filmmaking with the same board ID/content, return to Personal, reload, popup bounds, Features icon and removal from app picker. The newest commit has GitHub browser and cross-platform CI **queued at the time this note was authored**; do not describe the updated suite as passing until the current-head results confirm it. Manual real Safari/trackpad and physical Mac owner testing remain separate.
 
 **Release guard:** No canonical backend, Distribution, Core code, provider keys, member package or publicly hosted SaaS features changed. This is source in the existing Dashboard PR #42; read the new deploy SHA and actual CI result before describing it as live or fully accepted.
+
+## Stage 1 eleven essentials and return to MC2.1, 27 October 2026
+
+**Source scope:** `apps/web/preview/app.js`, `personal-shell.js`, `functional-workspaces.js`, `functional-workspaces.css` and the existing Chromium browser suite were updated on PR #42. The Essentials landing page shows all eleven functions, links to their existing views, and distinguishes browser-local working interactions from unavailable canonical services. Connected provider sign-in, real model/chat/Stop, private Memory/Skills, owner usage and health are NOT active.
+
+**New user journeys under test:** (1) all 11 Essentials entry points plus disabled/non-misleading connection and unknown-usage/health UI; (2) main conversation create, local persist, reopen, rename, archive and restore per workspace; (3) valid JSON backup download and rejected malformed import without overwriting active preview data. Existing multi-chat and canvas regressions remain in the same test file.
+
+**Important separate demo boundary:** The original Activity, agent roster and other illustrative feature examples continue to exist for UX exploration. They are not evidence of live runs or actual owner-backed actions. The new Connections, Usage and Health default pages intentionally show not connected/unknown/not checked.
+
+**CI note:** The latest browser and Node runs must be read from the final committed head before claiming this slice is passed or publicly deployed. Older green runs do not certify the new behavior. The next plan gate is still MC2.1 pending (15 accepted historical MC0/MC1 points).
