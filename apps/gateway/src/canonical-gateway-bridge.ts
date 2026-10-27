@@ -58,7 +58,7 @@ function boundedRun(run:GatewayRun):Record<string,unknown> {
 }
 export class CanonicalGatewayBridge {
   private readonly connections = new Map<string, {
-    root:string; binding: ApprovedCanonicalGateway;
+    root:string; generation:number; binding: ApprovedCanonicalGateway;
   }>();
   constructor(
     private readonly registry:SystemRegistry,
@@ -76,7 +76,7 @@ export class CanonicalGatewayBridge {
         origin:entry.origin,canonicalSystemId:entry.canonicalSystemId,
         workspaceId:"operator",resolveBearer:entry.resolveBearer,
       },transportOptions);
-      this.connections.set(entry.dashboardSystemId,{root,binding:{...entry}});
+      this.connections.set(entry.dashboardSystemId,{root,generation:registry.bindingGeneration(entry.dashboardSystemId),binding:{...entry}});
     }
   }
   static recognizes(raw:unknown):boolean {
@@ -103,7 +103,8 @@ export class CanonicalGatewayBridge {
         if(!identifier.safeParse(runId).success)throw new GatewayTransportError("INVALID_ENVELOPE");
         const registered=this.connections.get(systemId);
         if(!registered)throw new GatewayTransportError("GATEWAY_NOT_CONFIGURED");
-        if(this.registry.resolveRoot(systemId)!==registered.root)
+        if(this.registry.resolveRoot(systemId)!==registered.root ||
+          this.registry.bindingGeneration(systemId)!==registered.generation)
           throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
         if(!/^(operator|[a-z0-9][a-z0-9-]{0,127})$/.test(workspaceId))
           throw new GatewayTransportError("INVALID_ENVELOPE");
@@ -121,7 +122,8 @@ export class CanonicalGatewayBridge {
         await client.subscribeRun(runId,event=>{
           if(finished || !allowed.has(event.type))return;
           try{
-            if(this.registry.resolveRoot(systemId)!==registered.root)throw new Error("binding changed");
+            if(this.registry.resolveRoot(systemId)!==registered.root ||
+              this.registry.bindingGeneration(systemId)!==registered.generation)throw new Error("binding changed");
           }catch{cancel();return;}
           const projection:Record<string,unknown>={
             runId,eventId:event.event_id,kind:event.type,at:event.at,
@@ -162,7 +164,8 @@ export class CanonicalGatewayBridge {
       if(!system || !workspace)throw new GatewayTransportError("INVALID_ENVELOPE");
       const configured=this.connections.get(system);
       if(!configured)throw new GatewayTransportError("GATEWAY_NOT_CONFIGURED");
-      if(this.registry.resolveRoot(system)!==configured.root)
+      if(this.registry.resolveRoot(system)!==configured.root ||
+        this.registry.bindingGeneration(system)!==configured.generation)
         throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
       if(workspace!=="operator")getWorkspace(this.registry,system,workspace);
       const binding:HostGatewayBinding={
