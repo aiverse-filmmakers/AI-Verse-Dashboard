@@ -35,6 +35,8 @@
   data.paneRecipients = data.paneRecipients && typeof data.paneRecipients === "object" ? data.paneRecipients : {};
   data.paneModels = data.paneModels && typeof data.paneModels === "object" ? data.paneModels : {};
   data.mainRecipients = Array.isArray(data.mainRecipients) ? data.mainRecipients : [];
+  data.mainVisible = data.mainVisible !== false;
+  let lastActiveChat = typeof data.lastActiveChat==="string" ? data.lastActiveChat : "main";
   const id = () => crypto.randomUUID();
   // Recipient identity is a stable team/member ID, not a pane number or display name.
   const findRecipient = key => {
@@ -57,6 +59,7 @@
     data.panes = Math.max(data.panes,slot);
     data.chatTargets[String(slot)] = key;
     data.paneRecipients[String(slot)] = [key];
+    lastActiveChat=String(slot);
     showTeams(false);save();renderPanes();
     secondaryHost.querySelectorAll(".secondary-chat-pane")[slot-1]?.querySelector("textarea")?.focus();
   }
@@ -232,13 +235,32 @@
   const secondaryHost = make("div", "secondary-chat-host");
   shell.insertBefore(secondaryHost, main);
   const mainChatHeading = $(".chat-heading");
+  const originalChat=$(".chat-panel");
   const split = button("quiet-icon split-chat-action", "Open an additional chat", () => {
     if (data.panes >= 2) return notify("Three chat panes are already open.");
     data.panes++;save();renderPanes();
   }, "split");
   const chatHeadingActions = make("div", "chat-heading-actions");
   mainChatHeading.append(chatHeadingActions);
-  chatHeadingActions.append(split, $("#new-chat"));
+  const closeMain=button("quiet-icon close-primary-chat", "Close this conversation", ()=>{
+    data.mainVisible=false;
+    if(lastActiveChat==="main")lastActiveChat=data.panes?String(data.panes):null;
+    save();renderPanes();
+  },"close");
+  chatHeadingActions.append(split, $("#new-chat"),closeMain);
+  const topNewChat=button("quiet-chat-new", "Open a chat", ()=>{
+    if(!data.mainVisible){data.mainVisible=true;lastActiveChat="main";}
+    else if(data.panes<2){data.panes++;lastActiveChat=String(data.panes);}
+    else return notify("Three visible preview chats are the current layout limit.");
+    save();renderPanes();
+    if(lastActiveChat==="main")$("#message")?.focus();
+    else secondaryHost.querySelectorAll(".secondary-chat-pane")[Number(lastActiveChat)-1]?.querySelector("textarea")?.focus();
+  },"chat");
+  topNewChat.title="New chat";
+  $(".top-actions").insertBefore(topNewChat,teamsButton);
+  originalChat.addEventListener("pointerdown",()=>{if(data.mainVisible){lastActiveChat="main";data.lastActiveChat="main";save();}});
+  originalChat.addEventListener("focusin",()=>{if(data.mainVisible){lastActiveChat="main";data.lastActiveChat="main";save();}});
+
   // The same chat shell, composer and controls are used by main and every extra pane.
   function activeCanvasItems() {
     try {
@@ -263,10 +285,16 @@
     secondaryControllers=[];
     secondaryHost.replaceChildren();
     document.body.classList.toggle("with-parallel-chats",data.panes>0);
+    document.body.classList.toggle("primary-chat-closed",!data.mainVisible);
+    document.body.classList.toggle("zero-chats",!data.mainVisible&&data.panes===0);
+    topNewChat.hidden=data.mainVisible&&data.panes===2;
+    if(lastActiveChat==="main"&&!data.mainVisible)lastActiveChat=data.panes?String(data.panes):null;
     document.body.classList.toggle("with-three-chats",data.panes===2);
     split.disabled=data.panes>=2;
     for(let i=1;i<=data.panes;i++){
       const pane=make("section","chat-panel secondary-chat-pane unified-chat-pane");
+      pane.addEventListener("pointerdown",()=>{lastActiveChat=slot;data.lastActiveChat=slot;save();});
+      pane.addEventListener("focusin",()=>{lastActiveChat=slot;data.lastActiveChat=slot;save();});
       pane.setAttribute("aria-label","Conversation "+(i+1));
       const slot=String(i);
       const key=data.chatTargets[slot]||null;
@@ -287,7 +315,9 @@
         const last=String(data.panes);
         delete data.chats[last];delete data.chatTargets[last];
         delete data.paneRecipients[last];delete data.paneModels[last];
-        data.panes--;save();renderPanes();
+        data.panes--;
+        if(lastActiveChat===slot)lastActiveChat=data.panes?String(Math.min(data.panes,i)):data.mainVisible?"main":null;
+        save();renderPanes();
       },"close"));
       heading.append(actions);pane.append(heading);
       const scope=make("div","chat-scope");
@@ -368,6 +398,20 @@
     }
   });
 
+  // Canvas clicks are routed exclusively to the last chat the user interacted with.
+  window.AIVerseCanvasSelectionChanged=({workspaceId,nodes})=>{
+    if(!Array.isArray(nodes)||!nodes.length)return;
+    const target=lastActiveChat==="main"&&data.mainVisible ? mainUI :
+      Number.isInteger(Number(lastActiveChat))&&Number(lastActiveChat)>0 ?
+        secondaryControllers[Number(lastActiveChat)-1] : null;
+    const fallback=target||(data.mainVisible?mainUI:secondaryControllers[0]);
+    if(!fallback){notify("Open a chat to use selected canvas cards as context.");return;}
+    for(const node of nodes) fallback.addCanvasReference({id:node.id,title:node.title,workspaceId});
+  };
+  window.AIVerseCanvasScopeChanged=workspaceId=>{
+    mainUI.clearCanvasFromOtherWorkspaces(workspaceId);
+    secondaryControllers.forEach(ui=>ui.clearCanvasFromOtherWorkspaces(workspaceId));
+  };
   /* Existing canvas stays the default application panel, new surfaces are selected on demand. */
   const board = $(".board-section");
   const headerActions = $(".board-header-actions");
