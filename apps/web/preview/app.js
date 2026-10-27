@@ -97,13 +97,15 @@ function renderBoard(){
     el.onclick=e=>{
       if(e.target.closest('a,.node-quick-actions,.node-connector'))return;
       if(el.dataset.dragged==='true'){el.dataset.dragged='false';return;}
-      // Selection is handled on pointerdown. A click alone never edits a card.
+      // Selection is handled on pointerdown. Connect mode can still target the card.
+      if(connectMode)chooseNode(id,e);
     };
     el.querySelectorAll('.node-content h3,.node-content p,.art-caption h3').forEach(field=>{
       field.title='Select card first, then click again to edit';
       field.onclick=e=>{
         e.stopPropagation();e.preventDefault();
         if(el.dataset.dragged==='true'){el.dataset.dragged='false';return;}
+        if(connectMode){chooseNode(id,e);return;}
         if(el.dataset.editEligible==='true'&&selectedIds.has(id)&&
            !e.shiftKey&&!e.metaKey&&!e.ctrlKey)
           beginInlineEdit(field,id,field.tagName==='H3'?'title':'body');
