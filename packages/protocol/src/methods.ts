@@ -7,6 +7,7 @@ export const QUERY_METHODS = [
   "initiative.get", "task.list", "task.get", "task.children", "run.list", "run.get",
   "run.logs", "cron.list", "cron.history", "agent.list", "agent.sessions",
   "usage.summary", "graph.query", "graph.node", "source.preview",
+  "aiverse.gateway.status", "aiverse.gateway.run.get",
 ] as const;
 
 export const PURPOSE_CONTROL_METHODS = [
@@ -19,6 +20,7 @@ export const COMMAND_METHODS = [
   "chat.send", "chat.abort", "task.start", "task.cancel", "task.retry", "cron.create",
   "cron.pause", "cron.resume", "cron.runNow", "approval.resolve", "initiative.activate",
   "inbox.resolve", ...PURPOSE_CONTROL_METHODS,
+  "aiverse.gateway.run.create",
 ] as const;
 
 export const PROTOCOL_METHODS = ["protocol.handshake", "protocol.capabilities"] as const;
@@ -36,6 +38,7 @@ const WORKSPACE_SCOPED = new Set<string>([
   "initiative.list", "initiative.get", "task.list", "task.get", "task.children",
   "run.list", "run.get", "run.logs", "cron.list", "cron.history", "agent.list",
   "agent.sessions", "usage.summary", "graph.query", "graph.node", "source.preview",
+  "aiverse.gateway.status", "aiverse.gateway.run.get", "aiverse.gateway.run.create",
   "chat.send", "chat.abort", "task.start", "task.cancel", "task.retry", "cron.create",
   "cron.pause", "cron.resume", "cron.runNow", "approval.resolve", "initiative.activate",
   "inbox.resolve", ...PURPOSE_CONTROL_METHODS,
