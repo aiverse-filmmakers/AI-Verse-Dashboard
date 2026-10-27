@@ -199,4 +199,73 @@ test("C1,C9,C10: repeating create/delete/undo and saving after reload retains us
   assert.equal(await page.locator(".canvas-node.note").count(),3,"reload retains repeated undo results");
   assert.equal(errors.length,0,errors.join("\n"));
 });
+
+test("C5: last conversation minimizes to rail, restores, other chat can replace original",async t=>{
+  const {page,errors}=await setup(t);
+  const main=page.locator(".app-shell > .chat-panel").first();
+  await page.locator(".close-primary-chat").click();
+  assert.ok(await page.locator(".chat-minimized-rail").isVisible(),"last conversation leaves visible minimized chat rail");
+  assert.ok(!(await main.isVisible()),"main chat minimized");
+  const restore=page.getByRole("button",{name:"Restore AI-Verse"});
+  assert.ok(await restore.isVisible(),"restore chat action discoverable");
+  await restore.click();
+  assert.ok(await main.isVisible(),"restoring rail reopens same conversation");
+  await page.locator(".split-chat-action").click();
+  await page.locator(".secondary-chat-pane").first().locator("textarea").fill("A secondary draft");
+  await page.locator(".close-primary-chat").click();
+  assert.ok(!(await main.isVisible()),"primary may close when a second conversation exists");
+  assert.ok(await page.locator(".secondary-chat-pane").first().isVisible(),"second pane remains");
+  await page.locator(".secondary-chat-pane .chat-heading-actions button").last().click();
+  assert.ok(await page.locator(".chat-minimized-rail").isVisible(),"closing the last secondary pane minimizes instead");
+  await page.getByRole("button",{name:/Restore Chat/}).click();
+  assert.ok(await page.locator(".secondary-chat-pane").first().isVisible(),"secondary conversation can restore without main");
+  assert.equal(await page.locator(".secondary-chat-pane textarea").inputValue(),"A secondary draft");
+  assert.equal(errors.length,0,errors.join("\n"));
+});
+
+test("C10: all conversation windows offer pointer/keyboard resizing with persistence",async t=>{
+  const {page,errors}=await setup(t);
+  const main=page.locator(".app-shell > .chat-panel").first();
+  const initial=(await main.boundingBox()).width;
+  const grip=main.locator(".chat-resize-grip");
+  assert.equal(await grip.getAttribute("role"),"separator");
+  await grip.focus();
+  await page.keyboard.press("ArrowRight");
+  assert.ok((await main.boundingBox()).width>initial+10,"keyboard resizes primary pane");
+  let g=await grip.boundingBox();
+  await drag(page,{x:g.x+g.width/2,y:g.y+g.height/2},{x:g.x+g.width/2+65,y:g.y+g.height/2});
+  const resized=(await main.boundingBox()).width;
+  assert.ok(resized>initial+50,"pointer divider grows chat pane");
+  await page.locator(".split-chat-action").click();
+  const secondary=page.locator(".secondary-chat-pane").first();
+  assert.ok(await secondary.locator(".chat-resize-grip").count(),"secondary has its own handle");
+  const secondaryFirst=(await secondary.boundingBox()).width;
+  const rightGrip=secondary.locator(".chat-resize-grip");
+  await rightGrip.focus();
+  await page.keyboard.press("ArrowRight");
+  assert.ok((await secondary.boundingBox()).width>secondaryFirst+10);
+  await page.reload();
+  assert.ok((await main.boundingBox()).width>=resized-2,"primary width persists across reload");
+  assert.ok((await page.locator(".secondary-chat-pane").first().boundingBox()).width>secondaryFirst+10,"secondary width persists");
+  assert.equal(errors.length,0,errors.join("\n"));
+});
+
+test("C3,C4: click-drag marquee selects multiple cards in real browser and deselection removes tags",async t=>{
+  const {page,errors}=await setup(t);
+  const viewport=await page.locator("#viewport").boundingBox();
+  const boxes=await Promise.all(["welcome","inspiration"].map(id=>page.locator('[data-node="'+id+'"]').boundingBox()));
+  const x=Math.max(viewport.x+6,Math.min(...boxes.map(b=>b.x))-12),y=Math.max(viewport.y+6,Math.min(...boxes.map(b=>b.y))-12);
+  const to={x:Math.max(...boxes.map(b=>b.x+b.width))+18,y:Math.max(...boxes.map(b=>b.y+b.height))+18};
+  assert.ok(to.x<viewport.x+viewport.width-6&&to.y<viewport.y+viewport.height-6,"fixture selection fits");
+  await page.mouse.move(x,y);await page.mouse.down();
+  await page.mouse.move(to.x,to.y,{steps:16});
+  assert.ok(await page.locator("#selection-rectangle").isVisible(),"marquee visible during drag");
+  await page.mouse.up();
+  assert.equal(await page.locator(".canvas-node.selected").count(),2,"two cards select on pointer release");
+  assert.equal(await page.locator("#chat-form .shared-context-chip").count(),2,"tag count equals current selection");
+  await page.locator("#viewport").click({position:{x:8,y:8}});
+  assert.equal(await page.locator(".canvas-node.selected").count(),0);
+  assert.equal(await page.locator("#chat-form .shared-context-chip").count(),0);
+  assert.equal(errors.length,0,errors.join("\n"));
+});
 test.after(async()=>{await browser.close();await new Promise(resolve=>server.close(resolve));});
