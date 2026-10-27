@@ -301,4 +301,53 @@ test("Every chat keeps full composer tools and Split after promoting second chat
   assert.equal(errors.length,0,errors.join("\n"));
 });
 
+
+test("Every chat operates its @ multi-recipient picker, model, file, suggestions and send controls",async t=>{
+  const {page,errors}=await setup(t);
+  const main=page.locator(".app-shell > .chat-panel").first();
+  assert.equal(await main.locator(".suggestions button").count(),2,"original offers quick prompts");
+  async function tag(pane,teamIndex,agentIndex=null){
+    await pane.locator(".shared-tool-at").click();
+    const picker=pane.locator(".shared-chat-picker");
+    assert.ok(await picker.isVisible(),"team list appears");
+    await picker.locator(".shared-menu-row").nth(teamIndex).click();
+    assert.ok(await picker.getByText("Entire team",{exact:true}).isVisible(),"team-first choice");
+    await picker.locator(".shared-menu-row").nth(agentIndex===null?0:agentIndex+1).click();
+  }
+  await tag(main,1,null);
+  await tag(main,1,0);
+  assert.equal(await main.locator(".shared-chat-chip:not(.shared-context-chip)").count(),2,"can tag both team and individual");
+  assert.match(await main.locator(".shared-chat-chips").innerText(),/Film studio \(team\)/);
+  assert.match(await main.locator(".shared-chat-chips").innerText(),/Film studio \/ Director/);
+  await main.locator(".shared-model-choice").selectOption("GPT (demo)");
+  assert.equal(await main.locator(".shared-model-choice").inputValue(),"GPT (demo)");
+  await main.locator('input[type="file"]').setInputFiles({name:"brief.txt",mimeType:"text/plain",buffer:Buffer.from("example text")});
+  assert.match(await main.locator(".shared-chat-chips").innerText(),/brief.txt/);
+  await main.locator(".chat-heading-actions .split-chat-action").click();
+  const other=page.locator(".secondary-chat-pane").first();
+  assert.equal(await other.locator(".suggestions button").count(),2,"new pane retains quick prompts");
+  await tag(other,0,null);
+  await tag(other,0,1);
+  assert.equal(await other.locator(".shared-chat-chip:not(.shared-context-chip)").count(),2);
+  assert.match(await other.locator(".shared-chat-chips").innerText(),/Personal team \/ Researcher/);
+  await other.locator(".shared-model-choice").selectOption("Claude (demo)");
+  await other.locator('input[type="file"]').setInputFiles({name:"still.png",mimeType:"image/png",buffer:Buffer.from("mock image")});
+  assert.match(await other.locator(".shared-chat-chips").innerText(),/still.png/);
+  await other.locator("textarea").fill("Plan two camera angles");
+  await other.locator(".send-button").click();
+  assert.match(await other.locator(".conversation").innerText(),/Plan two camera angles/);
+  assert.match(await other.locator(".conversation").innerText(),/design preview/i);
+  // Sending a secondary message does not erase original conversation recipients or model.
+  assert.equal(await main.locator(".shared-chat-chip:not(.shared-context-chip)").count(),2);
+  assert.equal(await main.locator(".shared-model-choice").inputValue(),"GPT (demo)");
+  await page.locator(".close-primary-chat").click();
+  assert.ok(await other.isVisible());
+  assert.equal(await other.locator(".shared-model-choice").inputValue(),"Claude (demo)");
+  await other.locator(".chat-heading-actions .new-chat-action").click();
+  assert.equal(await other.locator(".chat-message.user").count(),0,"new conversation reset works in secondary");
+  await other.locator(".chat-heading-actions .split-chat-action").click();
+  assert.equal(await page.locator(".secondary-chat-pane").count(),2,"new conversations preserve split control");
+  assert.equal(errors.length,0,errors.join("\n"));
+});
+
 test.after(async()=>{await browser.close();await new Promise(resolve=>server.close(resolve));});
