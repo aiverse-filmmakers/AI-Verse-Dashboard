@@ -69,7 +69,12 @@ connections:[
 {id:"C-4",name:"OpenRouter",type:"Model provider",status:"Disconnected",permission:"None",detail:"No model subscription or credit access is represented here."}]
 };
 const copy=()=>JSON.parse(JSON.stringify(seed));
-let data=copy(),root=null,page="essentials",active=null,mode="all",term="",period="7",flash="";
+const pageKey="aiverse-feature-page-preview-v1";
+let initialPage="essentials";
+try{const saved=localStorage.getItem(pageKey);if(NAV.some(x=>x[0]===saved))initialPage=saved;}catch{}
+let data=copy(),root=null,page=initialPage,active=null,mode="all",term="",period="7",flash="";
+function rememberPage(){try{localStorage.setItem(pageKey,page);}catch{}}
+
 const h=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e};
 const add=(p,...xs)=>{xs.forEach(x=>x&&p.append(x));return p};
 const b=(txt,fn,cls="os-btn")=>{const e=h("button",cls,txt);e.type="button";e.addEventListener("click",fn);return e};
@@ -285,7 +290,7 @@ function essentials(main){
  const openPanel=target=>{if(target==="recovery")return window.AIVersePreviewRecovery?.open();
    if(target==="workspace")return document.querySelector("#create-workspace")?.click();
    if(["canvas","notes","assets"].includes(target))return window.AIVerseOpenPreviewApp?.(target);
-   page=target;active=null;mode="all";term="";render();};
+   page=target;active=null;mode="all";term="";rememberPage();render();};
  const items=[
   ["Clean Personal interface","canvas","Working locally","Chat, workspace switcher and current canvas"],
   ["Contextual AI chat","chat","UI ready, AI not connected","Scoped canvas chips, agent picker and demo conversation"],
@@ -318,12 +323,12 @@ const views={essentials,attention,activity,team,goals,schedule,chat,skills,memor
 const descriptions={essentials:"Eleven essentials · visible now, connected progressively",attention:"Approvals and actions requiring your decision",activity:"Real executions, results and recovery",team:"Your working AI assistants and Tasks",goals:"Priorities, milestones and verified progress",schedule:"Calendar, automation triggers and heartbeat",chat:"Gateway sessions and run controls",skills:"Reusable capabilities and learning review",memory:"Evidence-backed historical knowledge",data:"A real table-shaped production workspace",results:"Files, deliverables and receipts",usage:"Cost analytics and model attribution",health:"OS service status and diagnosis",connections:"Providers, tools and permissions"};
 function render(){
  if(!root)return;root.replaceChildren();const shell=h("div","os-real-shell"),sidebar=h("aside","os-real-sidebar");sidebar.append(h("div","os-sidebar-heading","YOUR WORKSPACE"));
- let last="";NAV.forEach(([id,name,group])=>{if(group!==last){last=group;sidebar.append(h("div","os-nav-group",group.toUpperCase()))}const button=b("",()=>{page=id;active=null;mode="all";term="";render()},"feature-nav-item os-nav-item"+(page===id?" current":""));button.setAttribute("aria-current",page===id?"page":"false");button.setAttribute("aria-label","Open "+name+" page");button.append(h("span","os-nav-indicator",""),h("strong","",name));sidebar.append(button)});
+ let last="";NAV.forEach(([id,name,group])=>{if(group!==last){last=group;sidebar.append(h("div","os-nav-group",group.toUpperCase()))}const button=b("",()=>{page=id;active=null;mode="all";term="";rememberPage();render()},"feature-nav-item os-nav-item"+(page===id?" current":""));button.setAttribute("aria-current",page===id?"page":"false");button.setAttribute("aria-label","Open "+name+" page");button.append(h("span","os-nav-indicator",""),h("strong","",name));sidebar.append(button)});
  const content=h("section","os-real-content"),top=h("div","os-real-header"),name=NAV.find(x=>x[0]===page)?.[1]||"Personal";top.append(add(h("div"),meta("PERSONAL  /  "+name.toUpperCase()),h("h2","",name),h("p","",descriptions[page])),add(h("div","os-header-actions"),...(["essentials","chat","connections","usage","health"].includes(page)?[]:[b("Reset sample",()=>{data=copy();active=null;mode="all";render();tell("Sample records restored. No real OS changes.")})]),tag("Design preview")));content.append(top);
  content.append(add(h("div","os-source"),h("span","os-source-dot",""),h("span","","Design preview only · Real OS and AI provider not connected · Local work saves in this browser")));
  const toast=h("div","os-toast",flash);toast.hidden=true;content.append(toast);flash="";
  const body=h("div","os-page");views[page](body);content.append(body);shell.append(sidebar,content);root.append(shell);
 }
-function mount(node){root=node;page="essentials";active=null;mode="all";term="";render()}
+function mount(node){root=node;active=null;mode="all";term="";render()}
 window.AIVerseFunctionalWorkspace={mount,features:NAV.map(x=>({id:x[0],name:x[1]})),page:()=>page};
 })();
