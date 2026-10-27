@@ -2,109 +2,119 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const base = new URL("../apps/web/preview/", import.meta.url);
-const html = readFileSync(new URL("index.html", base), "utf8");
-const css = readFileSync(new URL("style.css", base), "utf8");
-const js = readFileSync(new URL("personal-shell.js", base), "utf8");
+const root = new URL("../apps/web/preview/", import.meta.url);
+const read = p => readFileSync(new URL(p,root),"utf8");
+const html = read("index.html");
+const css = read("style.css");
+const core = read("app.js");
+const addon = read("personal-shell.js");
+const shared = read("shared-chat.js");
 
-test("optional Personal shell parses and loads beside original chat", () => {
-  assert.doesNotThrow(() => new Function(js));
-  assert.match(html, /<script type="module" src="app\.js"><\/script><script type="module" src="personal-shell\.js"><\/script>/);
-  assert.match(html, /<aside class="chat-panel"/);
-  assert.match(html, /id="viewport"/);
-  assert.match(js, /shell\.insertBefore\(secondaryHost, main\)/);
+test("all three preview modules parse and initialize in dependency order", () => {
+  assert.doesNotThrow(() => new Function(core));
+  assert.doesNotThrow(() => new Function(shared));
+  assert.doesNotThrow(() => new Function(addon));
+  assert.match(html, /src="app\.js"/);
+  assert.match(html, /src="shared-chat\.js"/);
+  assert.match(html, /src="personal-shell\.js"/);
+  assert.ok(html.indexOf('src="app.js"')<html.indexOf('src="shared-chat.js"'));
+  assert.ok(html.indexOf('src="shared-chat.js"')<html.indexOf('src="personal-shell.js"'));
 });
 
-test("first load preserves one chat and canvas; extras are hidden", () => {
-  assert.match(js, /panes:\s*0,\s*chats:\s*\{\},\s*app:\s*"canvas"/);
-  assert.match(js, /popover\.hidden\s*=\s*true/);
-  assert.match(js, /appMenu\.hidden\s*=\s*true/);
-  assert.match(js, /appSurface\.hidden\s*=\s*true/);
-  assert.match(css, /\.secondary-chat-host\s*\{\s*display:none/);
+test("quiet default with same main chat, canvas, and no visible extra panels", () => {
+  assert.match(html,/class="chat-panel"/);
+  assert.match(html,/id="viewport"/);
+  assert.match(addon,/panes: 0, chats: \{\}, app: "canvas"/);
+  assert.match(addon,/popover\.hidden = true/);
+  assert.match(css,/\.secondary-chat-host\{display:none/);
+  assert.match(css,/\.shared-chat-picker\[hidden\]/);
 });
 
-test("multiple editable demo teams are separate from real AI and workspace ownership", () => {
-  assert.match(js, /name: "Personal team"/);
-  assert.match(js, /name: "Film studio"/);
-  assert.match(js, /name: "Content lab"/);
-  assert.match(js, /"Create another AI team"/);
-  assert.match(js, /"Add teammate"/);
-  assert.match(js, /"Design preview only\. No real agents are running\."/);
-  assert.match(js, /aiverse-personal-shell-preview-v1/);
-  assert.doesNotMatch(js, /\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b/);
+test("multiple teams are not flattened into a permanent agent sidebar",()=>{
+  assert.match(addon,/name: "Personal team"/);
+  assert.match(addon,/name: "Film studio"/);
+  assert.match(addon,/name: "Content lab"/);
+  assert.match(addon,/"Create another AI team"/);
+  assert.match(addon,/"Add teammate"/);
+  assert.match(addon,/profile\.append\(button\("team-chat-button"/);
+  assert.match(addon,/startTargetChat\("agent:"/);
+  assert.match(addon,/No real agents are running/);
 });
 
-test("additional panes and app views are opt-in while focus retains main chat", () => {
-  assert.match(js, /if \(data\.panes >= 2\)/);
-  assert.match(js, /"notes","assets","activity"/);
-  assert.match(js, /appToggle\.setAttribute\("aria-expanded","false"\)/);
-  assert.match(css, /\.focus-mode \.chat-panel\s*\{\s*display:flex/);
-  assert.match(css, /personal-teams-popover\[hidden\]/);
+test("team and individual labels retain their provenance",()=>{
+  assert.match(addon,/display:team\.name\+" \/ "\+agent\.name/);
+  assert.match(shared,/display:team\.name\+" \/ "\+agent\.name/);
+  assert.match(shared,/display:team\.name\+" \(team\)"/);
+  assert.match(addon,/recipient\?recipient\.display/);
 });
 
-
-test("team and agent start a stable recipient thread without replacing primary chat", () => {
-  assert.match(js, /"Chat with the entire " \+ t\.name \+ " team"/);
-  assert.match(js, /startTargetChat\("team:" \+ t\.id\)/);
-  assert.match(js, /startTargetChat\("agent:" \+ t\.id \+ ":" \+ member\.id\)/);
-  assert.match(js, /const findRecipient = key =>/);
-  assert.match(js, /data\.chatTargets\[String\(slot\)\] = key/);
-  assert.match(js, /const source = recipient \? data\.threads\[recipient\.key\]/);
-  assert.match(js, /data\.threads = data\.threads && typeof data\.threads/);
-  assert.match(js, /if \(targetKey && !recipient\) delete data\.chatTargets/);
-  assert.match(js, /if \(recipient && !findRecipient\(recipient\.key\)\)/);
+test("all chat panes use the same standard visual structure and composer",()=>{
+  assert.match(addon,/make\("section","chat-panel secondary-chat-pane unified-chat-pane"\)/);
+  assert.match(addon,/make\("div","chat-heading"\)/);
+  assert.match(addon,/make\("div","conversation"\)/);
+  assert.match(addon,/make\("div","chat-bottom"\)/);
+  assert.match(addon,/make\("div","composer-bottom"\)/);
+  assert.match(addon,/window\.AIVerseChatUI\.mount/g);
+  assert.equal((addon.match(/window\.AIVerseChatUI\.mount/g)||[]).length,2);
+  assert.match(css,/\.unified-chat-pane/);
+  assert.match(css,/\.unified-chat-pane \.chat-welcome/);
+  assert.match(css,/\.chat-message-context/);
 });
 
-test("main chat offers explicit @ recipient selection and preserves normal chat by default", () => {
-  assert.match(js, /"Mention a team or assistant"/);
-  assert.match(js, /"mention-recipient-menu"/);
-  assert.match(js, /composeInput\.addEventListener\("input"/);
-  assert.match(js, /composeInput\.addEventListener\("keydown",event=>/);
-  assert.match(js, /composer\.addEventListener\("submit",event=>/);
-  assert.match(js, /"Choose a recipient from the @ menu before sending\."/);
-  assert.match(js, /if\(!target\) return;/);
-  assert.match(js, /\[Demo to /);
-  assert.match(js, /data\.threads\[target\.key\]=thread/);
-  assert.match(css, /\.draft-recipient-chip\[hidden\]/);
-  assert.match(css, /\.mention-recipient-menu\[hidden\]/);
+test("each composer can choose several recipients, organized team first",()=>{
+  assert.match(shared,/const state=\{recipients:\[\],files:\[\],canvas:\[\]/);
+  assert.match(shared,/state\.recipients\.push\(key\)/);
+  assert.match(shared,/state\.recipients\.includes\(key\)/);
+  assert.match(shared,/state\.recipients\.length >= 12/);
+  assert.match(shared,/function drawMenu\(search=""/);
+  assert.match(shared,/"Choose a team"/);
+  assert.match(shared,/state\.stage=team\.id;drawMenu\(\)/);
+  assert.match(shared,/"Entire team"/);
+  assert.match(shared,/for\(const member of t\.members\)/);
+  assert.match(shared,/control\("‹ Teams"/);
+  assert.match(shared,/chip-remove/);
+  assert.match(shared,/function closeMenu\(\)/);
 });
 
-test("the public preview never claims a live team dispatch", () => {
-  assert.match(js, /No real messages are being sent\./);
-  assert.match(js, /Live team and agent routing are not connected yet\./);
-  assert.match(js, /No real agent messages are sent\./);
-  assert.doesNotMatch(js, /\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bnavigator\.sendBeacon\b/);
+test("each composer has model preference, file labels, and canvas references",()=>{
+  assert.match(shared,/shared-model-choice/);
+  assert.match(shared,/\["Auto","Fast","Detailed"\]/);
+  assert.match(shared,/fileInput\.multiple=true/);
+  assert.match(shared,/Files are shown as preview labels only/);
+  assert.match(shared,/Attach from canvas/);
+  assert.match(shared,/References only · No files are copied/);
+  assert.match(shared,/canvasItems\(\)/);
+  assert.match(addon,/activeCanvasItems/);
+  assert.match(css,/\.shared-chat-tools/);
+  assert.match(css,/\.shared-model-choice/);
 });
 
-
-test("@ picker begins with collapsed teams instead of a flat list of all agents", () => {
-  assert.match(js, /let mentionTeamId = null/);
-  assert.match(js, /if \(!keepTeam\) mentionTeamId = null/);
-  assert.match(js, /if \(!selectedTeam\) \{/);
-  assert.match(js, /"Choose a team"/);
-  assert.match(js, /const teams = data\.teams\.filter\(t => t\.name\.toLocaleLowerCase\(\)\.includes\(query\)\)/);
-  assert.match(js, /"Open " \+ team\.name \+ " team"/);
-  assert.match(js, /team\.members\.length \+ " assistant"/);
-  assert.doesNotMatch(js, /const recipients=\[\]/);
+test("standalone default message flow and explicit enhanced message flow coexist",()=>{
+  assert.match(addon,/if\(!enhanced\)return false/);
+  assert.match(addon,/window\.AIVerseDemoPost\(message,meta\)/);
+  assert.match(core,/window\.AIVerseDemoPost=/);
+  assert.match(core,/renderMessageContext\(m\)/);
+  assert.match(addon,/meta\.recipients\.length\|\|meta\.files\.length\|\|meta\.canvas\.length/);
+  assert.match(shared,/form\.addEventListener\("submit",event=>/);
+  assert.match(shared,/onSubmit\(\{message,meta,event\}\)/);
 });
 
-test("one selected team reveals explicit entire-team and individual mention actions", () => {
-  assert.match(js, /mentionTeamId = team\.id/);
-  assert.match(js, /showMentionPicker\(true, "", true\)/);
-  assert.match(js, /"Back to all teams"/);
-  assert.match(js, /"Entire team"/);
-  assert.match(js, /chooseMentionRecipient\("team:" \+ selectedTeam\.id\)/);
-  assert.match(js, /for \(const agent of selectedTeam\.members\)/);
-  assert.match(js, /chooseMentionRecipient\("agent:" \+ selectedTeam\.id \+ ":" \+ agent\.id\)/);
-  assert.match(js, /if \(!on\) \{ mentionTeamId = null; return; \}/);
-  assert.match(css, /\.mention-team-heading/);
-  assert.match(css, /\.mention-back/);
+test("chat scopes and recipients survive changing pane layout and removal",()=>{
+  assert.match(addon,/data\.paneRecipients/);
+  assert.match(addon,/data\.mainRecipients/);
+  assert.match(addon,/data\.threads/);
+  assert.match(addon,/data\.paneModels/);
+  assert.match(addon,/if\(i<data\.panes\)/);
+  assert.match(addon,/secondaryControllers\.push\(ui\)/);
+  assert.match(addon,/controller\.destroy\(\)/);
+  assert.match(addon,/data\.mainRecipients=data\.mainRecipients\.filter/);
 });
 
-test("@ picker still removes the typed mention token and shows the recipient chip", () => {
-  assert.match(js, /function chooseMentionRecipient\(key\)/);
-  assert.match(js, /previous\.slice\(0, mentionToken\.start\) \+ previous\.slice\(mentionToken\.end\)/);
-  assert.match(js, /renderDraftTarget\(\)/);
-  assert.match(js, /mentionMenu\.querySelector\("\.mention-option"\)\?\.click\(\)/);
-  assert.match(js, /showMentionPicker\(true,match\[1\]\)/);
+test("honest static preview has no agent dispatch or credential connection",()=>{
+  assert.doesNotMatch(shared,/\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bnavigator\.sendBeacon\b/);
+  assert.doesNotMatch(addon,/\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bnavigator\.sendBeacon\b/);
+  assert.match(core,/not sent to a live AI/);
+  assert.match(shared,/Nothing is sent to an AI/);
+  assert.match(addon,/Nothing is sent to a real AI/);
+  assert.match(shared,/No real agent messages/);
 });
