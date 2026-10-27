@@ -5,7 +5,7 @@ import {
   PROTOCOL_ERRORS, PURPOSE_CONTROL_METHODS, QUERY_METHODS, WORKSPACE_ID_PATTERN,
   assertQueryOnly, eventSchema, isCommandMethod, isPurposeControlMethod, isQueryMethod,
   handshakeResultSchema, negotiateHandshake, panelIdSchema, parseFrame, presentationSchema, requestSchema,
-  requiresSystem, requiresWorkspace, responseSchema, scopeKey, workspaceScopeKey,
+  requiresSystem, requiresWorkspace, responseSchema, scopeKey, workspaceScopeKey, jsonBytes,
 } from "../packages/protocol/src/index.js";
 
 describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () => {
@@ -27,6 +27,14 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
   it("rejects raw-root params keys and oversized params", () => {
     for (const params of [{ root: "/tmp/os" }, { filter: { rootPath: "/x" } }, { items: [{ databasePath: "/y" }] }]) { const r = requestSchema.safeParse({ type: "req", v: "1.0", id: "g", method: "task.list", systemId: "aiverse-01", workspaceId: "ws-1", params }); assert.equal(r.success, false); if (!r.success) assert.match(r.error.issues[0].message, new RegExp(PROTOCOL_ERRORS.RAW_ROOT_FORBIDDEN)); }
     assert.equal(requestSchema.safeParse({ type: "req", v: "1.0", id: "h", method: "task.list", systemId: "aiverse-01", workspaceId: "ws-1", params: { blob: "x".repeat(MAX_PARAMS_BYTES + 1) } }).success, false);
+  });
+  it("counts UTF-8 payloads in both browser and Node without Buffer",()=>{
+    assert.equal(jsonBytes({value:"😀"}),Buffer.byteLength(JSON.stringify({value:"😀"}),"utf8"));
+    assert.equal(jsonBytes({value:"⚡"}),Buffer.byteLength(JSON.stringify({value:"⚡"}),"utf8"));
+    const req={type:"req",v:"1.0",id:"unicode",method:"aiverse.gateway.run.create",
+      systemId:"aiverse-01",workspaceId:"operator",
+      params:{messages:[{role:"user",content:"test 中文 😀"}],idempotencyKey:"stable-1"}};
+    assert.equal(requestSchema.safeParse(req).success,true);
   });
   it("keeps general commands blocked while admitting only Purpose controls in the router", () => {
     assert.equal(isCommandMethod("chat.send"), true); assert.equal(isQueryMethod("purpose.get"), true); assert.equal(isPurposeControlMethod("purpose.change.apply"), true);
