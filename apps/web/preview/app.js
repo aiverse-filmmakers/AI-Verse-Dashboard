@@ -9,8 +9,8 @@ function sample(){return {version:1,area:'personal',selected:'personal',theme:'l
  {id:'film-silent-horizon',name:'The Silent Horizon',kind:'film',description:'Short film · Idea development',nodes:[{id:'scene',type:'art',title:'The journey begins',body:'Scene 01 · Mountain lake',x:50,y:55},{id:'story',type:'note',title:'The heart of the story',body:'A filmmaker returns to a place she thought she had forgotten.\n\nQuiet. Human. Unhurried.',x:380,y:80},{id:'shots',type:'note',title:'First shot ideas',body:'Wide establishing shot at dawn.\nA slow approach to the water.\nHold on the character’s reaction.',x:120,y:310}],edges:[['scene','story'],['scene','shots']],messages:[],view:{x:0,y:0,zoom:1}},
  {id:'everyday',name:'Everyday',kind:'general',description:'Plans, lists & little things',nodes:[{id:'everyday-note',type:'note',title:'Make space for life',body:'Your work is only part of the picture.\n\nKeep a thought, a plan, or something you don’t want to forget.',x:100,y:80}],edges:[],messages:[],view:{x:0,y:0,zoom:1}}]};}
 function valid(s){return s?.version===1 && ['personal','film'].includes(s.area) && ['light','dark'].includes(s.theme) && Array.isArray(s.workspaces) && s.workspaces.length>0 && s.workspaces.length<=100 && s.workspaces.some(w=>w.id===s.selected) && s.workspaces.every(w=>typeof w.id==='string' && typeof w.name==='string' && ['personal','film','general'].includes(w.kind) && Array.isArray(w.nodes) && w.nodes.length<=300 && Array.isArray(w.edges) && Array.isArray(w.messages) && w.view && Number.isFinite(w.view.x) && Number.isFinite(w.view.y) && w.view.zoom>=.3 && w.view.zoom<=2 && w.nodes.every(n=>typeof n.id==='string' && ['note','link','art','image'].includes(n.type) && Number.isFinite(n.x) && Number.isFinite(n.y) && (n.type!=='image'||/^data:image\/(png|jpeg|webp);base64,/.test(n.src))) && w.edges.every(e=>Array.isArray(e)&&e.length===2) && w.messages.every(m=>['user','assistant'].includes(m.role)&&typeof m.text==='string'));}
-let state = sample(), storageAvailable = true;
-try {const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(valid(s))state=s;else storageAvailable=false;}}catch{storageAvailable=false;}
+let state = sample(), storageAvailable = true, hadSavedPreview = false;
+try {const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(valid(s)){state=s;hadSavedPreview=true;}else storageAvailable=false;}}catch{storageAvailable=false;}
 let selectedNode=null, selectedIds=new Set(), selectedEdge=null, connectMode=false, connectStart=null, toastTimer, undoStack=[], redoStack=[], drag=null, spacePanHeld=false;
 /* Canvas library: one workspace may contain many independent boards.
  * Keep the original w.nodes/edges/view as a backwards-compatible active-board
@@ -41,11 +41,20 @@ function syncBoard(w){
   }
 }
 for(const w of state.workspaces)ensureBoardLibrary(w);
+// Fresh preview visits start on a blank Personal scratch board. Existing
+// populated example stays safely in the library as a separate board.
+if(!hadSavedPreview){
+  const home=state.workspaces.find(w=>w.id==="personal");
+  if(home){
+    const scratch={id:uid(),name:"Scratch canvas",...boardDefaults(),createdAt:Date.now(),updatedAt:Date.now()};
+    home.canvases.unshift(scratch);home.activeCanvasId=scratch.id;loadBoard(home,scratch);
+  }
+}
 function boardLibrary(){
   const w=workspace();syncBoard(w);
   return {workspaceId:w.id,workspaceName:w.name,activeId:w.activeCanvasId,boards:w.canvases.map(c=>({
     id:c.id,name:c.name,updatedAt:c.updatedAt,createdAt:c.createdAt,count:c.nodes.length,
-    connections:c.edges.length,items:c.nodes.slice(0,5).map(n=>({type:n.type,title:n.title,body:n.body||""}))
+    connections:c.edges.length,favorite:!!c.favorite,archived:!!c.archived,items:c.nodes.slice(0,5).map(n=>({type:n.type,title:n.title,body:n.body||""}))
   }))};
 }
 function switchBoard(id){
@@ -88,16 +97,47 @@ function deleteBoard(id){
   }
   save();toast("Canvas deleted.");return true;
 }
-window.AIVerseCanvasLibrary={list:boardLibrary,open:switchBoard,create:createBoard,duplicate:duplicateBoard,rename:renameBoard,remove:deleteBoard};
+function availableBoardTargets(){
+ const current=workspace();
+ return state.workspaces.filter(w=>w.id!==current.id).map(w=>({id:w.id,name:w.name,area:w.kind==="film"?"Filmmaking":"Personal"}));
+}
+function moveBoard(id,targetWorkspaceId){
+ const source=workspace(),index=source.canvases.findIndex(c=>c.id===id);
+ const target=state.workspaces.find(w=>w.id===targetWorkspaceId);
+ if(index<0||!target||target.id===source.id)return false;
+ ensureBoardLibrary(target);syncBoard(source);
+ if(target.canvases.length>=60){toast("Destination already has 60 canvases.");return false;}
+ const board=source.canvases[index];
+ source.canvases.splice(index,1);
+ if(!source.canvases.length){
+   const d=boardDefaults();
+   source.canvases.push({id:uid(),name:"Scratch canvas",...d,createdAt:Date.now(),updatedAt:Date.now()});
+ }
+ if(source.activeCanvasId===id){
+   source.activeCanvasId=source.canvases[Math.min(index,source.canvases.length-1)].id;
+   loadBoard(source,source.canvases.find(c=>c.id===source.activeCanvasId));
+   selectedNode=null;selectedEdge=null;selectedIds.clear();undoStack=[];redoStack=[];
+   window.AIVerseCanvasScopeChanged?.(source.id);stopConnect();renderBoard();renderChat();
+ }
+ target.canvases.push(board);
+ save();toast("Canvas moved to "+target.name+".");return true;
+}
+function setBoardFlag(id,field,value){
+ if(field!=="favorite"&&field!=="archived")return false;
+ const board=workspace().canvases.find(c=>c.id===id);if(!board)return false;
+ board[field]=Boolean(value);board.updatedAt=Date.now();save();return true;
+}
+window.AIVerseCanvasLibrary={list:boardLibrary,open:switchBoard,create:createBoard,duplicate:duplicateBoard,rename:renameBoard,remove:deleteBoard,
+ targets:availableBoardTargets,move:moveBoard,favorite:(id,on)=>setBoardFlag(id,"favorite",on),archive:(id,on)=>setBoardFlag(id,"archived",on)};
 
 const workspace=()=>state.workspaces.find(w=>w.id===state.selected);
 function toast(text){if($('#dialog').open && $('#dialog-error'))$('#dialog-error').textContent=text;$('#toast').textContent=text;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
 function save(){try{syncBoard(workspace());localStorage.setItem(KEY,JSON.stringify(state));storageAvailable=true;$('#saved').textContent='Saved on this browser';}catch{storageAvailable=false;$('#saved').textContent='Not saved · browser storage full';toast('Browser storage is unavailable or full. Export your preview from the info menu.');}}
-function captureCanvas(){return {id:state.selected,nodes:structuredClone(workspace().nodes),edges:structuredClone(workspace().edges)};}
-function snapshot(){undoStack.push(captureCanvas());if(undoStack.length>40)undoStack.shift();redoStack=redoStack.filter(s=>s.id!==state.selected);}
+function captureCanvas(){return {id:state.selected,canvasId:workspace().activeCanvasId,nodes:structuredClone(workspace().nodes),edges:structuredClone(workspace().edges)};}
+function snapshot(){undoStack.push(captureCanvas());if(undoStack.length>40)undoStack.shift();redoStack=redoStack.filter(s=>s.id!==state.selected||s.canvasId!==workspace().activeCanvasId);}
 function restoreCanvas(s){const w=workspace();w.nodes=s.nodes;w.edges=s.edges;selectedIds.clear();selectedNode=null;selectedEdge=null;renderBoard();save();}
-function undo(){const i=undoStack.findLastIndex(s=>s.id===state.selected);if(i<0){toast('Nothing to undo here.');return;}redoStack.push(captureCanvas());restoreCanvas(undoStack.splice(i,1)[0]);toast('Undone.');}
-function redo(){const i=redoStack.findLastIndex(s=>s.id===state.selected);if(i<0){toast('Nothing to redo here.');return;}undoStack.push(captureCanvas());restoreCanvas(redoStack.splice(i,1)[0]);toast('Redone.');}
+function undo(){const i=undoStack.findLastIndex(s=>s.id===state.selected&&s.canvasId===workspace().activeCanvasId);if(i<0){toast('Nothing to undo here.');return;}redoStack.push(captureCanvas());restoreCanvas(undoStack.splice(i,1)[0]);toast('Undone.');}
+function redo(){const i=redoStack.findLastIndex(s=>s.id===state.selected&&s.canvasId===workspace().activeCanvasId);if(i<0){toast('Nothing to redo here.');return;}undoStack.push(captureCanvas());restoreCanvas(redoStack.splice(i,1)[0]);toast('Redone.');}
 function canvasSelectionChanged(){const w=workspace();const nodes=w.nodes.filter(n=>selectedIds.has(n.id)).map(n=>({id:n.id,title:n.title,type:n.type}));window.AIVerseCanvasSelectionChanged?.({workspaceId:w.id,nodes});}
 function setSelection(ids,{append=false,notify=true}={}) {
   if(!append)selectedIds.clear();
