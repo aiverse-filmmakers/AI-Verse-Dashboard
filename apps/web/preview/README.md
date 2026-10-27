@@ -30,10 +30,24 @@ Browser-local state uses two preview keys: `aiverse-design-preview-v1` for works
 Check the design source in `DESIGN.md` and the new verification checklist in `VERIFICATION.md`. It is not proof of real Gateway, agent teams, AI creation or member release.
 
 
-## Explore OS features (UI design preview, 27 October 2026)
+## Functional AI-Verse workspace pages (UI/UX preview, 27 October 2026)
 
-Use **Features** in the top bar or **Explore features** in the workspace app picker. The feature explorer describes 13 capabilities from the current AI-Verse backend and displays a realistic but explicitly illustrative interface for each: Needs attention, Live activity, Real AI chat, Your AI team, Goals & focus, Scheduled work, Skills & learning, Memory & knowledge, AI usage & costs, Project data, System health, Results & files, and Connections & channels.
+**Features** in the top bar or **Explore features** in the app picker opens a full embedded application area alongside existing shared chat. The previous repeated feature-tour panels were replaced and their dead CSS/module removed. Every feature is now a task-shaped interactive workspace based on useful operational patterns from Mission Control and the side-by-side app pattern in holaOS, shaped around real AI-Verse owner APIs.
 
-The tour is grouped into everyday essentials, AI work, and optional tools. Search, filter, click a capability, inspect its sample panel and use **Next feature** to browse. The existing Canvas/Notes/References/Activity picker and split chats continue working; switching away from Features does not mutate any OS state or its canvas. The selected app persists in the local preview layout; the currently highlighted feature is a UI-only choice.
+- **Needs attention:** queue and inspector with example approve/decline controls, Pending/Approved/Declined filters.
+- **Activity:** live-run-style timeline, progress, event log, pause/retry examples, and a five-stage **Task board** with drag-to-move and accessible status dropdown.
+- **AI team:** assistant roster, task ownership, search, current work and plan-teammate form.
+- **Goals:** evidence milestone checkboxes, progress, add/pause/resume.
+- **Scheduled work:** weekly calendar, recurring tasks, enable/pause, schedule form and wake receipts.
+- **Conversations:** session list, transport/run details and sample transcript next to actual shared chat.
+- **Skills:** searchable library, status, generation, usage and learning proposal approval examples.
+- **Knowledge:** searchable scoped memory and source/evidence inspector.
+- **Project data:** spreadsheet-like **editable production shot-list table** with search, status filters, inline updates, add/edit/remove.
+- **Outputs:** artifact library with filters, details, versions and actual authorization boundary.
+- **Usage & cost:** token usage chart, seven-/thirty-day switches, attribution, unknown-cost provenance.
+- **System health:** component list, readiness differentiation and diagnostic inspector.
+- **Connections:** provider/channel list, capability and permissions detail.
 
-**Every displayed task, approval, worker, provider state, schedule, progress value or cost example is invented demonstration copy, not live telemetry or an executable approval, credential, scheduling or generation control.** The real backend owners already expose many relevant contracts, but Dashboard's authenticated local bridge and composed tests remain pending in C1-C6. The public GitHub Pages preview still has no access to a private OS or keys. Refer to the [System backend-to-frontend audit](https://github.com/aiverse-filmmakers/AI-Verse-System/blob/plan/local-first-product-composition-2026-10-27/plans/in-progress/DASHBOARD-BACKEND-CAPABILITY-SURFACE-AUDIT-2026-10-27.md) for the source/priority mapping.
+All data in these new surfaces is explicitly **sample data** with local-only interactions. Actions modify example records in memory and never call the canonical backend, submit credentials, pay for AI, grant real approvals, install services, or modify user files. The public GitHub Pages preview cannot access a private OS. C1-C6 will replace examples with existing authorized owner projections.
+
+The main Canvas/Notes/References/Activity app picker and shared multi-chat remain; the main chat draft now persists across reloads, matching secondary chat draft behavior. Current app selection remains browser-local. See VERIFICATION.md and the System backend-capability audit for evidence and integration boundaries.
