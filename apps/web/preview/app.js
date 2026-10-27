@@ -213,6 +213,7 @@ function showEdgeActions(){
   if(!actions){actions=document.createElement('div');actions.id='edge-actions';actions.className='edge-actions';$('#viewport').append(actions);}
   actions.replaceChildren();
   actions.hidden=!Number.isInteger(selectedEdge);
+  $('#connections').querySelectorAll('[data-edge]').forEach(path=>path.classList.toggle('is-selected',Number(path.dataset.edge)===selectedEdge));
   if(actions.hidden)return;
   const title=document.createElement('span');title.textContent='Connection selected';
   const remove=document.createElement('button');remove.type='button';remove.textContent='× Remove link';remove.title='Break this connection';remove.onclick=removeSelectedEdge;
