@@ -201,7 +201,9 @@
     if (data.panes >= 2) return notify("Three chat panes are already open.");
     data.panes++;save();renderPanes();
   }, "split");
-  mainChatHeading.insertBefore(split, $("#new-chat"));
+  const headerActions = make("div", "chat-heading-actions");
+  mainChatHeading.append(headerActions);
+  headerActions.append(split, $("#new-chat"));
   function renderPanes() {
     secondaryHost.replaceChildren();
     document.body.classList.toggle("with-parallel-chats", data.panes > 0);
@@ -294,8 +296,14 @@
   function currentWorkspace() {
     try {
       const raw=JSON.parse(localStorage.getItem("aiverse-design-preview-v1"));
-      return raw && Array.isArray(raw.workspaces) ? raw.workspaces.find(w=>w.id===raw.selected) : null;
-    } catch {return null;}
+      if (raw && Array.isArray(raw.workspaces)) return raw.workspaces.find(w=>w.id===raw.selected);
+    } catch {}
+    return { name: $("#board-title")?.textContent || "Personal canvas", nodes: Array.from(document.querySelectorAll("#nodes .canvas-node")).map(el => ({
+      id: el.dataset.node,
+      type: el.classList.contains("note") ? "note" : el.classList.contains("link") ? "link" : el.classList.contains("art") ? "art" : "image",
+      title: el.querySelector("h3")?.textContent || "Untitled",
+      body: el.querySelector(".node-content p, .node-content a, .art-caption small")?.textContent || ""
+    })) };
   }
   function openNode(nodeId) {
     data.app="canvas";save();renderAppSurface();
