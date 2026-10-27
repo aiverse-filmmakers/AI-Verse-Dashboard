@@ -159,6 +159,7 @@ export class CanonicalGatewayClient {
           ...(key ? { "idempotency-key": key } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {}),
         signal: lease.controller.signal,
+        redirect: "error",
       });
       const raw = await response.text();
       if (raw.length > MAX_JSON_BYTES) throw new GatewayTransportError("RESPONSE_TOO_LARGE");
@@ -252,6 +253,7 @@ export class CanonicalGatewayClient {
       const bearer=await this.bearer();
       const res=await this.fetchFn(this.origin+"/v1/runs/"+safeId(runId)+"/events",{
         method:"GET",headers:{authorization:"Bearer "+bearer,accept:"text/event-stream"},signal:lease.controller.signal,
+        redirect:"error",
       });
       clearTimeout(deadline);
       if (!res.ok) throw gatewayError(res.status);
