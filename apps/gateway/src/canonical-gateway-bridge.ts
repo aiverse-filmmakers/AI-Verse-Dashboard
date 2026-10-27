@@ -94,10 +94,11 @@ export class CanonicalGatewayBridge {
       ...(ok?{result}:{error:{code:code??"GATEWAY_UNAVAILABLE",message:"Canonical Gateway "+(code??"GATEWAY_UNAVAILABLE")}}),
       observedAt:new Date().toISOString(),sourceVersion:"dashboard-canonical-gateway-host-v1",
     });
+    if(typeof tagged.method==="string" && tagged.method.startsWith("aiverse.gateway.") && !methods.has(tagged.method))
+      return respond(false,undefined,"UNKNOWN_METHOD");
     const parsed=requestSchema.safeParse(raw);
     if(!parsed.success)return respond(false,undefined,"INVALID_ENVELOPE");
     const frame:DashboardRequest=parsed.data;
-    if(!methods.has(frame.method))return respond(false,undefined,"UNKNOWN_METHOD");
     try {
       const system=frame.systemId;
       const workspace=frame.workspaceId;
