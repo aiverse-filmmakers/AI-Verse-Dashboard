@@ -671,6 +671,7 @@ test("Stage 1 recovery: validates backup before replacing saved browser state",a
  const file=await download;
  assert.match(file.suggestedFilename(),/backup\.json/);
  await page.locator("#import-preview-file").setInputFiles({name:"invalid.json",mimeType:"application/json",buffer:Buffer.from('{"broken":true}')});
+ await page.waitForFunction(()=>document.querySelector("#toast")?.textContent.includes("Invalid Dashboard preview backup"));
  assert.match(await page.locator("#toast").innerText(),/Invalid Dashboard preview backup/);
  assert.deepEqual(await state(page),before);
  assert.equal(errors.length,0,errors.join("\n"));
