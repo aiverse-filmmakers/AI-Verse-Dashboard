@@ -364,6 +364,14 @@ function finishDrag(e){
     }).map(el=>el.dataset.node):[];
     $('#selection-rectangle').hidden=true;
     if(movement.moved)setSelection([...movement.previous,...hits]);
+    if(location.search.includes('uxqc')){
+      window.__canvasQcLastMarquee={
+        pointer:{startX:movement.sx,startY:movement.sy,endX:e.clientX,endY:e.clientY},
+        hitIds:hits,moved:movement.moved,
+        selectedIds:[...selectedIds],
+        selectedElements:document.querySelectorAll('#nodes .canvas-node.selected').length
+      };
+    }
   }else if(movement.type==='connect'){
     const target=movement.moved&&!e.type.includes('cancel')?
       document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-node]')?.dataset.node:null;
