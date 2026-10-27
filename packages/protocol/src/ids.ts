@@ -118,5 +118,7 @@ export function checkNoRawRoots(params: unknown): NoRootsCheck {
 
 /** Byte size of a JSON-encodable value, for payload bounds. */
 export function jsonBytes(value: unknown): number {
-  return Buffer.byteLength(JSON.stringify(value ?? null), "utf8");
+  // Shared by native host and browser clients. Buffer is Node-only and caused
+  // browser run creation to fail before sending an authenticated /rpc frame.
+  return new TextEncoder().encode(JSON.stringify(value ?? null)).byteLength;
 }
