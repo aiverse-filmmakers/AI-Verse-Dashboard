@@ -143,7 +143,7 @@ export class DashboardClient {
       });
     }
     const value = { result: out.result, systemId: out.systemId, observedAt: out.observedAt };
-    this.cache.set(key, { value, atMs: Date.now(), ttlMs: opts?.ttlMs ?? 30_000 });
+    if(opts?.noCache !== true) this.cache.set(key, { value, atMs: Date.now(), ttlMs: opts?.ttlMs ?? 30_000 });
     return value;
   }
 }
