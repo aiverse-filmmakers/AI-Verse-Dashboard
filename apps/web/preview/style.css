@@ -450,3 +450,12 @@ body.dark{color-scheme:dark;--bg:#1d1d20;--surface:#262629;--canvas:#212124;--in
 
 /* Keep Teams popup inside viewport even at phone widths. */
 @media(max-width:600px){.personal-teams-popover{right:12px;left:auto;width:calc(100vw - 24px);max-width:calc(100vw - 24px)}}
+
+/* Stacked mobile header: Personal/Filmmaking tabs must not intercept Teams or Features. */
+@media(max-width:900px){
+ .topbar{height:auto;min-height:65px;display:flex;flex-wrap:wrap;column-gap:8px;row-gap:5px;padding:8px 14px}
+ .topbar .brand{order:1;min-width:0}
+ .topbar .top-actions{order:2;margin-left:auto;display:flex;flex:none;align-items:center;gap:4px;position:relative;z-index:2}
+ .topbar .area-tabs{position:static!important;left:auto!important;right:auto!important;transform:none!important;order:3;display:flex;justify-content:center;width:100%;max-width:100%;margin:0 auto;z-index:1}
+ .chat-open .chat-panel{top:112px;height:calc(100dvh - 112px)}
+}
