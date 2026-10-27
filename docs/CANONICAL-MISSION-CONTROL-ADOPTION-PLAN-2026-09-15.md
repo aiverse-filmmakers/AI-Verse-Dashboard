@@ -1,32 +1,44 @@
 # AI-Verse Dashboard implementation plan
 
-Original Mission Control adoption decision: 15 September 2026. Refreshed: 26 October 2026.
+Updated 27 October 2026 — **Personal-first scope amendment, review draft**.
 
-- **Outcome / owner:** turn the existing Mission Control foundation into a usable AI-Verse interface; AI-Verse-Dashboard owns presentation and integration.
-- **Depth:** extended, because the work crosses UI, authenticated runtime control, multiple systems, owner data and desktop delivery.
-- **Checkpoint:** **15/100 accepted roadmap points; 85 remain.** MC0 and MC1 are complete for their recorded scope. MC2.1 is the next unfinished slice.
-- **Authority:** the [PRD](PRD-MISSION-CONTROL-AIVERSE-DASHBOARD-2026-09-15.md) retains product invariants; the [execution tracker](MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md) retains every slice, weight and acceptance gate. This living plan explains the route. It replaces this document's older sequencing summary, not the accepted roadmap.
-- **Method:** current Plan Maker proportional structure; [System planning method](https://github.com/aiverse-filmmakers/AI-Verse-System/blob/main/docs/ADAPTIVE-IMPLEMENTATION-PLANNING-SKILL.md). No outcome, denominator, major ordering or permission changes are introduced by this refresh.
+- **Outcome:** a useful Personal OS with persistent agent chat and a shared creative canvas. Filmmaking becomes a specialist surface using that same foundation.
+- **Owner:** AI-Verse-Dashboard owns presentation and integration; existing component owners retain execution, state, permissions and credentials.
+- **Status:** this amendment records the operator's new direction. It is not merged, implemented or accepted engineering work. The original Mission Control adoption baseline remains available in Git.
+- **Accounting:** **15/100 accepted baseline points** (MC0 + MC1). The added requirements and revised order are not covered by a claim of “85 points remaining.” Remaining scope must be reconciled before its total is reported as a completion percentage.
+- **Method:** Plan Maker's proportional five-section structure. This is the existing living plan, not a parallel roadmap. [Tracker](MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md) and [PRD](PRD-MISSION-CONTROL-AIVERSE-DASHBOARD-2026-09-15.md) retain accepted history; their future gates require the explicit reconciliation below.
 
 ## 1. Problem and boundary
 
-### What exists and what the user still needs
+### Product direction
 
-Mission Control already provides a complete reference application. Our maintained copy has successfully dispatched a real local-model task through AI-Verse Gateway on a Mac. That proves the connection path, not a finished AI-Verse dashboard or an integrated main Chat screen.
+Personal is the shared home for ordinary chat, workspaces, notes and applications. Chat is always present, including inside Filmmaking and canvas views. The user can talk without first choosing a workspace or starting a “workflow.” A workspace is an area of work; it is not a required chat container.
 
-The intended journey is: open AI-Verse, select the intended system and workspace, ask for work, watch progress, approve or intervene when required, and inspect deeper controls only when useful. The normal interface remains **Ask AI-Verse, Workspaces, Recent Work and Needs You**, with an advanced Control Center. Browser and Mac desktop share the product UI.
+The assistant knows the relevant open app, active workspace, canvas and selection. It can act there: create notes or images, move and group items, arrange a canvas, and connect related items. “Create three images here” must eventually generate three real assets and place them on the current canvas, with visible progress and honest partial failures.
 
-### Scope and preservation
+The shared chat supports provider, model and reasoning selection where supported, attachments, ordinary conversation controls, command invocation and skill mentions. Conversations, available skills, runtime status and usage remain consistent across Personal and Filmmaking. Switching a top-level tab must not start another OS or silently copy private workspace content.
 
-Continue the approved Mission Control adoption. Preserve existing Dashboard protocol, registry, isolation, presentation/layout, read-model and live-event work. Reuse Mission Control presentation and useful workflows in stages; do not overwrite this repository with a raw fork or restart a separate scratch-built dashboard.
+### Minimum first product
 
-AI-Verse OS, Gateway and the existing domain components retain their authority. Dashboard views must use their supported interfaces and show unavailable/unknown honestly. No Mission Control task, memory, schedule, credential or cost database becomes AI-Verse truth. Preserve licensing, user data, scope isolation, permission checks and recovery. See the PRD sections 3–6 and the [feature disposition map](MISSION-CONTROL-FEATURE-DISPOSITION-MAP-2026-09-15.md).
+1. Personal opens directly into usable chat, with manual workspace creation and automatic creation/reuse when a substantial scope is clear.
+2. Chat stays visible while opening a workspace or canvas. The composer and ongoing run survive navigation; focus mode does not remove chat.
+3. A real Gateway run returns a real answer, progress and supported controls. Restart/reconnect recovers through supported canonical interfaces rather than pretending browser demo history is durable session state.
+4. A simple persistent canvas supports notes, movement, grouping and connections through the same scoped actions available to the agent, with undo and conflict handling.
+5. The assistant can read bounded app context and perform a small verified set of canvas actions. Image generation follows when its real provider/action and asset owner are available; it is not faked to close the first slice.
 
-This program does not recreate Gateway, qualify the existing private Core installation by inference, release a member build, or add speculative enterprise features. Optional panels and extra workflows keep their existing priorities and owners.
+Filmmaking remains in the product direction. Script tools, scene planning, lens/light tools, 3D camera movement and full editing are later specialist work, not prerequisites for a working Personal foundation. The eventual breadth of the film suite remains exploratory.
+
+### Design and preservation
+
+Use the clean Kylon-inspired shell, restrained top tabs and app panel, with space for two or three chat tabs/panes later. Keep an ADHD-friendly default: few visible controls, clear focus and advanced detail on demand. Operational views for automations, tokens/spend, sessions, agents and fleet status remain planned. Multi-user collaboration and multi-agent roster are later work, not implied by the first chat implementation.
+
+Mission Control remains a proven integration reference and a source of useful presentation patterns and operational features. **Adopting its entire visible dashboard is no longer the proposed product requirement.** Selective reuse/custom presentation replaces the earlier full-shell assumption, subject to explicit amendment review. Preserve its provenance and feature inventory before deciding what to reuse, re-present or defer. Do not import its databases as AI-Verse authority or delete useful Dashboard foundations.
+
+The local HTML preview is design evidence only. Its simulated chat and browser storage are not the production runtime, session store, asset store or workspace owner. This plan does not authorize a member release, private-Core qualification, new connection, paid generation or broader agent permissions.
 
 ## 2. Existing path and smallest change
 
-### Reviewed baseline
+### Reviewed source baseline
 
 | Source | Observed state / decision |
 | --- | --- |
@@ -36,64 +48,58 @@ This program does not recreate Gateway, qualify the existing private Core instal
 | AI-Verse-maintained Mission Control `570b74195b0837131ae015a06fe466472f12001a` | Active proof dependency, derived from MIT upstream `5483a0e1eef15b467c167e95796791112cedbb7c`. Preserve provenance; no incidental pin upgrade. |
 | [Real-model Mac acceptance](MC1-REAL-MODEL-ACCEPTANCE-2026-10-26.md) | Actual local Qwen result, scope/authentication, unchanged standalone OS and cleanup verified. Private Core, general tools and Full-profile operation remain outside that proof. |
 
-The executable Gateway source and accepted closeout outrank older prose still calling issue #60 open or MC1.4 blocked. The generic/private-owner test path remains separately blocked; the accepted disposable proof must not be rerun just to restart this roadmap.
 
-### Current and intended flow
+These are the inspected source pins, not a claim that remote main has been rechecked today. Check remote state before publication or implementation; preserve accepted MC0/MC1 evidence and do not rerun the Mac proof simply to restart planning.
 
-Current proof: separate Mission Control task dispatcher → compatibility `local/aiverse` route → canonical Gateway → installed disposable OS and real model → task result.
-
-Current Dashboard foundations: panels/client → authenticated local `/rpc` or `/ws` → scoped registry/read models and legacy live presentation.
-
-Intended product: Mission Control-derived AI-Verse UI → scoped Dashboard host/client bridge → canonical Gateway → OS/runtime and existing owners → truthful runs/events/approvals back to the selected UI context.
-
-| Disposition | Smallest maintainable route |
+| Disposition | Path and decision |
 | --- | --- |
-| REUSE | `packages/protocol`, `packages/registry`, `packages/client`, `packages/live`, owner-correct read projections, panel/layout contracts and isolation/security coverage. |
-| EXTEND | Existing client/host boundary to consume Gateway HTTP/SSE with explicit identity, secrets, failure and lifecycle handling. Existing `/rpc` read behavior remains compatible until callers migrate. |
-| CREATE | Only the missing typed canonical-Gateway adapter and later Mission Control-derived application surface already required by MC2/MC3. No new service or domain store is justified now. |
-| RETIRE, after equivalent acceptance | Old echo/subprocess execution or local session projections acting as production Gateway truth; duplicated Mission Control authority, one area at a time. Do not delete foundations or panels early. |
-| BLOCK / UNKNOWN | Unsupported owner operations, unverified provider/account readiness, production Brain Goal transport, and any integration that requires bypassing canonical permissions. Resolve at the owning slice; do not invent successful data. |
+| REUSE | Existing protocol, registry, client, live-event and layout packages; authenticated host boundary, isolation tests, qualified Gateway run/event/control routes and accepted Mac proof. |
+| EXTEND | MC2.1 contract and existing client/host to handle real runs, scoped app context and explicit capability/readiness gaps. Keep existing `/rpc` callers working while migrating. |
+| CREATE | The missing Personal application surface, bounded app-context adapter and typed canvas actions only where no supported owner path exists. Define persistence/asset ownership before implementation; no shadow session, workspace or credential store. |
+| REFERENCE / SELECT | Mission Control operational features, feature disposition inventory and presentation patterns. The exact reusable code must be inspected before choosing imports; the prototype does not justify a framework migration. |
+| RETIRE LATER | Demo chat, echo/subprocess execution and legacy projections acting as real Gateway truth, only after verified replacements. Keep the preview labelled as a demo until replaced. |
+| BLOCK | Unsupported provider/reasoning selection, owner writes, image generation, session recovery and usage views until their real contracts exist. Never fill gaps with fabricated capabilities or metrics. |
 
-The [MC2.1 client contract draft](MC2.1-AIVERSE-GATEWAY-CLIENT-CONTRACT-2026-10-26.md) specifies the next seam. Importing the application UI remains MC3; choosing its exact build integration is deferred to source inspection there. The old recommended stack is not evidence that framework migration has already been decided or implemented.
+### Technical boundaries
 
-### Constraints beside the change
+- Keep browser authentication separate from the upstream bearer. Credentials remain host-only; provider login belongs to its existing owner.
+- Bind app context and every request/action to the authenticated system, workspace, conversation, app/document, connection epoch and document revision where applicable. Context describes what is relevant, not permission to read everything.
+- Do not capture the whole screen, keystrokes or unrelated private data to provide app awareness. Supply bounded structured visible state; screenshots only when useful, authorized and supported.
+- General chat uses operator scope; workspace chat uses the explicitly resolved workspace. Automatic organization may create/reuse the appropriate workspace when clear, but it cannot expand access or silently transfer an entire chat into a private workspace. Show scope changes and ask only for real ambiguity or consequential approval.
+- Tab navigation alone changes presentation, not access. When a chat's scope and the viewed app differ, show that difference and resolve the intended target before a write. Late responses must not land in the newly viewed canvas.
+- Agent actions use the same typed operations and validations as manual UI actions. Validate IDs, permission, schema, revision and idempotency in the trusted boundary; untrusted canvas text and skill mentions cannot grant authority.
+- Keep pending actions and their target visible. Reversible layout edits should be easy to undo; destructive actions and paid/external operations retain existing approval rules. Cancellation must stop further actions and report partial completion.
+- Share capability and token/spend presentation across tabs using canonical identities and scoped records. Never reset counters on navigation or double-count a run; unavailable usage is “unknown,” not zero. A global view must not expose private workspace details without access.
 
-- Keep browser presentation authentication separate from the upstream Gateway bearer. Resolve the latter only in the trusted host and never put it into browser storage, URLs, logs or third-party install scripts.
-- A Dashboard registry ID and the configured Gateway system ID may differ. Bind them explicitly; do not rename an installation or trust a browser-provided canonical ID.
-- Gateway has no generic capabilities, workspace-list or run-list endpoint at this baseline. Reuse tested compatibility and supported owner projections; never fabricate these APIs or read Gateway storage directly.
-- Canonical run SSE is different from OpenAI chat SSE. Preserve scope through the subscription binding; the upstream event envelope itself has no system/workspace fields or sequence cursor.
-- Disable an unavailable control or panel with an honest reason. A model listing, configuration flag or rendered panel does not prove owner/model readiness.
-- Browser and Tauri remain hosts of the same UI. Folder selection, secret storage and lifecycle supervision follow their existing MC6 and Distribution boundaries.
+### Known backend gaps
+
+Gateway supports canonical runs, events, diagnostics and controls at the reviewed pin. It is not already a complete app-control or creative-tools API. Its `/v1/models` advertises the virtual `aiverse` model; that does not establish a dynamic provider/model/reasoning picker. Discover actual runtime support and add an explicit owner contract before enabling selections.
+
+There is no generic workspace-list, capability-discovery, run-list or session-list endpoint in this reviewed Gateway. Reuse supported owner projections or implement the missing owner integration explicitly. Persistent chat recovery, attachments, skill resolution, canvas documents/assets and image jobs require source-backed contracts, not guessed routes. The [MC2.1 contract](MC2.1-AIVERSE-GATEWAY-CLIENT-CONTRACT-2026-10-26.md) retains the detailed HTTP/SSE, identity and control-race findings.
 
 ## 3. Acceptance and planned verification
 
-These IDs summarize existing requirements; they add no new product obligations. The detailed slice acceptance in the tracker and PRD remains controlling.
+These amendment requirements add product scope. They do not retroactively award existing points.
 
-| ID | Observable success and important failure | Existing slices / planned proof |
+| ID | Observable result | Required failure / verification |
 | --- | --- | --- |
-| R01 | Requests, caches, streams and controls stay bound to the selected system/workspace; wrong identity, root replacement and late events reject rather than fall back. | MC2.1–MC2.5, MC3.3, MC7.2; existing registry/isolation tests plus real two-system A→B→A client checks. |
-| R02 | Main Chat uses the real canonical Gateway; runs/events and allowed cancel/pause/resume/approval actions return actual owner outcomes. | MC2, MC4A/B/D; typed client and authenticated HTTP/SSE composition, including interrupted/recovery and approval failures. |
-| R03 | Failed/unsupported/disabled/offline remains explicit; retries preserve idempotency and cannot duplicate an effect. | MC2.2/MC2.5, MC4I; timeouts, scope mismatch, wrong token, retry conflict, restart and unavailable-owner cases. |
-| R04 | Feature views use canonical owners; Mission Control/legacy local stores do not become AI-Verse tasks, sessions, memory, costs, permissions or schedules. | MC3/MC4/MC7; feature disposition and actual source/write-path review with owner-backed panel checks. |
-| R05 | Mission Control presentation is adopted with provenance while existing useful packages, isolation and layouts survive. | MC0/MC3; launchable app, license/import inventory and existing regression coverage before any stripping. |
-| R06 | A normal user can choose context, ask for work, understand progress and respond to Needs You; advanced controls stay available. | MC5; real interaction/accessibility/visual verification against the existing product brief. |
-| R07 | Browser and Mac share the UI; trusted desktop registration, per-system supervision, secure credentials and install/update paths remain correctly owned. | MC6; native development/DMG, clean-machine and preservation checks; human OS/signing steps only when genuinely required. |
-| R08 | Final supported product behavior, security, licensing and two-system isolation are evidenced before dogfood/release claims. | MC7; independent review, composed acceptance and explicit final user sign-off. Distribution admission remains separate. |
+| P01 | General chat works immediately; manual and automatic workspace creation/reuse are supported. | Ambiguous scope asks a plain question; no duplicate workspace on retry, mandatory workflow or implicit permission expansion. |
+| P02 | Chat remains present and a run survives Personal → canvas → Filmmaking navigation. | Switch during a run; no lost composer, duplicate dispatch, wrong-target result or hidden chat in focus mode. Test keyboard, narrow screens and screen-reader access. |
+| P03 | Real Gateway chat exposes actual progress, errors and supported controls. | Auth/identity mismatch, offline, retry conflict, reconnect and A→B→A stale events fail safely. No demo reply presented as AI. |
+| P04 | Agent sees the correct current canvas/selection and can create, arrange and connect notes. | Scope mismatch, stale revision, removed target, malicious note text and interrupted action batch cannot mutate another document. Undo restores accepted edits. |
+| P05 | Provider/model/reasoning controls reflect real supported runtime choices. | Unsupported combinations are explained/disabled; requested versus actual choice is visible, with no silent fallback or browser-held upstream secret. |
+| P06 | Attachments, command calls and skill mentions resolve actual permitted resources/capabilities. | Validate size/type, access and command arguments; untrusted files/mentions cannot execute arbitrary code or expand permissions. Unsupported operations remain explicit. |
+| P07 | “Create three images on this canvas” generates real assets and places each in the intended document. | Provider unavailable, cancellation, partial failure, retry, asset persistence and paid-call approval verified; no duplicate charge/job or invented image. Separate gate after P04. |
+| P08 | Shared usage, skills and conversations remain consistent across tabs and reload. | Canonical recovery and exact-once usage projection; no cross-workspace history leakage, fake zero spend or browser-only authority. |
+| P09 | Personal is calm and usable while operational tools remain findable. | Walk through chat → workspace → canvas without exposing the full control center; retain a disposition for every inventoried Mission Control feature. |
 
-Use current API/schema/resource bounds. Measure a real bottleneck when encountered; this refresh adds no invented latency target or benchmark program. Planned verification is not executed evidence. Documentation-only MC2.1 is reviewed against source and invariants; it does not require a new synthetic test suite.
-
-| Applicable risk | Decision / responsible work |
-| --- | --- |
-| Duplicate runtime/domain authority | Canonical Gateway/owners remain authoritative; MC2 contract distinguishes existing Dashboard scaffolding and MC4 replaces authority only after each owner-backed path works. |
-| Scope, stale approvals and delayed responses | Bind both system identities, workspace and connection epoch; validate returned run ownership and fail closed where the upstream contract cannot enforce an exact control precondition. MC2.1 records gaps; MC2.5 resolves necessary owner changes separately. |
-| Secret or private context exposure | Host-only upstream credentials; strict browser envelopes, scoped projections and untrusted text rendering. No real credentials or private data are introduced by a plan or contract review. |
-| Stream/retry/restart failure | Separate stream protocols, bounded rebuildable projections, explicit reconnect/deduplication and stable operation IDs; canonical recovery status wins. |
-| Breaking existing callers or importing the wrong framework | Add an adapter at the existing package boundary, preserve legacy responses until migration, inspect actual Mission Control source at MC3 and keep rollback in Git. |
-| False readiness or release claim | Distinguish code, owner acceptance, candidate qualification, installed-system evidence and Distribution release. Unsupported owners remain unavailable. |
+Existing security, source authority, licensing, two-system isolation, desktop lifecycle and final dogfood/release gates still apply. Reuse existing regression coverage; add meaningful contract/integration tests only for changed behavior. These are planned checks; none has been executed by this documentation change.
 
 ## 4. Execution
 
-The existing **100-point** roadmap and task IDs are unchanged. Future stages stay at outcome level here; derive their detailed work only when they start. Follow the tracker for each individual slice's weight, dependencies and gate.
+### Preserved baseline ledger
+
+The table below is the original accepted accounting and **historical future sequence**, not an assertion that the amended scope fits its remaining points. MC0/MC1 remain accepted; all later entries remain unaccepted. In particular the old MC3 full-shell requirement and MC5 late-UX order need amendment.
 
 | Phase | Fixed outcome | Weight / accepted | Start condition and next |
 | --- | --- | --- | --- |
@@ -106,22 +112,90 @@ The existing **100-point** roadmap and task IDs are unchanged. Future stages sta
 | MC6 | Same product delivered as a Mac desktop app with owned lifecycle boundaries | 10 / 0 | MC5 accepted; retain MC6.1–MC6.4; next MC7. |
 | MC7 | Independent product/security/isolation acceptance and owner dogfood | 5 / 0 | MC6 accepted; retain MC7.1–MC7.3; Distribution separately authorizes release. |
 
-### Current slice: MC2.1 — Adapter contract design (2 points)
 
-- **Owner / acceptance:** Dashboard; R01–R03. Design review against real Gateway protocol and Dashboard invariants, as already required by the tracker.
-- **Start evidence:** accepted MC1 and qualified Gateway candidate; exact reviewed refs are above. No new local model test is required to design this interface.
-- **Bounded change:** design documentation and the existing living plan/tracker only. No runtime API, live credential, canonical owner or renderer changes in this slice.
-- **Derived tasks:** (1) inspect actual caller/owner seams; (2) write the concrete identity/auth/API/stream/control contract and gap dispositions; (3) cross-check it against source and PRD, then record the reviewed checkpoint.
-- **First useful result:** the next implementer can build MC2.2 using actual endpoint shapes and explicit failure behavior without guessing a discovery API or creating another run owner.
-- **Recovery:** documentation remains proposed until accepted; Git preserves the prior plan. Reverting design text does not mutate user state.
-- **Local checkpoint:** the three design tasks are prepared for review in this change. They add no accepted points before the normal PR acceptance. After accepted MC2.1, the fixed tracker becomes 17/100 and MC2.2 is next.
+### Proposed Personal-first order
 
-MC2.2 should implement the typed adapter at `packages/client` first. MC2.3 supplies explicit AI-Verse runtime identity, MC2.4 wires selection/isolation, MC2.5 connects main Chat/run/event/control behavior, and MC2.6 handles provider readiness/login only where needed. The exact tasks are derived at each start; none is silently counted complete by this plan rewrite.
+| Step | Bounded deliverable and exit gate | Relationship to existing work |
+| --- | --- | --- |
+| 1. Reconcile the plan and contract | Review this amendment; align PRD, tracker gates and MC2.1 with Personal-first, selective Mission Control reuse and the new app-action requirements. Record explicit carry-forward/additions/deferrals and a reviewed estimate before changing totals. | Current planning work. Preserve MC0/MC1; MC2.1 remains pending acceptance. |
+| 2. Connect real Personal chat | Implement the typed Gateway bridge, identity/scope selection, events and controls, then connect them to a minimal Personal shell with chat always visible. General chat needs no workspace first. | MC2.2–MC2.5 plus the minimum shell work previously in MC3/MC5. This dependency change must be recorded at step 1, not silently skipped. |
+| 3. Establish real shared chat tools | Implement supported provider/model/reasoning choices, attachment handling, commands and skill mentions with real owner contracts. Establish canonical conversation recovery; unavailable choices are explicit. | Extend MC2.6 and relevant MC4 owner integration; additional scope is estimated separately. |
+| 4. Make workspace and canvas real | Owner-backed manual/automatic workspace creation/reuse, persistent canvas documents/assets, notes, connections and undo. One action API supports both manual UI and the agent. | Relevant workspace/app/asset owner work; distinguish local preview behavior from accepted persistence. |
+| 5. Let chat work inside the app | Bounded app context and a small typed action set: create note, move/group items, connect items. Verify target scope/revision, undo and cancellation. | New explicit app-action contract and acceptance gate P04, not already covered by the MC1 runtime proof. |
+| 6. Add real image creation | Connect an admitted image provider/job/asset path; create three assets and place them on the right canvas with cost/approval and partial-failure behavior. | Depends on steps 3–5 and owner readiness. No image-provider purchase is implied. |
+| 7. Expand the shared OS | Owner-backed usage/spend, sessions, skills, automations and operational views; then multiple chat panes and agent roster as justified. | Selective Mission Control feature integration / existing MC4. Do not block first useful chat on every panel. |
+| 8. Build specialist Filmmaking tools | Reuse chat/context/actions/assets in the film surface; derive the smallest script/scene feature from the next confirmed user need. | Film suite design remains exploratory; 3D camera/light/editing tools are not first-MVP dependencies. |
+| 9. Qualify the product | Accessibility/security/isolation review, Mac delivery and composed real-runtime dogfood; Distribution admission remains separate. | Preserve MC6/MC7 and lifecycle/release ownership, revise only through recorded acceptance. |
+
+### Immediate design packet
+
+Extend MC2.1 with: (a) shared chat/app state and scope transitions; (b) capability matrix distinguishing existing Gateway from missing owner APIs; (c) typed app-context/action envelopes with revision/idempotency and permission rules; (d) manual and agent parity; (e) persistence/recovery and partial-failure behavior. Identify exact owners and inspect their current contracts before naming executable routes. Only then derive the next code slice and tests.
+
+Implementation should start with real Personal chat, not another round of visual ideation. Do not implement the whole future film suite or every advanced dashboard at once. Keep later steps broad until their dependencies are available.
 
 ## 5. Checkpoint and next action
 
-- **Confirmed:** Mission Control remains the approved foundation, through the maintained AI-Verse copy. MC0/MC1 are accepted; the real local-model path is proven. Gateway's agreed candidate program is 10/10; member/private-Core release qualification remains separate.
-- **Current accepted progress:** **15/100**. Refreshing this document does not reset or increase it.
-- **In review:** the MC2.1 design packet linked above. Next action is its source/architecture review and normal acceptance, then existing MC2.2. No client or finished UI is claimed by a design document.
-- **Assumptions / blockers:** the normal Chat/run path can target the qualified Gateway now. Capability discovery is a compatibility/readiness projection, not a nonexistent endpoint. Optional owner panels and any atomic scope/control gap are resolved at their owning slice before that behavior is enabled.
-- **Execution evidence:** [tracker](MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md), [real Mac acceptance](MC1-REAL-MODEL-ACCEPTANCE-2026-10-26.md), [Gateway closeout](https://github.com/aiverse-filmmakers/AI-Verse-System/pull/290). Earlier proof restrictions and original upstream provenance remain historical evidence; no code or release is promoted by prose.
+- **Prepared for review:** Personal-first amendment, acceptance criteria and explicit ordering/scope changes. This publication accepts no runtime feature or new roadmap points.
+- **Preserved:** MC0/MC1 and their 15 accepted baseline points, Gateway qualification evidence, existing packages and source authority.
+- **Pending:** review of the amendment; PRD/tracker estimate and gate reconciliation; MC2.1 contract additions; actual implementation and tests.
+- **Next implementation result:** open Personal, send a normal message through the real Gateway, keep chat visible while moving around the app, and receive truthful run status. App manipulation and image generation follow their own verified gates.
+- **Mission Control:** retained as reference, reusable foundation and operational feature source. Its entire original interface is not the proposed default shell.
+
+
+### First-provider connection experience — 27 October operator requirement
+
+The operator requests ChatGPT first, OpenRouter if it supports equally simple browser authorization. Present **Connect AI** with **Continue with ChatGPT**, **Continue with OpenRouter**, and a secondary **Use an API key** option. This is provider connection, not necessarily the Dashboard account sign-in. Do not make users understand model infrastructure before their first chat. Browser authorization returns to the app, confirms the connected account/provider and available models, then opens chat. Returning users reconnect only when required. Provide disconnect, cancelled/failed/expired-login and unavailable-account states. Keep credentials in the trusted host/credential owner, not the demo's browser storage. Model/reasoning options reflect actual supported capabilities.
+
+Official documentation inspected on this turn:
+- https://developers.openai.com/siwc/quickstart — identity sign-in and ChatGPT plan inference require distinct scopes; commercial availability is limited, while open-source plan usage has its own registration/admission route. Determine AI-Verse eligibility before promising member access.
+- https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations — ChatGPT plan usage requires streamed Responses requests and has tool/input limitations; image generation is unsupported on this route. It is not a drop-in Chat Completions credential.
+- https://learn.chatgpt.com/docs/app-server — local/open-source Codex auth exists, but is not a general commercial/hosted auth entitlement. Do not extract/reuse this chat's credentials.
+- https://openrouter.ai/docs/guides/overview/auth/oauth — OAuth PKCE supports browser consent and localhost callbacks; it issues a user-controlled API key and inference uses the user's OpenRouter credits. This is not ChatGPT subscription usage.
+
+Next bounded task: verify the eligible OpenAI registration/distribution route and current runtime seam, then design host-side provider login/status/logout and the minimal ChatGPT runtime adapter. Add OpenRouter using its documented PKCE flow and the supported OpenAI-compatible runtime only after protocol/credential-owner checks. No OAuth registration, real-account connection, paid request or implemented login is claimed by this planning addition.
+
+### Active local slice AUTH-1 — Provider authorization transactions
+
+**Owner / boundary:** Dashboard trusted host; local implementation only, no registration, credential persistence, production routes, external calls or paid inference. Provider access remains distinct from Dashboard authentication. Existing canonical Gateway execution is preserved. This narrow preparatory slice does not accept the wider MC2.1 amendment or skip its unresolved owner/API decisions.
+
+**Plan before implementation:** build a single short-lived, bounded, one-use PKCE transaction manager at the existing Dashboard host package. Support OpenAI's documented local open-source registration and OpenRouter authorization URL shapes. Require a trusted caller binding containing the selected system and browser session, a validated loopback callback, expiry, cancellation and replay rejection. Generate fresh state/nonce/verifier; keep verifier host-only. On OpenAI first registration require the returned issued client ID; on return reject client-ID substitution. Return only the authorization URL and attempt ID to a future UI. A verified callback yields a host-only exchange descriptor, not an authenticated account.
+
+**REUSE:** Node crypto, current TypeScript build and node:test, existing host authentication (future routes must enforce it). **CREATE:** only the missing provider transaction helper and focused security tests. **BLOCK:** token exchange, JWT identity verification, refresh, credential-store integration and live account connection until their ownership/eligibility design is complete. No dependency needed for this slice. Do not hand-roll JWT validation or import Codex credentials.
+
+**Acceptance:** trusted binding mismatch, wrong state, altered callback origin/path/query, duplicate parameters, expired/cancelled/replayed attempts, denied consent, missing code/issued client ID and substituted returning client ID fail safely. Valid callbacks preserve the exact callback URI and PKCE verifier for later host-only exchange. Tests use synthetic values and no provider network. Run TypeScript build and focused tests, then existing repository check if those pass.
+
+**Next slices:** AUTH-2 designs and implements token exchange/validated identity/refresh and protected credential-owner integration; AUTH-3 wires authenticated host routes and the simple Connect AI screen, including cancellation/logout/reconnect; CHAT-1 connects an admitted provider runtime through canonical Gateway with real streaming/errors/cancel. Confirm local open-source versus commercial route before enabling ChatGPT account connection for distribution. OpenRouter PKCE may proceed independently when its credential owner path is resolved. No button claims “connected” before AUTH-2/3 and a real supported request succeed.
+
+**Completion:** record code/test evidence below. No accepted roadmap points are added; no member release or completed sign-in is implied.
+
+
+**AUTH-1 local checkpoint:** implemented host-only `apps/gateway/src/provider-authorization.ts` and `test/provider-authorization.test.ts`. TypeScript build passes; seven focused tests pass. Full `npm run check`: 103 tests, 102 pass, one existing skip, zero failures, with temporary localhost listeners allowed (sandbox-only run could not bind loopback). No provider network or real credentials used. Callback acceptance only produces a host-only exchange request; it does not validate a token or connect an account. AUTH-2/3 and CHAT-1 remain pending; module is not exposed by HTTP or used by the preview. Source changes remain local and uncommitted.
+
+
+### Connections entry point and beginner explanations — 27 October requirement
+
+Use one **Connections** area with progressively disclosed groups: **AI assistants** (ChatGPT/OpenRouter), **Creative tools** (KIE.ai), and **Apps & tools** (later plugins/MCP integrations). These are presentation groups, not exclusive provider capability boundaries: KIE also offers chat and OpenRouter may expose creative modalities. Offer the same Connect AI picker from chat without making users navigate Settings first. Dashboard presents connection status; existing Connections authority/credential owners retain permission, verification, credentials and external execution. Do not create a second connection registry or bypass its approval controls. Account connection alone is not permission for every tool or paid generation.
+
+Every provider card explains its benefit before technical details:
+- **ChatGPT:** “Connect your ChatGPT account to chat and work with AI. Available models and usage depend on your plan.” Button: **Continue with ChatGPT**, enabled only for the admitted integration route.
+- **OpenRouter:** “Use models such as GPT, Claude and Gemini through one account. Add credits and pay for what you use.” Button: **Continue with OpenRouter**. Do not promise every model or unlimited use; only show models the current account/adapter supports.
+- **KIE.ai:** “Create images, videos and music with a range of AI tools through one account. Add credits and use them as you create.” Button: **Connect KIE.ai**; current documented setup is API-key based. Guide the user to get a key and enter it in a protected local connection flow, never chat. Do not label this one-click sign-in until a supported delegated authorization flow is verified. Explain the account key simply as “a private code that lets AI-Verse use your KIE account.”
+- **Apps & tools:** “Connect the apps you already use so AI-Verse can help you work with them.” Present actual names/purposes; keep “MCP” under technical details rather than as mandatory beginner terminology. Installing a plugin and connecting an account remain separate truthful steps when required.
+
+Avoid promises such as “all AI tools,” “no more subscriptions” or universal savings. These accounts can reduce the need for separate subscriptions for supported API tools, but catalogs, credits, features and prices vary. Show current capability/cost information at selection and approval time.
+
+KIE official sources inspected: https://docs.kie.ai/getting-started and https://docs.kie.ai/market/quickstart document a common credit balance, API-key authentication, host-only keys and model-specific task APIs. https://kie.ai/pricing.html lists credit-based prices. No supported third-party OAuth sign-in was established by those documents. KIE must not be added to the existing OAuth transaction helper as an invented provider.
+
+Implementation order remains ChatGPT/OpenRouter authorization and real Personal chat first. Add the KIE connection card/key flow through existing credential ownership, then the smallest supported image-job integration for the canvas; video/music follow their own requirements. This extends scope explicitly without awarding progress or implementing KIE in this documentation change.
+
+
+### Guided API-key setup — operator clarification, 27 October
+
+The provider experience must remain easy even without OAuth: familiar provider entry button, small masked key dialog, official account/key links, short steps, final connect/verify action and clear funding guidance. Include Higgsfield API alongside KIE.ai. The operator prefers “Sign in with…” entry wording; identify API-key setup clearly inside the dialog and distinguish saved credentials from verified identity/readiness. Dashboard owns UX; reuse Connections security, verification and capability admission, with Gateway/runtime credential boundaries inspected first. No second credential store. Higgsfield API funding is separate from website subscriptions. Full scoped requirement and provider links: [Connections UX handoff](CONNECTIONS-UX-HANDOFF-2026-10-27.md). This is a local product requirement, not an automatic expansion of the independently running Connections qualification plan.
+
+
+### Cross-repo publication checkpoint
+
+This draft is the detailed Dashboard plan. System carries a linked summary rather than another editable implementation plan. Baseline acceptance stays at 15 points while new scope/order and future gates require reconciliation. No merge is implied. AUTH-1 is local code/test evidence only: its source files are deliberately not included in this documentation PR; publish/review code separately before depending on it. The design preview is also not shipped here.
+
+System main inspected at `21bf92a3ca5bf767cbffaab9a7f7701f8943d783` now records Token stop-check complete and Connections V1 qualification complete. Reuse the [Connections Dashboard consumption handoff](https://github.com/aiverse-filmmakers/AI-Verse-Connections/blob/d326e39f4f07fb163250d671b8960a1fc00e8e03/docs/DASHBOARD-CONSUMPTION-HANDOFF-2026-10-27.md) when designing the trusted host adapter. These closeouts do not establish an existing browser/Gateway Connections execution route or authorize the new provider integrations.

@@ -1,5 +1,10 @@
 # Mission Control -> AI-Verse Dashboard Execution Tracker
 
+## Personal-first amendment — 27 October 2026 (review draft)
+
+The operator has requested Personal-first delivery with always-present agent chat, app awareness/control, shared chat tools and later specialist Filmmaking. See the [living plan](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md) for the explicit scope and ordering amendment. The following original requirements/accounting remain historical baseline until reconciliation is reviewed; do not interpret the full-shell assumption or fixed future order as approval of the amended design. MC0/MC1 remain accepted at 15 baseline points. New scope has not been estimated or accepted.
+
+
 **Date:** 2026-09-15  
 **Status:** CANONICAL EXECUTION TRACKER  
 **PRD:** `docs/PRD-MISSION-CONTROL-AIVERSE-DASHBOARD-2026-09-15.md`  

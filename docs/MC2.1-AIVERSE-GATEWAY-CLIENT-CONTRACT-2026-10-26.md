@@ -1,5 +1,7 @@
 # MC2.1 — AI-Verse Gateway client contract
 
+> **27 October Personal-first amendment:** the transport findings below remain the reviewed baseline. The new [living plan](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md) adds persistent shared chat, app context/actions and real capability selection. This contract is not yet sufficient for those additions. Complete its owner/API and action-envelope design before accepting the amended MC2.1 gate. No app-control, attachment, dynamic model/reasoning or image API is implied by the routes below.
+
 **Status: DESIGN DRAFT / source-reviewed locally; acceptance pending.** No client,
 API endpoint, credential or UI behavior is implemented by this document.
 
