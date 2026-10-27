@@ -377,3 +377,61 @@ body.dark{color-scheme:dark;--bg:#1d1d20;--surface:#262629;--canvas:#212124;--in
 /* Canvas keyboard focus uses its existing item selection; no extra blue frame. */
 #viewport:focus-visible{outline:none}
 .canvas-node:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+
+/* Canvas library, separate from the actual editor and separate from OS workspaces. */
+.canvas-library-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:5px 0 23px;border-bottom:1px solid var(--line)}
+.canvas-library-heading h2{font-size:23px;font-weight:590;letter-spacing:-.6px;margin:7px 0 3px}
+.canvas-library-heading p{font-size:11px;color:var(--muted);margin:0}
+.canvas-library-create{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--ink);color:var(--surface);padding:10px 14px;border-radius:9px;font-size:11px;font-weight:590;white-space:nowrap;min-height:37px}
+.canvas-library-create svg{width:14px;height:14px}
+.canvas-library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:15px;padding:22px 0}
+.canvas-library-card{background:var(--surface);border:1px solid var(--line);border-radius:13px;min-width:0;overflow:hidden;display:flex;flex-direction:column}
+.canvas-library-card:hover{border-color:#bebdc2}
+.canvas-library-preview{display:block;width:100%;padding:0;text-align:left;background:var(--canvas)}
+.canvas-library-paper{height:155px;position:relative;overflow:hidden;background-color:var(--canvas);background-image:radial-gradient(var(--line) .75px,transparent .75px);background-size:16px 16px;border-bottom:1px solid var(--line)}
+.canvas-library-mini{position:absolute;width:40%;height:54px;overflow:hidden;padding:9px 9px;border:1px solid var(--line);box-shadow:0 2px 7px #0000000b;border-radius:6px;background:var(--surface);transform:rotate(-1deg)}
+.canvas-library-mini.note{background:var(--note);border-color:#e9dfb9}
+.canvas-library-mini.art,.canvas-library-mini.image{background:var(--accent-soft);color:var(--accent)}
+.canvas-library-mini span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;font-weight:550}
+.canvas-library-empty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;color:var(--muted)}
+.canvas-library-details{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;padding:14px 15px 10px}
+.canvas-library-details-name{min-width:0}
+.canvas-library-details-name strong{display:block;font-weight:610;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.canvas-library-details-name small{display:block;color:var(--muted);font-size:10px;margin-top:5px}
+.canvas-library-active{font-size:9px;color:var(--accent);background:var(--accent-soft);padding:4px 6px;border-radius:6px}
+.canvas-library-actions{display:flex;flex-wrap:wrap;gap:5px;border-top:1px solid var(--line);margin:7px 12px 0;padding:11px 0 12px}
+.canvas-library-actions button{padding:6px 8px;border-radius:6px;font-size:10px;font-weight:550;color:var(--muted);min-height:30px}
+.canvas-library-actions button:hover{background:var(--bg);color:var(--ink)}
+.canvas-library-actions .canvas-library-open{color:var(--ink);font-weight:650}
+.canvas-library-actions button.danger:hover{color:#aa4545}
+.canvas-library-back{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;border:1px solid var(--line);color:var(--muted);font-size:11px}
+.canvas-library-back[hidden]{display:none}
+.canvas-library-back svg{width:14px;height:14px}
+.canvas-library-back:hover{background:var(--bg);color:var(--ink)}
+
+/* Keep the full Teams popup inside its own bounds, including custom teams and long names. */
+.personal-teams-popover{width:min(410px,calc(100vw - 24px));max-width:calc(100vw - 24px);overflow-x:hidden;overflow-y:auto;min-width:0}
+.teams-pop-header,.team-profile,.team-members,.team-pop-bottom{min-width:0;max-width:100%}
+.teams-pop-header>div{min-width:0;overflow-wrap:anywhere}
+.team-chip-list{display:flex;flex-wrap:wrap;overflow:visible;gap:6px;padding:13px 0;min-width:0}
+.team-chip{max-width:100%;overflow-wrap:anywhere;white-space:normal;line-height:1.35;flex-shrink:1}
+.team-profile{width:100%;overflow:hidden}
+.team-profile-actions{flex-wrap:wrap;align-items:stretch}
+.team-member>div{min-width:0;flex:1}
+.team-member strong,.team-member small{white-space:normal;overflow-wrap:anywhere}
+.member-avatar,.member-chat-button{flex-shrink:0}
+.team-chat-button{max-width:100%;font-size:11px;white-space:normal;line-height:1.35}
+
+/* Proper Features icon/button geometry. No overlapping text or oversized grid. */
+.quiet-feature-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:7px 10px;border:1px solid transparent;border-radius:9px;color:var(--muted);font-size:12px;line-height:1.2;white-space:nowrap}
+.quiet-feature-toggle svg{width:17px!important;height:17px!important;flex:0 0 17px;stroke-width:1.7}
+.quiet-feature-toggle span{display:inline-block;line-height:1.2}
+.quiet-feature-toggle:hover,.quiet-feature-toggle[aria-current="page"]{color:var(--ink);background:var(--bg)}
+@media(max-width:600px){
+ .canvas-library-heading{flex-direction:column;align-items:flex-start;gap:12px}
+ .canvas-library-grid{grid-template-columns:1fr}
+ .canvas-library-create{width:100%}
+ .quiet-feature-toggle{padding:7px;min-width:34px}
+ .quiet-feature-toggle span{display:none}
+}
