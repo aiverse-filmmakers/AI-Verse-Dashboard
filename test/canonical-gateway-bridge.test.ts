@@ -4,6 +4,8 @@ import { createServer, type Server } from "node:http";
 import { mkdirSync,mkdtempSync,rmSync,writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { WebSocket } from "ws";
+import { DASHBOARD_WS_PROTOCOL,dashboardWsAuthProtocol,eventSchema } from "../packages/protocol/src/index.js";
 import { SystemRegistry } from "../packages/registry/src/index.js";
 import { DisposableCache } from "../packages/os-read-adapter/src/index.js";
 import { QueryRouter,SubscriptionHub,startGateway } from "../apps/gateway/src/index.js";
@@ -43,6 +45,19 @@ function gatewayFixture(){
    const run={run_id:"run-a",session_id:"session-a",system_id:"canonical-a",workspace_id:"film",
      status:"running",principal:"local-operator-secret",messages:[{content:"sensitive"}],
      output:{content:"Test result"},private_data:"do-not-show"};
+   if(req.method==="GET"&&req.url==="/v1/runs/run-a/events"){
+     res.writeHead(200,{"content-type":"text/event-stream","cache-control":"no-store"});
+     for(const [n,type,data] of [
+       ["evt-1","run.started",{}],
+       ["evt-2","assistant.delta",{text:"Real progress from synthetic Gateway"}],
+       ["evt-3","run.completed",{}],
+     ] as const){
+       res.write("event: "+type+"\\n"+"data: "+JSON.stringify({
+         event_id:n,run_id:"run-a",type,at:"2026-10-27T16:00:00Z",data,
+       })+"\\n\\n");
+     }
+     res.end();return;
+   }
    if(req.method==="POST"&&req.url==="/v1/runs")return send(202,run);
    if(req.method==="GET"&&req.url==="/v1/runs/run-a")return send(200,run);
    return send(404,{error:{code:"NOT_FOUND"}});
@@ -149,6 +164,53 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
    const missing=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.unknown",a.systemId));
    assert.equal((missing.data.error as {code:string}).code,"UNKNOWN_METHOD");
    assert.equal(upstream.received.length,0);
+ });
+ it("streams bounded canonical events across authenticated Dashboard WS and rejects wrong scopes",async()=>{
+   const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+   const upstream=gatewayFixture(),port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",origin:"http://127.0.0.1:"+port,
+     resolveBearer:()=> "actual-host-gateway-token",
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),new SubscriptionHub(),
+     {port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   const ws=new WebSocket("ws://127.0.0.1:"+dash.port+"/ws?systemId="+a.systemId,
+     [DASHBOARD_WS_PROTOCOL,dashboardWsAuthProtocol(dash.authToken)]);
+   await new Promise<void>((resolve,reject)=>{ws.once("open",resolve);ws.once("error",reject);});
+   closing.push(async()=>{if(ws.readyState!==WebSocket.CLOSED){
+     await new Promise<void>(resolve=>{ws.once("close",resolve);ws.terminate();});
+   }});
+   const messages:Record<string,unknown>[]=[];
+   ws.on("message",x=>messages.push(JSON.parse(String(x)) as Record<string,unknown>));
+   const wait=async(predicate:()=>boolean)=>{
+     const deadline=Date.now()+2300;
+     while(!predicate()){if(Date.now()>deadline)throw Error("Timed out waiting for Gateway stream");await new Promise(r=>setTimeout(r,10));}
+   };
+   ws.send(JSON.stringify({type:"gateway-run-subscribe",workspaceId:"operator",runId:"run-a"}));
+   await wait(()=>messages.some(m=>m.id==="gateway-run-subscribe"&&m.ok===false));
+   assert.equal((messages.find(m=>m.id==="gateway-run-subscribe")?.error as {code:string}).code,"RUN_BINDING_MISMATCH");
+   assert.equal(messages.filter(m=>m.event==="aiverse.gateway.run.event").length,0);
+   ws.send(JSON.stringify({type:"gateway-run-subscribe",workspaceId:"film",runId:"run-a",systemId:"canonical-b"}));
+   await wait(()=>messages.filter(m=>m.id==="gateway-run-subscribe"&&m.ok===false).length===2);
+   assert.equal((messages.filter(m=>m.id==="gateway-run-subscribe")[1].error as {code:string}).code,"INVALID_SUBSCRIPTION");
+   ws.send(JSON.stringify({type:"gateway-run-subscribe",workspaceId:"film",runId:"run-a"}));
+   await wait(()=>messages.filter(m=>m.event==="aiverse.gateway.run.event").length===3);
+   const events=messages.filter(m=>m.event==="aiverse.gateway.run.event");
+   for(const e of events){
+     assert.equal(eventSchema.safeParse(e).success,true);
+     assert.equal(e.systemId,a.systemId);
+     assert.equal(e.workspaceId,"film");
+   }
+   assert.deepEqual(events.map(e=>e.seq),[1,2,3]);
+   const delta=events[1].payload as Record<string,unknown>;
+   assert.equal(delta.kind,"assistant.delta");
+   assert.equal(delta.text,"Real progress from synthetic Gateway");
+   assert.doesNotMatch(JSON.stringify(events),/actual-host-gateway-token|local-operator-secret|do-not-show/);
+   ws.send(JSON.stringify({type:"gateway-run-unsubscribe"}));
+   await wait(()=>messages.some(m=>m.id==="gateway-run-unsubscribe"&&m.ok===true));
+   assert.equal(upstream.received.some(x=>x.path==="/v1/runs/run-a/events"),true);
  });
  it("keeps the original host disabled when no approved canonical mapping is injected",async()=>{
    const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
