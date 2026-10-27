@@ -62,7 +62,7 @@ test("main chat offers explicit @ recipient selection and preserves normal chat 
   assert.match(js, /composeInput\.addEventListener\("keydown",event=>/);
   assert.match(js, /composer\.addEventListener\("submit",event=>/);
   assert.match(js, /"Choose a recipient from the @ menu before sending\."/);
-  assert.match(js, /if\(!target\) return; \/\/ Original standalone demo chat remains unmodified\./);
+  assert.match(js, /if\(!target\) return;/);
   assert.match(js, /"Demo to "/);
   assert.match(js, /data\.threads\[target\.key\]=thread/);
   assert.match(css, /\.draft-recipient-chip\[hidden\]/);
