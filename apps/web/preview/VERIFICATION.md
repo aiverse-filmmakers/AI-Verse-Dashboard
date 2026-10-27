@@ -26,3 +26,26 @@
 - Browser preview storage is disposable prototype state. Workspaces are separate in this demo, not a security boundary.
 
 The original screenshot is a local verification artifact; the runnable source is the reproducible review surface.
+
+
+## New Personal/Canvas design slice — source-check record, 27 October 2026
+
+The older "Observed passes" above describe **the original preview**, before the unified chat and direct canvas editing changes. They are not evidence that the newest UI interactions have been manually exercised. In particular, the old focus-mode and inspector behavior is superseded by the new design.
+
+### Static verification
+
+- `test/personal-shell-preview.test.mjs` checks JavaScript parseability, same chat composer components, independent closing/reopening, last-active-chat canvas context, recipient scope, inline editing, multiselect, connections, undo/redo and the explicitly non-generating creation planner.
+- Dashboard CI is the source-level acceptance gate, across Node on Ubuntu, Windows and macOS. This is not a substitute for graphical interaction testing.
+
+### Manual browser review still required
+
+1. Open with one chat and canvas. Confirm extra chat/teams/tools remain hidden by default.
+2. Open two or three chats; use the second; close the original first; confirm the remaining pane persists with an accessible composer. Close the final pane and reopen from the top-right chat button.
+3. Click a canvas note after working in a particular chat. Confirm it is tagged **there**, not globally in the first panel. Click more notes and verify removable, deduplicated, scope-aware chips. Confirm the manual "Attach from canvas" button is absent.
+4. Click a card title and note body to edit inline; save with Enter/blur and cancel with Escape; tab to a selected card and press F2 for title editing.
+5. Use Shift/Cmd/Ctrl clicks and Shift-drag a selection rectangle; drag multiple cards; group/align/duplicate/delete; undo then redo, and reload.
+6. Drag the connector between cards, click a line to remove it and undo. Click the connector to create a linked note.
+7. Use Create with default model and optional demo examples, choose aspect ratio for image/video, select multiple reference cards, create editable text/image/video/audio demo draft cards, and verify no real generation is claimed.
+8. Check macOS, Windows/browser keyboard differences, phone/tablet responsiveness, focus mode, screen-reader labeling and layout with all chats closed.
+
+No screenshots or interactive browser execution of the latest preview are claimed by this document. Backend Gateway/model/OS execution, credits, authorization, real uploads and release qualification remain out of scope.
