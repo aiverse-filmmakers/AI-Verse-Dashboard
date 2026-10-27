@@ -5,24 +5,31 @@
 
 ## Recommendation
 
-Call the feature **Scene Room** for now. It should feel like a calm, easy room for planning a film scene in 3D: build a rough set, place actors and props, move a virtual camera, save useful views, and send those views to the Canvas.
+Call the feature **Scene Room**. Its main job is AI-directed scene building: you talk to the AI in ordinary language, give it an image reference, and it builds a navigable 3D mock-up for you. You then explore the scene and direct the camera.
 
-This is a **3D previs tool** (a simple plan for how a scene could look and move), not a Blender replacement or a final-quality renderer. Keep the first version useful without an AI provider. Add optional AI image-to-3D tools later, behind the existing provider connection and permission system.
+You should not have to build the room or animate its objects by hand. Moving objects yourself can remain an optional way to correct the AI's work.
+
+**Three.js** is the 3D viewer and scene engine inside the browser. It is not the AI. The AI is the scene builder and camera assistant; Three.js displays the set, characters, props, and camera in real time.
+
+Keep this distinction simple in the product. The user can say “3JS,” “Three JS,” or describe the 3D room. The assistant should understand the intent from context without making the user learn the technical name.
+
+The goal is a detailed-enough, image-guided mock-up that stays quick to explore. Start with a lightweight scene, then add detail where it helps the composition match the reference. Do not wait for a heavy, finished-quality model before letting the user move the camera.
 
 ## What the supplied material shows
 
 Sources reviewed: the two supplied Nexus DOCX guides and all five supplied MP4 clips. The MP4s were transcribed on the user's Mac with the local Whisper model; video visuals were reviewed using sampled frames. The 5-minute PJ film clip is a finished example, not a tutorial, so its dialogue does not explain the workflow.
 
-Common techniques demonstrated in the tutorial clips:
+The clips show two useful levels of detail. PJ's Blender method uses simple stand-ins and carefully planned storyboard frames. The JBooksCreative clips show browser-based Three.js scenes built to resemble the supplied location and characters more closely, with movement added for AI-video references. Another clip experiments with turning previs into a depth map. These are creator workflows shown in examples, not controlled quality or speed comparisons.
 
-1. Start with image references for the location, characters, and important objects.
-2. Build a lightweight, simple 3D blockout to communicate size, placement, direction, and camera view. It does not need detailed models.
-3. Plan camera positions and action in a browser-based 3D scene or Blender.
-4. Review individual frames or a storyboard sheet. In one workflow, numbered stills worked better than feeding a stiff previs video directly into a video model.
-5. Send selected frames plus clear written direction to an image/video model. The 3D plan gives spatial and camera guidance; the prompt still describes acting, style, and what the model should invent.
-6. Treat depth-map conversion and AI-generated camera movement as experiments, not guaranteed fixes. The clips describe improvements but do not provide controlled comparisons.
+What to carry into Scene Room:
 
-The supplied Blender storyboard workflow also emphasizes real-world scale, clear screen direction, one named camera per shot, checking each camera view, and saving new versions instead of overwriting a useful setup. The supplied animation guide is mainly a later prompt-writing workflow; it is not a requirement to build all of that into Scene Room now.
+1. Give the AI the user's reference images and a plain-language scene request.
+2. Have it create a navigable set with recognizable shapes, layout, colors, characters, props, and relative scale inferred from those references. Hidden parts are guesses and should be shown as guesses.
+3. Animate or reposition scene objects when asked, then let the user move through the scene and choose a camera view.
+4. Save camera stills or a storyboard sheet as visual references for later image/video creation.
+5. Keep the 3D mock-up as direction for the AI; the final image or video model can add acting, texture, style, and visual detail.
+
+The supplied Blender storyboard workflow adds useful filmmaking basics: real-world scale, clear screen direction, one named camera per shot, checking each camera view, and saving new versions instead of overwriting a useful setup. The supplied animation guide is mainly a later prompt-writing workflow; it should inform scene continuity without expanding the first build into a full video-generation pipeline.
 
 ## The “3JS” point
 
@@ -30,60 +37,79 @@ The speaker says **Three.js** (“three jay ess”). It is a JavaScript library 
 
 Three.js is a sensible starting point for this browser feature. Its official documentation describes WebGL 2 rendering and a newer WebGPU renderer that can fall back to WebGL 2, while noting that the newer renderer still has limitations. Start with the broadly supported WebGL 2 path unless Dashboard compatibility testing gives a reason to change.
 
-## What image-to-3D tools actually do
+## Different 3D approaches
 
-These are different jobs and should be labelled clearly in the interface:
+A reference image is the starting point for the AI to **rebuild a plausible scene around what it sees**. The goal is not to bend that flat image into fake depth. The AI should create separate floor, walls, openings, objects, people, and camera positions so the user can move around and change the view.
 
-| Input/tool | What it gives us | What it does not guarantee |
-| --- | --- | --- |
-| A normal photo used as a reference | A picture to place beside the 3D view or use as a visual target | A navigable room or correct geometry |
-| A 360 panorama / skybox | A surrounding visual background that can be looked around inside | Solid walls, movable objects, or correct depth/parallax |
-| Image-to-3D model services such as Meshy or Tripo | A generated 3D object from an image, usually an exportable model | A complete, editable film set that matches the image from every angle |
-| World-generation services such as Marble | An AI-generated navigable environment from image, video, text, or 3D input; Marble advertises export of Gaussian splats | Guaranteed clean, measured, editable geometry or exact continuity for production |
-| A hand-built blockout | Simple, editable geometry with known sizes and positions | Photorealistic final imagery |
+Three.js can display and animate that scene, but an AI model must interpret the reference and create the scene structure. Image-to-3D services such as Meshy and Tripo mainly create individual 3D models from images. World-generation services such as Marble create navigable environments, but may not return clean, measured, easily editable film-set geometry. Skybox tools make a surrounding background, not a solid set.
 
-A generated environment can be useful as an exploration/reference layer. For repeatable camera blocking, actors, and shot continuity, keep a simple editable blockout as the source of truth. A generated world should never silently replace it.
+Those services can be optional inputs or later providers. They do not define the core Scene Room workflow. The core should remain a lightweight, editable mock-up whose parts and camera the AI can control.
 
-## Proposed first version
+## Proposed user experience
 
-### Main view
+### 1. Ask the AI to build the scene
 
-- One large 3D view, with a simple **Set** object list and a compact **Camera** control area.
-- Beginner controls: orbit, pan, zoom, undo/redo, and clear labels. Show advanced values only when asked.
-- A short guided start: **Choose a starting point** → blank set, room preset, or add reference image.
-- Support a floor, walls, doors/openings, simple furniture/props, and simple actor stand-ins. Let people add, move, rotate, resize, duplicate, hide, and delete them directly in the view.
-- Use real-world units and a visible scale guide. Offer a few human/door-size helpers; do not make the user learn Blender's coordinate system.
-- Provide familiar camera presets such as **Static**, **Tripod**, **Handheld**, **Gimbal**, **Drone**, and **FPV**. Presets should adjust a visible camera path with understandable speed/smoothness controls; users can move points and add key positions.
-- Show the camera's frame guide and safe area. Support common aspect ratios and a clear **View through camera** button.
-- Save a still from the camera, with scene name, shot name, lens/framing, and camera position attached as metadata. Send the still to the existing Canvas as a linked image/shot card.
-- Keep saved scenes and shots as editable work—not flattened images only. Use versions or undo so experiments do not overwrite the scene.
+Inside the persistent chat, say something like:
 
-### Image and AI entry points
+> “Use this image as the reference. Build a navigable mock-up of the room. Put the window and table where they appear, add a person near the doorway, and keep the colors and proportions close. Then show me a wide camera view.”
 
-- **Add reference image:** pin the image as a side-by-side reference or place it in the scene as a flat reference board. Do not claim it has become 3D.
-- **Build a rough set from this image (later AI action):** ask before sending the image to a provider; show the provider, expected cost/credits when known, and result status. Return an editable rough blockout if the service supports it, or label the output as an imported generated environment/model.
-- **Create image/video from this camera (later):** send the selected camera still, selected references, prompt, aspect ratio, and provider/model through the existing Gateway/Connections path. Show that this makes a new generated result and does not change the source scene.
-- Any provider request must be explicit and cancellable. No provider key in browser code; no paid generation during the initial MVP.
+The AI understands the request and image, then creates a preview scene. It should not ask the user to place each wall, prop, or person manually. It can summarize the main choices it inferred and point out areas it had to guess.
+
+### 2. Explore the result
+
+Scene Room opens with one large 3D view. The user can orbit, pan, zoom, walk around, and look through the selected camera. A small scene list shows the room, people, props, and cameras. Advanced details stay tucked away until needed.
+
+If something is wrong, the user can say “move the table closer to the window,” “make the room wider,” or “add another person behind the chair.” The AI updates the scene and the user can undo the change. Directly dragging an object remains an optional correction, not the main way to build.
+
+### 3. Direct the camera
+
+The user can say “show it from the doorway,” “give me a low angle,” or “make a slow handheld move toward the table.” Camera presets can include **Static**, **Tripod**, **Handheld**, **Gimbal**, **Drone**, and **FPV**. The user adjusts the camera by moving it in the 3D view, with simple speed and smoothness controls. Lens, aspect ratio, and safe-area guides are available when useful.
+
+### 4. Save views for the film
+
+The user can ask for a few angles or camera positions. Scene Room captures selected views as named shots and adds them to the existing Canvas. Each shot stays linked to the scene and its camera details, so the user and AI can return to the editable setup later. A sequence of stills can become a storyboard sheet.
+
+### The AI control contract
+
+Three.js should not be controlled by one special model or by asking every model to invent and run arbitrary JavaScript. Scene Room should expose a documented set of scene actions that connected AIs can use: inspect the current scene and reference; create or edit set pieces and characters; move or animate objects; create cameras and paths; capture views; and undo changes.
+
+Each connected AI provider/runtime needs to be mapped to those same actions. The app checks and applies the changes, shows the result, and preserves undo. This is what makes the feature usable across supported models, instead of teaching one model a private trick. Exact support still depends on whether a connected model can understand image inputs and use the app's available actions.
+
+Voice and typed requests use the same chat. The AI should understand the user's meaning when speech recognition writes “3JS” or “Three JS”; the user should be able to say “build this room from the picture” without knowing the library name.
+
+### Keep it quick
+
+- Show a useful rough scene as early as possible; add detail progressively instead of blocking on a high-detail asset.
+- Use lightweight geometry and simple character stand-ins for scene parts the camera does not need to inspect closely.
+- Refine only the details that matter to the reference or the selected camera view.
+- Keep camera movement responsive while models or assets are loading.
+- Save changes as reversible scene edits; show an error and retain the last good preview if a build step fails.
+- Do not promise a fixed build time before measuring real references and target devices.
 
 ## Build order
 
-1. **Interactive blockout:** Three.js room view, simple geometry, object list, transforms, camera presets, and local scene save/restore.
-2. **Shot capture:** camera framing, aspect ratio, still capture, named shots, and send-to-Canvas action.
-3. **Image-guided start:** import/reference-image handling and an optional provider-backed image-to-3D adapter, after credentials, costs, permissions, and generated-file ownership are agreed.
-4. **AI creation:** send shots and chosen context to image/video providers through Gateway; keep scene and generated outputs linked.
-5. **Advanced scene work:** richer assets, lighting, animation, multi-shot storyboard export, and Blender interchange only when real use shows they are needed.
+1. **AI-directed scene contract:** define the common actions for reading a scene/reference, creating and editing set pieces, people and props, setting camera views/movement, and capturing shots. Check how each supported AI runtime can call those actions.
+2. **Image-guided scene building:** give a connected AI a reference image and plain-language request; create a lightweight, navigable scene with recognizable layout and visible uncertainty about guessed areas. The user should not need to construct it piece by piece.
+3. **Explore and refine:** real-time Three.js view, camera movement, spoken or typed edit requests, optional direct manipulation, undo and restore.
+4. **Shot capture to Canvas:** name camera views, capture stills or storyboard sheets, keep them linked to the source scene and camera details.
+5. **Provider-backed refinement and creation:** where useful, connect optional asset/world-generation providers and send selected views to image/video generation through the existing approved provider route.
 
-## Keep out of the first version
+Each step should preserve useful work if later AI or asset generation fails. The initial user benefit is the scene-building AI workflow; do not ship a manual-only room and call that the requested feature.
 
-Do not start by building mesh sculpting, node graphs, simulation, materials authoring, a full timeline, photorealistic rendering, or a Blender-style tool shelf. Do not promise that one image automatically becomes a faithful editable room. Those would make the tool harder before its basic job—planning a set and camera—is proven.
+## Keep the tool focused
+
+Do not start with a full Blender tool shelf, mesh sculpting, node graphs, simulation, or final-quality rendering. Do not make the user learn Three.js or manually position every object. The first build should establish whether the AI can create a recognizable, editable, quick-to-explore mock-up from real image references.
+
+A model's interpretation can be wrong, especially for objects hidden behind the camera. Make the layout editable, make guesses visible when they matter, and let the user correct the scene by voice, text, or direct manipulation.
 
 ## Decisions to confirm during implementation
 
-- Is Scene Room a filmmaking workspace tool that opens for one scene, with shots saved into the film project's Canvas?
-- Which file format can the Dashboard, Gateway, and local Core reliably own and exchange? Test an editable scene format before committing to one.
-- Does image-based set generation use a connected third-party service, local generation, or both? Keep the interface provider-neutral until the owner and cost path are known.
-- How should camera stills carry shot/camera metadata into Canvas and later image/video requests?
-- Which local Mac/browser and hosted Dashboard environments must work, and what scene size/performance limits apply?
+- Which connected model/runtime combinations support both image understanding and structured Scene Room actions? Identify unsupported combinations clearly.
+- Which scene actions can all supported models use through the existing Gateway/runtime architecture, and where does any provider-specific translation belong?
+- What is the smallest representation that gives useful 3D movement, detail, editability, and quick response? Test with several of the supplied reference images.
+- How should scene and camera edits, undo, save/restore, and Canvas shot links work without losing the source setup?
+- Which details should the AI infer automatically, and when is a question worth asking instead of making a reversible guess?
+- What performance evidence on the actual MacBook/browser will show that building and exploring remain responsive? Measure before setting a numeric target.
 
 ## Research sources
 
@@ -103,4 +129,4 @@ Do not start by building mesh sculpting, node graphs, simulation, materials auth
 
 ## Bottom line
 
-Build **Scene Room** as a lightweight set-and-camera planner in the browser. Make the scene easy to block, the camera easy to direct, and the useful views easy to save to Canvas. Use AI-generated environments and assets as optional inputs later; keep the editable scene and camera plan under the filmmaker's control.
+Build **Scene Room** as an AI-operated 3D set. The filmmaker gives the AI a reference image and describes the scene; the AI creates and refines the navigable mock-up through common app actions. The filmmaker explores it, directs the camera, and saves shots to Canvas. Three.js displays the scene; the AI does the building. Keep the preview responsive, editable, reversible, and available to every connected model that supports the common scene actions.
