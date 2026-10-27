@@ -399,7 +399,7 @@ test("Functional workspace pages: navigate actual domain layouts and operate sam
  await page.locator(".quiet-feature-toggle").click();
  assert.ok(await page.locator(".os-real-shell").isVisible(),"new real-world app shell replaces PowerPoint-like tour");
  assert.equal(await page.locator(".os-nav-item").count(),13,"all 13 owner-backed workspaces are discoverable");
- assert.match(await page.locator(".os-source").innerText(),/Illustrative/);
+ assert.match(await page.locator(".os-source").innerText(),/illustrative/i);
  // Attention: a real approval queue layout with mutable sample decisions.
  assert.equal(await page.locator(".os-queue").count(),4);
  await page.getByRole("button",{name:"Approve",exact:true}).click();
