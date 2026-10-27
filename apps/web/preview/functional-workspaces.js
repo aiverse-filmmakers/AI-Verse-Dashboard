@@ -107,6 +107,13 @@ function attention(main){
  right.append(meta("Decisions only affect example records."));main.append(split(left,right));
 }
 function activity(main){
+ const live=card("Live execution controls");
+ live.append(h("h4","os-detail-title","No authenticated live run"),
+   h("p","os-copy","The timeline and task board below are editable examples. A real Stop control becomes available only when a verified Gateway run is active."),
+   row("Live run status","Not connected"));
+ const stop=b("Stop live run",()=>{},"os-btn");stop.disabled=true;stop.title="No active Gateway run is connected";
+ live.append(stop);main.append(live);
+
  main.append(stats([[data.runs.filter(x=>x.status==="Running").length,"Active"],[data.runs.filter(x=>x.status==="Review").length,"Review"],[data.runs.filter(x=>x.status==="Done").length,"Completed"],[data.runs.filter(x=>x.status==="Blocked").length,"Blocked"]]),tabs([["all","All runs"],["Running","Running"],["Review","Review"],["Done","Completed"],["Blocked","Blocked"],["board","Task board"]]));
  if(mode==="board"){taskBoard(main);return;}
  const visible=data.runs.filter(x=>mode==="all"||x.status===mode),left=h("div"),cur=chosen(visible),right=card("Run inspector");
@@ -288,12 +295,13 @@ function connections(main){
 
 function essentials(main){
  const openPanel=target=>{if(target==="recovery")return window.AIVersePreviewRecovery?.open();
+   if(target==="main-chat"){window.AIVerseShowMainChat?.();return window.AIVerseOpenPreviewApp?.("canvas");}
    if(target==="workspace")return document.querySelector("#create-workspace")?.click();
    if(["canvas","notes","assets"].includes(target))return window.AIVerseOpenPreviewApp?.(target);
    page=target;active=null;mode="all";term="";rememberPage();render();};
  const items=[
   ["Clean Personal interface","canvas","Working locally","Chat, workspace switcher and current canvas"],
-  ["Contextual AI chat","chat","UI ready, AI not connected","Scoped canvas chips, agent picker and demo conversation"],
+  ["Contextual AI chat","main-chat","UI ready, AI not connected","Scoped canvas chips, agent picker and demo conversation"],
   ["AI connection","connections","Needs secure host","Real provider setup and status, no fake connection"],
   ["Saved conversations","chat","Working locally","Create, reopen, rename and archive browser-preview chats"],
   ["Workspaces","workspace","Working locally","Create and switch spaces in this browser"],
