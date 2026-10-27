@@ -41,14 +41,20 @@ function syncBoard(w){
   }
 }
 for(const w of state.workspaces)ensureBoardLibrary(w);
-// Fresh preview visits start on a blank Personal scratch board. Existing
-// populated example stays safely in the library as a separate board.
-if(!hadSavedPreview){
+// First-time upgrade or fresh visit: offer an empty Personal scratch board
+// alongside chat without ever deleting the user's original saved board.
+let migratedScratch=false;
+if(!state.scratchInitializedV1){
   const home=state.workspaces.find(w=>w.id==="personal");
   if(home){
-    const scratch={id:uid(),name:"Scratch canvas",...boardDefaults(),createdAt:Date.now(),updatedAt:Date.now()};
-    home.canvases.unshift(scratch);home.activeCanvasId=scratch.id;loadBoard(home,scratch);
+    let scratch=home.canvases.find(board=>board.name==="Scratch canvas");
+    if(!scratch){
+      scratch={id:uid(),name:"Scratch canvas",...boardDefaults(),createdAt:Date.now(),updatedAt:Date.now()};
+      home.canvases.unshift(scratch);
+    }
+    home.activeCanvasId=scratch.id;loadBoard(home,scratch);
   }
+  state.scratchInitializedV1=true;migratedScratch=true;
 }
 function boardLibrary(){
   const w=workspace();syncBoard(w);
@@ -627,4 +633,4 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('keyup',e=>{if(e.code==='Space'){spacePanHeld=false;$('#viewport').classList.remove('space-panning');}});
 window.addEventListener('blur',()=>{spacePanHeld=false;$('#viewport').classList.remove('space-panning');});
-window.addEventListener('resize',drawConnections);render();if(storageAvailable&&!hadSavedPreview)save();if(!storageAvailable)toast('Could not load saved preview data. Sample workspaces are shown; export any new work to keep it.');
+window.addEventListener('resize',drawConnections);render();if(storageAvailable&&(!hadSavedPreview||migratedScratch))save();if(!storageAvailable)toast('Could not load saved preview data. Sample workspaces are shown; export any new work to keep it.');
