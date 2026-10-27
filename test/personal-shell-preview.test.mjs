@@ -81,10 +81,10 @@ test("each composer has model preference, file labels, and canvas references",()
   assert.match(shared,/\["Auto","GPT \(demo\)","Claude \(demo\)","Gemini \(demo\)","Local \(demo\)"\]/);
   assert.match(shared,/fileInput\.multiple=true/);
   assert.match(shared,/Files are shown as preview labels only/);
-  assert.match(shared,/Attach from canvas/);
-  assert.match(shared,/References only · No files are copied/);
-  assert.match(shared,/canvasItems\(\)/);
-  assert.match(addon,/activeCanvasItems/);
+  assert.doesNotMatch(shared,/Attach from canvas/);
+  assert.match(shared,/addCanvasReference:ref=>/);
+  assert.match(shared,/clearCanvasFromOtherWorkspaces:workspaceId=>/);
+  assert.match(addon,/window\.AIVerseCanvasSelectionChanged=/);
   assert.match(css,/\.shared-chat-tools/);
   assert.match(css,/\.shared-model-choice/);
 });
@@ -117,4 +117,79 @@ test("honest static preview has no agent dispatch or credential connection",()=>
   assert.match(shared,/Nothing is sent to an AI/);
   assert.match(addon,/Nothing is sent to a real AI/);
   assert.match(shared,/Team messages are not dispatched/);
+});
+
+
+
+test("last active chat receives automatic scoped canvas references",()=>{
+  assert.match(addon,/lastActiveChat/);
+  assert.match(addon,/window\.AIVerseCanvasSelectionChanged=/);
+  assert.match(addon,/fallback\.addCanvasReference\(\{id:node\.id,title:node\.title,workspaceId\}\)/);
+  assert.match(core,/function canvasSelectionChanged\(\)/);
+  assert.match(core,/canvasSelectionChanged\(\)/);
+  assert.match(core,/window\.AIVerseCanvasScopeChanged\?\.\(id\)/);
+  assert.match(shared,/addCanvasReference:ref=>/);
+  assert.match(shared,/state\.canvas\.some\(v=>v\.id===ref\.id&&v\.workspaceId===ref\.workspaceId\)/);
+  assert.doesNotMatch(shared,/toggleCanvas\(\)/);
+});
+
+test("the first and every other chat can close independently",()=>{
+  assert.match(addon,/const closeMain=button/);
+  assert.match(addon,/data\.mainVisible=false/);
+  assert.match(addon,/data\.mainVisible = data\.mainVisible !== false/);
+  assert.match(addon,/lastActiveChat=data\.panes\?String\(data\.panes\):null/);
+  assert.match(addon,/const topNewChat=button/);
+  assert.match(addon,/if\(!data\.mainVisible\)\{data\.mainVisible=true/);
+  assert.match(addon,/document\.body\.classList\.toggle\("primary-chat-closed",!data\.mainVisible\)/);
+  assert.match(css,/\.primary-chat-closed\.with-parallel-chats \.app-shell/);
+});
+
+test("canvas research direct manipulation has inline edits and contextual actions",()=>{
+  assert.match(core,/function beginInlineEdit\(/);
+  assert.match(core,/field\.contentEditable='plaintext-only'/);
+  assert.match(core,/if\(e\.key==='Escape'\)/);
+  assert.match(core,/data-action="duplicate"/);
+  assert.match(core,/data-action="connect"/);
+  assert.match(core,/data-action="delete"/);
+  assert.match(core,/function duplicateSelection\(\)/);
+  assert.match(core,/function groupSelection\(\)/);
+  assert.match(core,/function alignSelection\(\)/);
+  assert.match(core,/function deleteSelection\(\)/);
+  assert.match(core,/function redo\(\)/);
+  assert.match(core,/function undo\(\)/);
+  assert.match(css,/\.node-quick-actions/);
+});
+
+test("selection rectangle, drag-to-connect and connection editing remain possible",()=>{
+  assert.match(core,/type:'select'/);
+  assert.match(core,/selection-rectangle/);
+  assert.match(core,/e\.shiftKey/);
+  assert.match(core,/event\.shiftKey\|\|event\.metaKey\|\|event\.ctrlKey/);
+  assert.match(core,/type:'connect'/);
+  assert.match(core,/elementFromPoint\(e\.clientX,e\.clientY\)/);
+  assert.match(core,/function showEdgeActions\(\)/);
+  assert.match(core,/workspace\(\)\.edges\.splice\(selectedEdge,1\)/);
+  assert.match(css,/\.connections \.edge-hit/);
+});
+
+test("creation composer defaults to optional model choice and preserves editable planning cards",()=>{
+  assert.match(core,/function createCanvasDraft\(\)/);
+  assert.match(core,/id="creation-kind"/);
+  assert.match(core,/id="creation-prompt"/);
+  assert.match(core,/Choose for me \(default\)/);
+  assert.match(core,/Landscape · 16:9/);
+  assert.match(core,/Portrait · 9:16/);
+  assert.match(core,/Square · 1:1/);
+  assert.match(core,/Cost: unavailable/);
+  assert.match(core,/status:'demo-draft'/);
+  assert.match(core,/generation:\{kind,model,aspect,prompt,provider:null/);
+  assert.match(core,/w\.edges\.push\(\[promptCard\.id,output\.id\]\)/);
+  assert.match(core,/No credits will be spent/);
+});
+
+test("no live generation or upload has been added to the public preview",()=>{
+  assert.doesNotMatch(core,/\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bnavigator\.sendBeacon\b/);
+  assert.doesNotMatch(shared,/\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bnavigator\.sendBeacon\b/);
+  assert.match(core,/No AI generation was run/);
+  assert.match(shared,/Nothing is sent to an AI/);
 });
