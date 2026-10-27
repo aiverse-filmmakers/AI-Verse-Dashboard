@@ -82,3 +82,13 @@ No screenshots or interactive browser execution of the latest preview are claime
 - **Real AI provider model selection, file processing, agent dispatch, paid creative generation, canonical OS filesystem, authorization** are not connected and were not tested. These previews do not supply backend acceptance.
 
 The browser suite and exact tested behaviors are part of **every future relevant UI change** as required by `AGENTS.md` and `docs/DASHBOARD-UX-QC-PLAN.md`. Run applicable behavior journeys and check neighbors before a change is presented as complete. Do not use the source-pattern checks in place of actual interactions.
+
+
+## Calm focus styling and chat composer parity, 27 October 2026
+
+Operator screenshots exposed a bright blue rectangular focus treatment on the chat composer and canvas, plus a native border/resize handle in the secondary chat textarea. The canvas also used the same blue for its temporary marquee rectangle.
+
+- CSS revision `086452d83a69eae2e0bafd924310fc7e65716ffa` replaces the global blue focus outline with a restrained neutral keyboard focus treatment. Both the primary and secondary chat composers now suppress textarea-native borders, resizing and rectangular focus outlines, while their existing rounded composer border subtly indicates focus. The canvas viewport does not draw a second focus frame; focused nodes use the selected-card accent. The drag marquee remains usable but is faint neutral gray instead of blue and disappears after release.
+- Browser regression added in `4ef2b2e71f3f28ae4c26e293d0cc6393c05ad10d` checks the actual focused composer computed styles, secondary/primary parity, focused viewport, selected node accent, marquee appearance and release cleanup.
+- **Automated behavior passed:** 11/11 real Chromium interaction tests on Ubuntu, including the new visual-focus behavior test ([run #40491412161](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40491412161)). **Repository CI passed** for the same source revision ([run #40491412060](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40491412060)). Static-preview Pages deployment passed for the CSS source revision ([run #40491328612](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40491328612)).
+- **Still unverified:** a manual Safari/MacBook visual and hardware trackpad test of this styling. A computed-style browser assertion is not a human visual review. No backend, real AI, workspace data, credential, or release change.
