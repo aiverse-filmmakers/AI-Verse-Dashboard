@@ -6,6 +6,9 @@ on:
       - codex/dashboard-source-checkpoint
     paths:
       - apps/web/preview/**
+      - apps/web/src/personal-chat-ui.ts
+      - apps/web/src/personal-chat.css
+      - test/live-personal-chat-ui.browser.mjs
       - test/preview-browser-interaction.browser.mjs
       - .github/workflows/preview-browser-qc.yml
   pull_request:
