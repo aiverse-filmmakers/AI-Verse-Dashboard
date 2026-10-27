@@ -5,3 +5,5 @@
  */
 export { DashboardClient } from "./client.js";
 export type { ClientScope, FetchFn, QueryOptions } from "./client.js";
+export { DashboardChatEventFeed, PersonalChatRunController } from "./conversation-run.js";
+export type { ChatRunPhase, ChatRunView, ChatRunEvent, ChatEventFeed, ChatWebSocketFactory, ChatWebSocket } from "./conversation-run.js";
