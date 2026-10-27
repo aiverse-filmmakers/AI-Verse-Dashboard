@@ -138,7 +138,74 @@ window.AIVerseCanvasLibrary={list:boardLibrary,open:switchBoard,create:createBoa
 
 const workspace=()=>state.workspaces.find(w=>w.id===state.selected);
 function toast(text){if($('#dialog').open && $('#dialog-error'))$('#dialog-error').textContent=text;$('#toast').textContent=text;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
-function save(){try{syncBoard(workspace());localStorage.setItem(KEY,JSON.stringify(state));storageAvailable=true;$('#saved').textContent='Saved on this browser';}catch{storageAvailable=false;$('#saved').textContent='Not saved · browser storage full';toast('Browser storage is unavailable or full. Export your preview from the info menu.');}}
+
+/* Stage 1: actual browser-local conversation lifecycle. The workspace's existing
+ * messages remain the active-chat projection, preserving the original composer. */
+function ensureConversation(w){
+  if(!Array.isArray(w.conversations)){
+    w.conversations=[{id:uid(),title:"Main conversation",archived:false,messages:structuredClone(w.messages),updatedAt:Date.now()}];
+    w.activeConversationId=w.conversations[0].id;
+  }
+  if(!w.conversations.some(c=>c.id===w.activeConversationId&&!c.archived)){
+    const live=w.conversations.find(c=>!c.archived);
+    if(!live){const fresh={id:uid(),title:"New conversation",archived:false,messages:[],updatedAt:Date.now()};w.conversations.push(fresh);w.activeConversationId=fresh.id;w.messages=[];}
+    else{w.activeConversationId=live.id;w.messages=structuredClone(live.messages);}
+  }
+}
+function syncConversation(w){
+  if(!w)return;
+  ensureConversation(w);
+  const active=w.conversations.find(c=>c.id===w.activeConversationId);
+  if(!active)return;
+  if(JSON.stringify(active.messages)!==JSON.stringify(w.messages)){
+    active.messages=structuredClone(w.messages);active.updatedAt=Date.now();
+    if(active.title==="New conversation"||active.title==="Main conversation"){
+      const first=w.messages.find(m=>m.role==="user"&&m.text.trim());
+      if(first)active.title=first.text.trim().replace(/\\s+/g," ").slice(0,62);
+    }
+  }
+}
+function conversationsList(){
+  const w=workspace();syncConversation(w);
+  return {workspaceId:w.id,workspaceName:w.name,activeId:w.activeConversationId,
+    items:w.conversations.map(c=>({id:c.id,title:c.title,archived:!!c.archived,updatedAt:c.updatedAt,
+      count:c.messages.length,preview:c.messages.find(m=>m.role==="user")?.text?.slice(0,110)||"No messages yet"}))};
+}
+function newConversation(){
+  const w=workspace();syncConversation(w);
+  if(w.conversations.length>=100){toast("This preview supports 100 conversations per workspace.");return false;}
+  const c={id:uid(),title:"New conversation",archived:false,messages:[],updatedAt:Date.now()};
+  w.conversations.push(c);w.activeConversationId=c.id;w.messages=[];
+  renderChat();save();return true;
+}
+function openConversation(id){
+  const w=workspace();syncConversation(w);
+  const target=w.conversations.find(c=>c.id===id&&!c.archived);
+  if(!target)return false;
+  w.activeConversationId=id;w.messages=structuredClone(target.messages);
+  renderChat();save();return true;
+}
+function renameConversation(id,title){
+  const w=workspace();ensureConversation(w);
+  const c=w.conversations.find(c=>c.id===id),clean=String(title||"").trim().slice(0,80);
+  if(!c||!clean)return false;
+  c.title=clean;c.updatedAt=Date.now();renderChat();save();return true;
+}
+function archiveConversation(id,archived){
+  const w=workspace();syncConversation(w);const c=w.conversations.find(c=>c.id===id);
+  if(!c)return false;
+  c.archived=!!archived;c.updatedAt=Date.now();
+  if(c.archived&&w.activeConversationId===id){
+    const next=w.conversations.find(x=>!x.archived);
+    if(next){w.activeConversationId=next.id;w.messages=structuredClone(next.messages);}
+    else{const fresh={id:uid(),title:"New conversation",archived:false,messages:[],updatedAt:Date.now()};w.conversations.push(fresh);w.activeConversationId=fresh.id;w.messages=[];}
+  }
+  renderChat();save();return true;
+}
+window.AIVersePreviewConversations={list:conversationsList,create:newConversation,open:openConversation,
+  rename:renameConversation,archive:archiveConversation};
+
+function save(){try{syncBoard(workspace());syncConversation(workspace());localStorage.setItem(KEY,JSON.stringify(state));storageAvailable=true;$('#saved').textContent='Saved on this browser';}catch{storageAvailable=false;$('#saved').textContent='Not saved · browser storage full';toast('Browser storage is unavailable or full. Export your preview from the info menu.');}}
 function captureCanvas(){return {id:state.selected,canvasId:workspace().activeCanvasId,nodes:structuredClone(workspace().nodes),edges:structuredClone(workspace().edges)};}
 function snapshot(){undoStack.push(captureCanvas());if(undoStack.length>40)undoStack.shift();redoStack=redoStack.filter(s=>s.id!==state.selected||s.canvasId!==workspace().activeCanvasId);}
 function restoreCanvas(s){const w=workspace();w.nodes=s.nodes;w.edges=s.edges;selectedIds.clear();selectedNode=null;selectedEdge=null;renderBoard();save();}
@@ -587,7 +654,7 @@ window.AIVerseDemoPost=(text,meta)=>{
   w.messages.push({role:'assistant',text:'This is a design preview. Your selected recipients, model, files and canvas items were not sent to a live AI.'});
   renderChat();save();
 };
-function renderChat(){const w=workspace(),log=$('#conversation');log.innerHTML=w.messages.length?w.messages.map((m,i)=>`<div class="chat-message ${m.role}"><span class="role">${m.role==='assistant'?'AI-Verse · Demo':'You'}</span><p>${esc(m.text)}</p>${renderMessageContext(m)}${m.proposal&&!m.applied?`<div class="proposal"><strong>${esc(m.proposal.title)}</strong><span>${m.proposal.type==='workspace'?'Create a film workspace':'Add a note to this canvas'}</span><br><button data-apply="${i}">Apply to preview</button></div>`:m.applied?'<div class="local-state-note">Applied to this browser preview.</div>':''}</div>`).join(''):`<div class="chat-welcome"><span class="tiny-mark">✳</span><h2>Start with a thought.<br>We’ll find its place.</h2><p>Talk through an idea, plan your day, or begin a film. Your workspace can take shape alongside the conversation.</p></div>`;log.querySelectorAll('[data-apply]').forEach(b=>b.onclick=()=>applyProposal(Number(b.dataset.apply)));$('#chat-suggestions').innerHTML=w.messages.length?'':`<button data-example="film">Start a film project</button><button data-example="note">Capture a thought</button>`;$('#chat-suggestions').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('#message').value=b.dataset.example==='film'?'Start a film project called The Mountain Within':'Add a note: An idea worth exploring';$('#message').focus();});log.scrollTop=log.scrollHeight;}
+function renderChat(){const w=workspace(),log=$('#conversation');ensureConversation(w);const current=w.conversations.find(c=>c.id===w.activeConversationId);$('#chat-scope').textContent=w.name+' · '+(current?.title||'Conversation');log.innerHTML=w.messages.length?w.messages.map((m,i)=>`<div class="chat-message ${m.role}"><span class="role">${m.role==='assistant'?'AI-Verse · Demo':'You'}</span><p>${esc(m.text)}</p>${renderMessageContext(m)}${m.proposal&&!m.applied?`<div class="proposal"><strong>${esc(m.proposal.title)}</strong><span>${m.proposal.type==='workspace'?'Create a film workspace':'Add a note to this canvas'}</span><br><button data-apply="${i}">Apply to preview</button></div>`:m.applied?'<div class="local-state-note">Applied to this browser preview.</div>':''}</div>`).join(''):`<div class="chat-welcome"><span class="tiny-mark">✳</span><h2>Start with a thought.<br>We’ll find its place.</h2><p>Talk through an idea, plan your day, or begin a film. Your workspace can take shape alongside the conversation.</p></div>`;log.querySelectorAll('[data-apply]').forEach(b=>b.onclick=()=>applyProposal(Number(b.dataset.apply)));$('#chat-suggestions').innerHTML=w.messages.length?'':`<button data-example="film">Start a film project</button><button data-example="note">Capture a thought</button>`;$('#chat-suggestions').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('#message').value=b.dataset.example==='film'?'Start a film project called The Mountain Within':'Add a note: An idea worth exploring';$('#message').focus();});log.scrollTop=log.scrollHeight;}
 $('#chat-form').onsubmit=e=>{e.preventDefault();const text=$('#message').value.trim();if(!text)return;const w=workspace();if(w.messages.length>100){toast('Start a new demo conversation to continue.');return;}w.messages.push({role:'user',text});let reply={role:'assistant',text:'This is the interface preview, so I can’t reason or run your real OS yet. Try “Start a film project called…” or “Add a note:…”. Those will show how a conversation can update the workspace.'};const match=text.match(/(?:start|create|begin|make)\s+(?:a\s+)?(?:new\s+)?(?:short\s+)?film(?:\s+project)?\s+(?:called|named|titled)\s+(.+)/i),note=text.match(/(?:add|save|capture)\s+(?:a\s+)?(?:note|thought)\s*:\s*(.+)/is);if(match){const title=match[1].replace(/^["“']|["”']$/g,'').trim().slice(0,80);reply={role:'assistant',text:'Here’s a film project we can open alongside this conversation. Apply it to try the flow; this only changes the preview.',proposal:{type:'workspace',title}};}else if(note){reply={role:'assistant',text:`I can place this on ${w.name}. It will stay in this browser preview.`,proposal:{type:'note',title:note[1].trim().slice(0,80),body:note[1].trim()}};}w.messages.push(reply);$('#message').value='';renderChat();save();};
 function applyProposal(index){const source=workspace(),m=source.messages[index];if(!m?.proposal||m.applied)return;m.applied=true;if(m.proposal.type==='workspace'){createWorkspace(m.proposal.title,'film');workspace().messages=[{role:'assistant',text:`${m.proposal.title} is ready in this preview. Start with a note, link, or reference image on its canvas.`}];renderChat();}else{addNote(newPosition(),m.proposal.title,m.proposal.body);renderChat();}save();}
 $('#message').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('#chat-form').requestSubmit();}});
@@ -602,9 +669,56 @@ $('#add-image').onclick=()=>$('#image-input').click();$('#image-input').onchange
 $('#zoom-in').onclick=()=>zoom(.1);$('#zoom-out').onclick=()=>zoom(-.1);$('#zoom-reset').onclick=()=>{const w=workspace(),r=$('#viewport').getBoundingClientRect();if(!w.nodes.length){w.view={x:0,y:0,zoom:1};}else{const minX=Math.min(...w.nodes.map(n=>n.x)),minY=Math.min(...w.nodes.map(n=>n.y)),maxX=Math.max(...w.nodes.map(n=>n.x+($(`[data-node="${n.id}"]`)?.offsetWidth||235))),maxY=Math.max(...w.nodes.map(n=>n.y+($(`[data-node="${n.id}"]`)?.offsetHeight||200))),z=Math.max(.3,Math.min(1,(r.width-70)/(maxX-minX),(r.height-135)/(maxY-minY)));w.view={zoom:z,x:(r.width-(maxX-minX)*z)/2-minX*z,y:35-minY*z};}transform();save();};
 $('#focus').onclick=()=>{document.body.classList.toggle('focus-mode');const on=document.body.classList.contains('focus-mode');$('#focus span').textContent=on?'Exit focus':'Focus';$('#focus').setAttribute('aria-pressed',String(on));};
 $('#theme').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();save();};document.querySelectorAll('[data-area]').forEach(b=>b.onclick=()=>setArea(b.dataset.area));$('.brand').onclick=e=>{e.preventDefault();state.area='personal';selectWorkspace('personal');};$('#create-workspace').onclick=()=>createWorkspaceDialog();$('#dialog-close').onclick=()=>$('#dialog').close();$('#dialog').addEventListener('click',e=>{if(e.target===$('#dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
-$('#new-chat').onclick=()=>{if(!workspace().messages.length){$('#message').focus();return;}openDialog('Clear demo conversation?',`<p>This clears the conversation for ${esc(workspace().name)}. Its canvas stays as it is.</p>`,'Clear conversation',()=>{workspace().messages=[];renderChat();save();});};
+$('#new-chat').setAttribute('aria-label','Create new saved conversation');$('#new-chat').onclick=()=>{if(newConversation()){$('#message').focus();toast('New conversation saved in this browser.');}};
 $('#mobile-chat').onclick=()=>{document.body.classList.toggle('chat-open');const open=document.body.classList.contains('chat-open');$('#mobile-chat span').textContent=open?'Close chat':'Chat';$('#mobile-chat').setAttribute('aria-label',open?'Close chat':'Open chat');$('#mobile-chat svg use').setAttribute('href',open?'#i-close':'#i-chat');$('#mobile-chat').setAttribute('aria-expanded',String(open));if(open)$('#message').focus();};
-function info(){openDialog('Your first working sketch',`<p><strong>Try:</strong> switching areas, opening workspaces, adding and editing notes, linking cards, importing an image, moving around the canvas, focus mode and dark appearance.</p><p>Chat uses clearly labelled sample responses. It can suggest a film workspace or canvas note. Apply the suggestion to try the flow.</p><p>Everything stays in this browser. It is not connected to Gateway, your personal OS or a live AI. 3D camera tools, editing and generation are future work.</p><button type="button" class="text-button" id="export-preview">Export preview data</button><p class="local-state-note">Export includes your preview notes, images and demo conversations. Keep the file private if you add personal material.</p>`,null);$('#export-preview').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='aiverse-design-preview.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Preview data exported.');};}
+
+function downloadPreview(payload,name){
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function exportPreview(){
+  syncBoard(workspace());syncConversation(workspace());
+  downloadPreview({format:"aiverse-dashboard-preview-backup",version:2,design:state,
+    shell:localStorage.getItem("aiverse-personal-shell-preview-v1")},"aiverse-dashboard-preview-backup.json");
+  toast("Preview backup exported. Store it somewhere safe.");
+}
+function importPreview(file){
+  if(!file||file.size>25*1024*1024){toast("Select a JSON backup under 25 MB.");return;}
+  file.text().then(text=>{
+    let parsed;try{parsed=JSON.parse(text);}catch{toast("This is not valid JSON.");return;}
+    const incoming=parsed?.format==="aiverse-dashboard-preview-backup"?parsed.design:parsed;
+    if(!valid(incoming)){toast("Invalid Dashboard preview backup. Nothing changed.");return;}
+    if(parsed?.format==="aiverse-dashboard-preview-backup"&&parsed.version!==2){
+      toast("Unsupported backup version. Nothing changed.");return;
+    }
+    if(!confirm("Replace browser preview data with this backup? Export your current data first. Your actual OS is unaffected."))return;
+    const previousDesign=localStorage.getItem(KEY),previousShell=localStorage.getItem("aiverse-personal-shell-preview-v1");
+    try{
+      localStorage.setItem(KEY,JSON.stringify(incoming));
+      if(parsed?.format==="aiverse-dashboard-preview-backup"&&typeof parsed.shell==="string"){
+        const shell=JSON.parse(parsed.shell);
+        if(!shell||shell.version!==1||!Array.isArray(shell.teams)||!shell.chats||typeof shell.chats!=="object")throw Error("Invalid chat layout");
+        localStorage.setItem("aiverse-personal-shell-preview-v1",parsed.shell);
+      }
+      location.reload();
+    }catch{
+      try{
+        if(previousDesign===null)localStorage.removeItem(KEY);else localStorage.setItem(KEY,previousDesign);
+        if(previousShell===null)localStorage.removeItem("aiverse-personal-shell-preview-v1");else localStorage.setItem("aiverse-personal-shell-preview-v1",previousShell);
+      }catch{}
+      toast("Could not restore this backup. Existing data was kept where possible.");
+    }
+  }).catch(()=>toast("Could not read that backup file."));
+}
+function info(){
+  openDialog("Saving and recovery",`<p>Your notes, canvases, workspaces and preview conversations are saved in this browser only. They are not in the real OS.</p><p><strong>Export a backup</strong> before clearing browser data or switching devices. You can later restore that file to this preview.</p><button type="button" class="text-button" id="export-preview">Export preview backup</button><button type="button" class="text-button" id="import-preview">Restore preview backup</button><input type="file" id="import-preview-file" accept="application/json,.json" hidden><p class="local-state-note">Restoring replaces this browser's preview work. Canvas undo/redo remains available while editing, but does not persist after a restart.</p>`,null);
+  $('#export-preview').onclick=exportPreview;
+  $('#import-preview').onclick=()=>$('#import-preview-file').click();
+  $('#import-preview-file').onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)importPreview(f);};
+}
+window.AIVersePreviewRecovery={export:exportPreview,open:info};
+
 $('#preview-info').onclick=info;$('#about').onclick=info;
 document.addEventListener('keydown',e=>{
   const editing=Boolean(e.target.closest('input,textarea,[contenteditable="true"],[contenteditable="plaintext-only"],[role="textbox"]'));
