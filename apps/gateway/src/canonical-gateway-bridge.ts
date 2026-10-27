@@ -183,7 +183,10 @@ export class CanonicalGatewayBridge {
             throw new GatewayTransportError("INVALID_ENVELOPE");
           const value=await client.preflight(signal);
           return respond(true,{...value,workspaceId:workspace,
-            capabilities:{runCreate:true,runGet:true,events:false,controls:false,
+            runtimeSource:{id:"aiverse",owner:"canonical-gateway",model:"aiverse",
+              runtimeKind:value.runtime,readinessEvidence:"authenticated-status-and-models",
+              inferenceVerified:false},
+            capabilities:{runCreate:true,runGet:true,events:true,controls:false,
               conversationLibrary:false,providerSelection:false},
             source:"canonical-gateway"});
         }
