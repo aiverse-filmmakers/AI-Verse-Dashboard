@@ -393,4 +393,61 @@ test("Visual focus QC: primary and secondary composers have no blue boxes; canva
   assert.equal(errors.length,0,errors.join("\\n"));
 });
 
+
+test("Feature tour: inspect all audited OS capabilities, filter and navigate without claiming a live connection",async t=>{
+  const {page,errors}=await setup(t);
+  await page.locator(".quiet-feature-toggle").click();
+  const explorer=page.locator(".feature-explorer");
+  assert.ok(await explorer.isVisible(),"feature tour opens from top bar");
+  assert.equal(await page.locator(".feature-nav-item").count(),13,"all audited capability examples are discoverable");
+  assert.match(await explorer.innerText(),/design examples, not live data/i);
+  assert.match(await page.locator(".feature-detail h3").innerText(),/Needs attention/);
+  assert.match(await page.locator(".feature-mock-tag").innerText(),/EXAMPLE INTERFACE/);
+  assert.match(await page.locator(".feature-detail-bottom").innerText(),/Preview only/);
+  await page.getByRole("button",{name:"Preview Scheduled work"}).click();
+  assert.match(await page.locator(".feature-detail h3").innerText(),/Scheduled work/);
+  assert.match(await page.locator(".feature-mock-inner").innerText(),/Mac or server running/);
+  await page.locator(".feature-search").fill("cost");
+  assert.ok((await page.locator(".feature-nav-item").count())>=1);
+  await page.locator(".feature-search").fill("absolutely-no-such-feature");
+  assert.match(await page.locator(".feature-no-results").innerText(),/No matches/);
+  assert.equal(await page.locator(".feature-detail").innerText(),"","no fake detail on an empty result");
+  await page.locator(".feature-search").press("Escape");
+  assert.equal(await page.locator(".feature-nav-item").count(),13,"Escape clears query");
+  await page.getByRole("button",{name:"More tools",exact:true}).click();
+  assert.equal(await page.locator(".feature-nav-item").count(),5,"advanced group is filtered");
+  await page.getByRole("button",{name:"Essentials",exact:true}).click();
+  assert.equal(await page.locator(".feature-nav-item").count(),3,"essential group is filtered");
+  await page.locator(".feature-next").click();
+  assert.match(await page.locator(".feature-detail h3").innerText(),/Live activity/);
+  await page.getByRole("button",{name:"All",exact:true}).click();
+  assert.equal(await page.locator(".feature-nav-item").count(),13);
+  assert.equal(errors.length,0,errors.join("\n"));
+});
+
+test("Feature tour neighbors: canvas, chat, app picker, reload, Activity and narrow viewport",async t=>{
+  const {page,errors}=await setup(t);
+  const before=await page.locator("#nodes .canvas-node").count();
+  await page.locator("#message").fill("Keep my draft while I look around");
+  await page.locator(".quiet-feature-toggle").click();
+  assert.ok(await page.locator(".feature-explorer").isVisible());
+  assert.equal(await page.locator("#message").inputValue(),"Keep my draft while I look around");
+  await page.reload();
+  assert.ok(await page.locator(".feature-explorer").isVisible(),"feature view survives reload");
+  await page.locator(".app-picker-toggle").click();
+  await page.getByRole("button",{name:"Open Canvas",exact:true}).click();
+  assert.ok(await page.locator("#viewport").isVisible(),"canvas restored via existing app picker");
+  assert.equal(await page.locator("#nodes .canvas-node").count(),before,"feature explorer does not mutate canvas");
+  await page.locator(".app-picker-toggle").click();
+  await page.getByRole("button",{name:"Open Activity",exact:true}).click();
+  assert.match(await page.locator(".app-empty-card").innerText(),/Nothing running here yet/,"Activity remains truthful");
+  await page.getByRole("button",{name:"Explore planned OS features"}).click();
+  assert.ok(await page.locator(".feature-explorer").isVisible(),"Activity links to discoverable feature tour");
+  await page.setViewportSize({width:760,height:920});
+  assert.ok(await page.locator(".feature-detail").isVisible(),"feature details usable at narrow width");
+  const size=await page.evaluate(()=>({doc:document.documentElement.scrollWidth,win:innerWidth}));
+  assert.ok(size.doc<=size.win+1,"feature tour does not introduce horizontal document overflow");
+  assert.equal(errors.length,0,errors.join("\n"));
+});
+
 test.after(async()=>{await browser.close();await new Promise(resolve=>server.close(resolve));});
