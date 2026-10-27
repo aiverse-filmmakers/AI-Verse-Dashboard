@@ -40,6 +40,7 @@ export class DashboardClient {
   private scope: ClientScope;
   private readonly cache = new Map<string, CacheEntry>();
   private counter = 0;
+  private selectionEpoch = 0;
 
   constructor(
     private readonly gatewayBase: string,
@@ -58,6 +59,7 @@ export class DashboardClient {
   /** Explicit user action retargets the client; never silent. */
   retarget(scope: ClientScope): void {
     this.scope = { ...scope };
+    this.selectionEpoch += 1; // even A→B→A invalidates A's old in-flight result
   }
 
   cacheStats(): { entries: number } {
@@ -98,6 +100,7 @@ export class DashboardClient {
     opts?: QueryOptions,
   ): Promise<{ result: unknown; systemId?: string; observedAt: string }> {
     this.counter += 1;
+    const selectedEpoch = this.selectionEpoch;
     const frame: Record<string, unknown> = {
       type: "req",
       v: PROTOCOL_VERSION,
@@ -137,6 +140,12 @@ export class DashboardClient {
       systemId?: string;
       observedAt: string;
     };
+    if (selectedEpoch !== this.selectionEpoch) {
+      throw Object.assign(new Error("Selection changed during request"), { code: "STALE_SELECTION" });
+    }
+    if (out.systemId !== undefined && out.systemId !== frame.systemId) {
+      throw Object.assign(new Error("Response system does not match selection"), { code: "SYSTEM_MISMATCH" });
+    }
     if (!out.ok) {
       throw Object.assign(new Error(out.error?.message ?? "query failed"), {
         code: out.error?.code ?? "UNKNOWN",
