@@ -320,3 +320,6 @@ body.dark{color-scheme:dark;--bg:#1d1d20;--surface:#262629;--canvas:#212124;--in
 .canvas-viewport .connections .edge-preview{stroke:var(--accent);stroke-width:2.8;stroke-dasharray:7 5;fill:none;pointer-events:none;opacity:.94;filter:drop-shadow(0 0 2px #00000016)}
 .edge-actions{top:15px;left:auto;right:16px;z-index:25}
 .edge-actions button:first-of-type{background:var(--bg);font-weight:550}
+
+/* Selected links show a restrained accent behind the contextual remove action. */
+.canvas-viewport .connections .edge-hit.is-selected + .edge-visual{stroke:var(--accent);stroke-width:2.5;opacity:.96}
