@@ -78,7 +78,7 @@ test("each composer can choose several recipients, organized team first",()=>{
 
 test("each composer has model preference, file labels, and canvas references",()=>{
   assert.match(shared,/shared-model-choice/);
-  assert.match(shared,/\["Auto","Fast","Detailed"\]/);
+  assert.match(shared,/\["Auto","GPT \(demo\)","Claude \(demo\)","Gemini \(demo\)","Local \(demo\)"\]/);
   assert.match(shared,/fileInput\.multiple=true/);
   assert.match(shared,/Files are shown as preview labels only/);
   assert.match(shared,/Attach from canvas/);
