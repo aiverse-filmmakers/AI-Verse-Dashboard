@@ -8,8 +8,7 @@ import { WebSocket } from "ws";
 import { DASHBOARD_WS_PROTOCOL,dashboardWsAuthProtocol,eventSchema } from "../packages/protocol/src/index.js";
 import { SystemRegistry } from "../packages/registry/src/index.js";
 import { DisposableCache } from "../packages/os-read-adapter/src/index.js";
-import { QueryRouter,SubscriptionHub,startGateway } from "../apps/gateway/src/index.js";
-import { CanonicalGatewayBridge } from "../apps/gateway/src/canonical-gateway-bridge.js";
+import { QueryRouter,SubscriptionHub,startGateway,CanonicalGatewayBridge } from "../apps/gateway/src/index.js";
 
 const manifest='schema_version: "2.0"\narchitecture: unified-workspace\n';
 function makeRoot(reg:SystemRegistry,label:string){
