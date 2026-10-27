@@ -611,3 +611,9 @@ blocked. This resolves the routing prerequisite, not the real OS/runtime portion
 of MC1.4. Continue with our bounded owner-runtime qualification and its audit
 record; do not wait for Builderz or count the deterministic host as real-runtime
 acceptance. Dashboard progress is unchanged until fixed MC1.4 acceptance is met.
+
+### 27 October Stage 1 UI checkpoint, no points awarded
+
+Operator requested that the eleven essential experiences be **visible first**, then resume the canonical MC sequence. Draft PR #42 now contains a consolidated Essentials page, browser-local main conversation create/reopen/rename/archive, preview backup/restore, honest provider setup and unknown usage/health states, plus added browser regressions. This is not production runtime acceptance. Latest-head CI/browser/deployment are separate verification gates and must be read before reporting a pass.
+
+**Current execution position remains MC2.1 PENDING**. MC0 and MC1 are complete (15 accepted baseline points). The Personal-first plan amendment must reconcile the MC3/MC5 shell-order change, missing owner contracts, revised future weights and MC2.1 acceptance. Do not start work from MC0 again or award points for visible examples. Next accepted gate after MC2.1 is MC2.2.
