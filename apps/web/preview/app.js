@@ -200,7 +200,7 @@ function drawConnections(){
     const select=e=>{e.preventDefault();e.stopPropagation();selectedEdge=Number(path.dataset.edge);showEdgeActions();};
     path.onclick=select;
     path.ondblclick=e=>{e.preventDefault();e.stopPropagation();selectedEdge=Number(path.dataset.edge);removeSelectedEdge();};
-    path.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){select(e);}else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();selectedEdge=Number(path.dataset.edge);removeSelectedEdge();}};
+    path.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){select(e);}else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopPropagation();selectedEdge=Number(path.dataset.edge);removeSelectedEdge();}};
   });
 }
 function removeSelectedEdge(){
@@ -264,12 +264,12 @@ function startNodeDrag(e,id){
 }
 $('#viewport').addEventListener('pointerdown',e=>{
   // Mouse drag on empty space selects; trackpad two-finger wheel scroll pans.
-  if(![0,1].includes(e.button)||e.target.closest('.canvas-node,button,.inspector,.canvas-toolbar,.selection-actions,.edge-actions'))return;
+  if(![0,1].includes(e.button)||e.target.closest('.canvas-node,button,.inspector,.canvas-toolbar,.selection-actions,.edge-actions,[data-edge]'))return;
   e.preventDefault();
   const viewport=$('#viewport'),r=viewport.getBoundingClientRect();
   viewport.focus({preventScroll:true});
   selectedEdge=null;showEdgeActions();
-  if(e.button===1||spacePanHeld){
+  if(e.button===1||spacePanHeld||e.pointerType==='touch'){
     drag={type:'pan',pointer:e.pointerId,sx:e.clientX,sy:e.clientY,
       x:workspace().view.x,y:workspace().view.y,moved:false};
   }else{
