@@ -485,8 +485,8 @@ test("Functional pages preserve chat, canvas, visibility on reload and narrow la
  await page.locator(".app-picker-toggle").click();
  await page.getByRole("button",{name:"Open Canvases",exact:true}).click();
  assert.ok(await page.locator(".canvas-library-grid").isVisible(),"app picker opens the canvas library");
- await page.locator(".canvas-library-card .canvas-library-open").first().click();
- assert.equal(await page.locator(".canvas-node").count(),before,"canvas unaffected");
+ await page.getByRole("button",{name:"Open Personal canvas",exact:true}).click();
+ assert.equal(await page.locator(".canvas-node").count(),before,"saved canvas unaffected; scratch remains separate");
  await page.locator(".app-picker-toggle").click();
  await page.getByRole("button",{name:"Open Activity",exact:true}).click();
  assert.match(await page.locator(".app-empty-card").innerText(),/Nothing running here yet/);
