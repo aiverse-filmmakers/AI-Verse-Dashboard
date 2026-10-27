@@ -25,10 +25,10 @@
     }
     return null;
   }
-  function mount({form,input,teams,canvasItems,initialRecipients=[],initialModel="Auto",onSubmit,onChange=()=>{},notify}) {
+  function mount({form,input,teams,canvasItems,initialRecipients=[],initialCanvas=[],initialModel="Auto",onSubmit,onChange=()=>{},notify}) {
     if (!form || !input) throw Error("Chat form and textarea are required");
     const getTeams=()=>teams();
-    const state={recipients:[],files:[],canvas:[],model:initialModel,stage:null,mention:null};
+    const state={recipients:[],files:[],canvas:initialCanvas.filter(r=>r&&typeof r.workspaceId==="string"&&typeof r.id==="string"&&typeof r.title==="string").slice(0,80),model:initialModel,stage:null,mention:null};
     function addKey(key) {
       const recipient=recipientByKey(getTeams(),key);
       if (!recipient) return notify("That team or assistant is unavailable.");
