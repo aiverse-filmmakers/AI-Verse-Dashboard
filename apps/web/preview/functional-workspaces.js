@@ -5,6 +5,7 @@
 (() => {
 "use strict";
 const NAV=[
+["essentials","Essentials","Start here"],
 ["attention","Needs attention","Operations"],["activity","Activity","Operations"],["team","AI team","Operations"],
 ["goals","Goals","Operations"],["schedule","Scheduled work","Operations"],
 ["chat","Conversations","Workspace"],["skills","Skills","Workspace"],["memory","Knowledge","Workspace"],
@@ -68,7 +69,7 @@ connections:[
 {id:"C-4",name:"OpenRouter",type:"Model provider",status:"Disconnected",permission:"None",detail:"No model subscription or credit access is represented here."}]
 };
 const copy=()=>JSON.parse(JSON.stringify(seed));
-let data=copy(),root=null,page="attention",active=null,mode="all",term="",period="7",flash="";
+let data=copy(),root=null,page="essentials",active=null,mode="all",term="",period="7",flash="";
 const h=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e};
 const add=(p,...xs)=>{xs.forEach(x=>x&&p.append(x));return p};
 const b=(txt,fn,cls="os-btn")=>{const e=h("button",cls,txt);e.type="button";e.addEventListener("click",fn);return e};
@@ -172,12 +173,42 @@ function schedule(main){
  const c=data.schedules.find(x=>x.id===active);if(c)main.append(add(card(c.name+" · wake receipts"),row("Target",c.target),row("Last wake",c.last),row("Cadence",c.freq),b("Simulate run now",()=>change(()=>c.last="Just now · Example completed","Only the sample receipt changed."),"os-btn wide")));
  main.append(meta("Automations only wakes a running service. Mac sleep or shutdown can delay scheduled work."));
 }
+
 function chat(main){
- const sessions=[["Personal · Main conversation","Open","Today 12:38"],["Film studio / Producer","Open","Today 11:54"],["India campaign","Paused","Yesterday"]];
- const left=card("Sessions"),right=card("Conversation inspector");
- sessions.forEach((s,i)=>left.append(b(s[0]+"   ·   "+s[2],()=>setActive(String(i)),"os-session"+(active===String(i)?" selected":""))));
- right.append(h("h4","os-detail-title",sessions[Number(active)||0][0]),row("Runtime","Gateway / authenticated host"),row("Run lifecycle","Stream, stop, approve, recover"),row("Active workspace","Bound to selected system"));
- const transcript=h("div","os-transcript");transcript.append(add(h("div","os-bubble user"),meta("YOU"),h("p","","Prepare a shot list from these scene notes.")),add(h("div","os-bubble"),meta("AI-VERSE · EXAMPLE"),h("p","","I would read the permitted notes, produce a shot breakdown and request approval before any external delivery.")));right.append(transcript,meta("This is an example transcript. Your existing Chat pane remains alongside these pages."));
+ const store=window.AIVersePreviewConversations;
+ main.append(add(h("div","os-toolbar"),sec("Saved conversations","This workspace · browser-local, not Gateway history"),
+   b("+ New conversation",()=>{if(store?.create()){window.AIVerseShowMainChat?.();active=null;render();tell("A new browser-local conversation is ready.");}},"os-btn primary")));
+ if(!store){main.append(add(card("Not ready"),h("p","os-copy","Conversation storage has not loaded.")));return;}
+ const library=store.list();
+ main.append(tabs([["all","Current"],["archived","Archived"]]));
+ const shown=library.items.filter(c=>mode==="archived"?c.archived:!c.archived)
+  .sort((a,b)=>b.updatedAt-a.updatedAt);
+ const left=card("Conversations in "+library.workspaceName);
+ if(!shown.length)left.append(h("p","os-copy",mode==="archived"?"No archived conversations.":"No conversations yet. Create one to get started."));
+ for(const c of shown){
+   const btn=b("",()=>{active=c.id;render()},"os-session"+(active===c.id?" selected":""));
+   btn.append(add(h("div","os-row-top"),h("strong","",c.title),c.id===library.activeId?tag("Open"):null),
+     meta(c.count+" messages · "+new Date(c.updatedAt).toLocaleString()),h("p","os-copy",c.preview));
+   left.append(btn);
+ }
+ const selected=shown.find(c=>c.id===active)||shown[0];
+ const right=card("Conversation details");
+ if(selected){
+   right.append(h("h4","os-detail-title",selected.title),
+     row("Location",library.workspaceName),row("Messages",selected.count),
+     row("Storage","This browser only"),row("Status",selected.archived?"Archived":selected.id===library.activeId?"Open":"Saved"));
+   const actions=[];
+   if(selected.archived)actions.push(["Restore",()=>{store.archive(selected.id,false);active=selected.id;render();}]);
+   else {
+     actions.push(["Open in chat",()=>{store.open(selected.id);window.AIVerseShowMainChat?.();render();}]);
+     actions.push(["Rename",()=>form("Rename conversation",[{label:"Name",value:selected.title}],([title])=>{
+       if(store.rename(selected.id,title)){active=selected.id;render();}else tell("Enter a valid name.");
+     })]);
+     actions.push(["Archive",()=>{store.archive(selected.id,true);active=null;render();}]);
+   }
+   right.append(controls(actions));
+   right.append(meta("Archiving hides the conversation from Current. It does not delete its messages."));
+ }
  main.append(split(left,right));
 }
 function skills(main){
@@ -213,36 +244,86 @@ function results(main){
  visible.forEach(o=>{const el=b("",()=>setActive(o.id),"os-file-card");el.append(h("div","os-file-icon",o.type==="Image"?"▧":o.type==="Table"?"▦":"▤"),h("strong","",o.name),meta(o.project+" · "+o.version),add(h("div","os-file-bottom"),tag(o.type),tag(o.status)));cards.append(el)});main.append(cards);
  const c=data.outputs.find(x=>x.id===active)||visible[0];if(c)main.append(add(card("Selected output"),h("h4","os-detail-title",c.name),h("div","os-file-preview",c.type==="Image"?"Asset preview requires a file source":c.type+" · Example preview"),h("p","os-copy",c.detail),row("Workspace",c.project),row("Status",c.status),row("Version",c.version),meta("Real content/download requires an authorized artifact route.")));
 }
+
 function usage(main){
- main.append(add(h("div","os-toolbar"),sec("Usage history","Cost truth belongs to Token"),add(h("div","os-tabs"),b("7 days",()=>{period="7";render()},"os-tab"+(period==="7"?" selected":"")),b("30 days",()=>{period="30";render()},"os-tab"+(period==="30"?" selected":"")))));
- const series=period==="7"?[["Mon",18,3.8],["Tue",25,5.2],["Wed",32,7.6],["Thu",14,2.8],["Fri",39,9.4],["Sat",18,4.2],["Sun",29,6.0]]:[["W1",117,26.4],["W2",138,34.8],["W3",164,41.1],["W4",124,30.9]];
- const count=series.reduce((a,x)=>a+x[1],0),cost=series.reduce((a,x)=>a+x[2],0);
- main.append(stats([[(count*1000).toLocaleString("en-GB"),"Tokens · example"],["£"+cost.toFixed(2),"Illustrative spend"],["3","Runtime sources"],["UNKNOWN","Unpriced evidence"]]));
- const plot=card("Token usage"),bars=h("div","os-bars"),max=Math.max(...series.map(x=>x[1]));
- series.forEach(x=>{const track=h("div","os-bar-track"),fill=h("div","os-bar-fill");fill.style.height=Math.round(100*x[1]/max)+"%";fill.title=x[0]+": "+(x[1]*1000).toLocaleString("en-GB")+" tokens";track.append(fill);bars.append(add(h("div","os-bar-col"),track,meta(x[0])))});plot.append(bars);
- const detail=card("Attribution");detail.append(grid(["Source","Usage","Cost evidence"],[["Codex","48%","Calculated"],["Claude Code","32%","Actual"],["Local AI","20%","Unknown"]]),meta("UNKNOWN is not zero; unpriced costs are never silently counted as free."));
- main.append(split(plot,detail));main.append(add(card("Execution costs"),grid(["Run","Workspace","Cost confidence"],data.runs.map(x=>[x.name,x.workspace,tag(x.status==="Running"?"Unknown":"Calculated")]))));
+ main.append(add(card("Actual usage is not connected"),
+   h("h4","os-detail-title","No verified token or cost records"),
+   h("p","os-copy","Dashboard has no authenticated Token read connection in this preview. Current spend, remaining credits and token counts are unknown, not zero."),
+   row("Tokens","Unknown"),row("Cost","Unknown"),row("Attribution","Not available"),
+   meta("When connected, usage will come from the existing Token owner with verified source and pricing evidence.")));
 }
 function health(main){
- const services=[["OS Core","Ready","Workspace structure and permissions"],["Gateway","Needs connection","No private runtime on this public page"],["Brain","Configured","Goal and cognition owner"],["Automations","Offline","Scheduler process must be running"],["Multiple Bots","Available","Work and approvals owner"],["Token","Not attached","Usage projections need local authority"],["Skills","Installed","Runtime readiness is separate"]];
- main.append(stats([[services.length,"Component checks"],["0","Live private checks"],["Local host","Required"]]));
- const left=card("Service status");services.forEach(s=>left.append(add(b("",()=>setActive(s[0]),"os-health-row"+(active===s[0]?" selected":"")),add(h("span"),h("strong","",s[0]),meta(s[2])),tag(s[1]))));
- const s=services.find(s=>s[0]===active)||services[0],right=card("Doctor details");right.append(h("h4","os-detail-title",s[0]),h("p","os-copy",s[2]),row("Preview status",s[1]),row("Source","Example readiness model"),row("Action","Owner doctor via local host"),b("Explain checks",()=>tell("No live check was run. This page will use the existing owner's status/doctor when connected."),"os-btn wide"));main.append(split(left,right));
+ const components=["OS Core","Gateway","Connections","Token","Memory","Skills","Automations","Multiple Bots"];
+ main.append(add(card("Connection diagnostics"),h("h4","os-detail-title","Live health has not been checked"),
+   h("p","os-copy","This public preview does not inspect your private AI-Verse services. A working interface must read their canonical health endpoints from an authenticated local host."),
+   row("Overall state","Unknown"),row("Last check","Never"),row("Problems","Unavailable until connected")));
+ main.append(grid(["Component","Verified status"],components.map(c=>[c,"Not checked"])));
 }
 function connections(main){
- const left=card("External tools and channels");data.connections.forEach(c=>left.append(add(b("",()=>setActive(c.id),"os-connection-row"+(active===c.id?" selected":"")),h("span","os-connection-mark",c.name.slice(0,1)),add(h("span","os-connection-copy"),h("strong","",c.name),meta(c.type)),tag(c.status))));
- const c=data.connections.find(x=>x.id===active)||data.connections[0],right=card("Connection and permissions");right.append(h("h4","os-detail-title",c.name),h("p","os-copy",c.detail),row("Example status",c.status),row("Authority",c.permission),sec("Security boundary"),meta("A configured connection does not imply that the current assistant may read, write or execute. Grants stay with Connections and the relevant owner."),b("Inspect authorization rules",()=>tell("This is a sample security page. No permission was granted."),"os-btn wide"));main.append(split(left,right));
+ const providers=[
+  {id:"chatgpt",name:"ChatGPT",type:"AI assistant",how:"A supported local host sign-in must complete validation and secure storage before models can be used.",auth:"Host-only delegated authorization (not implemented)"},
+  {id:"openrouter",name:"OpenRouter",type:"AI assistant",how:"The local host needs a verified account authorization and provider-runtime connection.",auth:"Host-only PKCE flow (not implemented)"},
+  {id:"kie",name:"KIE.ai",type:"Creative tools",how:"A secure local key entry and credential-owner validation are required. Never paste a key into preview chat.",auth:"Local credential owner (not implemented)"}
+ ];
+ main.append(add(card("Connect AI"),h("h4","os-detail-title","No provider connected"),
+  h("p","os-copy","Choose a provider to see what its secure setup will require. This page never requests credentials or pretends that a provider is connected."),
+  row("Connection status","Not connected"),row("Available real models","None verified")));
+ const left=card("Available setup paths");
+ providers.forEach(p=>{const btn=b("",()=>{active=p.id;render()},"os-connection-row"+(active===p.id?" selected":""));
+   btn.append(h("span","os-connection-mark",p.name.slice(0,1)),
+     add(h("span","os-connection-copy"),h("strong","",p.name),meta(p.type)),tag("Not connected"));left.append(btn)});
+ const p=providers.find(x=>x.id===active)||providers[0],right=card("Connection setup");
+ right.append(h("h4","os-detail-title",p.name),h("p","os-copy",p.how),
+   row("Method",p.auth),row("Truthful status","Not connected"),
+   h("p","os-copy","The trusted-host exchange, validation, permissions and logout route must be connected before enabling sign-in here."));
+ const disabled=b("Connect "+p.name,()=>{},"os-btn wide");disabled.disabled=true;disabled.title="Secure host connection is not available in this static preview";
+ right.append(disabled,meta("Not available in the public design preview. No credentials were entered or stored."));
+ main.append(split(left,right));
 }
-const views={attention,activity,team,goals,schedule,chat,skills,memory,data:dataPage,results,usage,health,connections};
-const descriptions={attention:"Approvals and actions requiring your decision",activity:"Real executions, results and recovery",team:"Your working AI assistants and Tasks",goals:"Priorities, milestones and verified progress",schedule:"Calendar, automation triggers and heartbeat",chat:"Gateway sessions and run controls",skills:"Reusable capabilities and learning review",memory:"Evidence-backed historical knowledge",data:"A real table-shaped production workspace",results:"Files, deliverables and receipts",usage:"Cost analytics and model attribution",health:"OS service status and diagnosis",connections:"Providers, tools and permissions"};
+
+function essentials(main){
+ const openPanel=target=>{if(target==="recovery")return window.AIVersePreviewRecovery?.open();
+   if(target==="workspace")return document.querySelector("#create-workspace")?.click();
+   if(["canvas","notes","assets"].includes(target))return window.AIVerseOpenPreviewApp?.(target);
+   page=target;active=null;mode="all";term="";render();};
+ const items=[
+  ["Clean Personal interface","canvas","Working locally","Chat, workspace switcher and current canvas"],
+  ["Contextual AI chat","chat","UI ready, AI not connected","Scoped canvas chips, agent picker and demo conversation"],
+  ["AI connection","connections","Needs secure host","Real provider setup and status, no fake connection"],
+  ["Saved conversations","chat","Working locally","Create, reopen, rename and archive browser-preview chats"],
+  ["Workspaces","workspace","Working locally","Create and switch spaces in this browser"],
+  ["Files and notes","notes","Partial","Edit canvas notes; real chat file uploads need their owner"],
+  ["Memory and Skills","memory","Sample views only","Browse the planned search UI; no Core queries yet"],
+  ["Agent app control","attention","Needs Gateway","Approvals and scoped actions require authenticated execution"],
+  ["Live activity and Stop","activity","Needs Gateway","Examples are separate from real run events and Stop"],
+  ["Usage and health","usage","No live data yet","Unknown until Token and diagnostic owners connect"],
+  ["Saving and recovery","recovery","Working locally","Export, import and undo browser preview changes"]
+ ];
+ main.append(add(card("Start with what works"),
+  h("h4","os-detail-title","Your 11 essentials, in one place"),
+  h("p","os-copy","Open any area below. Features backed by this browser work today; private OS capabilities show their real connection state until authenticated routes are available.")));
+ const gridEl=h("div","os-essentials");
+ items.forEach(([name,target,status,summary],i)=>{
+   const entry=card("");
+   entry.classList.add("os-essential");
+   entry.append(meta(String(i+1).padStart(2,"0")),h("h4","",name),h("p","os-copy",summary),tag(status),
+    b(target==="recovery"?"Backup or restore":target==="workspace"?"Create workspace":"Open",()=>openPanel(target),"os-btn"));
+   gridEl.append(entry);
+ });
+ main.append(gridEl);
+ main.append(add(card("Connection boundary"),h("p","os-copy",
+  "This is a local design preview. It cannot send messages to a model, stop live jobs, read private memory, inspect providers or report spend. Those operations must be connected through the existing Gateway and canonical owners.")));
+}
+const views={essentials,attention,activity,team,goals,schedule,chat,skills,memory,data:dataPage,results,usage,health,connections};
+const descriptions={essentials:"Eleven essentials · visible now, connected progressively",attention:"Approvals and actions requiring your decision",activity:"Real executions, results and recovery",team:"Your working AI assistants and Tasks",goals:"Priorities, milestones and verified progress",schedule:"Calendar, automation triggers and heartbeat",chat:"Gateway sessions and run controls",skills:"Reusable capabilities and learning review",memory:"Evidence-backed historical knowledge",data:"A real table-shaped production workspace",results:"Files, deliverables and receipts",usage:"Cost analytics and model attribution",health:"OS service status and diagnosis",connections:"Providers, tools and permissions"};
 function render(){
  if(!root)return;root.replaceChildren();const shell=h("div","os-real-shell"),sidebar=h("aside","os-real-sidebar");sidebar.append(h("div","os-sidebar-heading","YOUR WORKSPACE"));
  let last="";NAV.forEach(([id,name,group])=>{if(group!==last){last=group;sidebar.append(h("div","os-nav-group",group.toUpperCase()))}const button=b("",()=>{page=id;active=null;mode="all";term="";render()},"feature-nav-item os-nav-item"+(page===id?" current":""));button.setAttribute("aria-current",page===id?"page":"false");button.setAttribute("aria-label","Open "+name+" page");button.append(h("span","os-nav-indicator",""),h("strong","",name));sidebar.append(button)});
- const content=h("section","os-real-content"),top=h("div","os-real-header"),name=NAV.find(x=>x[0]===page)?.[1]||"Personal";top.append(add(h("div"),meta("PERSONAL  /  "+name.toUpperCase()),h("h2","",name),h("p","",descriptions[page])),add(h("div","os-header-actions"),b("Reset sample",()=>{data=copy();active=null;mode="all";render();tell("Sample records restored. No real OS changes.")}),tag("Design preview")));content.append(top);
- content.append(add(h("div","os-source"),h("span","os-source-dot",""),h("span","","Functional sample workspace · Data is illustrative · Your OS is not connected")));
+ const content=h("section","os-real-content"),top=h("div","os-real-header"),name=NAV.find(x=>x[0]===page)?.[1]||"Personal";top.append(add(h("div"),meta("PERSONAL  /  "+name.toUpperCase()),h("h2","",name),h("p","",descriptions[page])),add(h("div","os-header-actions"),...(["essentials","chat","connections","usage","health"].includes(page)?[]:[b("Reset sample",()=>{data=copy();active=null;mode="all";render();tell("Sample records restored. No real OS changes.")})]),tag("Design preview")));content.append(top);
+ content.append(add(h("div","os-source"),h("span","os-source-dot",""),h("span","","Design preview only · Real OS and AI provider not connected · Local work saves in this browser")));
  const toast=h("div","os-toast",flash);toast.hidden=true;content.append(toast);flash="";
  const body=h("div","os-page");views[page](body);content.append(body);shell.append(sidebar,content);root.append(shell);
 }
-function mount(node){root=node;page="attention";active=null;mode="all";term="";render()}
+function mount(node){root=node;page="essentials";active=null;mode="all";term="";render()}
 window.AIVerseFunctionalWorkspace={mount,features:NAV.map(x=>({id:x[0],name:x[1]})),page:()=>page};
 })();
