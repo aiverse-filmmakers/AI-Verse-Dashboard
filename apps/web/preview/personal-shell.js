@@ -201,9 +201,9 @@
     if (data.panes >= 2) return notify("Three chat panes are already open.");
     data.panes++;save();renderPanes();
   }, "split");
-  const headerActions = make("div", "chat-heading-actions");
-  mainChatHeading.append(headerActions);
-  headerActions.append(split, $("#new-chat"));
+  const chatHeadingActions = make("div", "chat-heading-actions");
+  mainChatHeading.append(chatHeadingActions);
+  chatHeadingActions.append(split, $("#new-chat"));
   function renderPanes() {
     secondaryHost.replaceChildren();
     document.body.classList.toggle("with-parallel-chats", data.panes > 0);
