@@ -350,4 +350,47 @@ test("Every chat operates its @ multi-recipient picker, model, file, suggestions
   assert.equal(errors.length,0,errors.join("\n"));
 });
 
+test("Visual focus QC: primary and secondary composers have no blue boxes; canvas feedback stays quiet",async t=>{
+  const {page,errors}=await setup(t);
+  const composerAppearance=async field=>field.evaluate(el=>{
+    const style=getComputedStyle(el);
+    return {outline:style.outlineStyle,border:style.borderTopStyle,resize:style.resize,background:style.backgroundColor};
+  });
+  const primary=page.locator("#message");
+  await primary.focus();
+  const mainLook=await composerAppearance(primary);
+  assert.equal(mainLook.outline,"none","main composer is not wrapped in a focus square");
+  assert.equal(mainLook.border,"none","main composer has no native textarea border");
+  assert.equal(mainLook.resize,"none","main composer has no native resize triangle");
+
+  await page.locator(".chat-heading-actions .split-chat-action").first().click();
+  const other=page.locator(".secondary-chat-pane textarea").first();
+  await other.focus();
+  const secondLook=await composerAppearance(other);
+  assert.deepEqual(secondLook,mainLook,"secondary chat shares the same unobtrusive textarea styling");
+
+  await page.locator("#viewport").focus();
+  const viewportOutline=await page.locator("#viewport").evaluate(el=>getComputedStyle(el).outlineStyle);
+  assert.equal(viewportOutline,"none","focused canvas has no blue browser-style frame");
+  await page.locator('[data-node="welcome"] .node-handle').click();
+  const selected=page.locator('[data-node="welcome"]');
+  assert.ok(await selected.evaluate(el=>el.classList.contains("selected")),"canvas selection still works");
+  const nodeColor=await selected.evaluate(el=>getComputedStyle(el).outlineColor);
+  const accent=await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue("--accent").trim());
+  assert.equal(nodeColor.toLowerCase(),"rgb(189, 84, 41)","selected note uses the existing restrained accent, not blue");
+  assert.equal(accent,"#bd5429");
+
+  const v=await page.locator("#viewport").boundingBox();
+  await page.mouse.move(v.x+8,v.y+8);
+  await page.mouse.down();
+  await page.mouse.move(v.x+95,v.y+82,{steps:10});
+  const selection=page.locator("#selection-rectangle");
+  assert.ok(await selection.isVisible(),"drag multiselect still gives temporary feedback");
+  const marqueeBorder=await selection.evaluate(el=>getComputedStyle(el).borderTopColor);
+  assert.notEqual(marqueeBorder,"rgb(103, 151, 223)","selection rectangle is not blue");
+  await page.mouse.up();
+  assert.ok(!(await selection.isVisible()),"temporary selection feedback clears on release");
+  assert.equal(errors.length,0,errors.join("\\n"));
+});
+
 test.after(async()=>{await browser.close();await new Promise(resolve=>server.close(resolve));});
