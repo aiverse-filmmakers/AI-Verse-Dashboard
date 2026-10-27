@@ -63,11 +63,11 @@
     const model=make("select","shared-model-choice");
     model.title="Model preference · preview only, no real model connected";
     model.setAttribute("aria-label","Model preference (design preview)");
-    for (const name of ["Auto","Fast","Detailed"]) {
+    for (const name of ["Auto","GPT (demo)","Claude (demo)","Gemini (demo)","Local (demo)"]) {
       const option=make("option","",name);
       option.value=name;model.append(option);
     }
-    if (["Auto","Fast","Detailed"].includes(state.model)) model.value=state.model;
+    if (["Auto","GPT (demo)","Claude (demo)","Gemini (demo)","Local (demo)"].includes(state.model)) model.value=state.model;
     model.addEventListener("change",()=>{state.model=model.value;onChange(metadata());});
     toolbar.append(at,file,board,model);
     if (send) footer.insertBefore(toolbar,send);else footer.append(toolbar);
