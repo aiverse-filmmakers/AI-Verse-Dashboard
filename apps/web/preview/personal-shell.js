@@ -768,6 +768,16 @@
   document.addEventListener("keydown",event=>{
     if(event.key==="Escape") {showTeams(false);appMenu.hidden=true;appToggle.setAttribute("aria-expanded","false");}
   });
+  // Small internal navigation hooks for the Stage 1 essential workflows.
+  // They change the existing preview UI only, never send owner/agent requests.
+  window.AIVerseOpenPreviewApp=app=>{
+    if(!["canvas","canvas-library","notes","assets","activity","features"].includes(app))return false;
+    data.app=app;save();renderAppSurface();return true;
+  };
+  window.AIVerseShowMainChat=()=>{
+    data.mainVisible=true;data.minimizedChat=null;lastActiveChat="main";
+    persistLayout();renderPanes();$("#message")?.focus();
+  };
   // Re-render the optional note/reference list when the current canvas is edited or workspace changes.
   const nodes=$("#nodes");
   new MutationObserver(()=>{if(["notes","assets","canvas-library"].includes(data.app))renderAppSurface();}).observe(nodes,{childList:true});
