@@ -19,14 +19,14 @@
       { id: "c2", name: "Writer", role: "Scripts and copy" }
     ] }
   ];
-  const blank = () => ({ version: 1, teams: demoTeams(), activeTeam: "personal", panes: 0, chats: {}, app: "canvas" });
+  const blank = () => ({ version: 1, teams: demoTeams(), activeTeam: "personal", panes: 0, chats: {}, app: "canvas-library" });
   const valid = s => s && s.version === 1 && Array.isArray(s.teams) && s.teams.length > 0 && s.teams.length <= 20 &&
     s.teams.every(t => typeof t.id === "string" && typeof t.name === "string" && t.name.length <= 65 &&
       Array.isArray(t.members) && t.members.length <= 20 &&
       t.members.every(m => typeof m.id === "string" && typeof m.name === "string" && typeof m.role === "string")) &&
     s.teams.some(t => t.id === s.activeTeam) &&
     Number.isInteger(s.panes) && s.panes >= 0 && s.panes <= 2 &&
-    ["canvas","notes","assets","activity","features"].includes(s.app) &&
+    ["canvas","canvas-library","notes","assets","activity","features"].includes(s.app) &&
     s.chats && typeof s.chats === "object";
   let data = blank();
   try { const restored = JSON.parse(localStorage.getItem(key)); if (valid(restored)) data = restored; } catch {}
@@ -36,6 +36,8 @@
   data.paneModels = data.paneModels && typeof data.paneModels === "object" ? data.paneModels : {};
   data.mainRecipients = Array.isArray(data.mainRecipients) ? data.mainRecipients : [];
   data.mainDraft = typeof data.mainDraft === "string" ? data.mainDraft.slice(0,1200) : "";
+  // Existing boards are preserved while their owner opens the canvas library.
+  if (data.app === "canvas") data.app = "canvas-library";
   data.paneDrafts = data.paneDrafts && typeof data.paneDrafts==="object" ? data.paneDrafts : {};
   data.paneCanvasRefs = data.paneCanvasRefs && typeof data.paneCanvasRefs==="object" ? data.paneCanvasRefs : {};
   data.mainCanvasRefs = Array.isArray(data.mainCanvasRefs) ? data.mainCanvasRefs : [];
@@ -553,7 +555,7 @@
   /* Existing canvas stays the default application panel, new surfaces are selected on demand. */
   const board = $(".board-section");
   const headerActions = $(".board-header-actions");
-  const appToggle = button("app-picker-toggle", "Choose workspace app", toggleApps, "layers", "Canvas");
+  const appToggle = button("app-picker-toggle", "Choose workspace app", toggleApps, "layers", "Canvases");
   appToggle.setAttribute("aria-expanded","false");
   const appMenu = make("div","app-picker-menu");
   appMenu.hidden = true;
@@ -564,11 +566,10 @@
   const appSurface = make("div","personal-app-surface");
   appSurface.hidden = true;
   board.append(appSurface);
-  const available = [{id:"canvas",label:"Canvas",summary:"Your spatial workspace"},
+  const available = [{id:"canvas-library",label:"Canvases",summary:"Create, open and manage your boards"},
     {id:"notes",label:"Notes",summary:"Words and ideas in one place"},
     {id:"assets",label:"References",summary:"Images and visual ideas"},
-    {id:"activity",label:"Activity",summary:"Preview of future run controls"},
-    {id:"features",label:"Explore features",summary:"Discover what your AI-Verse OS can do"}];
+    {id:"activity",label:"Activity",summary:"Preview of future run controls"}];
   function toggleApps() { appMenu.hidden=!appMenu.hidden;appToggle.setAttribute("aria-expanded",String(!appMenu.hidden));if(!appMenu.hidden)renderAppMenu(); }
   function renderAppMenu() {
     appMenu.replaceChildren();
@@ -599,13 +600,14 @@
     el?.click();el?.focus();
   }
   function renderAppSurface() {
-    appToggle.lastElementChild.textContent=available.find(x=>x.id===data.app)?.label||"Canvas";
+    appToggle.lastElementChild.textContent=(data.app==="canvas"||data.app==="features")?"Canvases":available.find(x=>x.id===data.app)?.label||"Canvases";
     const isCanvas=data.app==="canvas";
     viewport.hidden=!isCanvas;
     appSurface.hidden=isCanvas;
     if (isCanvas) { window.dispatchEvent(new Event("resize")); return; }
     appSurface.replaceChildren();
     featuresButton.setAttribute("aria-current",data.app==="features"?"page":"false");
+    if(data.app==="canvas-library"){renderCanvasLibrary();return;}
     if(data.app==="features"){
       if(window.AIVerseFunctionalWorkspace)window.AIVerseFunctionalWorkspace.mount(appSurface);
       else appSurface.append(make("p","app-surface-disclaimer","The feature tour is not available in this preview."));
@@ -646,6 +648,6 @@
   });
   // Re-render the optional note/reference list when the current canvas is edited or workspace changes.
   const nodes=$("#nodes");
-  new MutationObserver(()=>{if(data.app==="notes"||data.app==="assets")renderAppSurface();}).observe(nodes,{childList:true});
+  new MutationObserver(()=>{if(["notes","assets","canvas-library"].includes(data.app))renderAppSurface();}).observe(nodes,{childList:true});
   renderPanes();renderAppSurface();window.AIVerseCanvasRetarget?.();
 })();
