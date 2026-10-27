@@ -124,3 +124,23 @@ Operator review of three side-by-side preview chats established a parity require
 - Existing 3-pane limit is only a layout-demo constraint and not the product's permanent chat concurrency policy.
 
 This is design implementation and review evidence only; not accepted real runtime, agent team coordination, file processing, model selection or persistence.
+
+
+## Agentic canvas review checkpoint — 27 October 2026 (latest)
+
+Research input: [Canvas and AI Creation Research](../../../docs/CANVAS-AGENTIC-CREATION-RESEARCH-2026-10-27.md). This checkpoint implements static browser design interactions only, not vendor integrations or accepted owner-backed roadmap work. It **supersedes earlier instructions to manually attach canvas items from a chat composer**.
+
+### Confirmed product behavior
+
+- **Canvas selection automatically feeds the last-active chat**, rather than a global main chat or a dedicated Attach-from-canvas picker. One or more clicked/selected cards become removable scoped chips in the last conversation the user interacted with; duplicate clicks do not duplicate chips. Changing the viewed workspace clears old-workspace pending chip context instead of silently carrying it across scopes.
+- **Every chat panel can close, including the originally permanent main pane.** The remaining pane(s) stay open and expand into available room, and a small top-bar chat control can reopen a chat even when all panels are closed. The main pane retains its sample content while hidden; this is a reversible UI state, not canonical deletion.
+- **Direct card editing:** click a title or note text, type, Enter or blur to save, Escape to cancel. F2 focuses title editing from the keyboard. Drag from the card body/grip instead of editable text. A small contextual card row provides Connect, Duplicate and Delete. The connector nub creates a linked note on click or links cards by dragging; existing lines are selectable and removable.
+- **Multiselect and bulk actions:** Shift/Cmd/Ctrl-click, Shift-drag rectangle, move selected cards together, align, group, duplicate, delete. Groups move together; Undo and Redo cover reversible card/link edits (Cmd/Ctrl+Z, Shift+Cmd/Ctrl+Z or Ctrl+Y).
+- **Creation planning:** one compact Create button supports text/image/video/audio ideas, prompt and selected canvas references. Defaults to **Choose for me**, with an optional demo-model picker and Auto/Landscape/Portrait/Square shape choices only for visual formats. Creates editable, connected **demo draft** nodes retaining prompt, settings and reference IDs. Variations duplicate the draft without destroying the previous card. No provider, real model, generation job, spend, approval bypass or inferred price is implied.
+- **Progressive disclosure:** contextual tools appear on selection/hover, creation details are behind More choices, and the original white, Apple-like layout is preserved. Existing two-key browser-local sample state remains disposable, with no new shadow data owner.
+
+### Deferred / acceptance boundary
+
+The real Canvas must use canonical asset/workspace authority, typed actions, revisions, undo consistency and scoped agent context before any agent manipulates it. Image/video/audio jobs need admitted provider capabilities, job state, cost receipts and explicit paid-action approval. Team chat requires Gateway and Multiple Bots/Rooms/Threads authorization. The static preview's demo model names are never an availability claim.
+
+**Review checklist:** Close the first chat with another pane open; select a canvas card and confirm its chip lands in the last chat used; remove a chip; multiselect and group cards; edit a note inline; drag between connector handles; unlink and undo; open Create and add a text/image/video/audio **demo draft**, then reload without losing the sample. Test focus and mobile layout separately. Source checks do not substitute for browser acceptance.
