@@ -62,7 +62,7 @@ test("all chat panes use the same standard visual structure and composer",()=>{
 });
 
 test("each composer can choose several recipients, organized team first",()=>{
-  assert.match(shared,/const state=\{recipients:\[\],files:\[\],canvas:\[\]/);
+  assert.match(shared,/const state=\{recipients:\[\],files:\[\],canvas:initialCanvas\.filter/);
   assert.match(shared,/state\.recipients\.push\(key\)/);
   assert.match(shared,/state\.recipients\.includes\(key\)/);
   assert.match(shared,/state\.recipients\.length >= 12/);
