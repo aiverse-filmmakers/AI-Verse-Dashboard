@@ -107,7 +107,8 @@ export async function startGateway(
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
       if(cookieAuthorized && !bearerAuthorized)opts?.localApp?.trackBrowserSocket(ws);
-      void handleSocket(ws, systemId, router, hub, opts?.canonicalBridge);
+      void handleSocket(ws, systemId, router, hub, opts?.canonicalBridge,
+        cookieAuthorized && !bearerAuthorized ? opts?.localApp : undefined);
     });
   });
 
@@ -232,6 +233,7 @@ function handleSocket(
   router: QueryRouter,
   hub: SubscriptionHub,
   canonicalBridge?: CanonicalGatewayBridge,
+  localApp?: LocalApplicationSession,
 ): void {
   let canonicalCancel: (()=>void)|undefined;
   let canonicalEpoch=0;
@@ -247,6 +249,18 @@ function handleSocket(
       return;
     }
     const tagged = (frame as { type?: string }).type;
+    // Cookie-authorized browser sockets are limited to scoped canonical run
+    // subscriptions. They never gain the general read/command WS surface.
+    if(localApp && (tagged!=="gateway-run-subscribe" && tagged!=="gateway-run-unsubscribe"
+      || (tagged==="gateway-run-subscribe"
+        && (!frame || typeof frame!=="object" || Array.isArray(frame)
+          || !localApp.isAllowedFrame({...frame,method:"aiverse.gateway.run.get",
+            systemId:boundSystem}))))){
+      ws.send(JSON.stringify({type:"res",v:"1.0",id:"local-app-socket",ok:false,
+        systemId:boundSystem,error:{code:"LOCAL_APP_SCOPE_DENIED",message:"Scoped chat events only"},
+        observedAt:new Date().toISOString()}));
+      return;
+    }
     // Canonical event stream uses the existing authenticated, system-bound
     // WebSocket. Payloads carry IDs only: no upstream URL, bearer or roots.
     if (tagged === "gateway-run-subscribe") {
