@@ -257,7 +257,8 @@ export class PersonalChatRunController {
     this.seen.clear();this.lastSeq=0;
     this.unsubscribe=this.feed.subscribe(scope,runId,{
       event:event=>{
-        if(!this.valid(epoch,scope,selection) || this.view.runId!==runId)return;
+        if(!this.valid(epoch,scope,selection) || this.view.runId!==runId
+          || TERMINAL.has(this.view.phase))return;
         if(event.systemId!==scope.systemId || event.workspaceId!==scope.workspaceId
           || event.runId!==runId || event.seq<=this.lastSeq
           || this.seen.has(event.eventId))return;
