@@ -21,7 +21,7 @@ export interface ClientScope {
 
 export type FetchFn = (
   url: string,
-  init: { method: string; headers: Record<string, string>; body: string },
+  init: { method: string; headers: Record<string, string>; body: string; credentials?: "same-origin" },
 ) => Promise<{ json(): Promise<unknown> }>;
 
 export interface QueryOptions {
@@ -45,10 +45,11 @@ export class DashboardClient {
   constructor(
     private readonly gatewayBase: string,
     scope: ClientScope,
-    private readonly authToken: string,
+    private readonly authToken: string | {mode:"host-cookie"},
     private readonly fetchFn: FetchFn = (url,init) => globalThis.fetch(url,init),
   ) {
-    assertDashboardAuthToken(authToken);
+    if(typeof authToken==="string")assertDashboardAuthToken(authToken);
+    else if(authToken?.mode!=="host-cookie")throw Error("Unsupported local app authentication");
     this.scope = { ...scope };
   }
 
@@ -134,9 +135,10 @@ export class DashboardClient {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${this.authToken}`,
+        ...(typeof this.authToken==="string" ? {authorization:`Bearer ${this.authToken}`} : {}),
       },
       body: JSON.stringify(frame),
+      ...(typeof this.authToken==="string" ? {} : {credentials:"same-origin" as const}),
     });
     const out = (await res.json()) as {
       ok: boolean;
