@@ -77,6 +77,7 @@
     svg.setAttribute("aria-hidden", "true");
     const paths = {
       teams:["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2","M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8","M22 21v-2a4 4 0 0 0-3-3.87"],
+      chat:["M20 11a8 8 0 0 1-8 8H7l-4 3v-6a8 8 0 1 1 17-5"],
       plus:["M12 5v14","M5 12h14"], split:["M3 4h18v16H3z","M12 4v16"],
       down:["m6 9 6 6 6-6"], close:["M18 6 6 18","M6 6l12 12"], grid:["M3 3h8v8H3z","M13 3h8v8h-8z","M3 13h8v8H3z","M13 13h8v8h-8z"],
       layers:["M12 2 2 8l10 6 10-6-10-6z","m2 12 10 6 10-6","m2 16 10 6 10-6"]
