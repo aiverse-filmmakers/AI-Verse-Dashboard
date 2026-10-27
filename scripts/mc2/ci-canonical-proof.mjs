@@ -15,6 +15,7 @@ import {SystemRegistry} from "../../dist/packages/registry/src/index.js";
 import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js";
 import {CanonicalGatewayBridge,QueryRouter,SubscriptionHub,startGateway} from "../../dist/apps/gateway/src/index.js";
 import {dashboardWsAuthProtocol,DASHBOARD_WS_PROTOCOL} from "../../dist/packages/protocol/src/index.js";
+import {DashboardClient,DashboardChatEventFeed,PersonalChatRunController} from "../../dist/packages/client/src/index.js";
 
 const GATEWAY_REVISION="ceb8849ec062f0d3997ceb0207e42c25aedd20c6";
 const pinRoot=resolve(process.env.AIVERSE_MC2_GATEWAY_SOURCE||"gateway-source");
@@ -180,6 +181,30 @@ try {
   assert.equal(terminalEvent.workspaceId,"operator");
   assert.ok(received.some(x=>x.type==="event"&&x.payload?.kind==="assistant.delta"));
   assert.doesNotMatch(JSON.stringify(received),/avg_|Bearer |private_data/);
+  // MC2.5: exercise the real Personal Chat controller, not only raw transport.
+  // The WebSocket comes from the existing local ws dependency in Node CI;
+  // production apps use their browser/native WebSocket implementation.
+  const browserClient=new DashboardClient("http://127.0.0.1:"+local.port,{
+    systemId,workspaceId:"operator"
+  },local.authToken);
+  const eventFeed=new DashboardChatEventFeed("http://127.0.0.1:"+local.port,
+    local.authToken,(url,protocols)=>new WebSocket(url,protocols));
+  const chat=new PersonalChatRunController(browserClient,eventFeed);
+  const chatMarker="mc2-chat-controller-"+Date.now();
+  const chatStarted=await chat.send(chatMarker,"mc2-controller-proof-1");
+  assert.ok(chatStarted.runId,"controller must use canonical run ID");
+  let chatFinal;
+  for(let attempt=0;attempt<100;attempt++){
+    const view=chat.snapshot();
+    if(view.phase==="completed"){chatFinal=view;break;}
+    if(view.phase==="interrupted")throw Error("controller interrupted: "+view.errorCode);
+    await pause(100);
+  }
+  assert.ok(chatFinal,"controller must receive canonical terminal Gateway proof");
+  assert.equal(chatFinal.sessionId?.length>0,true);
+  assert.ok(chatFinal.output.includes(chatMarker),
+    "Personal Chat controller must display authoritative runtime reply");
+  chat.close();
   await checkInstalledLocalLaunch(canonicalOrigin,home,token);
   console.log(JSON.stringify({ok:true,kind:"mc2-real-gateway-ci",
     gateway_revision:GATEWAY_REVISION,
@@ -188,6 +213,7 @@ try {
     canonical_run_completed:true,
     authenticated_ws_events:true,
     idempotent_run_replay:true,
+    personal_chat_controller_end_to_end:true,
     installed_local_host_startup:true,
     local_host_authentication_denial:true,
     private_member_system_access:false,real_provider_access:false,
