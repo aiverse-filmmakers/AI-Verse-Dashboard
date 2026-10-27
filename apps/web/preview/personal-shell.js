@@ -36,8 +36,11 @@
   data.paneModels = data.paneModels && typeof data.paneModels === "object" ? data.paneModels : {};
   data.mainRecipients = Array.isArray(data.mainRecipients) ? data.mainRecipients : [];
   data.mainDraft = typeof data.mainDraft === "string" ? data.mainDraft.slice(0,1200) : "";
-  // Existing boards are preserved while their owner opens the canvas library.
-  if (data.app === "canvas") data.app = "canvas-library";
+  // Upgrade the old one-canvas picker once, but remember deliberate board-editor selection.
+  if(!data.canvasLibraryReady){
+    if(data.app==="canvas")data.app="canvas-library";
+    data.canvasLibraryReady=true;
+  }
   data.paneDrafts = data.paneDrafts && typeof data.paneDrafts==="object" ? data.paneDrafts : {};
   data.paneCanvasRefs = data.paneCanvasRefs && typeof data.paneCanvasRefs==="object" ? data.paneCanvasRefs : {};
   data.mainCanvasRefs = Array.isArray(data.mainCanvasRefs) ? data.mainCanvasRefs : [];
