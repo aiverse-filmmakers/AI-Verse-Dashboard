@@ -98,7 +98,7 @@ export async function startGateway(
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
-      void handleSocket(ws, systemId, router, hub);
+      void handleSocket(ws, systemId, router, hub, opts?.canonicalBridge);
     });
   });
 
@@ -211,7 +211,10 @@ function handleSocket(
   boundSystem: string,
   router: QueryRouter,
   hub: SubscriptionHub,
+  canonicalBridge?: CanonicalGatewayBridge,
 ): void {
+  let canonicalCancel: (()=>void)|undefined;
+  let canonicalEpoch=0;
   let activeSubId: string | undefined;
   const socketSubIds = new Set<string>();
   ws.on("message", (data) => {
@@ -223,6 +226,46 @@ function handleSocket(
       return;
     }
     const tagged = (frame as { type?: string }).type;
+    // Canonical event stream uses the existing authenticated, system-bound
+    // WebSocket. Payloads carry IDs only: no upstream URL, bearer or roots.
+    if (tagged === "gateway-run-subscribe") {
+      const fields = frame && typeof frame === "object" && !Array.isArray(frame)
+        ? Object.keys(frame as Record<string,unknown>) : [];
+      const request = frame as {workspaceId?:unknown;runId?:unknown};
+      canonicalEpoch++;
+      canonicalCancel?.();
+      canonicalCancel=undefined;
+      const invalid = !canonicalBridge || fields.length !== 3
+        || fields.some(key=>!["type","workspaceId","runId"].includes(key))
+        || typeof request.workspaceId !== "string"
+        || !/^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/.test(request.workspaceId)
+        || typeof request.runId !== "string"
+        || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(request.runId);
+      if (invalid) {
+        ws.send(JSON.stringify({type:"res",v:"1.0",id:"gateway-run-subscribe",
+          ok:false,systemId:boundSystem,
+          error:{code:canonicalBridge?"INVALID_SUBSCRIPTION":"GATEWAY_NOT_CONFIGURED",
+            message:"Gateway stream unavailable"},
+          observedAt:new Date().toISOString()}));
+        return;
+      }
+      const epoch=canonicalEpoch;
+      canonicalCancel=canonicalBridge.openEventStream(boundSystem,request.workspaceId as string,
+        request.runId as string,
+        event=>{if(epoch===canonicalEpoch && ws.readyState===1)ws.send(JSON.stringify(event));},
+        code=>{if(epoch===canonicalEpoch && ws.readyState===1)ws.send(JSON.stringify({
+          type:"res",v:"1.0",id:"gateway-run-subscribe",ok:false,systemId:boundSystem,
+          error:{code,message:"Canonical Gateway "+code},observedAt:new Date().toISOString(),
+        }));});
+      return;
+    }
+    if (tagged === "gateway-run-unsubscribe") {
+      canonicalEpoch++;canonicalCancel?.();canonicalCancel=undefined;
+      ws.send(JSON.stringify({type:"res",v:"1.0",id:"gateway-run-unsubscribe",
+        ok:true,systemId:boundSystem,result:{unsubscribed:true},
+        observedAt:new Date().toISOString()}));
+      return;
+    }
     // Subscribe control frame: Dashboard-local, bound to this socket's system.
     if (tagged === "subscribe") {
       const parsed = subscriptionRequestSchema.safeParse(frame);
@@ -301,6 +344,7 @@ function handleSocket(
     ws.send(JSON.stringify(out));
   });
   ws.on("close", () => {
+    canonicalEpoch++;canonicalCancel?.();canonicalCancel=undefined;
     for (const subId of socketSubIds) hub.unsubscribe(subId);
     socketSubIds.clear();
     activeSubId = undefined;
