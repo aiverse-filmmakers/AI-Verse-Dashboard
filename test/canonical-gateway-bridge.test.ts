@@ -27,7 +27,7 @@ async function listen(server:Server):Promise<number>{
  const address=server.address();if(!address || typeof address==="string")throw Error("Missing port");
  return address.port;
 }
-function gatewayFixture(){
+function gatewayFixture(options:{slowEvents?:boolean}={}){
  const received:{method:string;path:string;auth:string;key:string;body:unknown}[]=[];
  const server=createServer(async(req,res)=>{
    const chunks:Buffer[]=[];for await(const b of req)chunks.push(b as Buffer);
@@ -46,16 +46,23 @@ function gatewayFixture(){
      output:{content:"Test result"},private_data:"do-not-show"};
    if(req.method==="GET"&&req.url==="/v1/runs/run-a/events"){
      res.writeHead(200,{"content-type":"text/event-stream","cache-control":"no-store"});
-     for(const [n,type,data] of [
-       ["evt-1","run.started",{}],
-       ["evt-2","assistant.delta",{text:"Real progress from synthetic Gateway"}],
-       ["evt-3","run.completed",{}],
-     ] as const){
+     const send=(n:string,type:string,data:Record<string,unknown>)=>{
+       if(res.destroyed||res.writableEnded)return;
        res.write("event: "+type+"\n"+"data: "+JSON.stringify({
          event_id:n,run_id:"run-a",type,at:"2026-10-27T16:00:00Z",data,
        })+"\n\n");
-     }
-     res.end();return;
+     };
+     send("evt-1","run.started",{});
+     const finish=()=>{
+       send("evt-2","assistant.delta",{text:"Real progress from synthetic Gateway"});
+       send("evt-3","run.completed",{});
+       if(!res.writableEnded)res.end();
+     };
+     if(options.slowEvents){
+       const timer=setTimeout(finish,450);
+       res.once("close",()=>clearTimeout(timer));
+     } else finish();
+     return;
    }
    if(req.method==="POST"&&req.url==="/v1/runs")return send(202,run);
    if(req.method==="GET"&&req.url==="/v1/runs/run-a")return send(200,run);
@@ -235,6 +242,43 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
    assert.equal(next.data.ok,false);
    assert.equal((next.data.error as {code:string}).code,"GATEWAY_MAPPING_STALE");
    assert.equal(upstream.received.length,observed,"stale lease must never touch canonical Gateway");
+ });
+ it("drops late canonical events after switching the same socket from film to film2",async()=>{
+   const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+   const other=join(a.root,"workspaces","film2");mkdirSync(other);
+   writeFileSync(join(other,"WORKSPACE.yaml"),
+     'schema_version: "2.0"\\nid: "film2"\\nname: "Film 2"\\nstatus: "active"\\n');
+   const upstream=gatewayFixture({slowEvents:true}),port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",
+     origin:"http://127.0.0.1:"+port,
+     resolveBearer:()=>"actual-host-gateway-token",
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),
+     new SubscriptionHub(),{port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   const ws=new WebSocket("ws://127.0.0.1:"+dash.port+"/ws?systemId="+a.systemId,
+     [DASHBOARD_WS_PROTOCOL,dashboardWsAuthProtocol(dash.authToken)]);
+   await new Promise<void>((resolve,reject)=>{ws.once("open",resolve);ws.once("error",reject)});
+   closing.push(async()=>{if(ws.readyState!==WebSocket.CLOSED){
+     await new Promise<void>(resolve=>{ws.once("close",resolve);ws.terminate()});
+   }});
+   const messages:Record<string,unknown>[]=[];
+   ws.on("message",x=>messages.push(JSON.parse(String(x)) as Record<string,unknown>));
+   const wait=async(predicate:()=>boolean)=>{
+     for(let i=0;i<170;i++){if(predicate())return;await new Promise(r=>setTimeout(r,10));}
+     throw Error("Timed out waiting for event or scope acknowledgement");
+   };
+   ws.send(JSON.stringify({type:"gateway-run-subscribe",workspaceId:"film",runId:"run-a"}));
+   await wait(()=>messages.some(x=>x.event==="aiverse.gateway.run.event"
+     &&(x.payload as {kind?:string})?.kind==="run.started"));
+   ws.send(JSON.stringify({type:"subscribe",workspaceId:"film2"}));
+   await wait(()=>messages.some(x=>x.id==="subscribe"&&x.ok===true));
+   await new Promise(resolve=>setTimeout(resolve,630));
+   const stale=messages.filter(x=>x.event==="aiverse.gateway.run.event"
+     &&(x.payload as {kind?:string})?.kind!=="run.started");
+   assert.equal(stale.length,0,"old film stream must not report progress or success after scope switch");
  });
  it("keeps the original host disabled when no approved canonical mapping is injected",async()=>{
    const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
