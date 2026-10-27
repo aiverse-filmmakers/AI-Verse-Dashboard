@@ -63,7 +63,7 @@ test("main chat offers explicit @ recipient selection and preserves normal chat 
   assert.match(js, /composer\.addEventListener\("submit",event=>/);
   assert.match(js, /"Choose a recipient from the @ menu before sending\."/);
   assert.match(js, /if\(!target\) return;/);
-  assert.match(js, /"Demo to "/);
+  assert.match(js, /\[Demo to /);
   assert.match(js, /data\.threads\[target\.key\]=thread/);
   assert.match(css, /\.draft-recipient-chip\[hidden\]/);
   assert.match(css, /\.mention-recipient-menu\[hidden\]/);
