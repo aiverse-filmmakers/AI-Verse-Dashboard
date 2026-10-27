@@ -52,9 +52,9 @@ function gatewayFixture(){
        ["evt-2","assistant.delta",{text:"Real progress from synthetic Gateway"}],
        ["evt-3","run.completed",{}],
      ] as const){
-       res.write("event: "+type+"\\n"+"data: "+JSON.stringify({
+       res.write("event: "+type+"\n"+"data: "+JSON.stringify({
          event_id:n,run_id:"run-a",type,at:"2026-10-27T16:00:00Z",data,
-       })+"\\n\\n");
+       })+"\n\n");
      }
      res.end();return;
    }
