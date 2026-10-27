@@ -62,6 +62,7 @@
     data.chatTargets[String(slot)] = key;
     data.paneRecipients[String(slot)] = [key];
     lastActiveChat=String(slot);
+    data.lastActiveChat=lastActiveChat;
     showTeams(false);save();renderPanes();
     secondaryHost.querySelectorAll(".secondary-chat-pane")[slot-1]?.querySelector("textarea")?.focus();
   }
@@ -248,6 +249,7 @@
   const closeMain=button("quiet-icon close-primary-chat", "Close this conversation", ()=>{
     data.mainVisible=false;
     if(lastActiveChat==="main")lastActiveChat=data.panes?String(data.panes):null;
+    data.lastActiveChat=lastActiveChat;
     save();renderPanes();
   },"close");
   chatHeadingActions.append(split, $("#new-chat"),closeMain);
@@ -255,7 +257,7 @@
     if(!data.mainVisible){data.mainVisible=true;lastActiveChat="main";}
     else if(data.panes<2){data.panes++;lastActiveChat=String(data.panes);}
     else return notify("Three visible preview chats are the current layout limit.");
-    save();renderPanes();
+    data.lastActiveChat=lastActiveChat;save();renderPanes();
     if(lastActiveChat==="main")$("#message")?.focus();
     else secondaryHost.querySelectorAll(".secondary-chat-pane")[Number(lastActiveChat)-1]?.querySelector("textarea")?.focus();
   },"chat");
@@ -321,7 +323,7 @@
         delete data.paneRecipients[last];delete data.paneModels[last];delete data.paneCanvasRefs[last];
         data.panes--;
         if(lastActiveChat===slot||Number(lastActiveChat)>data.panes)lastActiveChat=data.panes?String(Math.min(data.panes,i)):data.mainVisible?"main":null;
-        save();renderPanes();
+        data.lastActiveChat=lastActiveChat;save();renderPanes();
       },"close"));
       heading.append(actions);pane.append(heading);
       const scope=make("div","chat-scope");
