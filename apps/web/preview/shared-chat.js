@@ -206,19 +206,24 @@
       const consumed=onSubmit({message,meta,event});
       if(consumed){
         event.preventDefault();event.stopImmediatePropagation();
-        input.value="";state.files=[];state.canvas=[];renderChips();closeMenu();
+        input.value="";state.files=[];renderChips();closeMenu();
       }
     },true);
     renderChips();
     return {
       addRecipient:addKey,
-      addCanvasReference:ref=>{
-        if(!ref || typeof ref.id!=="string" || typeof ref.workspaceId!=="string" || typeof ref.title!=="string") return false;
-        if(!state.canvas.some(v=>v.id===ref.id&&v.workspaceId===ref.workspaceId)){
-          state.canvas.push({id:ref.id,workspaceId:ref.workspaceId,title:ref.title.slice(0,100)});
-          renderChips();
+      // Canvas chips are a live projection of the current selection, never a
+      // history of everything previously clicked.
+      setCanvasSelection:(workspaceId,nodes)=>{
+        const next=(Array.isArray(nodes)?nodes:[])
+          .filter(n=>n && typeof n.id==="string" && typeof n.title==="string")
+          .slice(0,80).map(n=>({id:n.id,workspaceId,title:n.title.slice(0,100)}));
+        if(JSON.stringify(next)!==JSON.stringify(state.canvas)){
+          state.canvas=next;renderChips();
         }
-        return true;
+      },
+      clearCanvasSelection:()=>{
+        if(state.canvas.length){state.canvas=[];renderChips();}
       },
       clearCanvasFromOtherWorkspaces:workspaceId=>{
         const kept=state.canvas.filter(v=>v.workspaceId===workspaceId);
