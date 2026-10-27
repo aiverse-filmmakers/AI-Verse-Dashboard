@@ -159,3 +159,19 @@ body.dark .os-status.os-running,body.dark .os-status.os-working{background:#2736
 .os-task-detail-button{font-size:10px;font-weight:600;color:var(--accent);text-align:left;margin-top:2px;padding:4px 0}
 .os-task-detail-button:hover{text-decoration:underline;text-underline-offset:3px}
 .os-task-detail-button:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+/* Stage 1 essentials: compact purposeful entry points, not 11 fake dashboard panels. */
+.os-essentials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 22px}
+.os-essential{display:flex;align-items:flex-start;flex-direction:column;gap:10px;min-height:180px}
+.os-essential h4{font-size:14px;letter-spacing:-.2px;font-weight:630;line-height:1.3;margin:0}
+.os-essential .os-copy{margin:0;line-height:1.5;flex:1}
+.os-essential .os-status{align-self:flex-start}
+.os-essential .os-btn{margin-top:auto;min-height:32px}
+.os-btn:disabled{opacity:.45;cursor:not-allowed}
+.os-session{display:flex;flex-direction:column;gap:7px;width:100%;padding:12px 10px;text-align:left;border-bottom:1px solid var(--line);border-radius:7px}
+.os-session.selected,.os-session:hover{background:var(--bg)}
+.os-session .os-row-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.os-session strong{font-size:12px;overflow-wrap:anywhere}
+.os-session .os-copy{font-size:11px;line-height:1.5;margin:0;max-height:34px;overflow:hidden}
+@media(max-width:1020px){.os-essentials{grid-template-columns:1fr}.os-essential{min-height:148px}}
+@media(min-width:1021px) and (max-width:1480px){.with-parallel-chats .os-essentials{grid-template-columns:1fr}}
