@@ -75,3 +75,36 @@ test("the public preview never claims a live team dispatch", () => {
   assert.match(js, /No real agent messages are sent\./);
   assert.doesNotMatch(js, /\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bnavigator\.sendBeacon\b/);
 });
+
+
+test("@ picker begins with collapsed teams instead of a flat list of all agents", () => {
+  assert.match(js, /let mentionTeamId = null/);
+  assert.match(js, /if \(!keepTeam\) mentionTeamId = null/);
+  assert.match(js, /if \(!selectedTeam\) \{/);
+  assert.match(js, /"Choose a team"/);
+  assert.match(js, /const teams = data\.teams\.filter\(t => t\.name\.toLocaleLowerCase\(\)\.includes\(query\)\)/);
+  assert.match(js, /"Open " \+ team\.name \+ " team"/);
+  assert.match(js, /team\.members\.length \+ " assistant"/);
+  assert.doesNotMatch(js, /const recipients=\[\]/);
+});
+
+test("one selected team reveals explicit entire-team and individual mention actions", () => {
+  assert.match(js, /mentionTeamId = team\.id/);
+  assert.match(js, /showMentionPicker\(true, "", true\)/);
+  assert.match(js, /"Back to all teams"/);
+  assert.match(js, /"Entire team"/);
+  assert.match(js, /chooseMentionRecipient\("team:" \+ selectedTeam\.id\)/);
+  assert.match(js, /for \(const agent of selectedTeam\.members\)/);
+  assert.match(js, /chooseMentionRecipient\("agent:" \+ selectedTeam\.id \+ ":" \+ agent\.id\)/);
+  assert.match(js, /if \(!on\) \{ mentionTeamId = null; return; \}/);
+  assert.match(css, /\.mention-team-heading/);
+  assert.match(css, /\.mention-back/);
+});
+
+test("@ picker still removes the typed mention token and shows the recipient chip", () => {
+  assert.match(js, /function chooseMentionRecipient\(key\)/);
+  assert.match(js, /previous\.slice\(0, mentionToken\.start\) \+ previous\.slice\(mentionToken\.end\)/);
+  assert.match(js, /renderDraftTarget\(\)/);
+  assert.match(js, /mentionMenu\.querySelector\("\.mention-option"\)\?\.click\(\)/);
+  assert.match(js, /showMentionPicker\(true,match\[1\]\)/);
+});
