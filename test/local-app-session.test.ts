@@ -1,0 +1,173 @@
+import {describe,it,afterEach} from "node:test";
+import assert from "node:assert/strict";
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from "node:fs";
+import {join} from "node:path";
+import {tmpdir} from "node:os";
+import {WebSocket} from "ws";
+import {SystemRegistry} from "../packages/registry/src/index.js";
+import {DisposableCache} from "../packages/os-read-adapter/src/index.js";
+import {QueryRouter,SubscriptionHub,startGateway} from "../apps/gateway/src/index.js";
+import {LocalApplicationSession} from "../apps/gateway/src/local-app-session.js";
+import {DASHBOARD_WS_PROTOCOL} from "../packages/protocol/src/index.js";
+
+function fixture(){
+  const root=mkdtempSync(join(tmpdir(),"dash-local-session-"));
+  writeFileSync(join(root,"AI-VERSE.yaml"),'schema_version: "2.0"\narchitecture: unified-workspace\n');
+  writeFileSync(join(root,"AGENTS.md"),"# fixture\n");
+  for(const path of ["operator","workspaces","system"])mkdirSync(join(root,path));
+  const dir=join(root,"workspaces","film");mkdirSync(dir);
+  writeFileSync(join(dir,"WORKSPACE.yaml"),
+    'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "active"\n');
+  const reg=new SystemRegistry(),systemId=reg.register(root,{label:"Test OS"}).systemId;
+  return {reg,systemId,root};
+}
+function makeFrame(systemId:string,workspaceId="operator"){
+  return {type:"req",v:"1.0",id:"local-session-test",method:"aiverse.gateway.status",
+    systemId,workspaceId};
+}
+function json(body:unknown){return JSON.stringify(body);}
+function secureHeaders(port:number,code?:string,cookie?:string){
+  return {"content-type":"application/json",origin:"http://127.0.0.1:"+port,
+    ...(cookie?{cookie}:{}),...(code?{"x-debug-code-length":String(code.length)}:{})};
+}
+async function rpc(port:number,body:unknown,headers:Record<string,string>={}){
+  return fetch("http://127.0.0.1:"+port+"/rpc",{
+    method:"POST",headers:{"content-type":"application/json",...headers},body:json(body),
+  });
+}
+async function expectWsStatus(url:string,code:number,headers:Record<string,string>){
+  await new Promise<void>((resolve,reject)=>{
+    const ws=new WebSocket(url,[DASHBOARD_WS_PROTOCOL],{headers});
+    ws.on("unexpected-response",(_req,res)=>{
+      try{assert.equal(res.statusCode,code);res.resume();resolve();}
+      catch(e){reject(e);}
+    });
+    ws.on("open",()=>{ws.terminate();reject(Error("unexpected cookie WebSocket"));});
+    ws.on("error",()=>{});
+  });
+}
+describe("MC2 trusted local application pairing and HttpOnly session boundary",()=>{
+  const roots:string[]=[];
+  const closers:Array<()=>Promise<void>>=[];
+  afterEach(async()=>{
+    for(const close of closers.splice(0).reverse())await close();
+    for(const root of roots.splice(0))rmSync(root,{recursive:true,force:true});
+  });
+  it("is opt-in, single-use, strict-origin and does not reveal bearer",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const plain=await startGateway(new QueryRouter(reg,new DisposableCache()),new SubscriptionHub(),{port:0});
+    closers.push(()=>plain.close());
+    const absent=await fetch("http://127.0.0.1:"+plain.port+"/local-app/session");
+    assert.equal(absent.status,401);
+    assert.equal((await absent.json() as {error:{code:string}}).error.code,"UNAUTHENTICATED");
+    const scope={systemId,workspaceId:"operator"};
+    const pairing=new LocalApplicationSession(scope);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),new SubscriptionHub(),{
+      port:0,localApp:pairing,
+    });
+    closers.push(()=>server.close());
+    const code=pairing.pairingCode();
+    assert.ok(code.length>=40);
+    const base="http://127.0.0.1:"+server.port;
+    const unpaired=await fetch(base+"/local-app/session");
+    assert.equal(unpaired.status,401);
+    assert.doesNotMatch(JSON.stringify(await unpaired.json()),new RegExp(code));
+    const wrongHost=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:{"content-type":"application/json",origin:"https://attacker.example"},
+      body:json({code}),
+    });
+    assert.equal(wrongHost.status,403);
+    const noOrigin=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:{"content-type":"application/json"},body:json({code}),
+    });
+    assert.equal(noOrigin.status,403);
+    const wrongContent=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:{"content-type":"text/plain",origin:base},body:json({code}),
+    });
+    assert.equal(wrongContent.status,403);
+    const wrongCode=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),body:json({code:"no"}),
+    });
+    assert.equal(wrongCode.status,403);
+    const paired=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),body:json({code}),
+    });
+    assert.equal(paired.status,200);
+    const reply=(await paired.json()) as Record<string,unknown>;
+    assert.deepEqual(reply.scope,scope);
+    assert.equal(reply.privateBearerExported,false);
+    const setCookie=paired.headers.get("set-cookie")??"";
+    assert.match(setCookie,/HttpOnly; SameSite=Strict; Path=\//);
+    assert.doesNotMatch(JSON.stringify(reply),new RegExp(server.authToken+"|"+code));
+    const cookie=setCookie.split(";")[0];
+    assert.ok(cookie.startsWith("aiverse_local_session="));
+    assert.throws(()=>pairing.pairingCode(),/EXPIRED/);
+    const replay=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),body:json({code}),
+    });
+    assert.equal(replay.status,403);
+    const state=await fetch(base+"/local-app/session",{headers:{cookie}});
+    assert.equal(state.status,200);
+    assert.equal((await state.json() as {authentication:string}).authentication,"host-cookie");
+    const missing=await rpc(server.port,makeFrame(systemId),{origin:base});
+    assert.equal(missing.status,401);
+    const wrongOrigin=await rpc(server.port,makeFrame(systemId),{
+      cookie,origin:"http://localhost:"+server.port,
+    });
+    assert.equal(wrongOrigin.status,401);
+    const wrongWorkspace=await rpc(server.port,makeFrame(systemId,"film"),{
+      cookie,origin:base,
+    });
+    assert.equal(wrongWorkspace.status,403);
+    const wrongSystem=await rpc(server.port,makeFrame("other-system"),{
+      cookie,origin:base,
+    });
+    assert.equal(wrongSystem.status,403);
+    const otherMethod=await rpc(server.port,{
+      type:"req",v:"1.0",id:"unsafe",method:"system.list",systemId,workspaceId:"operator",
+    },{cookie,origin:base});
+    assert.equal(otherMethod.status,403);
+    const allowed=await rpc(server.port,makeFrame(systemId),{cookie,origin:base});
+    assert.equal(allowed.status,200);
+    const response=(await allowed.json()) as {error?:{code:string}};
+    assert.equal(response.error?.code,"GATEWAY_NOT_CONFIGURED",
+      "valid cookie has limited access; it cannot create an unconfigured canonical Gateway");
+    const wurl="ws://127.0.0.1:"+server.port+"/ws?systemId="+systemId;
+    await expectWsStatus(wurl,401,{origin:"https://attacker.example",cookie});
+    await expectWsStatus("ws://127.0.0.1:"+server.port+"/ws?systemId=other-system",
+      403,{origin:base,cookie});
+    const ws=new WebSocket(wurl,[DASHBOARD_WS_PROTOCOL],{headers:{origin:base,cookie}});
+    await new Promise<void>((resolve,reject)=>{
+      ws.once("open",resolve);ws.once("error",reject);
+    });
+    assert.equal(ws.protocol,DASHBOARD_WS_PROTOCOL);
+    ws.close();
+    await new Promise<void>(resolve=>ws.once("close",resolve));
+    const logout=await fetch(base+"/local-app/logout",{
+      method:"POST",headers:{origin:base,cookie},
+    });
+    assert.equal(logout.status,200);
+    assert.match(logout.headers.get("set-cookie")??"",/Max-Age=0/);
+    const expired=await rpc(server.port,makeFrame(systemId),{cookie,origin:base});
+    assert.equal(expired.status,401);
+  });
+  it("locks pairing after five incorrect attempts without accepting the correct code",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"});
+    const srv=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>srv.close());
+    const code=session.pairingCode();
+    for(let i=0;i<5;i++){
+      const reply=await fetch("http://127.0.0.1:"+srv.port+"/local-app/pair",{
+        method:"POST",headers:secureHeaders(srv.port),body:json({code:"incorrect-"+i}),
+      });
+      assert.equal(reply.status,403);
+    }
+    assert.throws(()=>session.pairingCode(),/EXPIRED/);
+    const attempt=await fetch("http://127.0.0.1:"+srv.port+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(srv.port),body:json({code}),
+    });
+    assert.equal(attempt.status,403);
+  });
+});
