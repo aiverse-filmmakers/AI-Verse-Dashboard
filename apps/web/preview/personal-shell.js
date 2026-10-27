@@ -339,41 +339,76 @@
       draftTarget=null;renderDraftTarget();
     },"close"));
   }
-  function showMentionPicker(on,filter="") {
-    mentionMenu.hidden=!on;
-    mentionTrigger.setAttribute("aria-expanded",String(on));
-    if (!on) return;
-    mentionMenu.replaceChildren();
-    mentionMenu.append(make("div","mention-menu-title","Send to a team or assistant"));
-    const query=filter.toLocaleLowerCase();
-    const recipients=[];
-    for(const t of data.teams) {
-      recipients.push({key:"team:"+t.id,label:t.name,type:"team",detail:"Entire team"});
-      for(const a of t.members)
-        recipients.push({key:"agent:"+t.id+":"+a.id,label:a.name,type:"agent",detail:t.name+" · "+a.role});
+  // Start with a short team list. Only the selected team's assistants are shown.
+  let mentionTeamId = null;
+  function chooseMentionRecipient(key) {
+    const selected = findRecipient(key);
+    if (!selected) return notify("That team or assistant is no longer available.");
+    draftTarget = key;
+    if (mentionToken) {
+      const previous = composeInput.value;
+      composeInput.value = previous.slice(0, mentionToken.start) + previous.slice(mentionToken.end);
+      mentionToken = null;
     }
-    const filtered=recipients.filter(r=>!query||r.label.toLocaleLowerCase().includes(query)||r.detail.toLocaleLowerCase().includes(query));
-    const list=make("div","mention-options");
-    if (!filtered.length) list.append(make("p","mention-empty","No matching teams or assistants."));
-    for(const entry of filtered.slice(0,45)) {
-      const choice=button("mention-option","Tag "+entry.label,()=>{
-        if (!findRecipient(entry.key)) return notify("Recipient no longer available.");
-        draftTarget=entry.key;
-        if (mentionToken) {
-          const previous=composeInput.value;
-          composeInput.value=previous.slice(0,mentionToken.start)+previous.slice(mentionToken.end);
-          mentionToken=null;
-        }
-        renderDraftTarget();showMentionPicker(false);composeInput.focus();
+    renderDraftTarget();
+    showMentionPicker(false);
+    composeInput.focus();
+  }
+  function showMentionPicker(on, filter="", keepTeam=false) {
+    mentionMenu.hidden = !on;
+    mentionTrigger.setAttribute("aria-expanded", String(on));
+    if (!on) { mentionTeamId = null; return; }
+    if (!keepTeam) mentionTeamId = null;
+    mentionMenu.replaceChildren();
+    const list = make("div", "mention-options");
+    const selectedTeam = data.teams.find(t => t.id === mentionTeamId);
+    if (!selectedTeam) {
+      mentionTeamId = null;
+      mentionMenu.append(make("div", "mention-menu-title", "Choose a team"));
+      const query = filter.toLocaleLowerCase();
+      const teams = data.teams.filter(t => t.name.toLocaleLowerCase().includes(query));
+      if (!teams.length) list.append(make("p", "mention-empty", "No matching teams."));
+      for (const team of teams) {
+        const choice = button("mention-option mention-team-row", "Open " + team.name + " team", () => {
+          mentionTeamId = team.id;
+          showMentionPicker(true, "", true);
+        });
+        choice.append(make("span", "mention-icon", "◎"));
+        const labels = make("span", "mention-option-labels");
+        labels.append(make("strong", "", team.name));
+        labels.append(make("small", "", team.members.length + " assistant" + (team.members.length === 1 ? "" : "s")));
+        choice.append(labels, make("span", "mention-row-arrow", "›"));
+        list.append(choice);
+      }
+    } else {
+      const header = make("div", "mention-team-heading");
+      header.append(button("mention-back", "Back to all teams", () => showMentionPicker(true), null, "‹ Teams"));
+      header.append(make("strong", "", selectedTeam.name));
+      mentionMenu.append(header);
+      const all = button("mention-option mention-entire-team", "Tag the entire " + selectedTeam.name + " team", () => {
+        chooseMentionRecipient("team:" + selectedTeam.id);
       });
-      choice.append(make("span","mention-icon",entry.type==="team"?"◎":"@"));
-      const labels=make("span","mention-option-labels");
-      labels.append(make("strong","",entry.label),make("small","",entry.detail));
-      choice.append(labels);
-      list.append(choice);
+      all.append(make("span", "mention-icon", "◎"));
+      const labels = make("span", "mention-option-labels");
+      labels.append(make("strong", "", "Entire team"), make("small", "", "Address everyone in " + selectedTeam.name));
+      all.append(labels);
+      list.append(all);
+      if (selectedTeam.members.length) {
+        list.append(make("div", "mention-members-label", "Individual assistants"));
+        for (const agent of selectedTeam.members) {
+          const choice = button("mention-option mention-agent-row", "Tag " + agent.name, () => {
+            chooseMentionRecipient("agent:" + selectedTeam.id + ":" + agent.id);
+          });
+          choice.append(make("span", "mention-icon", "@"));
+          const agentLabels = make("span", "mention-option-labels");
+          agentLabels.append(make("strong", "", agent.name), make("small", "", agent.role));
+          choice.append(agentLabels);
+          list.append(choice);
+        }
+      }
     }
     mentionMenu.append(list);
-    mentionMenu.append(make("p","mention-disclaimer","Design preview only. No real agent messages are sent."));
+    mentionMenu.append(make("p", "mention-disclaimer", "Design preview only. No real agent messages are sent."));
   }
   // Enter picks the highlighted suggestion instead of accidentally sending a raw @word.
   composeInput.addEventListener("keydown",event=>{
