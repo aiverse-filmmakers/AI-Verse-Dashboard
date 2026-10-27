@@ -21,7 +21,7 @@ import {
   buildWorkspaceProjections,
 } from "../../../packages/read-models/src/index.js";
 import type { SessionStore } from "../../../packages/live/src/sessions.js";
-import type { SystemRegistry } from "../../../packages/registry/src/index.js";
+import { toPublic, type SystemRegistry } from "../../../packages/registry/src/index.js";
 import type { PurposeMutationBridge } from "./purpose-mutation-bridge.js";
 
 export const GATEWAY_VERSION = "gateway-0.1.0-alpha.0";
@@ -115,7 +115,7 @@ export class QueryRouter {
         const rec = this.registry.get(req.systemId as string);
         if (!rec) throw Object.assign(new Error(`unknown systemId ${req.systemId}`), { code: "SYSTEM_NOT_REGISTERED" });
         if (req.method === "system.get") {
-          const { root: _r, architecture: _a, ...pub } = rec; void _r; void _a; return { system: pub };
+          return { system: toPublic(rec) };
         }
         return { systemId: rec.systemId, authorized: rec.authorized, workspaces: listWorkspaces(this.registry, rec.systemId).length };
       }
