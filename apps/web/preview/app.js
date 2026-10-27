@@ -197,8 +197,14 @@ function drawConnections(){
   svg.querySelectorAll('[data-edge]').forEach(path=>{
     const select=e=>{e.preventDefault();e.stopPropagation();selectedEdge=Number(path.dataset.edge);showEdgeActions();};
     path.onclick=select;
-    path.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){select(e);}};
+    path.ondblclick=e=>{e.preventDefault();e.stopPropagation();selectedEdge=Number(path.dataset.edge);removeSelectedEdge();};
+    path.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){select(e);}else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();selectedEdge=Number(path.dataset.edge);removeSelectedEdge();}};
   });
+}
+function removeSelectedEdge(){
+  if(!Number.isInteger(selectedEdge)||!workspace().edges[selectedEdge])return;
+  snapshot();workspace().edges.splice(selectedEdge,1);selectedEdge=null;
+  renderBoard();save();toast('Connection removed. Undo is available.');
 }
 function showEdgeActions(){
   let actions=$('#edge-actions');
@@ -207,8 +213,7 @@ function showEdgeActions(){
   actions.hidden=!Number.isInteger(selectedEdge);
   if(actions.hidden)return;
   const title=document.createElement('span');title.textContent='Connection selected';
-  const remove=document.createElement('button');remove.type='button';remove.textContent='Remove link';
-  remove.onclick=()=>{if(!workspace().edges[selectedEdge])return;snapshot();workspace().edges.splice(selectedEdge,1);selectedEdge=null;renderBoard();save();};
+  const remove=document.createElement('button');remove.type='button';remove.textContent='× Remove link';remove.title='Break this connection';remove.onclick=removeSelectedEdge;
   const close=document.createElement('button');close.type='button';close.textContent='×';close.title='Close';close.onclick=()=>{selectedEdge=null;showEdgeActions();};
   actions.append(title,remove,close);
 }
@@ -451,5 +456,30 @@ $('#new-chat').onclick=()=>{if(!workspace().messages.length){$('#message').focus
 $('#mobile-chat').onclick=()=>{document.body.classList.toggle('chat-open');const open=document.body.classList.contains('chat-open');$('#mobile-chat span').textContent=open?'Close chat':'Chat';$('#mobile-chat').setAttribute('aria-label',open?'Close chat':'Open chat');$('#mobile-chat svg use').setAttribute('href',open?'#i-close':'#i-chat');$('#mobile-chat').setAttribute('aria-expanded',String(open));if(open)$('#message').focus();};
 function info(){openDialog('Your first working sketch',`<p><strong>Try:</strong> switching areas, opening workspaces, adding and editing notes, linking cards, importing an image, moving around the canvas, focus mode and dark appearance.</p><p>Chat uses clearly labelled sample responses. It can suggest a film workspace or canvas note. Apply the suggestion to try the flow.</p><p>Everything stays in this browser. It is not connected to Gateway, your personal OS or a live AI. 3D camera tools, editing and generation are future work.</p><button type="button" class="text-button" id="export-preview">Export preview data</button><p class="local-state-note">Export includes your preview notes, images and demo conversations. Keep the file private if you add personal material.</p>`,null);$('#export-preview').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='aiverse-design-preview.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Preview data exported.');};}
 $('#preview-info').onclick=info;$('#about').onclick=info;
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){stopConnect();if(!$('#dialog').open&&!e.target.closest('[contenteditable],input,textarea')){selectedNode=null;selectedIds.clear();selectedEdge=null;renderBoard();document.body.classList.remove('chat-open');$('#mobile-chat span').textContent='Chat';$('#mobile-chat').setAttribute('aria-label','Open chat');$('#mobile-chat svg use').setAttribute('href','#i-chat');$('#mobile-chat').setAttribute('aria-expanded','false');}}if((e.metaKey||e.ctrlKey)&&['z','y'].includes(e.key.toLowerCase())&&!e.target.closest('input,textarea,[contenteditable]')){e.preventDefault();if(e.shiftKey||e.key.toLowerCase()==='y')redo();else undo();}});
+document.addEventListener('keydown',e=>{
+  const editing=Boolean(e.target.closest('input,textarea,[contenteditable="true"],[contenteditable="plaintext-only"],[role="textbox"]'));
+  if(e.code==='Space'&&!editing&&!$('#dialog').open&&e.target.closest('#viewport')){
+    if(e.type==='keydown'){spacePanHeld=true;$('#viewport').classList.add('space-panning');e.preventDefault();}
+  }
+  if(e.key==='Escape'){
+    stopConnect();
+    if(!$('#dialog').open&&!editing){
+      selectedNode=null;selectedIds.clear();selectedEdge=null;renderBoard();
+      document.body.classList.remove('chat-open');
+      $('#mobile-chat span').textContent='Chat';$('#mobile-chat').setAttribute('aria-label','Open chat');
+      $('#mobile-chat svg use').setAttribute('href','#i-chat');
+      $('#mobile-chat').setAttribute('aria-expanded','false');
+    }
+  }
+  if($('#dialog').open||editing)return;
+  if((e.key==='Delete'||e.key==='Backspace')&&e.target.closest('#viewport')){
+    if(selectedIds.size){e.preventDefault();deleteSelection();}
+    else if(Number.isInteger(selectedEdge)){e.preventDefault();removeSelectedEdge();}
+  }
+  if((e.metaKey||e.ctrlKey)&&['z','y'].includes(e.key.toLowerCase())){
+    e.preventDefault();if(e.shiftKey||e.key.toLowerCase()==='y')redo();else undo();
+  }
+});
+document.addEventListener('keyup',e=>{if(e.code==='Space'){spacePanHeld=false;$('#viewport').classList.remove('space-panning');}});
+window.addEventListener('blur',()=>{spacePanHeld=false;$('#viewport').classList.remove('space-panning');});
 window.addEventListener('resize',drawConnections);render();if(!storageAvailable)toast('Could not load saved preview data. Sample workspaces are shown; export any new work to keep it.');
