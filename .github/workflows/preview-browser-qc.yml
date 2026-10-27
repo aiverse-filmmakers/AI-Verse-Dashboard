@@ -1,0 +1,38 @@
+name: Dashboard browser interaction QC
+
+on:
+  push:
+    branches:
+      - codex/dashboard-source-checkpoint
+    paths:
+      - apps/web/preview/**
+      - test/preview-browser-interaction.browser.mjs
+      - .github/workflows/preview-browser-qc.yml
+  pull_request:
+    paths:
+      - apps/web/preview/**
+      - test/preview-browser-interaction.browser.mjs
+      - .github/workflows/preview-browser-qc.yml
+
+permissions:
+  contents: read
+
+jobs:
+  browser-qc:
+    name: Chromium / real preview interactions
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install repository dependencies
+        run: npm ci
+      - name: Install bounded browser test tooling without changing repository lockfile
+        run: npm install --no-save --package-lock=false playwright@1.58.2
+      - name: Provision headless Chromium and system libraries
+        run: npx playwright install --with-deps chromium
+      - name: Run real browser journeys against the unchanged preview app
+        run: node --test test/preview-browser-interaction.browser.mjs
