@@ -34,6 +34,45 @@ describe("MC2.2 browser-safe canonical RPC facade",()=>{
    assert.equal(seen.at(-1)?.body.workspaceId,"film");
    assert.equal(client.cacheStats().entries,0);
  });
+ it("rejects late A→B→A HTTP responses without reviving the old selection",async()=>{
+   const callbacks:Array<(value:{json():Promise<unknown>})=>void>=[];
+   const scopes:string[]=[];
+   const fetchFn:FetchFn=async(_url,init)=>{
+     const payload=JSON.parse(init.body) as {workspaceId:string};
+     scopes.push(payload.workspaceId);
+     return new Promise(resolve=>callbacks.push(resolve));
+   };
+   const client=new DashboardClient("http://127.0.0.1:3100",
+     {systemId:"aiverse-01",workspaceId:"a"},
+     "test-dashboard-auth-0011223344556677",fetchFn);
+   const first=client.gatewayStatus();
+   client.retarget({systemId:"aiverse-01",workspaceId:"b"});
+   const second=client.gatewayStatus();
+   client.retarget({systemId:"aiverse-01",workspaceId:"a"});
+   const current=client.gatewayStatus();
+   assert.deepEqual(scopes,["a","b","a"]);
+   const response=()=>({json:async()=>({
+     ok:true,systemId:"aiverse-01",result:{state:"ready"},
+     observedAt:"2026-10-27T12:00:00Z",
+   })});
+   callbacks[1](response());callbacks[0](response());callbacks[2](response());
+   const results=await Promise.allSettled([first,second,current]);
+   assert.deepEqual(results.map(r=>r.status),["rejected","rejected","fulfilled"]);
+   for(const result of results.slice(0,2)){
+     assert.equal((result as PromiseRejectedResult).reason.code,"STALE_SELECTION");
+   }
+   assert.equal(client.cacheStats().entries,0);
+ });
+ it("rejects a response scoped to another system",async()=>{
+   const fetchFn:FetchFn=async()=>({json:async()=>({
+     ok:true,systemId:"another-system",result:{},observedAt:new Date().toISOString(),
+   })});
+   const client=new DashboardClient("http://127.0.0.1:3100",
+     {systemId:"aiverse-01",workspaceId:"operator"},
+     "test-dashboard-auth-0011223344556677",fetchFn);
+   await assert.rejects(client.gatewayStatus(),
+     (error:unknown)=>(error as {code?:string}).code==="SYSTEM_MISMATCH");
+ });
  it("requires an explicit scope and keeps legacy read paths intact",async()=>{
    const seen:string[]=[];
    const fetchFn:FetchFn=async(_url,init)=>{
