@@ -107,8 +107,11 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
    assert.equal(status.data.ok,true);
    const projection=status.data.result as Record<string,unknown>;
    assert.equal(projection.model,"aiverse");
+   assert.deepEqual(projection.runtimeSource,{id:"aiverse",owner:"canonical-gateway",
+     model:"aiverse",runtimeKind:"deterministic",
+     readinessEvidence:"authenticated-status-and-models",inferenceVerified:false});
    assert.deepEqual(projection.capabilities,{
-     runCreate:true,runGet:true,events:false,controls:false,
+     runCreate:true,runGet:true,events:true,controls:false,
      conversationLibrary:false,providerSelection:false,
    });
    assert.equal(upstream.received.length,2);
