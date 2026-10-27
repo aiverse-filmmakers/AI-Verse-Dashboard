@@ -70,7 +70,7 @@ async function checkInstalledLocalLaunch(origin,gatewayHome,bearer){
   try{
     let info;
     for(let i=0;i<120;i++){
-      if(stdout.includes("\\n")){info=JSON.parse(stdout.trim().split("\\n")[0]);break;}
+      if(stdout.includes("\n")){info=JSON.parse(stdout.trim().split("\n")[0]);break;}
       if(child.exitCode!==null)throw new Error("local host exited before readiness");
       await pause(50);
     }
@@ -81,7 +81,8 @@ async function checkInstalledLocalLaunch(origin,gatewayHome,bearer){
     assert.equal(info.personalUIEnabled,false);
     assert.equal(info.connectionStorageWritten,false);
     assert.equal(info.privateBearerExported,false);
-    assert.doesNotMatch(stdout+stderr, new RegExp(bearer.replace(/[.*+?^${}()|[\]\\]/g,"\\const pause=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));")));
+    assert.equal(stdout.includes(bearer),false,"no token in stdout");
+    assert.equal(stderr.includes(bearer),false,"no token in stderr");
     const denied=await fetch("http://127.0.0.1:"+hostPort+"/health",{
       signal:AbortSignal.timeout(4000),redirect:"error"
     });
