@@ -599,9 +599,82 @@
     const el=Array.from(document.querySelectorAll("#nodes [data-node]")).find(x=>x.dataset.node===nodeId);
     el?.click();el?.focus();
   }
+
+  /* Each OS workspace owns a library of independent named canvases. */
+  function toLibrary(){data.app="canvas-library";save();renderAppSurface();}
+  const libraryBack = button("canvas-library-back","Back to canvas library",toLibrary,"layers","All canvases");
+  headerActions.insertBefore(libraryBack,appPicker);
+  function canvasNameDialog(title,name,saveName){
+    formDialog(title,[{label:"Canvas name",placeholder:"Name your canvas",value:name||"",max:80}],"Save",([value])=>saveName(value));
+  }
+  function openCanvas(id){
+    if(!window.AIVerseCanvasLibrary?.open(id))return;
+    data.app="canvas";save();renderAppSurface();
+  }
+  function newCanvas(){
+    canvasNameDialog("New canvas","",name=>{
+      const id=window.AIVerseCanvasLibrary?.create(name);
+      if(!id)return false;
+      data.app="canvas";save();renderAppSurface();
+    });
+  }
+  function renameCanvas(id,name){
+    canvasNameDialog("Rename canvas",name,value=>{
+      if(!window.AIVerseCanvasLibrary?.rename(id,value))return false;
+      renderAppSurface();
+    });
+  }
+  function removeCanvas(id,name){
+    const all=window.AIVerseCanvasLibrary?.list()?.boards||[];
+    if(all.length<=1){notify("Create another canvas before deleting the last one.");return;}
+    formDialog("Delete canvas?",[{label:"Type the canvas name to confirm",placeholder:name,max:80}],"Delete",([typed])=>{
+      if(typed!==name){notify("Type the exact canvas name.");return false;}
+      if(window.AIVerseCanvasLibrary?.remove(id))renderAppSurface();
+    });
+  }
+  function renderCanvasLibrary(){
+    const info=window.AIVerseCanvasLibrary?.list();
+    if(!info){appSurface.append(make("p","app-surface-disclaimer","Canvas library is not available."));return;}
+    const header=make("div","canvas-library-heading"),heading=make("div");
+    heading.append(make("span","app-surface-kicker","CANVAS LIBRARY"),make("h2","","Your canvases"),
+      make("p","",info.workspaceName+" · "+info.boards.length+" canvas"+(info.boards.length===1?"":"es")));
+    header.append(heading,button("canvas-library-create","Create new canvas",newCanvas,"plus","New canvas"));
+    appSurface.append(header);
+    const grid=make("div","canvas-library-grid");
+    for(const item of info.boards){
+      const card=make("article","canvas-library-card");
+      const preview=button("canvas-library-preview","Preview and open "+item.name,()=>openCanvas(item.id));
+      const paper=make("div","canvas-library-paper");
+      for(let i=0;i<Math.min(4,item.items.length);i++){
+        const n=item.items[i],chip=make("div","canvas-library-mini "+n.type);
+        chip.style.left=((i%2)*45+7)+"%";chip.style.top=(Math.floor(i/2)*42+11)+"%";
+        chip.append(make("span","",n.type==="art"||n.type==="image"?"▧":n.title.slice(0,28)));
+        paper.append(chip);
+      }
+      if(!item.items.length)paper.append(make("span","canvas-library-empty","Empty canvas"));
+      preview.append(paper);card.append(preview);
+      const details=make("div","canvas-library-details"),name=make("div","canvas-library-details-name");
+      name.append(make("strong","",item.name),make("small","",item.count+" card"+(item.count===1?"":"s")+" · "+item.connections+" link"+(item.connections===1?"":"s")));
+      details.append(name);
+      if(item.id===info.activeId)details.append(make("span","canvas-library-active","Current"));
+      card.append(details);
+      const actions=make("div","canvas-library-actions");
+      actions.append(
+        button("canvas-library-open","Open "+item.name,()=>openCanvas(item.id),null,"Open"),
+        button("canvas-library-action","Rename "+item.name,()=>renameCanvas(item.id,item.name),null,"Rename"),
+        button("canvas-library-action","Duplicate "+item.name,()=>{if(window.AIVerseCanvasLibrary?.duplicate(item.id))renderAppSurface();},null,"Duplicate"),
+        button("canvas-library-action danger","Delete "+item.name,()=>removeCanvas(item.id,item.name),null,"Delete")
+      );
+      card.append(actions);grid.append(card);
+    }
+    appSurface.append(grid);
+    appSurface.append(make("p","app-surface-disclaimer","This is a browser-local canvas library, not your live OS."));
+  }
+
   function renderAppSurface() {
     appToggle.lastElementChild.textContent=(data.app==="canvas"||data.app==="features")?"Canvases":available.find(x=>x.id===data.app)?.label||"Canvases";
     const isCanvas=data.app==="canvas";
+    libraryBack.hidden=!isCanvas;
     viewport.hidden=!isCanvas;
     appSurface.hidden=isCanvas;
     if (isCanvas) { window.dispatchEvent(new Event("resize")); return; }
