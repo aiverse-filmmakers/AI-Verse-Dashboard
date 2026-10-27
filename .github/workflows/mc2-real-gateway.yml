@@ -1,0 +1,51 @@
+name: MC2 Canonical Gateway Composition
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mc2-real-gateway.yml"
+      - "scripts/mc2/**"
+      - "apps/gateway/src/canonical-gateway-bridge.ts"
+      - "apps/gateway/src/server.ts"
+      - "packages/client/src/canonical-gateway-client.ts"
+      - "packages/registry/src/registry.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actual-gateway:
+    name: Real canonical Gateway / disposable deterministic runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout Dashboard without stored credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout exact reviewed canonical Gateway revision
+        uses: actions/checkout@v4
+        with:
+          repository: aiverse-filmmakers/AI-Verse-Gateway
+          ref: ceb8849ec062f0d3997ceb0207e42c25aedd20c6
+          path: gateway-source
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build Dashboard and run regression suite
+        run: |
+          npm ci
+          npm run check
+
+      - name: Exercise a real canonical Gateway server with ephemeral OS fixture
+        env:
+          CI: "true"
+          AIVERSE_MC2_GATEWAY_SOURCE: gateway-source
+        run: node scripts/mc2/ci-canonical-proof.mjs
