@@ -129,10 +129,11 @@ function taskBoard(main){
      change(()=>{run.status=state;run.events.push("Moved to "+name+" in sample board")},"Sample task moved to "+name+".");
    });
    matches.forEach(x=>{
-     const card=b("",()=>setActive(x.id),"os-kanban-card");
+     const card=h("article","os-kanban-card");
+     card.setAttribute("aria-label","Task "+x.id+" · "+x.name);
      card.draggable=true;
      card.addEventListener("dragstart",event=>{event.dataTransfer?.setData("text/plain",x.id);event.dataTransfer.effectAllowed="move"});
-     card.append(add(h("div","os-kanban-card-head"),meta(x.id),tag(x.status)),h("strong","",x.name),meta(x.agent+" · "+x.workspace),line(x.pct));
+     card.append(add(h("div","os-kanban-card-head"),meta(x.id),tag(x.status)),h("strong","",x.name),meta(x.agent+" · "+x.workspace),line(x.pct),b("View task details",()=>setActive(x.id),"os-task-detail-button"));
      const sel=h("select","os-select os-kanban-move");
      ["Queued","Running","Review","Done","Blocked"].forEach(v=>add(sel,h("option","",v)));
      sel.value=x.status;
