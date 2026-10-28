@@ -118,8 +118,8 @@ export class DashboardClient {
   async canvasGet(id:string){return this.query("aiverse.canvas.get",{
     noCache:true,params:{id},
   });}
-  async canvasHistory(id:string,limit=20){return this.query("aiverse.canvas.history",{
-    noCache:true,params:{id,limit},
+  async canvasHistory(id:string,limit=20,beforeVersion?:number){return this.query("aiverse.canvas.history",{
+    noCache:true,params:{id,limit,...(beforeVersion===undefined?{}:{beforeVersion})},
   });}
   async canvasCreate(title:string,idempotencyKey:string){
     return this.query("aiverse.canvas.create",{noCache:true,params:{title,idempotencyKey}});
