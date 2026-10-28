@@ -111,6 +111,48 @@ export class CanvasAgentActions {
       },
     },signal);
   }
+  /**
+   * Native host-only selected-group operation. The model may propose a
+   * bounded rename or move but cannot supply a document/workspace ID.
+   * The immutable owner-issued selection and canonical run must match.
+   */
+  async invokeSelectedGroupEdit(input:{
+    runId:string;operationId:string;context:CanvasContextSnapshot;
+    groupId:string;
+    edit:{type:"group.rename";label:string}
+      |{type:"group.move";dx:number;dy:number};
+  },signal?:AbortSignal){
+    if(!input||typeof input!=="object"||Array.isArray(input)
+      ||Object.keys(input).sort().join(",")!=="context,edit,groupId,operationId,runId"
+      ||!identifier.test(input.runId)||!identifier.test(input.operationId)
+      ||!identifier.test(input.groupId)||!isHostCanvasContextSnapshot(input.context)
+      ||!input.context.selectedGroups.some(g=>g.id===input.groupId)
+      ||!input.edit||typeof input.edit!=="object"||Array.isArray(input.edit))
+      throw deny("CANVAS_AGENT_ACTION_INVALID");
+    const e=input.edit;
+    const keys=Object.keys(e).sort().join(",");
+    if(e.type==="group.rename"){
+      if(keys!=="label,type"||typeof e.label!=="string"
+        ||!e.label.trim()||e.label.length>80)
+        throw deny("CANVAS_AGENT_ACTION_INVALID");
+    }else if(e.type==="group.move"){
+      if(keys!=="dx,dy,type"||!Number.isFinite(e.dx)||!Number.isFinite(e.dy)
+        ||Math.abs(e.dx)>100000||Math.abs(e.dy)>100000)
+        throw deny("CANVAS_AGENT_ACTION_INVALID");
+    }else throw deny("CANVAS_AGENT_ACTION_INVALID");
+    const claim=await this.verify(input.runId,undefined,signal);
+    if(claim.systemId!==input.context.systemId
+      ||claim.workspaceId!==input.context.workspaceId)throw deny();
+    this.checkLease(signal);
+    return this.invoke({
+      runId:input.runId,operationId:input.operationId,
+      method:"aiverse.canvas.edit",params:{
+        id:input.context.documentId,
+        expectedVersion:input.context.documentVersion,
+        edit:{...e,id:input.groupId},
+      },
+    },signal);
+  }
   async invoke(input:CanvasAgentAction,signal?:AbortSignal):Promise<{
     source:"canonical-data";workspaceId:string;agentRunId:string;document:unknown;
   }>{
