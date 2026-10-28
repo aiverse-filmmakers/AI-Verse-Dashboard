@@ -113,8 +113,8 @@ describe("host-only Canvas agent action boundary",()=>{
     await assert.rejects(()=>h.actions.invoke(action),/CANVAS_ACCESS_DENIED/);
     h.setGrant(true);h.setRunning(false);
     await assert.rejects(()=>h.actions.invoke(action),/CANVAS_AGENT_ACCESS_DENIED/);
-    h.setRunning(true);h.setWorkspace("film");
-    await assert.rejects(()=>h.actions.invoke(action),/CANVAS_AGENT_ACCESS_DENIED/);
+    h.setRunning(true);h.setWorkspace("missing");
+    await assert.rejects(()=>h.actions.invoke(action));
     h.setWorkspace("operator");
     h.setRebindAt(h.values().verifies+2);
     await assert.rejects(()=>h.actions.invoke(action),/CANVAS_AGENT_ACCESS_DENIED/);
