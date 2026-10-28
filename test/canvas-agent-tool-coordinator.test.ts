@@ -47,16 +47,16 @@ function fixture(){
    if(p.expectedVersion!==doc.version)throw Object.assign(
      Error("RECORD_VERSION_CONFLICT"),{code:"RECORD_VERSION_CONFLICT"});
    if(p.edit?.type==="note.text"){
-     const n=doc.board.nodes.find(x=>x.id===p.edit.id);
+     const n=doc.board.nodes.find((x:any)=>x.id===p.edit.id);
      if(!n)throw Error("missing");
      doc={...doc,version:doc.version+1,
-      board:{...doc.board,nodes:doc.board.nodes.map(x=>
+      board:{...doc.board,nodes:doc.board.nodes.map((x:any)=>
         x.id===n.id?{...x,text:p.edit.text}:x)}};
    }else if(p.edit?.type==="group.rename"){
-     const g=doc.board.groups.find(x=>x.id===p.edit.id);
+     const g=doc.board.groups.find((x:any)=>x.id===p.edit.id);
      if(!g)throw Error("missing group");
      doc={...doc,version:doc.version+1,board:{...doc.board,
-       groups:doc.board.groups.map(x=>x.id===g.id?
+       groups:doc.board.groups.map((x:any)=>x.id===g.id?
          {...x,label:p.edit.label}:x)}};
    }else if(p.edit?.type==="group.move"){
      const g=doc.board.groups.find(x=>x.id===p.edit.id);
