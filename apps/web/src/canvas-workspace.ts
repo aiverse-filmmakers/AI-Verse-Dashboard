@@ -333,26 +333,39 @@ export class CanvasWorkspace {
       card.title="Select to edit. Drag to reposition.";
       card.addEventListener("pointerdown",event=>{
         if(this.busy||event.button!==0)return;
-        const startX=event.clientX,startY=event.clientY;
+        const pointer=event.pointerId, startX=event.clientX,startY=event.clientY;
         const startPos={x:note.x,y:note.y};
-        card.setPointerCapture(event.pointerId);
+        let changed=false;
+        // Track via the window, so leaving the note or crossing the board
+        // cannot silently cancel the final canonical note.move effect.
         const moving=(e:PointerEvent)=>{
+          if(e.pointerId!==pointer)return;
           const dx=e.clientX-startX,dy=e.clientY-startY;
+          if(Math.abs(dx)>2||Math.abs(dy)>2)changed=true;
+          if(!changed)return;
           card.style.left=Math.max(0,Math.min(100000,startPos.x+dx))+"px";
           card.style.top=Math.max(0,Math.min(100000,startPos.y+dy))+"px";
         };
+        const detach=()=>{
+          window.removeEventListener("pointermove",moving);
+          window.removeEventListener("pointerup",finished);
+          window.removeEventListener("pointercancel",cancel);
+        };
         const finished=(e:PointerEvent)=>{
-          card.removeEventListener("pointermove",moving);
-          card.removeEventListener("pointerup",finished);
-          card.removeEventListener("pointercancel",cancel);
+          if(e.pointerId!==pointer)return;
+          detach();
+          if(!changed)return;
           const x=Math.round(Math.max(0,Math.min(100000,startPos.x+e.clientX-startX)));
           const y=Math.round(Math.max(0,Math.min(100000,startPos.y+e.clientY-startY)));
           if(x!==note.x||y!==note.y)void this.edit({type:"note.move",id:note.id,x,y},"Note moved");
         };
-        const cancel=()=>this.renderBoard();
-        card.addEventListener("pointermove",moving);
-        card.addEventListener("pointerup",finished);
-        card.addEventListener("pointercancel",cancel);
+        const cancel=(e:PointerEvent)=>{
+          if(e.pointerId!==pointer)return;
+          detach();this.renderBoard();
+        };
+        window.addEventListener("pointermove",moving);
+        window.addEventListener("pointerup",finished);
+        window.addEventListener("pointercancel",cancel);
       });
       this.board.append(card);
     }
