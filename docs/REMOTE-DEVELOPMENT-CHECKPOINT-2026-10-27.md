@@ -87,3 +87,38 @@ Next gate: resolve an actual installed system's Gateway ID/origin and secret ref
 **Verified in a disposable real-owner integration:** [Gateway composition 40709020351](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40709020351) passed: authenticated Dashboard RPC executes on real Data SQLite, persists a Canvas across host restart, isolates workspace, refuses stale version and denied write, and replays idempotent create. [Browser QC 40709020266](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40709020266) passed, and the cross-platform negative/auth tests passed at [Dashboard CI 40708643287](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40708643287); check the latest current-head CI before claiming its final status. Complete technical scope and missing gate in [Canvas host contract](CANVAS-HOST-OWNER-INTEGRATION-2026-10-28.md).
 
 **Do not repeat:** owner Data schema/versioned persistence, host method/protocol mapping, authenticated Canvas RPC, input-boundary tests, or CI Data composition. **Next:** source review/acceptance of MC2.1 (original 2-point gate, so next accepted score would be **17/100**, not 16/100) and reconciliation of the amended Personal-first plan. Then add real OS authorization/lifecycle registration for the Data Canvas owner, and only then mount the editable Canvas library UI. Current formal accepted score stays **15/100** until approved review, not because no work was completed. Keep the GitHub-first 90–93% pre-local ambition.
+
+## Task 12 native owner attachment checkpoint, 28 October 2026
+
+Source is saved in Dashboard [draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42).
+**Do not repeat Tasks 8-12.** Task 12 introduced a trusted production-shaped
+Data module adapter `apps/gateway/src/canvas-data-owner.ts` that binds the
+already-tested `CanvasOwnerBridge`, OS permission policy and canonical
+Data `CanvasDocuments` to an independent native human-actor grant.
+The integration proof now reuses this exact adapter, opens only explicitly
+pre-provisioned scoped Data SQLite databases, denies unprovisioned workspace
+Data, and tests both OS and actor revocation. Source commit
+[`a966c46`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/a966c46379155e01595cab2c9beee7326edd7c07)
+passed all three workflows (Dashboard CI, browser interaction and real OS +
+Data + Gateway composition). Later docs-only commit CI must still be checked.
+
+**Do not confuse native attachment source with production admission.**
+The installed Data/OS actor source has not been authenticated on the
+operator's Mac. No trusted production Canvas owner has been attached to
+`start-connected`; it remains explicitly unavailable to the current
+browser app. Do not add a hardcoded operator identity, use request-supplied
+paths, create database files from read/list RPC, or claim live Canvas UI.
+
+**Next independently useful task (13):** build the real first-party Canvas
+library and editor via the six already-typed Canvas RPC methods, keeping
+a truthful disconnected/permission/optimistic-conflict UI. Respect the
+Personal Scratch Canvas plus separately named workspaces; never create a
+browser-only canonical Canvas. Duplicate, undo, agent parity and approvals
+must be implemented only against actual owner capabilities and recorded
+as separate gates. Private production/native OS admission may be worked
+as a parallel bounded slice without enabling anonymous permissions.
+
+Keep the previous operating contract: 1-4 bounded tasks per run, GitHub-first
+90-93% aspiration before consolidating necessary Mac tests, no surprise
+merges or releases, and formal accepted score at **15/100** pending MC2.1
+independent approval and amended plan review.
