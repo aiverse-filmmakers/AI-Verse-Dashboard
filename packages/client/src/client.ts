@@ -111,6 +111,29 @@ export class DashboardClient {
       noCache:true,params:{sessionId,limit,offset},
     });
   }
+  /** Canonical Canvas actions always use authenticated Dashboard-host RPC. */
+  async canvasList(limit=50){return this.query("aiverse.canvas.list",{
+    noCache:true,params:{limit},
+  });}
+  async canvasGet(id:string){return this.query("aiverse.canvas.get",{
+    noCache:true,params:{id},
+  });}
+  async canvasCreate(title:string,idempotencyKey:string){
+    return this.query("aiverse.canvas.create",{noCache:true,params:{title,idempotencyKey}});
+  }
+  async canvasRename(id:string,title:string,expectedVersion:number,idempotencyKey:string){
+    return this.query("aiverse.canvas.rename",{noCache:true,
+      params:{id,title,expectedVersion,idempotencyKey}});
+  }
+  async canvasEdit(id:string,edit:Record<string,unknown>,
+    expectedVersion:number,idempotencyKey:string){
+    return this.query("aiverse.canvas.edit",{noCache:true,
+      params:{id,edit,expectedVersion,idempotencyKey}});
+  }
+  async canvasDelete(id:string,expectedVersion:number,idempotencyKey:string){
+    return this.query("aiverse.canvas.delete",{noCache:true,
+      params:{id,expectedVersion,idempotencyKey}});
+  }
   /** Query the Gateway. Read-only methods only in Phase 1. */
   async query(
     method: DashboardMethod,
