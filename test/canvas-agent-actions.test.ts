@@ -135,6 +135,22 @@ describe("host-only Canvas agent action boundary",()=>{
     await assert.rejects(()=>h.actions.invoke(action),/CANVAS_AGENT_ACCESS_DENIED/);
     assert.equal(h.values().executed,0);
   });
+  it("revokes Canvas agent actions when the real workspace manifest is paused",async()=>{
+    const h=harness();
+    h.setWorkspace("film");
+    const manifest=join(h.root,"workspaces","film","WORKSPACE.yaml");
+    writeFileSync(manifest,
+      'schema_version: "2.0"\\nid: "film"\\nname: "Film"\\nstatus: "paused"\\n');
+    await assert.rejects(()=>h.actions.invoke(h.command("aiverse.canvas.get",{
+      id:"rec_1234",
+    })),/CANVAS_AGENT_ACCESS_DENIED/);
+    assert.equal(h.values().executed,0);
+    writeFileSync(manifest,
+      'schema_version: "2.0"\\nid: "film"\\nname: "Film"\\nstatus: "active"\\n');
+    const result=await h.actions.invoke(h.command("aiverse.canvas.get",{id:"rec_1234"}));
+    assert.equal(result.workspaceId,"film");
+    assert.equal(h.values().executed,1);
+  });
   it("denies absent agent grant even when operator permission is allowed",async()=>{
     const {registry,systemId}=fixture();
     let calls=0;
