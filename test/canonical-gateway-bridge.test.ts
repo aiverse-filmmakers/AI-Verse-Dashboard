@@ -119,7 +119,7 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
      readinessEvidence:"authenticated-status-and-models",inferenceVerified:false});
    assert.deepEqual(projection.capabilities,{
      runCreate:true,runGet:true,events:true,controls:false,
-     conversationLibrary:false,providerSelection:false,
+     conversationLibrary:true,providerSelection:false,
    });
    assert.equal(upstream.received.length,2);
    assert.ok(upstream.received.every(r=>r.auth==="Bearer actual-host-gateway-token"));
