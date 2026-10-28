@@ -716,3 +716,39 @@ passed Linux and Windows native grant tests but its
 was **queued** last check. Verify exact final conclusion
 before claiming fully green OS test matrix. Docs-only
 commits after code introduce no runtime behavior.
+
+
+## NEW standing progress reporting contract, 28 October 2026
+
+**The user expressly wants to know when 100% of what is doable in
+GitHub/browser alone has been completed.** Do NOT keep reporting
+only 15/100 after coding batches.
+
+Read `docs/GITHUB-BROWSER-COMPLETION-SCORECARD-2026-10-28.md`
+before the next batch. The scorecard independently defines:
+
+- **GB = GitHub/browser build completion: ~34/100 PROVISIONAL estimate**
+  across fixed current-scope remote-capable categories. The preliminary
+  estimates require a source/CI subdeliverable audit; never claim it is a
+  fully verified 34%.
+- **FA = formal accepted roadmap: 15/100**, unchanged until reviewed
+  MC2.1 and other gates actually close. Next formal gate 17/100 if approved.
+- **LR = local/production acceptance:** list explicit pending native
+  owner Mac/account/signing/installation actions, **no invented %**.
+
+**GB=100% is the remote finish line:** no *defined current-scope*
+engineering/CI/build/owner-integration task remaining for GitHub
+and browser; remaining work genuinely requires private Mac,
+credentials, consent, local releases or owner checks. This does not
+mean the product has been installed or formally accepted 100/100.
+
+Include GB/FA/LR, a batch scoreboard, remaining remote workstreams
+and exact evidence in future results. Do NOT count number of tasks
+as percent or award formal points to draft branches. The historic
+90–93/100 is a pre-local aspiration under original formal
+weighted accounting, **not** a ceiling on GB's separate 100-point
+scale. If user expands the film suite's undefined feature scope,
+rebaseline GB publicly instead of changing percentage silently.
+
+The new scorecard is committed to the real Dashboard
+`codex/dashboard-source-checkpoint` draft PR #42, not main.
