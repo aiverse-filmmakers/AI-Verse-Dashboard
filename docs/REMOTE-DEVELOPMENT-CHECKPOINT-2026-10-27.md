@@ -122,3 +122,44 @@ Keep the previous operating contract: 1-4 bounded tasks per run, GitHub-first
 90-93% aspiration before consolidating necessary Mac tests, no surprise
 merges or releases, and formal accepted score at **15/100** pending MC2.1
 independent approval and amended plan review.
+
+## Task 13 first-party Canvas UI checkpoint, 28 October 2026
+
+**Code: Dashboard [draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42), source branch
+`codex/dashboard-source-checkpoint`. Tasks 8-13 have been implemented as
+separate GitHub-first slices. Do not repeat the already proven session
+restart, canonical Data persistence, host Canvas RPC, OS policy, native
+Data owner attachment or this Canvas editor.**
+
+Task 13 is the first **real Personal Canvas user interface** mounted
+beside authenticated chat, not the static preview. File:
+`apps/web/src/canvas-workspace.ts`, integrated into
+`apps/web/src/personal-chat-ui.ts` and the existing CSS bundle.
+A scratch area is always visible and is explicitly unsaved until the user
+adds the first note. After Data owner admission, the library uses
+`aiverse.canvas.{list,get,create,rename,edit,delete}` for saved
+documents, note drag/edit/removal, links and canonical incremental duplicate.
+It never writes canonical content to browser storage. Browser regression
+test uses a scoped synthetic fixture to validate the real user controls;
+separate previous CI uses the actual pinned Data SQLite and OS sources.
+[Source validation 06f97bf](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/06f97bf4826bcb9c7daec99e06ca2ecc1e8a4aab)
+passed Chromium [run 40722781395](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40722781395).
+
+**Gates still open:** default production launcher does not attach the
+real OS actor-granted Canvas Data owner; this requires owner-approved
+Data provisioning and host grant source. Deletion requiring human approval
+stays denied; copy is sequential/non-atomic and exposes partial failure,
+not an owner-level clone. Agent controls, undo, collaborative/asset Canvas,
+production macOS app, live member provider and final personal dogfood
+remain later tasks. MC2.1 independent design review PR #43 still has no
+approval, Personal-first plan amendment also pending. Formal accepted
+score stays 15/100, next eligible increment +2 to 17/100.
+
+**Next Task 14:** source-review the real OS/Data approval/action contracts,
+then implement the narrow agent-to-Canvas action parity and explicit
+approval-safe destructive pathway without allowing a model/browser to
+mint actor authority. If owner approval/API capability is missing, record
+its blocker and develop independent undo/atomic clone Data-owned contract
+as a separate qualified slice. Never fake a successful agent write, undo
+or approval from UI-only state. Keep 1-4 bounded tasks, GitHub-first,
+check current-head workflows before reporting acceptance.
