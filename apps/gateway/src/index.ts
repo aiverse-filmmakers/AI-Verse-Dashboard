@@ -9,6 +9,8 @@ export type {
 export { SubscriptionHub, watchWorkspace } from "./subscriptions.js";
 export type { HubEvent, DeliveredEvent } from "./subscriptions.js";
 export { CanonicalGatewayBridge } from "./canonical-gateway-bridge.js";
+export { CanvasOwnerBridge } from "./canvas-owner-bridge.js";
+export type {CanvasHostFacts,CanvasHostRequest,ApprovedCanvasOwner} from "./canvas-owner-bridge.js";
 export type { ApprovedCanonicalGateway } from "./canonical-gateway-bridge.js";
 export { startGateway, DEFAULT_PORT } from "./server.js";
 export type { GatewayServer } from "./server.js";
