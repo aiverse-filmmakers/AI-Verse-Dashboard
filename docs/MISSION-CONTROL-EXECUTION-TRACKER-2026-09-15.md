@@ -1089,3 +1089,15 @@ primitives in their rightful owner repo, without granting a
 browser the authority to provision SQLite, mint a bot identity
 or approve an AI action. If native authorization is not
 available, record an explicit blocker, not a fake feature.
+
+**Final source verification, Task 32:** Data code/test revision
+[`beec725e`](https://github.com/aiverse-filmmakers/AI-Verse-Data/commit/beec725e3eeaf17e61705854d172b291dd2afa54)
+passed [Release Smoke 40742775291](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40742775291),
+[six-platform CI 40742775603](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40742775603)
+and [Five-Component Release Acceptance 40742775695](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40742775695).
+Dashboard implementation/test revision
+[`c27034d`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/c27034de7559a2398a5215902be4d6d62d6521ea)
+passed [cross-platform Dashboard CI 40743057482](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743057482),
+[Chromium interaction QC 40743057446](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743057446)
+and [real pinned Gateway/OS/Data composition 40743058809](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743058809).
+The later documentation commits do not change runtime code.
