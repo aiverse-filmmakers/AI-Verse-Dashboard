@@ -157,3 +157,50 @@ conflict/cancellation handling; private Mac owner acceptance. The standalone
 `start-connected` launcher still installs no Canvas Data authority by
 default, as required. Never mark AI-driven Canvas as production usable from
 this source-only contract, and do not award roadmap acceptance points.
+
+
+## Task 15: real GatewayStore-backed agent verification
+
+**Qualified actual upstream contract:** pinned
+[AI-Verse-Gateway PR #80](https://github.com/aiverse-filmmakers/AI-Verse-Gateway/pull/80)
+at `9748dd0d5473b65ad95ef92df62fe0a13575e378` stores a
+canonical `run_id`, `session_id`, `system_id`, `workspace_id`,
+authenticated `principal`, run `status`, and a session
+`active_run_id`. The Gateway does *not* issue a separate bot actor ID
+or a Canvas action authorization grant. No model response, run ID or
+human Gateway bearer should be treated as a bot grant.
+
+New source `apps/gateway/src/canvas-gateway-run-verifier.ts` provides
+`createGatewayStoreCanvasRunVerifier()`. The native trusted host must
+inject the **actual** installed `GatewayStore` owner-facing
+`getRun()/getSession()` interface, the approved Dashboard-to-canonical
+system mapping and authenticated Gateway principal, and an independent,
+already admitted host/OS `resolveAdmittedActor()` callback. The callback
+must supply an exact-bound bot ID and revocable lease generation; otherwise
+the verifier returns `null` and the action fails closed. The adapter reads
+the real run and session, checks active run membership, principal/system/
+workspace, running state, approval waiting, deadline and active OS
+workspace manifest, resolves the bot grant, then re-reads Gateway run and
+session to reject changes during admission. It never reads arbitrary
+filesystem paths, accepts model-supplied grant/root/principal, or creates a
+shadow run registry. Gateway **remains** canonical for run/session truth.
+
+The pinned disposable integration proof has been updated to instantiate
+the real `GatewayStore`, create its persisted session/run, set its
+actual active running state, and call `CanvasAgentActions` through this
+new verifier and the **real Data SQLite** Canvas owner. It still verifies
+the canonical Data `updatedBy.kind="bot"`, grant revocation and real
+Gateway run cancellation. The independent host actor grant remains
+**disposable CI fixture data**, not production OS authorization.
+
+**Release boundaries remain:** a separate live Gateway process cannot
+silently share a trusted native store handle. Production must use a
+reviewed native owner capability or supported authenticated protocol that
+provides the same complete run/session checks without exposing raw state
+files. The OS has no reviewed bot actor-grant installation for this Canvas
+flow; do not infer one from the Gateway bearer or synthesize an actor.
+Repeated verification is a strong fail-closed guard but **not an atomic
+run-status+Data write transaction**. Explicit approval receipts, 
+worker/model tool transport, cancellation race resolution and private
+owner Mac acceptance remain independent gates. The normal launcher stays
+without Canvas owner or agent dispatch by default.
