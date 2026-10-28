@@ -297,6 +297,8 @@ export class PersonalChatRunController {
       });
       if(!this.valid(epoch,scope,selection))return this.snapshot();
       const run=asRun(response.result,scope);
+      if(request.sessionId && run.sessionId!==request.sessionId)
+        fail("CHAT_SESSION_BINDING_MISMATCH");
       this.show({runId:run.runId,sessionId:run.sessionId,
         phase:run.status==="completed"?"running":phase(run.status),
         canonicalStatus:run.status,output:run.status==="completed"?"":run.output??""});
