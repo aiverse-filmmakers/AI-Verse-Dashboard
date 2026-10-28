@@ -16,7 +16,7 @@ import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmitte
   from "../../dist/apps/gateway/src/index.js";
 
 const pin="d1a135a490547890e7ba54d43cf77a71f67f67b1";
-const osPin="5388f3fab725c4be5f4394f0d0c98d20ee502c5e";
+const osPin="08b6f5d05b9cf04c511d6574a9f79ac244311018";
 const gatewayPin="9748dd0d5473b65ad95ef92df62fe0a13575e378";
 assert.equal(process.env.CI,"true","never operate on owner machine");
 assert.equal(process.env.AIVERSE_GATEWAY_TOKEN,undefined);
