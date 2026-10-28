@@ -8,6 +8,7 @@ export const QUERY_METHODS = [
   "run.logs", "cron.list", "cron.history", "agent.list", "agent.sessions",
   "usage.summary", "graph.query", "graph.node", "source.preview",
   "aiverse.gateway.status", "aiverse.gateway.run.get",
+  "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
 ] as const;
 
 export const PURPOSE_CONTROL_METHODS = [
@@ -39,6 +40,7 @@ const WORKSPACE_SCOPED = new Set<string>([
   "run.list", "run.get", "run.logs", "cron.list", "cron.history", "agent.list",
   "agent.sessions", "usage.summary", "graph.query", "graph.node", "source.preview",
   "aiverse.gateway.status", "aiverse.gateway.run.get", "aiverse.gateway.run.create",
+  "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
   "chat.send", "chat.abort", "task.start", "task.cancel", "task.retry", "cron.create",
   "cron.pause", "cron.resume", "cron.runNow", "approval.resolve", "initiative.activate",
   "inbox.resolve", ...PURPOSE_CONTROL_METHODS,
