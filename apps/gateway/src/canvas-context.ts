@@ -17,6 +17,7 @@ export interface CanvasSelectionRequest{
   readonly expectedVersion?:number;
   readonly selectedNodeIds?:readonly string[];
   readonly selectedEdgeIds?:readonly string[];
+  readonly selectedGroupIds?:readonly string[];
 }
 export interface SelectedCanvasNote{
   readonly id:string;readonly x:number;readonly y:number;
@@ -26,13 +27,18 @@ export interface SelectedCanvasNote{
 export interface SelectedCanvasEdge{
   readonly id:string;readonly from:string;readonly to:string;
 }
+export interface SelectedCanvasGroup{
+  readonly id:string;readonly label:string;readonly nodeIds:readonly string[];
+  readonly trust:"untrusted-canvas-label";
+}
 export interface CanvasContextSnapshot{
   readonly source:"canonical-data/canvas-selection";
   readonly systemId:string;readonly workspaceId:string;
   readonly documentId:string;readonly documentTitle:string;
   readonly documentVersion:number;readonly selectedNodes:readonly SelectedCanvasNote[];
   readonly selectedEdges:readonly SelectedCanvasEdge[];
-  readonly noteCount:number;readonly edgeCount:number;
+  readonly selectedGroups:readonly SelectedCanvasGroup[];
+  readonly noteCount:number;readonly edgeCount:number;readonly groupCount:number;
 }
 const IDENTIFIER=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const issuedSnapshots=new WeakSet<object>();
@@ -53,18 +59,20 @@ function ids(v:unknown):string[]{
  return [...v] as string[];
 }
 function requestOf(input:CanvasSelectionRequest){
- if(!keys(input,["documentId","expectedVersion","selectedNodeIds","selectedEdgeIds"])
+ if(!keys(input,["documentId","expectedVersion","selectedNodeIds","selectedEdgeIds","selectedGroupIds"])
    ||!validId(input.documentId)
    ||(input.expectedVersion!==undefined
      &&(!Number.isSafeInteger(input.expectedVersion)||input.expectedVersion<1)))
    throw fail();
  return {documentId:input.documentId,expectedVersion:input.expectedVersion,
-   nodeIds:ids(input.selectedNodeIds),edgeIds:ids(input.selectedEdgeIds)};
+   nodeIds:ids(input.selectedNodeIds),edgeIds:ids(input.selectedEdgeIds),
+   groupIds:ids(input.selectedGroupIds)};
 }
 function isBoardDocument(v:unknown):v is {
  id:string;title:string;version:number;
  board:{nodes:{id:string;kind:"note";text:string;x:number;y:number}[];
- edges:{id:string;from:string;to:string}[]}
+ edges:{id:string;from:string;to:string}[];
+ groups?:{id:string;label:string;nodeIds:string[]}[]}
 }{
  if(!v||typeof v!=="object")return false;
  const o=v as Record<string,unknown>;
@@ -72,7 +80,8 @@ function isBoardDocument(v:unknown):v is {
    ||!Number.isSafeInteger(o.version)||!o.board||typeof o.board!=="object")
    return false;
  const board=o.board as Record<string,unknown>;
- return Array.isArray(board.nodes)&&Array.isArray(board.edges);
+ return Array.isArray(board.nodes)&&Array.isArray(board.edges)
+   &&(board.groups===undefined||Array.isArray(board.groups));
 }
 export class CanvasContextReader{
  private readonly root:string;
@@ -122,8 +131,10 @@ export class CanvasContextReader{
       &&document.version!==selected.expectedVersion))throw fail();
   const nodes=new Map(document.board.nodes.map(n=>[n.id,n]));
   const edges=new Map(document.board.edges.map(e=>[e.id,e]));
+  const groups=new Map((document.board.groups??[]).map(g=>[g.id,g]));
   if(selected.nodeIds.some(id=>!nodes.has(id))
-    ||selected.edgeIds.some(id=>!edges.has(id)))throw fail();
+    ||selected.edgeIds.some(id=>!edges.has(id))
+    ||selected.groupIds.some(id=>!groups.has(id)))throw fail();
   const selectedNodes=selected.nodeIds.map(id=>{
     const n=nodes.get(id)!;
     return Object.freeze({id:n.id,x:n.x,y:n.y,
@@ -134,6 +145,12 @@ export class CanvasContextReader{
     const e=edges.get(id)!;
     return Object.freeze({id:e.id,from:e.from,to:e.to});
   });
+  const selectedGroups=selected.groupIds.map(id=>{
+    const g=groups.get(id)!;
+    return Object.freeze({id:g.id,label:g.label,
+      nodeIds:Object.freeze([...g.nodeIds]),
+      trust:"untrusted-canvas-label" as const});
+  });
   // Do not send unselected note text, raw records, actor/grant identities,
   // filesystem roots, bearer secrets or owner permission decisions.
   const snapshot:CanvasContextSnapshot={
@@ -143,8 +160,10 @@ export class CanvasContextReader{
    documentVersion:document.version,
    selectedNodes:Object.freeze(selectedNodes),
    selectedEdges:Object.freeze(selectedEdges),
+   selectedGroups:Object.freeze(selectedGroups),
    noteCount:document.board.nodes.length,
    edgeCount:document.board.edges.length,
+   groupCount:document.board.groups?.length??0,
   };
   this.lease(facts,signal);
   const minted=Object.freeze(snapshot);
