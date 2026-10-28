@@ -12,7 +12,7 @@ import {tmpdir} from "node:os";
 import {pathToFileURL} from "node:url";
 import {SystemRegistry} from "../../dist/packages/registry/src/index.js";
 import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js";
-import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner,CanvasAgentActions,createGatewayStoreCanvasRunVerifier,createCanvasOwnerPreflight}
+import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner,CanvasAgentActions,createGatewayStoreCanvasRunVerifier,createCanvasOwnerPreflight,createOsNativeCanvasGrantResolvers}
   from "../../dist/apps/gateway/src/index.js";
 
 const pin="d1a135a490547890e7ba54d43cf77a71f67f67b1";
@@ -33,6 +33,7 @@ const osSource=resolve(process.env.AIVERSE_MC2_OS_SOURCE||"os-source");
 assert.equal(execFileSync("git",["-C",osSource,"rev-parse","HEAD"],{
  encoding:"utf8"}).trim(),osPin);
 const {evaluateActionPermission}=await import(pathToFileURL(join(osSource,"scripts","action-permission.mjs")).href);
+const {verifyInstalledCanvasGrant,CANVAS_GRANT_SOURCE}=await import(pathToFileURL(join(osSource,"scripts","canvas-actor-grant.mjs")).href);
 const gatewaySource=resolve(process.env.AIVERSE_MC2_GATEWAY_SOURCE||"gateway-source");
 assert.equal(execFileSync("git",["-C",gatewaySource,"rev-parse","HEAD"],{
  encoding:"utf8"}).trim(),gatewayPin);
@@ -114,20 +115,79 @@ try{
  assert.equal(preflight.inspect("film").reason,"scope-inactive");
  await writeFile(join(root,"workspaces/film","WORKSPACE.yaml"),
    'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "active"\n');
+
+ // Owner-written, private, short-lived OS grants in DISPOSABLE CI only.
+ // The OS module is read-only: it cannot issue any of these grants itself.
+ const grantFile=join(root,".aiverse","os","canvas-actor-grants.json");
+ await mkdir(join(root,".aiverse","os"),{recursive:true});
+ const allMethods=["aiverse.canvas.list","aiverse.canvas.get",
+   "aiverse.canvas.history","aiverse.canvas.create","aiverse.canvas.rename",
+   "aiverse.canvas.edit","aiverse.canvas.duplicate","aiverse.canvas.revert",
+   "aiverse.canvas.delete"];
+ const expiration=new Date(Date.now()+600_000).toISOString();
+ const installed=[
+   {grant_id:"ci-operator-grant",actor_kind:"human",
+     actor_id:"local-operator",scope:"operator",system_id:systemId,
+     principal:"os-native-operator",lease_epoch:"human-1",
+     expires_at:expiration,methods:allMethods},
+   {grant_id:"ci-film-grant",actor_kind:"human",
+     actor_id:"local-operator",scope:"film",system_id:systemId,
+     principal:"os-native-operator",lease_epoch:"film-1",
+     expires_at:expiration,methods:allMethods},
+   {grant_id:"ci-canvas-bot-grant",actor_kind:"bot",
+     actor_id:"ci-canvas-bot",scope:"operator",system_id:systemId,
+     principal:"operator",run_id:"ci-agent-run-1",session_id:"ci-agent-session-1",
+     lease_epoch:"bot-1",expires_at:expiration,
+     methods:["aiverse.canvas.list","aiverse.canvas.get",
+       "aiverse.canvas.history","aiverse.canvas.edit","aiverse.canvas.create"]},
+ ];
+ const saveGrants=async values=>writeFile(grantFile,JSON.stringify({
+   format:CANVAS_GRANT_SOURCE,schema_version:1,generation:"ci-generation-1",
+   grants:values,
+ }),{mode:0o600});
+ const osGrants=createOsNativeCanvasGrantResolvers(registry,{
+   dashboardSystemId:systemId,native:{verifyInstalledCanvasGrant},
+   // Explicit disposable host proof of an independently authenticated user.
+   // This is NOT inferred from the Dashboard bearer/cookie.
+   authenticateHuman:async()=>actorGrant?{principal:"os-native-operator"}:null,
+   authenticateBot:async facts=>{
+     if(!agentGrant||!facts.agent)return null;
+     const run=await gatewayStore.getRun(facts.agent.runId);
+     if(!run||run.status!=="running"||
+       run.principal!=="operator"||run.workspace_id!==facts.workspaceId)return null;
+     const session=await gatewayStore.getSession(run.session_id);
+     if(!session||session.status!=="active"
+       ||session.active_run_id!==facts.agent.runId
+       ||session.workspace_id!==facts.workspaceId)return null;
+     return {principal:run.principal,runId:run.run_id,
+       sessionId:run.session_id,actorId:facts.agent.actorId};
+   },
+ });
+ assert.equal(await osGrants.resolveAdmittedActor({
+   runId:"ci-agent-run-1",sessionId:"ci-agent-session-1",
+   canonicalSystemId,dashboardSystemId:systemId,
+   workspaceId:"operator",principal:"operator",
+ }),null,"no actor grant until owner installs a private OS file");
+ await saveGrants(installed);
+ assert.equal((await osGrants.resolveAdmittedActor({
+   runId:"ci-agent-run-1",sessionId:"ci-agent-session-1",
+   canonicalSystemId,dashboardSystemId:systemId,
+   workspaceId:"operator",principal:"operator",
+ }))?.actorId,"ci-canvas-bot");
  function createBridge(){
   const owner=createAdmittedCanvasDataOwner(registry,{
     dashboardSystemId:systemId,native,
     // Only CI's disposable host installs this grant source. Production
     // requires an admitted native operator/OS identity authority.
-    admittedActor:facts=>{
+    admittedActor:(facts,request)=>{
       actorAdmits++;
-      return facts.principal==="verified-agent"
-        ?agentGrant?{kind:"bot",id:"ci-canvas-bot"}:null
-        :actorGrant?actor:null;
+      return osGrants.admittedActor(facts,request);
     },
     osPolicy:{
-      operatorAdmitted:()=>operatorGrant,
-      agentAdmitted:facts=>agentGrant&&facts.agent?.runId==="ci-agent-run-1",
+      operatorAdmitted:(facts,request)=>operatorGrant
+        ?osGrants.operatorAdmitted(facts,request):false,
+      agentAdmitted:(facts,request)=>agentGrant
+        ?osGrants.agentAdmitted(facts,request):false,
       evaluate:input=>{osChecks++;return evaluateActionPermission(input);},
     },
   });
@@ -135,9 +195,7 @@ try{
     dashboardSystemId:systemId,canonicalSystemId,
     approvedPrincipal:"operator",store:gatewayStore,
     resolveAdmittedActor:facts=>agentGrant
-      ?{actorKind:"bot",actorId:"ci-canvas-bot",leaseEpoch:"ci-grant-1",
-        runId:facts.runId,sessionId:facts.sessionId,
-        principal:facts.principal,workspaceId:facts.workspaceId}:null,
+      ?osGrants.resolveAdmittedActor(facts):null,
   });
   agentActions=new CanvasAgentActions(registry,owner,{
     verifyRun:async runId=>{
