@@ -50,7 +50,9 @@ function fixtureCanvas(frame){
   if(frame.method==="aiverse.canvas.history"){
     owner(store.get(p.id));
     const archived=canvasRevisions.get(revisionKey(p.id))??[];
-    return {...snapshot(),document:archived.slice().sort((a,b)=>b.version-a.version)
+    return {...snapshot(),document:archived.slice()
+      .filter(x=>p.beforeVersion===undefined||x.version<p.beforeVersion)
+      .sort((a,b)=>b.version-a.version)
       .slice(0,p.limit??20).map(clone)};
   }
   if(frame.method==="aiverse.canvas.revert"){
@@ -479,4 +481,41 @@ test("Canvas: concurrent revision rejects undo and never shows success",async t=
   assert.equal(await canvas.locator(".canvas-note").count(),1,
     "reload uses the newer canonical board after stale undo failure");
   assert.deepEqual(errors,[]);
+});
+
+
+test("Canvas: Load older history returns disjoint keyset pages and no browser revision store",async t=>{
+ const {page,errors}=await pageFor(t);
+ const canvas=page.locator(".aiverse-canvas");
+ await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Long take plan");
+ await canvas.getByRole("button",{name:"Create",exact:true}).click();
+ await canvas.locator(".canvas-current-title").getByText("Long take plan").waitFor();
+ const store=canvasDocuments.get("aiverse-01|operator");
+ const d=[...store.values()].find(x=>x.title==="Long take plan");
+ assert.ok(d);
+ const archive=canvasRevisions.get("aiverse-01|operator|"+d.id);
+ assert.ok(archive);
+ for(let version=2;version<=48;version++){
+   archive.push({...clone(d),version,title:"Long take v"+version});
+ }
+ d.version=48;d.title="Long take v48";
+ await canvas.getByRole("button",{name:"Reload Canvas"}).click();
+ await canvas.locator(".canvas-current-meta").getByText("Saved · v48").waitFor();
+ await canvas.getByRole("button",{name:"History",exact:true}).click();
+ const panel=canvas.getByRole("region",{name:"Canonical Canvas revision history"});
+ await panel.getByText("Current · v48").waitFor();
+ assert.equal(await panel.locator(".canvas-history-item").count(),20);
+ await panel.getByRole("button",{name:"Load older versions"}).click();
+ await panel.getByText("v28 · Long take v28").waitFor();
+ assert.equal(await panel.locator(".canvas-history-item").count(),40);
+ await panel.getByRole("button",{name:"Load older versions"}).click();
+ await panel.getByText("v1 · Long take plan").waitFor();
+ assert.equal(await panel.locator(".canvas-history-item").count(),48);
+ assert.equal(await panel.getByRole("button",{name:"Load older versions"}).count(),0);
+ const historyCalls=requests.filter(x=>x.method==="aiverse.canvas.history"&&x.params?.id===d.id);
+ assert.deepEqual(historyCalls.map(x=>x.params.beforeVersion),[undefined,29,9]);
+ assert.deepEqual(historyCalls.map(x=>x.params.limit),[20,20,20]);
+ assert.deepEqual(await page.evaluate(()=>({local:localStorage.length,session:sessionStorage.length})),
+  {local:0,session:0});
+ assert.deepEqual(errors,[]);
 });
