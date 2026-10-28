@@ -149,6 +149,13 @@ describe("Canvas host owner routing, authorization and fail-closed behavior",()=
    frame("aiverse.canvas.history",systemId,"operator",{
      id:"rec_1234",limit:1000,
    }),
+   frame("aiverse.canvas.history",systemId,"operator",{
+     id:"rec_1234",limit:20,beforeVersion:1,
+   }),
+   frame("aiverse.canvas.history",systemId,"operator",{
+     id:"rec_1234",limit:20,beforeVersion:2,
+     actor:{kind:"bot",id:"forged"},
+   }),
    frame("aiverse.canvas.revert",systemId,"operator",{
      id:"rec_1234",expectedVersion:3,toVersion:1,
      idempotencyKey:"spoof",board:{nodes:[],edges:[]},
