@@ -254,6 +254,14 @@ try{
    method:"aiverse.canvas.get",params:{id:original.id},
  });
  assert.equal(admittedAgain.document.version,3);
+ // A live bot with read+edit authority does NOT automatically get an
+ // atomically writable clone grant: OS grants are per exact method.
+ await assert.rejects(()=>agentActions.invoke({
+   runId:"ci-agent-run-1",operationId:"ci-ungranted-duplicate",
+   method:"aiverse.canvas.duplicate",
+   params:{id:original.id,expectedVersion:3},
+ }),/CANVAS_AGENT_ACCESS_DENIED/);
+
 
  // Data-owned atomic duplicate is a SINGLE owner effect, not a sequence
  // of provisional note/edge writes from a browser.
@@ -477,6 +485,7 @@ try{
   canonical_data_backup_reopen_and_binding_verified:true,
   scoped_preflight_active_manifest_required:true,
   real_os_grant_file_revocation_human_and_bot:true,
+  os_exact_method_restriction_enforced_on_live_bot:true,
   atomic_duplicate_one_data_effect:true,duplicate_source_version_guard:true,
   canonical_revision_history:true,versioned_undo_persists_across_restart:true,
   indexed_history_keyset_pages:true,invalid_cursor_and_forged_actor_denied:true,
