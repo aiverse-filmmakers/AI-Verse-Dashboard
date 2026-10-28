@@ -224,35 +224,13 @@ export class CanvasWorkspace {
   }
   async duplicate(){
     if(this.busy||!this.current)return;
-    // Data has no atomic document clone contract. Copy through canonical
-    // create/edit calls only; never present a partial copy as completed.
-    const source=this.current,epoch=this.epoch,scope={...this.selected};
-    this.busy=true;this.message("Copying using canonical Data operations…");this.render();
-    let copy:CanvasDoc|null=null;
-    try{
-      const start=this.snapshot(await this.client.canvasCreate(source.title.slice(0,135)+" copy",editId()),scope);
-      if(Array.isArray(start))throw Error("CANVAS_INVALID_PROJECTION");
-      copy=start;
-      for(const n of source.board?.nodes??[]){
-        if(!this.alive(epoch))return;
-        const r=this.snapshot(await this.client.canvasEdit(copy.id,
-          {type:"note.add",id:n.id,text:n.text,x:n.x,y:n.y},copy.version,editId()),scope);
-        if(Array.isArray(r))throw Error("CANVAS_INVALID_PROJECTION");copy=r;
-      }
-      for(const e of source.board?.edges??[]){
-        if(!this.alive(epoch))return;
-        const r=this.snapshot(await this.client.canvasEdit(copy.id,
-          {type:"edge.add",id:e.id,from:e.from,to:e.to},copy.version,editId()),scope);
-        if(Array.isArray(r))throw Error("CANVAS_INVALID_PROJECTION");copy=r;
-      }
-      if(this.alive(epoch)){
-        this.current=copy;this.selectedNote=null;
-        this.message("Copy saved in canonical Data · version "+copy.version);this.render();
-      }
-    }catch(error){
-      if(this.alive(epoch))this.message("Copy incomplete"+
-        (copy?" (document "+copy.id+" may contain partial content). ":" · ")+codeOf(error));
-    }finally{if(this.alive(epoch)){this.busy=false;this.render();void this.refresh(true);}}
+    const source=this.current;
+    // Data creates the entire copy in one version-guarded SQLite transaction.
+    // No partial notes, provisional library items or browser-owned clones.
+    this.selectedNote=null;
+    await this.operate(()=>this.client.canvasDuplicate(source.id,source.version,
+      editId(),source.title.slice(0,135)+" copy"),
+      "Atomic copy saved in canonical Data.");
   }
   private renderLibrary(){
     this.sidebar.hidden=!this.libraryOpen||!this.expanded;
