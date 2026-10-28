@@ -1,4 +1,4 @@
-import type {CanvasContextSnapshot,CanvasSelectionRequest,SelectedCanvasNote,SelectedCanvasEdge}
+import type {CanvasContextSnapshot,CanvasSelectionRequest,SelectedCanvasNote,SelectedCanvasEdge,SelectedCanvasGroup}
   from "./canvas-context.js";
 import {CanvasContextReader} from "./canvas-context.js";
 import type {CanvasHostFacts} from "./canvas-owner-bridge.js";
@@ -20,7 +20,8 @@ export interface CanvasModelContext {
   readonly selection:{
     readonly notes:readonly SelectedCanvasNote[];
     readonly edges:readonly SelectedCanvasEdge[];
-    readonly noteCount:number;readonly edgeCount:number;
+    readonly groups:readonly SelectedCanvasGroup[];
+    readonly noteCount:number;readonly edgeCount:number;readonly groupCount:number;
   };
 }
 export interface CanvasSelectedNoteProposal {
@@ -29,6 +30,12 @@ export interface CanvasSelectedNoteProposal {
   readonly noteId:string;
   readonly text:string;
 }
+export type CanvasSelectedGroupProposal=
+  |{readonly kind:"selected-group.rename";readonly operationId:string;
+    readonly groupId:string;readonly label:string}
+  |{readonly kind:"selected-group.move";readonly operationId:string;
+    readonly groupId:string;readonly dx:number;readonly dy:number};
+export type CanvasToolProposal=CanvasSelectedNoteProposal|CanvasSelectedGroupProposal;
 type Entry={runId:string;context:CanvasContextSnapshot;closed:boolean};
 const handles=new WeakMap<object,Entry>();
 const id=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
@@ -86,7 +93,9 @@ export class CanvasAgentToolCoordinator{
         version:context.documentVersion}),
       selection:Object.freeze({
         notes:context.selectedNodes,edges:context.selectedEdges,
+        groups:context.selectedGroups,
         noteCount:context.noteCount,edgeCount:context.edgeCount,
+        groupCount:context.groupCount,
       }),
     });
   }
@@ -94,19 +103,46 @@ export class CanvasAgentToolCoordinator{
    * A proposed edit is always re-authorized at the real agent Data effect.
    * Context handle is not accepted from model JSON or network serialization.
    */
-  async execute(handle:CanvasToolHandle,proposal:CanvasSelectedNoteProposal,
+  async execute(handle:CanvasToolHandle,proposal:CanvasToolProposal,
     signal?:AbortSignal){
     const {runId,context}=entryOf(handle);
-    if(!exact(proposal,["kind","operationId","noteId","text"])
-      ||proposal.kind!=="selected-note.replace-text"
-      ||!id.test(proposal.operationId)||!id.test(proposal.noteId)
-      ||typeof proposal.text!=="string"||proposal.text.length>5000
-      ||!context.selectedNodes.some(n=>n.id===proposal.noteId))
+    if(!proposal||typeof proposal!=="object"||Array.isArray(proposal))
       throw deny("CANVAS_TOOL_INVALID");
-    return this.actions.invokeSelectedNoteEdit({
-      runId,operationId:proposal.operationId,context,noteId:proposal.noteId,
-      text:proposal.text,
-    },signal);
+    if(proposal.kind==="selected-note.replace-text"){
+      if(!exact(proposal,["kind","operationId","noteId","text"])
+        ||!id.test(proposal.operationId)||!id.test(proposal.noteId)
+        ||typeof proposal.text!=="string"||proposal.text.length>5000
+        ||!context.selectedNodes.some(n=>n.id===proposal.noteId))
+        throw deny("CANVAS_TOOL_INVALID");
+      return this.actions.invokeSelectedNoteEdit({
+        runId,operationId:proposal.operationId,context,noteId:proposal.noteId,
+        text:proposal.text,
+      },signal);
+    }
+    if(proposal.kind==="selected-group.rename"){
+      if(!exact(proposal,["kind","operationId","groupId","label"])
+        ||!id.test(proposal.operationId)||!id.test(proposal.groupId)
+        ||!context.selectedGroups.some(g=>g.id===proposal.groupId)
+        ||typeof proposal.label!=="string"||!proposal.label.trim()
+        ||proposal.label.length>80)throw deny("CANVAS_TOOL_INVALID");
+      return this.actions.invokeSelectedGroupEdit({
+        runId,operationId:proposal.operationId,context,groupId:proposal.groupId,
+        edit:{type:"group.rename",label:proposal.label},
+      },signal);
+    }
+    if(proposal.kind==="selected-group.move"){
+      if(!exact(proposal,["kind","operationId","groupId","dx","dy"])
+        ||!id.test(proposal.operationId)||!id.test(proposal.groupId)
+        ||!context.selectedGroups.some(g=>g.id===proposal.groupId)
+        ||!Number.isFinite(proposal.dx)||!Number.isFinite(proposal.dy)
+        ||Math.abs(proposal.dx)>100000||Math.abs(proposal.dy)>100000)
+        throw deny("CANVAS_TOOL_INVALID");
+      return this.actions.invokeSelectedGroupEdit({
+        runId,operationId:proposal.operationId,context,groupId:proposal.groupId,
+        edit:{type:"group.move",dx:proposal.dx,dy:proposal.dy},
+      },signal);
+    }
+    throw deny("CANVAS_TOOL_INVALID");
   }
   close(handle:CanvasToolHandle):void{
     const entry=entryOf(handle);
