@@ -117,6 +117,9 @@ describe("host-only Canvas agent action boundary",()=>{
     }));
     assert.equal(r.source,"canonical-data");
     assert.equal((r.document as {version:number}).version,2);
+    await assert.rejects(()=>h.actions.invoke(h.command("aiverse.canvas.history",{
+      id:"rec_1234",limit:10,beforeVersion:1,
+    })),/CANVAS_AGENT_ACTION_INVALID/);
     assert.equal(h.values().executed,1);
   });
   it("denies revoked grant, run stopped, workspace rebind and run identity drift",async()=>{
