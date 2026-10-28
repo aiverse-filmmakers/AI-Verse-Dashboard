@@ -1,6 +1,6 @@
 import {describe,it,afterEach} from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from "node:fs";
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync,realpathSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {SystemRegistry} from "../packages/registry/src/index.js";
@@ -9,7 +9,7 @@ import {createOsNativeCanvasGrantResolvers} from "../apps/gateway/src/index.js";
 const roots:string[]=[];
 afterEach(()=>roots.splice(0).forEach(r=>rmSync(r,{recursive:true,force:true})));
 function fixture(){
- const root=mkdtempSync(join(tmpdir(),"os-canvas-grants-"));roots.push(root);
+ const root=realpathSync(mkdtempSync(join(tmpdir(),"os-canvas-grants-")));roots.push(root);
  for(const d of ["operator","workspaces","system"])mkdirSync(join(root,d));
  writeFileSync(join(root,"AI-VERSE.yaml"),
   'schema_version: "2.0"\narchitecture: unified-workspace\n');
