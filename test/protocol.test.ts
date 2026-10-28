@@ -40,7 +40,7 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
     assert.equal(isCommandMethod("chat.send"), true); assert.equal(isQueryMethod("purpose.get"), true); assert.equal(isPurposeControlMethod("purpose.change.apply"), true);
     assert.deepEqual([...PURPOSE_CONTROL_METHODS], ["purpose.change.propose", "purpose.change.confirm", "purpose.change.apply"]);
     assert.throws(() => assertQueryOnly("chat.send"), /blocked/); assert.throws(() => assertQueryOnly("purpose.change.apply"), /blocked/); assert.doesNotThrow(() => assertQueryOnly("purpose.get"));
-    assert.equal(COMMAND_METHODS.length, 16); assert.equal(QUERY_METHODS.length, 26); assert.equal(ALL_METHODS.length, 44);
+    assert.equal(COMMAND_METHODS.length, 16); assert.equal(QUERY_METHODS.length, 28); assert.equal(ALL_METHODS.length, 46);
     assert.equal(isCommandMethod("aiverse.gateway.run.create"),true);
     assert.equal(isQueryMethod("aiverse.gateway.status"),true);
     assert.equal(isQueryMethod("aiverse.gateway.run.get"),true);
