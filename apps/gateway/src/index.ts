@@ -16,6 +16,8 @@ export type {CanonicalGatewayRunStore,CanvasAgentGrantFacts,CanvasAdmittedActorG
 export type {CanvasAgentAction,CanonicalCanvasAgentRun,CanvasAgentVerifier} from "./canvas-agent-actions.js";
 export {withCanvasOsPolicy} from "./canvas-os-policy.js";
 export {createAdmittedCanvasDataOwner} from "./canvas-data-owner.js";
+export {createCanvasOwnerPreflight} from "./canvas-owner-preflight.js";
+export type {CanvasPreflightNative,CanvasScopeReadiness} from "./canvas-owner-preflight.js";
 export type {AdmittedCanvasDataOwner,NativeCanvasDataModules,CanvasDataActor} from "./canvas-data-owner.js";
 export type {CanvasOsPolicy,OsActionPermissionResult} from "./canvas-os-policy.js";
 export type {CanvasHostFacts,CanvasHostRequest,ApprovedCanvasOwner} from "./canvas-owner-bridge.js";
