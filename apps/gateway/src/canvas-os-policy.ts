@@ -51,11 +51,13 @@ function fingerprint(value:unknown):string{
 function classFor(method:string){
   switch(method){
     case "aiverse.canvas.list":
-    case "aiverse.canvas.get":return "read_local";
+    case "aiverse.canvas.get":
+    case "aiverse.canvas.history":return "read_local";
     case "aiverse.canvas.create":
     case "aiverse.canvas.rename":
     case "aiverse.canvas.edit":
-    case "aiverse.canvas.duplicate":return "modify_canonical_state";
+    case "aiverse.canvas.duplicate":
+    case "aiverse.canvas.revert":return "modify_canonical_state";
     case "aiverse.canvas.delete":return "delete_data";
     default:throw deny();
   }
