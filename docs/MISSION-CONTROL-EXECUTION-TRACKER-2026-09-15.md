@@ -1278,3 +1278,45 @@ with GB 90–93%. Separate denominators, separate goals.
 
 The 15/100 accepted progress ledger is **not changed** by this amendment,
 and PRs are not merged or accepted by writing a scorecard.
+
+
+### Tasks 63–92: native OS grant owner lifecycle + GitHub progress truth (28 Oct 2026)
+
+Thirty bounded source slices, enumerated in
+[Tasks 63–92 native lifecycle ledger](CANVAS-NATIVE-OWNER-LIFECYCLE-TASKS-63-92-2026-10-28.md).
+**Code and focused tests committed; final exact CI matrix not automatically
+accepted if a job is still queued or failed.**
+
+New OS [stacked draft PR #111](https://github.com/aiverse-filmmakers/AI-Verse-OS/pull/111)
+adds a host-only explicit owner-approved grant lifecycle, *on top of*
+readonly verifier [draft #110](https://github.com/aiverse-filmmakers/AI-Verse-OS/pull/110):
+shared grant schema, existing native OS root/scope, native owner callback,
+exact request digest and readable consent summary, immutable permission
+snapshot, effect-edge expiry and active workspace, real bot Gateway run
+verification twice, generation CAS, exclusive lock, fsync and private
+atomic file rename, one-grant revoke and revoke-all, fail-closed Windows
+without ACL, and extensive negative tests. **No HTTP issuer or
+model-available escalation path was created**. CI approval callbacks
+are disposable synthetic authority, NOT production owner login.
+
+Dashboard [draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+now tests this actual native OS grant lifecycle with the canonical
+GatewayStore, OS grant reader, and Dashboard host adapter, in addition
+to the earlier real Data/Canvas composition. It also adds
+`docs/github-browser-progress.json` and
+`scripts/verify-github-browser-progress.mjs` with independent
+cross-platform anti-inflation tests. The progress ledger checks
+separate GB engineering, FA official acceptance and local
+owner-only gates; it cannot auto-award milestones.
+
+**Latest OS code SHA:** `d304db51d11f8e4865e9d4dfbd2ceb7e79b7e0f7`.
+**Latest Dashboard composed code SHA:** `dff258f709daa5b4cbf4f9dbbd124f48a9076e7a`.
+Inspect source commit workflow conclusions before claiming fully green.
+Formal score still **15/100 accepted**; GitHub/browser engineering
+**~34/100 provisional** until current owner lifecycle verification
+qualifies any further estimate. Local/private Mac acceptance pending.
+
+**Next Task 93:** independent native Mac human-session authentication
+and durable audit receipt, not a browser-supplied approval. Then move
+to substantive next Personal-first owner-backed features. Preserve
+the 30-task ledger and do not rebuild this lifecycle.
