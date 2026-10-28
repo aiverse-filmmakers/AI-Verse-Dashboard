@@ -364,6 +364,44 @@ try{
  }));
  assert.equal(groupRecreated.ok,true);
  assert.equal(groupRecreated.result.document.version,7);
+ const groupTool=new CanvasAgentToolCoordinator(contextReader,agentActions);
+ const selectedGroupHandle=await groupTool.open({
+   runId:"ci-agent-run-1",hostFacts:contextFacts,
+   selection:{documentId:groupId,expectedVersion:7,
+     selectedGroupIds:["group-again"]},
+ });
+ const groupView=groupTool.describe(selectedGroupHandle);
+ assert.deepEqual(groupView.selection.groups.map(g=>g.id),["group-again"]);
+ assert.equal(groupView.selection.groups[0].trust,"untrusted-canvas-label");
+ await assert.rejects(groupTool.execute(
+   JSON.parse(JSON.stringify(selectedGroupHandle)),{
+   kind:"selected-group.rename",operationId:"forged-group-tool",
+   groupId:"group-again",label:"Forbidden",
+ }),/CANVAS_TOOL_DENIED/);
+ const groupAgentRename=await groupTool.execute(selectedGroupHandle,{
+   kind:"selected-group.rename",operationId:"ci-group-tool-rename",
+   groupId:"group-again",label:"Film scene A",
+ });
+ assert.equal(groupAgentRename.document.version,8);
+ assert.equal(groupAgentRename.document.board.groups[0].label,"Film scene A");
+ await assert.rejects(groupTool.execute(selectedGroupHandle,{
+   kind:"selected-group.move",operationId:"ci-group-tool-stale",
+   groupId:"group-again",dx:2,dy:3,
+ }),/RECORD_VERSION_CONFLICT|CANVAS_/);
+ groupTool.close(selectedGroupHandle);
+ const moveGroupHandle=await groupTool.open({
+   runId:"ci-agent-run-1",hostFacts:contextFacts,
+   selection:{documentId:groupId,expectedVersion:8,
+     selectedGroupIds:["group-again"]},
+ });
+ const selectedGroupMove=await groupTool.execute(moveGroupHandle,{
+   kind:"selected-group.move",operationId:"ci-group-tool-move",
+   groupId:"group-again",dx:-10,dy:10,
+ });
+ assert.equal(selectedGroupMove.document.version,9);
+ assert.deepEqual(selectedGroupMove.document.board.nodes.map(n=>[n.x,n.y]),
+   [[15,20],[70,20]]);
+ groupTool.close(moveGroupHandle);
  // Data-owned atomic duplicate is a SINGLE owner effect, not a sequence
  // of provisional note/edge writes from a browser.
  const atomic=make(systemId,"operator","aiverse.canvas.duplicate",{
@@ -660,6 +698,11 @@ try{
   grouped_agent_move_atomic:true,group_clone_copies_members:true,
   old_ungrouped_history_digest_preserved:true,
   grouped_history_revert_to_legacy_board:true,
+  host_selected_group_context:true,
+  verified_gateway_bot_group_rename:true,
+  verified_gateway_bot_group_move:true,
+  forged_model_group_handle_denied:true,
+  stale_model_group_context_denied:true,
   canonical_revision_history:true,versioned_undo_persists_across_restart:true,
   indexed_history_keyset_pages:true,invalid_cursor_and_forged_actor_denied:true,
   stale_undo_denied:true,agent_can_read_but_cannot_revert:true,
