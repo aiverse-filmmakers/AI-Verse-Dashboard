@@ -602,3 +602,103 @@ if approved. GitHub-first **90–93%** is a future
 pre-local target, not actual current completion.
 User wants explicit per-task slice count, completion,
 next tasks and percentage bar every batch.
+
+
+## Tasks 43–62: owner-only OS Canvas grants (28 October 2026)
+
+**DO NOT DUPLICATE Tasks 8–62.** Tasks 43–62 introduced a
+**new OS owner draft**
+[AI-Verse-OS PR #110](https://github.com/aiverse-filmmakers/AI-Verse-OS/pull/110)
+on branch `codex/canvas-owner-grant-readonly-v1`, plus a
+Dashboard trusted host integration on existing
+[draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42).
+Data [draft PR #22](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/22)
+is unchanged this batch. No PR is merged or installed.
+
+The OS has action-class policies but NO native independent
+operator/bot identity issuer or destructive approval receipt
+producer. These are not replaced by a Dashboard bearer or
+Gateway run/session status. The new OS file
+`scripts/canvas-actor-grant.mjs` exposes only
+`verifyInstalledCanvasGrant({osRoot,facts})`; it does not
+write or mint grants. If a pre-existing, explicitly
+owner-controlled, 0600 on Unix, grant file is absent,
+it returns null. Strict actor/system/workspace/method/
+expiry/run/session/grant-epoch checks, old OS action-permission
+active-workspace enforcement, symlink/path/perms schema
+denial and cross-platform Node 22 matrix are covered.
+
+Dashboard `apps/gateway/src/canvas-os-grant.ts`
+provides `createOsNativeCanvasGrantResolvers(registry,options)`
+and requires an injected *separately authenticated* native
+human OS session or live canonical Gateway bot session.
+It binds the OS grant to the native Data actor and the
+pre-existing OS action-permission effect boundary, plus
+OS-owned `resolveAdmittedActor` for
+`createGatewayStoreCanvasRunVerifier`. No browser grant
+issuer or second Data owner was created. Human/bot grant
+withdrawal takes effect on the next checked action;
+a bot with `edit` but no `duplicate` method grant is
+denied at the actual effect edge.
+
+New Dashboard test
+`test/canvas-os-grant.test.ts` exercises independent human
+and bot session admission, grant revoke, no model/browser
+actor authority, actor binding and root rebind. The real
+pinned `scripts/mc2/ci-canvas-data-owner-proof.mjs`
+now uses actual OS grant-reader module from reviewed OS
+source, actual GatewayStore run/session and actual native
+Data SQLite. It writes private short-lived grants **only
+inside the disposable CI OS host**; this is NOT a production
+issuer. It tests absence before grant, human/agent
+read/write, human/bot revocation while a Gateway run
+is otherwise active, re-grant, method-specific denial,
+existing Data effects, backup/restart and OS workspace
+protection. The test assertion for denied bot duplicate
+expects `CANVAS_ACCESS_DENIED` from OS effect policy,
+not `CANVAS_AGENT_ACCESS_DENIED` from run verifier.
+
+See the exhaustive task map in:
+`docs/MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md`
+and the authority runbook:
+`docs/CANVAS-NATIVE-OS-GRANTS-2026-10-28.md`.
+The OS reader's own contract lives in
+`AI-Verse-OS/docs/CANVAS-ACTOR-GRANTS-2026-10-28.md`.
+
+**Exact reviewed OS code/test SHA** for composition:
+`a9b6eaf785c6782fe09f2b99a624d1abb8f520b3`.
+Its newest OS readonly grant matrix run:
+[40762850957](https://github.com/aiverse-filmmakers/AI-Verse-OS/actions/runs/40762850957),
+was queued at the initial tracking check. **Do not claim
+green without retrieving the final conclusion.**
+OS earlier code `7c9fc63` passed the native matrix
+and all established regression suites; this later
+change adds OS-side workspace activation and test.
+
+**Latest Dashboard code fix**:
+`f0f5e1e42cc6ef13bd18a66f40481b38fd1ed309`,
+with Dashboard [CI 40763120455](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40763120455),
+[Chromium 40763120327](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40763120327),
+and [real Gateway/OS/Data 40763120328](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40763120328)
+all queued at initial handoff checkpoint. Check results.
+Documentation commits after code do not change runtime
+behavior. All project percentages must remain conservative
+if any checks are pending or failed.
+
+**Next Task 63 qualification:** OS native session
+authentication + *explicit owner-issued* grant issuance/
+renewal/revocation with audit, only in the actual OS
+owner repository after architectural review. Follow
+with human approval receipt issuance/consumption, real
+Windows ACL source validation, cross-process cancellation
+fencing, production Gateway model tool dispatch, native
+Data provision/backup policy and owner Mac testing.
+Do NOT enable production actions with CI-only callbacks,
+file contents supplied by an HTTP request, fake
+`agentGrant=true` or action-policy allow as identity.
+
+Formal roadmap remains **15/100** accepted, pending
+independent MC2.1 review and Personal-first amendment.
+Next formal gate would be **17/100**, if approved.
+90–93% GitHub-first before local acceptance remains
+a future target, not measured current project progress.
