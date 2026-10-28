@@ -163,3 +163,56 @@ its blocker and develop independent undo/atomic clone Data-owned contract
 as a separate qualified slice. Never fake a successful agent write, undo
 or approval from UI-only state. Keep 1-4 bounded tasks, GitHub-first,
 check current-head workflows before reporting acceptance.
+
+## Task 14 host-only Canvas agent parity checkpoint, 28 October 2026
+
+**The current Dashboard draft PR #42 includes Tasks 8–14. DO NOT repeat
+the previous Gateway chat/session lifecycle, restart recovery, Data-owned
+Canvas persistence, Canvas RPC, OS permission policy, native owner adapter,
+live library editor, or agent host dispatcher.** Canonical source branch
+`codex/dashboard-source-checkpoint`.
+
+`apps/gateway/src/canvas-agent-actions.ts` provides a **native/host-only**
+`CanvasAgentActions` dispatcher. A separately installed, trusted Gateway
+run verifier must return a running canonical run, bound system/workspace,
+verified bot actor ID and lease epoch. The host rechecks that exact run
+binding across admission and effect, reuses the **same** approved Data owner,
+OS action policy, strict Canvas schemas and document projections as humans,
+and derives the idempotency key from the host operation ID. The separate
+`agentAdmitted` permission callback defaults to denial, independently
+of the human `operatorAdmitted` grant. The native Data actor is `bot`
+rather than forged `human` for verified-agent writes. Agent document
+delete is always blocked until real OS approval receipts exist. There is
+no public agent RPC or browser/model-supplied actor/root/grant.
+
+New `test/canvas-agent-actions.test.ts` covers scope, run revocation,
+grant isolation, lease rebind, model-provided actor/path/approval refusal
+and source projection. The pinned real OS + Data + Gateway integration
+`scripts/mc2/ci-canvas-data-owner-proof.mjs` now exercises an agent
+note edit against real scoped SQLite and reads `updatedBy.kind=bot`.
+This proof uses **a disposable trusted run-verifier fixture**, not a
+member's live agent run, and the private `start-connected` launcher
+still installs no Data owner. Implementation commit
+[`0536bfa`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/0536bfad0c70e294f91b887f893bcde00bb58e9d)
+passed [Dashboard CI 40725634383](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40725634383),
+[real owner composition 40725634303](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40725634303)
+and [Chromium browser QC 40725634501](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40725634501).
+Latest documentation-head CI should be checked before separate claims.
+
+**Next Task 15 qualification:** inspect existing OS/Gateway native
+agent-run and actor provenance, plus owner Data initialization contracts.
+Connect only a demonstrated installed trusted run verifier and explicit
+owner-approved scope provisioning if the available interfaces support
+it. Otherwise keep the fail-closed native dispatcher staged, and
+separately qualify true Data-owned undo/atomic clone and approval
+receipt workflows without inventing native permissions or duplicate
+Canvas document stores. Do not expose an agent editing feature from
+model prose alone. No production Mac testing is due yet.
+
+**Programme status:** historical formally accepted **15/100**, design
+MC2.1 gate awaiting independent reviewer and Personal-first amendment.
+Next properly accepted milestone **17/100**. GitHub-first 90–93%
+remains a pre-local *target*, not current completion. User wants an
+overall percentage bar, recent slice/task completion, and next tasks
+in every completion report. Keep tasks bounded 1–4, avoid duplicate work,
+do not merge or deploy without admission.
