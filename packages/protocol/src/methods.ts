@@ -24,7 +24,7 @@ export const COMMAND_METHODS = [
   "inbox.resolve", ...PURPOSE_CONTROL_METHODS,
   "aiverse.gateway.run.create",
   "aiverse.canvas.create", "aiverse.canvas.rename",
-  "aiverse.canvas.edit", "aiverse.canvas.delete",
+  "aiverse.canvas.edit", "aiverse.canvas.duplicate", "aiverse.canvas.delete",
 ] as const;
 
 export const PROTOCOL_METHODS = ["protocol.handshake", "protocol.capabilities"] as const;
@@ -45,7 +45,7 @@ const WORKSPACE_SCOPED = new Set<string>([
   "aiverse.gateway.status", "aiverse.gateway.run.get", "aiverse.gateway.run.create",
   "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
   "aiverse.canvas.list", "aiverse.canvas.get", "aiverse.canvas.create",
-  "aiverse.canvas.rename", "aiverse.canvas.edit", "aiverse.canvas.delete",
+  "aiverse.canvas.rename", "aiverse.canvas.edit", "aiverse.canvas.duplicate", "aiverse.canvas.delete",
   "chat.send", "chat.abort", "task.start", "task.cancel", "task.retry", "cron.create",
   "cron.pause", "cron.resume", "cron.runNow", "approval.resolve", "initiative.activate",
   "inbox.resolve", ...PURPOSE_CONTROL_METHODS,
