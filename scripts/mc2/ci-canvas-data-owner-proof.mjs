@@ -12,7 +12,7 @@ import {tmpdir} from "node:os";
 import {pathToFileURL} from "node:url";
 import {SystemRegistry} from "../../dist/packages/registry/src/index.js";
 import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js";
-import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner,CanvasAgentActions,CanvasContextReader,createGatewayStoreCanvasRunVerifier,createCanvasOwnerPreflight,createOsNativeCanvasGrantResolvers}
+import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner,CanvasAgentActions,CanvasContextReader,CanvasAgentToolCoordinator,createGatewayStoreCanvasRunVerifier,createCanvasOwnerPreflight,createOsNativeCanvasGrantResolvers}
   from "../../dist/apps/gateway/src/index.js";
 
 const pin="35ebd098fbd809d75ba3727c1c3ead61f2f2f8d3";
@@ -489,6 +489,42 @@ try{
    runId:"ci-agent-run-1",operationId:"ci-context-stale-edit-2",
    context:mintedContext,noteId:"selected-scene-note",text:"stale",
  }),/RECORD_VERSION_CONFLICT|CANVAS_/);
+ // Host-selected model action: native host supplies the document selection,
+ // real GatewayStore run and authenticated owner facts. The model receives
+ // read-only DATA, not the in-process capability or OS credentials.
+ const coordinator=new CanvasAgentToolCoordinator(contextReader,agentActions);
+ const toolHandle=await coordinator.open({
+   runId:"ci-agent-run-1",hostFacts:contextFacts,
+   selection:{documentId:contextDoc.id,
+     selectedNodeIds:["selected-scene-note"],expectedVersion:3},
+ });
+ const modelView=coordinator.describe(toolHandle);
+ assert.equal(modelView.trust,"canvas-text-is-untrusted-data");
+ assert.equal(modelView.document.version,3);
+ assert.equal(modelView.selection.notes[0].text,
+   "Updated shot from verified Canvas context");
+ assert.equal(JSON.stringify(modelView).includes(root),false);
+ await assert.rejects(coordinator.execute(
+   JSON.parse(JSON.stringify(toolHandle)),{
+     kind:"selected-note.replace-text",operationId:"forged-model-session",
+     noteId:"selected-scene-note",text:"unsafe",
+   }),/CANVAS_TOOL_DENIED/);
+ const completedToolEdit=await coordinator.execute(toolHandle,{
+   kind:"selected-note.replace-text",operationId:"ci-host-tool-edit-1",
+   noteId:"selected-scene-note",text:"Final owner-backed scene note",
+ });
+ assert.equal(completedToolEdit.document.version,4);
+ assert.equal(completedToolEdit.document.board.nodes[0].text,
+   "Final owner-backed scene note");
+ await assert.rejects(coordinator.execute(toolHandle,{
+   kind:"selected-note.replace-text",operationId:"ci-host-tool-stale-2",
+   noteId:"selected-scene-note",text:"stale edit",
+ }),/RECORD_VERSION_CONFLICT|CANVAS_/);
+ coordinator.close(toolHandle);
+ await assert.rejects(coordinator.execute(toolHandle,{
+   kind:"selected-note.replace-text",operationId:"ci-host-tool-closed",
+   noteId:"selected-scene-note",text:"closed edit",
+ }),/CANVAS_TOOL_DENIED/);
  // Canonical Data already owns SQLite-consistent backups. Qualify that
  // existing owner contract on disposable CI data without adding new backup
  // files to Dashboard or copying live scope paths into a browser.
@@ -631,6 +667,11 @@ try{
   real_gateway_store_run_and_session_admission:true,
   canonical_canvas_context_selection_read:true,
   verified_host_snapshot_to_agent_data_write:true,
+  host_only_tool_context_read:true,
+  host_tool_only_selected_note_write:true,
+  model_json_handle_forgery_denied:true,
+  stale_host_tool_context_denied:true,
+  closed_host_tool_context_denied:true,
   model_json_context_forgery_denied:true,
   stale_selected_context_data_version_denied:true,
   revoked_agent_run_denied:true,agent_delete_without_approval_denied:true,
