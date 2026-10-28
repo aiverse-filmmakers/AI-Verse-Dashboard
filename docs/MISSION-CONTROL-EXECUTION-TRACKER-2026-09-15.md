@@ -1362,3 +1362,51 @@ current CI inspection and milestone prioritization.
 
 The original MC0–MC7 100-point formal acceptance structure
 and pending MC2.1 review have NOT been changed.
+
+
+### Tasks 143–212: Data-authoritative Canvas grouping (29 October 2026)
+
+**70 small numbered development slices** itemized in
+[Tasks 143–212](DEVELOPMENT-TASKS-143-212-2026-10-29.md).
+The 70 consist of **two integrated implementation work packages**
+(Data grouping owner and Dashboard typed/UI/real composition), plus
+**35 specific native Data regression scenarios and 33 Dashboard
+typed/projection/security scenarios**. Per the operator's request,
+these small scenarios are legitimate flexible task slices, NOT
+70 major features or 70 program points. Task #213 is next.
+
+Data [stacked draft PR #23](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/23)
+extends canonical Canvas boards with optional `groups`,
+five versioned Data owner operations and full legacy revision
+digest preservation, with idempotent repeated group creation.
+[Data Linux/macOS/Windows CI 40781700269](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40781700269)
+**all green** at exact Data code
+`35ebd098fbd809d75ba3727c1c3ead61f2f2f8d3`.
+
+Dashboard [draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+adds group RPC validation/projections and a functional first-party
+group editor: select notes, group, rename, adjust members, move
+whole group and ungroup without deleting notes; CSS adapts
+to narrow screens. The actual [Gateway+OS+Data composition
+40781907477](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40781907477)
+passed with create/retry, live agent group move, clone, archived
+old digests and undo. First-party code/browser CI also
+passed after the styling update at
+[40782054673](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40782054673)
+and [40782054681](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40782054681).
+These verify the typed UI build/Chromium baseline, not a
+production-installed real Mac user click-through.
+
+**GB ~36/100 provisional** (Canvas category 9/15), **FA
+15/100 accepted** (unchanged). Fixed engineering inventory
+remains 10 chapters, 40 milestones: **4 verified, 8
+implemented in draft, 1 in-progress (G03.4), 27 planned**.
+G03.4 is only partially closed because production model
+action dispatch, real workspace lifecycle and creative assets
+are still missing. No Mac owner authentication, grants, account
+consent, signed installer or private dogfood completed.
+
+**Next Task 213:** qualify native model-to-app dispatch and
+owner-authenticated scope (or the next source-backed ready
+milestone), after checking exact CI. Do not rebuild Data
+grouping, Canvas RPC or their 68 regressions.
