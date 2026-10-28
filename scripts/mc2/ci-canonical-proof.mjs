@@ -218,6 +218,7 @@ try {
     authenticated_ws_events:true,
     idempotent_run_replay:true,
     personal_chat_controller_end_to_end:true,
+    ...browserProof,
     installed_local_host_startup:true,
     local_host_authentication_denial:true,
     private_member_system_access:false,real_provider_access:false,
