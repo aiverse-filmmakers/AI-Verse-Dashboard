@@ -7,6 +7,7 @@ on:
       - "scripts/mc2/**"
       - "apps/gateway/src/canonical-gateway-bridge.ts"
       - "apps/gateway/src/canvas-owner-bridge.ts"
+      - "apps/gateway/src/canvas-os-policy.ts"
       - "packages/protocol/src/methods.ts"
       - "apps/gateway/src/local-app-session.ts"
       - "apps/gateway/src/server.ts"
@@ -44,6 +45,14 @@ jobs:
           path: data-source
           persist-credentials: false
 
+      - name: Checkout exact reviewed OS permission evaluator revision
+        uses: actions/checkout@v4
+        with:
+          repository: aiverse-filmmakers/AI-Verse-OS
+          ref: 0dc744057199970a34a60c11dff192e407ad64ed
+          path: os-source
+          persist-credentials: false
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -65,6 +74,7 @@ jobs:
         env:
           CI: "true"
           AIVERSE_MC2_DATA_SOURCE: data-source
+          AIVERSE_MC2_OS_SOURCE: os-source
         run: node scripts/mc2/ci-canvas-data-owner-proof.mjs
 
       - name: Install pinned browser test dependencies without changing the lockfile
