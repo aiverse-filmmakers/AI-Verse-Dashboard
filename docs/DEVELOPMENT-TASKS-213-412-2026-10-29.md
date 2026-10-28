@@ -1,0 +1,219 @@
+# Tasks 213–412: Trusted host Canvas tool coordinator and adversarial tests
+
+**29 October 2026.** Dashboard branch `codex/dashboard-source-checkpoint`, draft [PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42).
+
+**Exactly 200 small slices:** 4 implementation/integration slices plus 196 distinct named regression scenarios. The source suite registers 205 total cases, of which 9 extra cases are not assigned an additional task number. This granularity is deliberately small, as requested: regression-case tasks are real checks, **not** independent features or 196 roadmap points.
+
+**Chapter:** G03 Canvas and G04 trusted actor boundary. **Milestone:** G03.4 remains partially in progress; actual installed model-tool dispatcher, assets and workspace lifecycle still pending.
+
+## Implementation and real integration
+- **Task 213.** Implement trusted host-only Canvas model-tool coordinator, independently checking canonical bot Gateway reads and separately owner-approved human Data selections.
+- **Task 214.** Mint and close nonserializable in-process Canvas context handles while exposing only bounded, untrusted selected notes and groups to model output.
+- **Task 215.** Add selected group context to native Data owner projection and typed agent group rename/move with fresh Gateway workspace, OS grants and optimistic Data revision.
+- **Task 216.** Compose and prove note/group actions in real disposable canonical GatewayStore, OS grant reader, and Data SQLite, including forged-handle/stale-version negative checks.
+
+## Individual host-bound Canvas action regressions
+- **Task 217.** Test scenario: host coordinator opens selection after two separate owner and bot reads.
+- **Task 218.** Test scenario: model view marks Canvas text untrusted.
+- **Task 219.** Test scenario: model view contains only chosen note text, not another note.
+- **Task 220.** Test scenario: model view strips Data owner secret.
+- **Task 221.** Test scenario: model view strips root and native credentials.
+- **Task 222.** Test scenario: model view includes only selected edges.
+- **Task 223.** Test scenario: model view is deeply frozen at the public boundary.
+- **Task 224.** Test scenario: handle is not portable through JSON serialization.
+- **Task 225.** Test scenario: a constructor-shaped forged handle is denied.
+- **Task 226.** Test scenario: null handle cannot access any selected note.
+- **Task 227.** Test scenario: closed handle loses access immediately.
+- **Task 228.** Test scenario: double close denies instead of granting a new capability.
+- **Task 229.** Test scenario: post-close describe is denied.
+- **Task 230.** Test scenario: a valid proposal invokes real agent Canvas action path.
+- **Task 231.** Test scenario: proposal cannot edit unselected notes.
+- **Task 232.** Test scenario: proposal cannot change the document ID.
+- **Task 233.** Test scenario: proposal cannot submit an OS filesystem path.
+- **Task 234.** Test scenario: proposal cannot supply owner approval or a new actor.
+- **Task 235.** Test scenario: proposal cannot choose a new system or workspace.
+- **Task 236.** Test scenario: proposal cannot inject idempotency key.
+- **Task 237.** Test scenario: proposal rejects an unsupported action kind.
+- **Task 238.** Test scenario: proposal rejects unbounded note text.
+- **Task 239.** Test scenario: proposal rejects malformed note IDs.
+- **Task 240.** Test scenario: proposal rejects malformed operation IDs.
+- **Task 241.** Test scenario: proposal rejects absent operation IDs.
+- **Task 242.** Test scenario: proposal rejects object disguised as text.
+- **Task 243.** Test scenario: proposal rejects array payloads.
+- **Task 244.** Test scenario: proposal rejects a revoked agent run at execution.
+- **Task 245.** Test scenario: proposal rejects a changed run actor at execution.
+- **Task 246.** Test scenario: proposal rejects a now-revoked Data/OS grant.
+- **Task 247.** Test scenario: proposal rejects stale canonical document version.
+- **Task 248.** Test scenario: scope change between opening and execution is rejected.
+- **Task 249.** Test scenario: aborted controller prevents opening before any owner read.
+- **Task 250.** Test scenario: aborted controller prevents execution and Data write.
+- **Task 251.** Test scenario: open rejects arbitrary browser-selected principal.
+- **Task 252.** Test scenario: open rejects an arbitrary browser-selected secret.
+- **Task 253.** Test scenario: open rejects nonexistent selection target.
+- **Task 254.** Test scenario: open rejects stale selected revision.
+- **Task 255.** Test scenario: open refuses running bot bound to another workspace.
+- **Task 256.** Test scenario: open refuses running bot with no OS grant.
+- **Task 257.** Test scenario: open rejects expired human operator lease after Gateway verification.
+- **Task 258.** Test scenario: open refuses paused workspace.
+- **Task 259.** Test scenario: open refuses mismatched human and running bot workspace scopes.
+- **Task 260.** Test scenario: open refuses invalid shape even if other fields look plausible.
+- **Task 261.** Test scenario: open rejects missing run ID.
+- **Task 262.** Test scenario: open rejects invalid run ID.
+- **Task 263.** Test scenario: unregistering native OS before proposal fails closed.
+- **Task 264.** Test scenario: read-only describe never invokes an additional OS grant or Data read.
+- **Task 265.** Test scenario: multiple independent handles cannot be recreated from their public views.
+- **Task 266.** Test scenario: model context exposes explicitly selected group label and node IDs.
+- **Task 267.** Test scenario: model context reports canonical group counts.
+- **Task 268.** Test scenario: unselected groups cannot be proposed by the model.
+- **Task 269.** Test scenario: selected group rename reaches owner after verified run.
+- **Task 270.** Test scenario: selected group move shifts all and only grouped notes.
+- **Task 271.** Test scenario: selected group rename rejects a blank label.
+- **Task 272.** Test scenario: selected group rename rejects oversized label.
+- **Task 273.** Test scenario: selected group rename rejects principal injection.
+- **Task 274.** Test scenario: selected group rename rejects arbitrary system ID.
+- **Task 275.** Test scenario: selected group move rejects nonfinite deltas.
+- **Task 276.** Test scenario: selected group move rejects extreme displacements.
+- **Task 277.** Test scenario: selected group move rejects model-supplied approval.
+- **Task 278.** Test scenario: selected group move rejects unknown actor ID.
+- **Task 279.** Test scenario: selected group move rejects an arbitrary document selection.
+- **Task 280.** Test scenario: selected group rename denies revoked bot run before write.
+- **Task 281.** Test scenario: selected group move denies revoked grant before write.
+- **Task 282.** Test scenario: selected group move denies changed run workspace before write.
+- **Task 283.** Test scenario: selected group rename rejects stale version when document has advanced.
+- **Task 284.** Test scenario: selected group move rejects closed host selection capability.
+- **Task 285.** Test scenario: selected group context request rejects nonexistent group ID.
+- **Task 286.** Test scenario: selected group context cannot be inferred from unselected groups.
+- **Task 287.** Test scenario: selected group IDs are returned frozen from a host context.
+- **Task 288.** Test scenario: note proposal rejects injected native authority: .
+- **Task 289.** Test scenario: group rename rejects injected native authority: .
+- **Task 290.** Test scenario: group movement rejects injected native authority: .
+- **Task 291.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant .
+- **Task 292.** Test scenario: model cannot mint trusted host tool handle variant .
+- **Task 293.** Test scenario: note proposal rejects injected native authority: actor.
+- **Task 294.** Test scenario: group rename rejects injected native authority: actor.
+- **Task 295.** Test scenario: group movement rejects injected native authority: actor.
+- **Task 296.** Test scenario: note proposal rejects injected native authority: principal.
+- **Task 297.** Test scenario: group rename rejects injected native authority: principal.
+- **Task 298.** Test scenario: group movement rejects injected native authority: principal.
+- **Task 299.** Test scenario: note proposal rejects injected native authority: systemId.
+- **Task 300.** Test scenario: group rename rejects injected native authority: systemId.
+- **Task 301.** Test scenario: group movement rejects injected native authority: systemId.
+- **Task 302.** Test scenario: note proposal rejects injected native authority: workspaceId.
+- **Task 303.** Test scenario: group rename rejects injected native authority: workspaceId.
+- **Task 304.** Test scenario: group movement rejects injected native authority: workspaceId.
+- **Task 305.** Test scenario: note proposal rejects injected native authority: root.
+- **Task 306.** Test scenario: group rename rejects injected native authority: root.
+- **Task 307.** Test scenario: group movement rejects injected native authority: root.
+- **Task 308.** Test scenario: note proposal rejects injected native authority: approval.
+- **Task 309.** Test scenario: group rename rejects injected native authority: approval.
+- **Task 310.** Test scenario: group movement rejects injected native authority: approval.
+- **Task 311.** Test scenario: note proposal rejects injected native authority: grant.
+- **Task 312.** Test scenario: group rename rejects injected native authority: grant.
+- **Task 313.** Test scenario: group movement rejects injected native authority: grant.
+- **Task 314.** Test scenario: note proposal rejects injected native authority: apiKey.
+- **Task 315.** Test scenario: group rename rejects injected native authority: apiKey.
+- **Task 316.** Test scenario: group movement rejects injected native authority: apiKey.
+- **Task 317.** Test scenario: note proposal rejects injected native authority: token.
+- **Task 318.** Test scenario: group rename rejects injected native authority: token.
+- **Task 319.** Test scenario: group movement rejects injected native authority: token.
+- **Task 320.** Test scenario: note proposal rejects injected native authority: runId.
+- **Task 321.** Test scenario: group rename rejects injected native authority: runId.
+- **Task 322.** Test scenario: group movement rejects injected native authority: runId.
+- **Task 323.** Test scenario: note proposal rejects injected native authority: sessionId.
+- **Task 324.** Test scenario: group rename rejects injected native authority: sessionId.
+- **Task 325.** Test scenario: group movement rejects injected native authority: sessionId.
+- **Task 326.** Test scenario: note proposal rejects injected native authority: leaseEpoch.
+- **Task 327.** Test scenario: group rename rejects injected native authority: leaseEpoch.
+- **Task 328.** Test scenario: group movement rejects injected native authority: leaseEpoch.
+- **Task 329.** Test scenario: note proposal rejects injected native authority: expectedVersion.
+- **Task 330.** Test scenario: group rename rejects injected native authority: expectedVersion.
+- **Task 331.** Test scenario: group movement rejects injected native authority: expectedVersion.
+- **Task 332.** Test scenario: note proposal rejects injected native authority: documentId.
+- **Task 333.** Test scenario: group rename rejects injected native authority: documentId.
+- **Task 334.** Test scenario: group movement rejects injected native authority: documentId.
+- **Task 335.** Test scenario: note proposal rejects injected native authority: documentVersion.
+- **Task 336.** Test scenario: group rename rejects injected native authority: documentVersion.
+- **Task 337.** Test scenario: group movement rejects injected native authority: documentVersion.
+- **Task 338.** Test scenario: note proposal rejects injected native authority: board.
+- **Task 339.** Test scenario: group rename rejects injected native authority: board.
+- **Task 340.** Test scenario: group movement rejects injected native authority: board.
+- **Task 341.** Test scenario: note proposal rejects injected native authority: delete.
+- **Task 342.** Test scenario: group rename rejects injected native authority: delete.
+- **Task 343.** Test scenario: group movement rejects injected native authority: delete.
+- **Task 344.** Test scenario: note proposal rejects injected native authority: mode.
+- **Task 345.** Test scenario: group rename rejects injected native authority: mode.
+- **Task 346.** Test scenario: group movement rejects injected native authority: mode.
+- **Task 347.** Test scenario: note proposal rejects injected native authority: path.
+- **Task 348.** Test scenario: group rename rejects injected native authority: path.
+- **Task 349.** Test scenario: group movement rejects injected native authority: path.
+- **Task 350.** Test scenario: note proposal rejects injected native authority: scope.
+- **Task 351.** Test scenario: group rename rejects injected native authority: scope.
+- **Task 352.** Test scenario: group movement rejects injected native authority: scope.
+- **Task 353.** Test scenario: note proposal rejects injected native authority: storage.
+- **Task 354.** Test scenario: group rename rejects injected native authority: storage.
+- **Task 355.** Test scenario: group movement rejects injected native authority: storage.
+- **Task 356.** Test scenario: note proposal rejects injected native authority: headers.
+- **Task 357.** Test scenario: group rename rejects injected native authority: headers.
+- **Task 358.** Test scenario: group movement rejects injected native authority: headers.
+- **Task 359.** Test scenario: note proposal rejects injected native authority: authorization.
+- **Task 360.** Test scenario: group rename rejects injected native authority: authorization.
+- **Task 361.** Test scenario: group movement rejects injected native authority: authorization.
+- **Task 362.** Test scenario: note proposal rejects injected native authority: grantId.
+- **Task 363.** Test scenario: group rename rejects injected native authority: grantId.
+- **Task 364.** Test scenario: group movement rejects injected native authority: grantId.
+- **Task 365.** Test scenario: note proposal rejects injected native authority: ownerId.
+- **Task 366.** Test scenario: group rename rejects injected native authority: ownerId.
+- **Task 367.** Test scenario: group movement rejects injected native authority: ownerId.
+- **Task 368.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 1.
+- **Task 369.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 2.
+- **Task 370.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 3.
+- **Task 371.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 4.
+- **Task 372.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 5.
+- **Task 373.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 6.
+- **Task 374.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 7.
+- **Task 375.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 8.
+- **Task 376.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 9.
+- **Task 377.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 10.
+- **Task 378.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 11.
+- **Task 379.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 12.
+- **Task 380.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 13.
+- **Task 381.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 14.
+- **Task 382.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 15.
+- **Task 383.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 16.
+- **Task 384.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 17.
+- **Task 385.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 18.
+- **Task 386.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 19.
+- **Task 387.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 20.
+- **Task 388.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 21.
+- **Task 389.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 22.
+- **Task 390.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 23.
+- **Task 391.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 24.
+- **Task 392.** Test scenario: native tool open rejects malformed canonical Gateway run ID variant 25.
+- **Task 393.** Test scenario: model cannot mint trusted host tool handle variant 1.
+- **Task 394.** Test scenario: model cannot mint trusted host tool handle variant 2.
+- **Task 395.** Test scenario: model cannot mint trusted host tool handle variant 3.
+- **Task 396.** Test scenario: model cannot mint trusted host tool handle variant 4.
+- **Task 397.** Test scenario: model cannot mint trusted host tool handle variant 5.
+- **Task 398.** Test scenario: model cannot mint trusted host tool handle variant 6.
+- **Task 399.** Test scenario: model cannot mint trusted host tool handle variant 7.
+- **Task 400.** Test scenario: model cannot mint trusted host tool handle variant 8.
+- **Task 401.** Test scenario: model cannot mint trusted host tool handle variant 9.
+- **Task 402.** Test scenario: model cannot mint trusted host tool handle variant 10.
+- **Task 403.** Test scenario: model cannot mint trusted host tool handle variant 11.
+- **Task 404.** Test scenario: model cannot mint trusted host tool handle variant 12.
+- **Task 405.** Test scenario: model cannot mint trusted host tool handle variant 13.
+- **Task 406.** Test scenario: model cannot mint trusted host tool handle variant 14.
+- **Task 407.** Test scenario: model cannot mint trusted host tool handle variant 15.
+- **Task 408.** Test scenario: model cannot mint trusted host tool handle variant 16.
+- **Task 409.** Test scenario: model cannot mint trusted host tool handle variant 17.
+- **Task 410.** Test scenario: model cannot mint trusted host tool handle variant 18.
+- **Task 411.** Test scenario: model cannot mint trusted host tool handle variant 19.
+- **Task 412.** Test scenario: model cannot mint trusted host tool handle variant 20.
+
+## Verified source ownership and release limitations
+
+- `apps/gateway/src/canvas-agent-tool-coordinator.ts` is host-only: it reads selected Canvas via canonical running Gateway bot plus independent human owner read, checks exact scope and version, and mints nonserializable handles. Model text is strictly untrusted data; no model/browser JSON can create permissions.
+- `apps/gateway/src/canvas-context.ts` holds bounded owner-authenticated selected group metadata. `apps/gateway/src/canvas-agent-actions.ts` supports selected-group rename/move through the existing OS/Gateway/SQLite authority. No HTTP route, no automatic native grant issuer, no new Dashboard database.
+- `test/canvas-agent-tool-coordinator.test.ts` currently registers 205 test scenarios, including 129 varied hostile inputs. `scripts/mc2/ci-canvas-data-owner-proof.mjs` exercises actual disposable scoped Data SQLite, real GatewayStore bot run, native OS grants, verified selected note/group operations, JSON forged handles and stale revisions.
+- All 200 task IDs are assigned to committed source or tests, but full verification depends on **successful exact-head CI**. Code remains draft/unmerged. No Mac owner session, production provider/model tool dispatcher, remote paid credentials, installer, signing or owner dogfood is represented as finished.
+- Task count is activity only. GB GitHub score remains 36/100 provisional until CI qualification, and formal accepted FA remains 15/100. A small GB increment may be reconciled after exact green integration proof. Next task **413**.
