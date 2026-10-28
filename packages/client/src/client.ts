@@ -100,6 +100,17 @@ export class DashboardClient {
     return this.query("aiverse.gateway.run.get",{noCache:true,params:{runId}});
   }
 
+  async listGatewaySessions(limit=20,offset=0):Promise<{result:unknown;systemId?:string;observedAt:string}>{
+    if(!this.scope.workspaceId)throw new Error("Select a workspace first");
+    return this.query("aiverse.gateway.session.list",{noCache:true,params:{limit,offset}});
+  }
+  async listGatewaySessionRuns(sessionId:string,limit=20,offset=0):
+    Promise<{result:unknown;systemId?:string;observedAt:string}>{
+    if(!this.scope.workspaceId)throw new Error("Select a workspace first");
+    return this.query("aiverse.gateway.session.runs",{
+      noCache:true,params:{sessionId,limit,offset},
+    });
+  }
   /** Query the Gateway. Read-only methods only in Phase 1. */
   async query(
     method: DashboardMethod,
