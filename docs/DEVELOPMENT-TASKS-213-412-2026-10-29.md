@@ -217,3 +217,23 @@
 - `test/canvas-agent-tool-coordinator.test.ts` currently registers 205 test scenarios, including 129 varied hostile inputs. `scripts/mc2/ci-canvas-data-owner-proof.mjs` exercises actual disposable scoped Data SQLite, real GatewayStore bot run, native OS grants, verified selected note/group operations, JSON forged handles and stale revisions.
 - All 200 task IDs are assigned to committed source or tests, but full verification depends on **successful exact-head CI**. Code remains draft/unmerged. No Mac owner session, production provider/model tool dispatcher, remote paid credentials, installer, signing or owner dogfood is represented as finished.
 - Task count is activity only. GB GitHub score remains 36/100 provisional until CI qualification, and formal accepted FA remains 15/100. A small GB increment may be reconciled after exact green integration proof. Next task **413**.
+
+
+### Final exact-head source verification, 29 October 2026
+
+The native host-only Canvas model-tool code at
+`b2e5920cd2998c929eba3345379b7a45761fbc54` **passed**
+[Dashboard Linux/macOS/Windows CI 40788246223](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246223),
+[Chromium 40788246028](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246028)
+and [progress integrity 40788246082](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246082).
+The [real pinned Gateway+OS+Data CI 40788246113](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246113)
+also **completed successfully**, validating owner-selected note and group
+actions against actual disposable canonical services.
+
+**Score after verified source:** GitHub engineering **~37/100
+provisional**, Canvas workstream 10/15; formal accepted **15/100**;
+G03.4 remains **in progress**, production native host and model
+tool dispatch are unshipped. Tasks through **#412** committed.
+Next numbered task: **#413**. The 200 small task slices were
+4 implementation/integration slices and 196 individually named
+test cases, not 200 major feature milestones.
