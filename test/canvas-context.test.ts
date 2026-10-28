@@ -236,7 +236,7 @@ describe("owner-backed selected Canvas context",()=>{
   assert.equal(f.counts().execCount,0);
  });
  it("root rebind during asynchronous authorization denies",async()=>{
-  const f=fixture();f.duringAuth(()=>f.registry.unregister(f.systemId));
+  const f=fixture();f.duringAuth(()=>{f.registry.unregister(f.systemId);});
   await assert.rejects(f.ctx.capture(f.human,f.req()),/CANVAS_CONTEXT_DENIED/);
   assert.equal(f.counts().execCount,0);
  });
