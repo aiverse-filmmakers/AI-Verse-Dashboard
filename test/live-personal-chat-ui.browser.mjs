@@ -376,3 +376,24 @@ test("Canvas: explicit destructive denial, scope switch and no cross-workspace l
     .some(d=>d.title==="Filmmaking canvas"),false);
   assert.deepEqual(errors,[]);
 });
+
+
+test("Canvas: stale atomic duplicate never creates a partial copy",async t=>{
+  const {page,errors}=await pageFor(t);
+  const canvas=page.locator(".aiverse-canvas");
+  await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Version guarded");
+  await canvas.getByRole("button",{name:"Create",exact:true}).click();
+  await canvas.locator(".canvas-current-title").getByText("Version guarded").waitFor();
+  const records=canvasDocuments.get("aiverse-01|operator");
+  const item=[...records.values()].find(d=>d.title==="Version guarded");
+  assert.ok(item);
+  // Another already-authorized actor changes Data while this browser still
+  // displays the original canonical document version.
+  item.version++;
+  await canvas.getByRole("button",{name:"Duplicate"}).click();
+  await canvas.getByRole("status").getByText(/RECORD_VERSION_CONFLICT/).waitFor();
+  assert.equal([...records.values()].filter(d=>d.title==="Version guarded copy").length,0);
+  assert.ok(requests.some(r=>r.method==="aiverse.canvas.duplicate"&&
+    r.params?.id===item.id&&r.params.expectedVersion===1));
+  assert.deepEqual(errors,[]);
+});
