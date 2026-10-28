@@ -107,7 +107,7 @@ export function createAdmittedCanvasDataOwner<Root,Scope,Database extends {close
         switch(request.method){
           case "aiverse.canvas.list":return canvas.list(p.limit);
           case "aiverse.canvas.get":return canvas.get(p.id);
-          case "aiverse.canvas.history":return canvas.history(p.id,p.limit);
+          case "aiverse.canvas.history":return canvas.history(p.id,p.limit,p.beforeVersion);
           case "aiverse.canvas.create":return canvas.create({
             title:p.title,idempotencyKey:p.idempotencyKey,actor,
           });
