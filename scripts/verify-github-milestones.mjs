@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 
-const states=new Set(["verified","implemented","planned","blocked"]);
+const states=new Set(["verified","implemented","in-progress","planned","blocked"]);
 const names=["foundation","chat","canvas","os-authority","providers",
   "controls","film","ux","desktop","audit"];
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
@@ -14,7 +14,7 @@ export function validateMilestoneLedger(ledger,progress,{checkFiles=false}={}){
    throw Error("INVALID_MILESTONE_LEDGER");
  if(progress?.schemaVersion!==1||!Array.isArray(progress.categories)
    ||progress.categories.length!==10)throw Error("PROGRESS_SOURCE_INVALID");
- const totals={verified:0,implemented:0,planned:0,blocked:0};
+ const totals={verified:0,implemented:0,"in-progress":0,planned:0,blocked:0};
  const ids=new Set();
  for(let i=0;i<10;i++){
   const ch=ledger.chapters[i],p=progress.categories[i];
