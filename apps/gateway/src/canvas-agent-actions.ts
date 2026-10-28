@@ -50,10 +50,12 @@ export class CanvasAgentActions {
     this.generation=registry.bindingGeneration(owner.dashboardSystemId);
   }
   private checkLease(signal?:AbortSignal):void{
-    if(signal?.aborted
-      ||this.registry.resolveRoot(this.owner.dashboardSystemId)!==this.root
-      ||this.registry.bindingGeneration(this.owner.dashboardSystemId)!==this.generation)
-      throw deny();
+    if(signal?.aborted)throw deny();
+    try{
+      if(this.registry.resolveRoot(this.owner.dashboardSystemId)!==this.root
+        ||this.registry.bindingGeneration(this.owner.dashboardSystemId)!==this.generation)
+        throw deny();
+    }catch{throw deny();}
   }
   private async verify(runId:string,previous?:CanonicalCanvasAgentRun,
     signal?:AbortSignal):Promise<CanonicalCanvasAgentRun>{
