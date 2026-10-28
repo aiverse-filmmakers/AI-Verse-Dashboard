@@ -146,11 +146,11 @@ try{
  assert.equal(issuedBot.grantCount,2);
  assert.deepEqual(await osGrant.admittedActor(botFacts,edit),
   {kind:"bot",id:"ci-native-bot"});
- assert.equal(await osGrant.resolveAdmittedActor({
+ assert.equal((await osGrant.resolveAdmittedActor({
   dashboardSystemId:systemId,canonicalSystemId:canonicalId,
   workspaceId:"film",principal:"operator",
   runId:"ci-native-run-1",sessionId:"ci-native-session-1",
- })?.actorId,"ci-native-bot");
+ }))?.actorId,"ci-native-bot");
  assert.equal(await osGrant.admittedActor(botFacts,{
   method:"aiverse.canvas.duplicate",params:{id:"rec_ci"},
  }),null);
