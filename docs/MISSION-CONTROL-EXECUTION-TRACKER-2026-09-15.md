@@ -1031,3 +1031,61 @@ the missing independently admitted installed OS bot grant,
 local native Data provisioning and approved Gateway tool host.
 Avoid new browser-owned state or "Undo" shortcuts. Do not
 merge/enable member production paths without explicit approval.
+
+
+### Tasks 25–32: indexed Canvas history & safe pagination (28 October 2026)
+
+**Eight bounded GitHub-first source tasks, not eight extra roadmap
+acceptance points.** The existing source PRs remain **draft and
+unmerged**, with no local Mac or production owner grant assumed.
+
+| Task | Real implemented contract | Verification |
+| --- | --- | --- |
+| **25** | Existing Data SQLite _records partial JSON-expression index scoped to revisions; per-document lookup | Data owner tests |
+| **26** | Keyset `history(id,limit,beforeVersion?)`, descending, max 30 and no 5,000-global-scan failure | Data pagination tests |
+| **27** | Revert does exact indexed version lookup, preserves optimistic Data ownership and idempotency | Data deep restore test |
+| **28** | Corrupt/duplicate archival version fails closed; explicit no-prune retention until backup policy exists | Data integrity tests |
+| **29** | Strict Dashboard RPC `beforeVersion` and native Data owner forwarding; no model-selected actor/root | Protocol/owner tests |
+| **30** | Real authenticated Canvas `Load older versions`, 20 at a time; clears source history on document switch | Chromium |
+| **31** | Malformed cursor/agent impersonation denied and real Gateway+Data keyed paging integration | Security/MC2 |
+| **32** | Re-run Data release, cross-platform CI, Dashboard Chromium, real pinned Gateway/OS/Data, update tracker/handoff | GitHub Actions |
+
+**Evidence first verified source:** Data commit
+[`3e76b71`](https://github.com/aiverse-filmmakers/AI-Verse-Data/commit/3e76b71ed5afca269575f97cd62863ae31b84d3c)
+passed release smoke, five-component acceptance and all six
+Linux/macOS/Windows Node 22/24 CI jobs. A follow-on Data test
+commit `beec725e` adds duplicate-archive-version corruption
+coverage; check its exact workflows. Dashboard code
+[`40e5573`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/40e557362f71f035499f3875f87a41998b749010)
+passed cross-platform Dashboard CI, Chromium and real
+Gateway+OS+Data composition. A follow-on Dashboard code commit
+`c27034d` adds document-switch correctness and browser
+regression; its final CI status must be separately verified.
+No claims of an unverified newest head should be made.
+The tests use canonical pinned Data and OS owners; the
+browser session's fake transport is only for UI interaction QC.
+
+**Scope/retention limitation:** history is not signed audit
+storage; a previous SHA-256 consistency digest checks data
+integrity but is not proof against malicious Data modification.
+Automatic old-revision pruning is explicitly not implemented
+without owner-approved backup/retention rules. Older snapshots
+predating the archive cannot be invented. Pagination is
+keyset/version-based, not fabricated total historical counts.
+Production actor/grant, human approval receipts, model-to-native
+tool host, first-party installed app with admitted Data scope
+and private Mac testing remain gating dependencies.
+
+**Roadmap remains 15/100 formally accepted.** MC2.1
+independent design approval plus Personal-first amendment are
+pending; next 2-point approval would reach **17/100**. GitHub-first
+90–93% before local-owner acceptance is a *target*, not
+measured whole-system completion.
+
+**Next Task 33 qualification:** inspect actual OS grants and
+owner Data initialization/backup protocol for legitimate
+production installation. Implement only verified missing
+primitives in their rightful owner repo, without granting a
+browser the authority to provision SQLite, mint a bot identity
+or approve an AI action. If native authorization is not
+available, record an explicit blocker, not a fake feature.
