@@ -64,9 +64,17 @@ test("scope identity cannot mutate without published rebaseline",()=>{
  const [c,p]=fixture();c.scope="full-filmmaking-3d-suite";
  assert.throws(()=>validateMilestoneLedger(c,p),/INVALID_MILESTONE_LEDGER/);
 });
+test("partially built Canvas milestone is neither fully accepted nor untouched",()=>{
+ const [c,p]=fixture(),r=validateMilestoneLedger(c,p);
+ assert.equal(r.states["in-progress"],1);
+ assert.equal(r.states.verified,4);
+ assert.equal(r.states.implemented,8);
+ assert.equal(r.states.planned,27);
+ assert.equal(r.formalAcceptance,15);
+});
 test("40 milestones do not turn into 40 accepted roadmap points",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p);
  assert.equal(r.formalAcceptance,15);
  assert.equal(r.githubProvisional,36);
- assert.equal(r.states.verified+r.states.implemented+r.states.planned+r.states.blocked,40);
+ assert.equal(r.states.verified+r.states.implemented+r.states['in-progress']+r.states.planned+r.states.blocked,40);
 });
