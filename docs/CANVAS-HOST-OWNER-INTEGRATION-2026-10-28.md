@@ -328,3 +328,77 @@ recorded separately in the execution tracker. Both source PRs
 remain draft and unmerged; the production launcher still lacks
 an independently granted Canvas owner. No private Mac
 or real model-provider end-to-end acceptance has occurred.
+
+
+## Tasks 25–32: indexed revision pages and owner-safe recovery
+
+**Task 25, Data indexed history:** Data PR #22 extends the **existing**
+scoped `_records` SQLite adapter with a partial, version-descending
+JSON expression index for `creative-canvas.revisions`.
+`listCanvasRevisionRecords` finds only one document's archived
+versions, while `getCanvasRevisionRecords` finds an exact version
+with a 2-row ambiguity guard. No second storage format, Dashboard
+database, file-system archive or ad-hoc SQL in the UI.
+
+**Task 26, bounded cursor:** `CanvasDocuments.history(id,limit=20,
+beforeVersion?)` performs keyset paging for immutable versions using
+an exclusive positive cursor; max 30 snapshots per request, descending.
+Deleted or foreign-scope documents remain invisible; no global
+5,000-revision scan. Older versions remain retained unless an
+independent real retention policy later authorizes pruning.
+
+**Task 27, direct deep revert:** `CanvasDocuments.revert()` now
+reads the requested older version **directly from the index**,
+still enforcing exact expectedVersion, authentic archive digest,
+strict Data provenance, one new version and idempotent retry.
+It does not load other documents' histories.
+
+**Task 28, archive integrity:** Data revalidates revision row
+immutability (`version===1`, stable creator/updater), board schema,
+consistency digest, document/version scope and strict page ordering;
+duplicated or corrupted archive versions fail closed. Tests cover
+interleaved multi-document 74-version histories, 3-page traversal,
+deep revert, altered record, duplicate version and no live-state
+changes on failure. Retention was *qualified*, not guessed:
+automatic deletion is explicitly **not** enabled, because there
+is no reviewed recovery/backup retention policy.
+
+**Task 29, typed host cursor:** The original Dashboard
+`aiverse.canvas.history` strict schema now accepts optional
+`beforeVersion` (integer 2+). The existing client and admitted
+native Data owner forward it unchanged under the same OS
+`read_local`, actor grant and workspace protections. Forged
+`actor`/root/grant and malformed cursors fail the strict RPC
+contract.
+
+**Task 30, working first-party pagination:** Real Personal Canvas
+History renders up to 20 snapshots and a **Load older versions**
+button when more may exist. Further pages preserve immutable
+descending cursors and reject scope, document or version overlap.
+After a create/edit/rename/duplicate/restore, obsolete source
+history is cleared; a successful restore explicitly reloads the
+new document's history. No localStorage or browser-owned
+canonical revision cache.
+
+**Task 31, security/composition:** Browser and host tests validate
+malformed/fake cursors, no duplicate pages, history isolation across
+document switches, and the real pinned Data owner returning one
+older page through authenticated Gateway RPC. Authorized agents
+still need independent run/bot leases and can read their permitted
+version pages, but are forbidden to invoke `revert` without a
+real independently reviewed human approval receipt.
+
+**Task 32, release evidence/handoff:** Code is committed only to
+Data PR #22 and Dashboard PR #42, both **draft and unmerged**.
+Revision retention/backup, real OS operator/agent grants, native
+Data scope provisioning, live model tools, production Mac install
+and independent MC2.1 review remain *blocked production gates*.
+An indexed SHA-256 archive digest detects mistakes, but is
+**not a cryptographic signed audit chain** and is not advertised
+as tamper-proof. The newest CI status/commit pin must be checked
+before claiming the complete code head is green.
+
+**Formal roadmap acceptance stays 15/100 until independent
+review.** The next +2 MC2.1 acceptance would be 17/100 if
+approved. The 90–93% browser/GitHub-first readiness level
+remains a future goal, not current verified completion.
