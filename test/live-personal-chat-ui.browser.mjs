@@ -19,6 +19,56 @@ const sockets=new Set();
 let next=0;
 const requests=[];
 const runs=new Map();
+
+const canvasDocuments=new Map();
+const canvasIdempotency=new Map();
+let canvasSeq=0;
+const canvasScope=frame=>frame.systemId+"|"+frame.workspaceId;
+const clone=value=>structuredClone(value);
+const canvasError=code=>Object.assign(Error(code),{code});
+function fixtureCanvas(frame){
+  const p=frame.params??{},scope=canvasScope(frame);
+  const store=canvasDocuments.get(scope)??new Map();
+  if(!canvasDocuments.has(scope))canvasDocuments.set(scope,store);
+  const stamp=()=>new Date().toISOString();
+  const owner=(doc)=>{
+    if(!doc)throw canvasError("CANVAS_DOCUMENT_NOT_FOUND");
+    return doc;
+  };
+  const snapshot=()=>({source:"canonical-data",workspaceId:frame.workspaceId});
+  if(frame.method==="aiverse.canvas.list")
+    return {...snapshot(),document:[...store.values()].map(clone)};
+  if(frame.method==="aiverse.canvas.get")
+    return {...snapshot(),document:clone(owner(store.get(p.id)))};
+  if(frame.method==="aiverse.canvas.delete")throw canvasError("CANVAS_ACCESS_DENIED");
+  if(frame.method==="aiverse.canvas.create"){
+    const key=scope+"|"+p.idempotencyKey;
+    if(canvasIdempotency.has(key))return {...snapshot(),document:clone(owner(store.get(canvasIdempotency.get(key))))};
+    const now=stamp(),id="rec_"+(++canvasSeq);
+    const doc={id,title:p.title,version:1,createdAt:now,updatedAt:now,
+      board:{nodes:[],edges:[]}};
+    store.set(id,doc);canvasIdempotency.set(key,id);
+    return {...snapshot(),document:clone(doc)};
+  }
+  const doc=owner(store.get(p.id));
+  if(p.expectedVersion!==doc.version)throw canvasError("RECORD_VERSION_CONFLICT");
+  if(frame.method==="aiverse.canvas.rename")doc.title=p.title;
+  else if(frame.method==="aiverse.canvas.edit"){
+    const op=p.edit;
+    if(op.type==="note.add")doc.board.nodes.push({id:op.id,kind:"note",text:op.text,x:op.x,y:op.y});
+    else if(op.type==="note.text")owner(doc.board.nodes.find(n=>n.id===op.id)).text=op.text;
+    else if(op.type==="note.move"){const n=owner(doc.board.nodes.find(n=>n.id===op.id));n.x=op.x;n.y=op.y;}
+    else if(op.type==="note.remove"){
+      doc.board.nodes=doc.board.nodes.filter(n=>n.id!==op.id);
+      doc.board.edges=doc.board.edges.filter(e=>e.from!==op.id&&e.to!==op.id);
+    }else if(op.type==="edge.add")doc.board.edges.push({id:op.id,from:op.from,to:op.to});
+    else if(op.type==="edge.remove")doc.board.edges=doc.board.edges.filter(e=>e.id!==op.id);
+    else throw canvasError("CANVAS_EDIT_UNSUPPORTED");
+  }else throw canvasError("UNKNOWN_METHOD");
+  doc.version++;doc.updatedAt=stamp();
+  return {...snapshot(),document:clone(doc)};
+}
+
 const html=String.raw`<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/apps/web/src/personal-chat.css">
@@ -41,6 +91,16 @@ const server=createServer(async(req,res)=>{
     for await(const part of req)raw+=String(part);
     const frame=JSON.parse(raw);
     requests.push(frame);
+    if(frame.method.startsWith("aiverse.canvas.")){
+      let body;
+      try{body={type:"res",v:"1.0",id:frame.id,ok:true,systemId:frame.systemId,
+        result:fixtureCanvas(frame),observedAt:new Date().toISOString()};}
+      catch(error){body={type:"res",v:"1.0",id:frame.id,ok:false,systemId:frame.systemId,
+        error:{code:error.code??"CANVAS_OWNER_UNAVAILABLE",message:"Canvas operation denied"},
+        observedAt:new Date().toISOString()};}
+      res.writeHead(200,{"content-type":"application/json","cache-control":"no-store"})
+        .end(JSON.stringify(body));return;
+    }
     let result;
     if(frame.method==="aiverse.gateway.run.create"){
       const runId="run-"+(++next);
@@ -143,12 +203,13 @@ test("MC2.5 actual browser interface sends canonical RPC, receives WS, and rende
   }
   assert.equal(await page.locator(".live-chat-message.user").count(),1);
   assert.equal(await page.locator(".live-chat-message.assistant p").innerText(),"Authoritative answer 1");
-  assert.equal(requests.at(0).method,"aiverse.gateway.run.create");
-  assert.equal(requests.at(0).workspaceId,"operator");
-  assert.deepEqual(requests.at(0).params.messages,[{
+  const chatRequests=requests.filter(r=>r.method.startsWith("aiverse.gateway."));
+  assert.equal(chatRequests[0].method,"aiverse.gateway.run.create");
+  assert.equal(chatRequests[0].workspaceId,"operator");
+  assert.deepEqual(chatRequests[0].params.messages,[{
     role:"user",content:"Can you draft a film brief?",
   }]);
-  assert.equal(requests.at(1).method,"aiverse.gateway.run.get");
+  assert.equal(chatRequests[1].method,"aiverse.gateway.run.get");
   assert.deepEqual(errors,[]);
   const browserStorage=await page.evaluate(()=>({
     local:localStorage.length,session:sessionStorage.length,
@@ -201,4 +262,88 @@ test("MC2.5 retarget invalidates panes and denies cross-workspace recovery",asyn
 test("Static Pages design preview never mounts the authenticated runtime application",async()=>{
   const text=await readFile(path.join(ROOT,"apps/web/preview/index.html"),"utf8");
   assert.doesNotMatch(text,/personal-chat-ui|dashboardBearer|live-chat-pane/);
+});
+
+
+test("Canvas: first Scratch edit persists through typed RPC and browser reload",async t=>{
+  const {page,errors}=await pageFor(t);
+  const canvas=page.locator(".aiverse-canvas");
+  await canvas.locator(".canvas-current-title").getByText("Scratch Canvas").waitFor();
+  assert.equal(await canvas.locator(".canvas-note").count(),0);
+  await canvas.getByRole("button",{name:"Add note"}).click();
+  await canvas.locator(".canvas-note").first().waitFor();
+  const initial=canvasDocuments.get("aiverse-01|operator");
+  assert.ok(initial&&[...initial.values()].some(d=>d.title==="Scratch Canvas"));
+  const note=canvas.locator(".canvas-note").first();
+  await note.click();
+  await canvas.getByRole("textbox",{name:"Selected note text"}).fill("Camera staging and storyboard");
+  await canvas.getByRole("button",{name:"Save note"}).click();
+  await canvas.locator(".canvas-note").getByText("Camera staging and storyboard").waitFor();
+  const saved=[...initial.values()].find(d=>d.title==="Scratch Canvas");
+  assert.equal(saved.board.nodes[0].text,"Camera staging and storyboard");
+  await page.reload({waitUntil:"networkidle"});
+  await page.locator(".aiverse-canvas").waitFor();
+  await page.getByRole("button",{name:"Canvas library"}).click();
+  await page.getByRole("button",{name:"Scratch Canvas",exact:true}).click();
+  await page.locator(".canvas-note").getByText("Camera staging and storyboard").waitFor();
+  assert.deepEqual(await page.evaluate(()=>({local:localStorage.length,session:sessionStorage.length})),
+    {local:0,session:0});
+  assert.deepEqual(errors,[]);
+});
+test("Canvas: named documents, rename, node connections, move and canonical duplication",async t=>{
+  const {page,errors}=await pageFor(t);
+  const canvas=page.locator(".aiverse-canvas");
+  await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Shot list");
+  await canvas.getByRole("button",{name:"Create",exact:true}).click();
+  await canvas.locator(".canvas-current-title").getByText("Shot list").waitFor();
+  await canvas.getByRole("textbox",{name:"Rename Canvas title"}).fill("Shot sequence");
+  await canvas.getByRole("button",{name:"Rename"}).click();
+  await canvas.locator(".canvas-current-title").getByText("Shot sequence").waitFor();
+  await canvas.getByRole("button",{name:"Add note"}).click();
+  await canvas.getByRole("button",{name:"Add note"}).click();
+  await canvas.locator(".canvas-note").nth(1).waitFor();
+  await canvas.getByRole("button",{name:"Connect notes"}).click();
+  await canvas.locator(".canvas-edge-item").first().waitFor();
+  const before=[...canvasDocuments.get("aiverse-01|operator").values()]
+    .find(d=>d.title==="Shot sequence");
+  assert.equal(before.board.nodes.length,2);
+  assert.equal(before.board.edges.length,1);
+  // Drag a note; only release generates a canonical note.move mutation.
+  const first=canvas.locator(".canvas-note").first();
+  const box=await first.boundingBox();
+  await page.mouse.move(box.x+40,box.y+35);
+  await page.mouse.down();await page.mouse.move(box.x+75,box.y+75,{steps:4});await page.mouse.up();
+  await page.waitForFunction(()=>[...document.querySelectorAll(".canvas-note")][0]?.style.left!=="50px");
+  await canvas.getByRole("button",{name:"Duplicate"}).click();
+  await canvas.locator(".canvas-current-title").getByText("Shot sequence copy").waitFor();
+  const docs=[...canvasDocuments.get("aiverse-01|operator").values()];
+  const copy=docs.find(d=>d.title==="Shot sequence copy");
+  assert.equal(copy.board.nodes.length,2);
+  assert.equal(copy.board.edges.length,1);
+  assert.ok(requests.some(r=>r.method==="aiverse.canvas.edit"&&r.params?.edit?.type==="note.move"));
+  assert.ok(requests.some(r=>r.method==="aiverse.canvas.edit"&&r.params?.edit?.type==="edge.add"));
+  assert.deepEqual(errors,[]);
+});
+test("Canvas: explicit destructive denial, scope switch and no cross-workspace leakage",async t=>{
+  const {page,errors}=await pageFor(t);
+  const canvas=page.locator(".aiverse-canvas");
+  await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Keep");
+  await canvas.getByRole("button",{name:"Create",exact:true}).click();
+  await canvas.locator(".canvas-current-title").getByText("Keep").waitFor();
+  await canvas.getByRole("button",{name:"Delete",exact:true}).click();
+  await canvas.getByRole("button",{name:"Confirm delete"}).click();
+  await canvas.getByRole("status").getByText(/Action denied by OS permissions/).waitFor();
+  assert.ok([...canvasDocuments.get("aiverse-01|operator").values()].some(d=>d.title==="Keep"));
+  await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"filmmaking"}));
+  await canvas.locator(".canvas-current-title").getByText("Scratch Canvas").waitFor();
+  await canvas.getByRole("button",{name:"Canvas library"}).click();
+  assert.equal(await canvas.getByRole("button",{name:"Keep",exact:true}).count(),0);
+  await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Filmmaking canvas");
+  await canvas.getByRole("button",{name:"Create",exact:true}).click();
+  await canvas.locator(".canvas-current-title").getByText("Filmmaking canvas").waitFor();
+  const req=requests.filter(r=>r.method==="aiverse.canvas.create").at(-1);
+  assert.equal(req.workspaceId,"filmmaking");
+  assert.equal([...canvasDocuments.get("aiverse-01|operator").values()]
+    .some(d=>d.title==="Filmmaking canvas"),false);
+  assert.deepEqual(errors,[]);
 });
