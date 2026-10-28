@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: aiverse-filmmakers/AI-Verse-Gateway
-          ref: ceb8849ec062f0d3997ceb0207e42c25aedd20c6
+          ref: 9748dd0d5473b65ad95ef92df62fe0a13575e378
           path: gateway-source
           persist-credentials: false
 
