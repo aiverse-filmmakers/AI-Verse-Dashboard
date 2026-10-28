@@ -62,3 +62,18 @@ rather than creating an independent or contradictory plan.
 The milestone inventory is a fixed planning baseline, NOT 40
 automatic feature completions, and does not authorize merge,
 privileged grants, paid provider calls or owner Mac access.
+
+
+## Progress state extension, 29 October 2026
+
+The finite 10-chapter / 40-milestone denominator did not change.
+A fifth state `in-progress` now identifies a *partially delivered
+but not milestone-complete* outcome. G03.4 is in progress: Data-owned
+grouping and the functional Canvas group editor are committed
+and verified in disposable CI, but real workspace lifecycle,
+creative assets and production model-tool action dispatch remain.
+
+Current categories: 4 verified, 8 implemented-in-draft,
+1 in-progress, 27 planned. The 36/100 GitHub score is an
+independently **provisional engineering estimate**; the
+15/100 MC formal accepted score has not changed.
