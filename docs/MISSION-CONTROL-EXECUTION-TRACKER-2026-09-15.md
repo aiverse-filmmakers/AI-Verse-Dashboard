@@ -858,3 +858,50 @@ repo changed and no launch/merge. The formal baseline remains **15/100**;
 MC2.1 design approval still required for **17/100**. Continue GitHub-first
 toward the *aspirational* 90–93% pre-local target without inflating the
 current roadmap score.
+
+
+### Task 15: canonical GatewayStore-backed agent run verification (28 October 2026)
+
+**Implemented and source-verified in Dashboard draft PR #42.** Task 14
+introduced a host-only Canvas agent dispatcher with injectable verified-run
+contract; this Task 15 **replaces the fake run assertion in its real
+integration proof**, not the Data owner or authentication system. A new
+`apps/gateway/src/canvas-gateway-run-verifier.ts` uses the *actual pinned*
+canonical AI-Verse-Gateway `GatewayStore.getRun/getSession` data: running
+run, authenticated principal, canonical system/workspace binding, active
+session matching `active_run_id`, valid deadline, no pending approval,
+active workspace manifest and unchanged registered OS root. The verifier
+re-reads both real Gateway records after awaiting separately admitted
+actor/grant lookup. A native OS/host grant must provide an exact bot ID
+and revocable grant epoch; no model, chat transcript or human Gateway
+bearer can mint an agent actor. There is still **no** new HTTP route,
+second run store or hard-coded production authority.
+
+**Evidence:** implementation [`7ee30ba`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/7ee30ba2554d4731de1b96002419fe46cfb0480a)
+passed all three workflows:
+[Dashboard cross-platform CI 40727330201](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40727330201),
+[real pinned Gateway/Data/OS composition 40727330245](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40727330245),
+[browser QC 40727330183](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40727330183).
+New `test/canvas-gateway-run-verifier.test.ts` denies revoked actor grants,
+completed/paused runs, session rebind, wrong principal/system, stale
+deadlines, awaiting approvals and paused workspaces. The disposable
+integration test now loads pinned Gateway `9748dd0`, creates a real
+persisted Gateway run/session and verifies a bot Canvas write against
+pinned Data `68f642c` and pinned OS `0dc7440`, then verifies
+Gateway cancellation blocks further writes and canonical Data provenance
+records `updatedBy.kind=bot`. Only the **OS actor grant callback** is
+disposable fixture authority, as the existing installed OS does not expose
+an admitted production Canvas bot grant.
+
+**Remaining gates, not fabricated:** approved operator/agent OS grant
+source, trusted installed Data provisioning, real out-of-process Gateway
+run verifier/broker or native in-process owner capability, model tool-call
+integration, true atomic run cancellation/write boundary, human approval
+receipts, durable undo and atomic Canvas duplication, Mac owner sign-off.
+Normal launcher still denies Canvas absent an approved owner. No merge.
+Formal accepted **15/100**, pending MC2.1 review and personal-first
+amendment. Next acceptance **17/100** if approved; pre-local 90–93%
+is a future target rather than current score. **Next Task 16:** qualify
+Data-owned atomic clone and undo/version reversal against the existing
+canonical record owner; add only a demonstrated missing contract and tests,
+without building Dashboard document storage or bypassing OS approvals.
