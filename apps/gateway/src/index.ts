@@ -12,6 +12,8 @@ export { CanonicalGatewayBridge } from "./canonical-gateway-bridge.js";
 export { CanvasOwnerBridge } from "./canvas-owner-bridge.js";
 export {CanvasAgentActions} from "./canvas-agent-actions.js";
 export {createGatewayStoreCanvasRunVerifier} from "./canvas-gateway-run-verifier.js";
+export {createOsNativeCanvasGrantResolvers} from "./canvas-os-grant.js";
+export type {NativeOsGrantReader,NativeOsCanvasGrant,OsCanvasGrantOptions} from "./canvas-os-grant.js";
 export type {CanonicalGatewayRunStore,CanvasAgentGrantFacts,CanvasAdmittedActorGrant,GatewayCanvasRunVerifierOptions} from "./canvas-gateway-run-verifier.js";
 export type {CanvasAgentAction,CanonicalCanvasAgentRun,CanvasAgentVerifier} from "./canvas-agent-actions.js";
 export {withCanvasOsPolicy} from "./canvas-os-policy.js";
