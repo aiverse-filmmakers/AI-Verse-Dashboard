@@ -288,6 +288,82 @@ try{
  }),/CANVAS_ACCESS_DENIED/);
 
 
+ // Native versioned Canvas groups are a DATA-owned object on the same
+ // original document, not a Dashboard-only overlay. Two notes and one group
+ // are persisted through actual localhost Canvas RPC and real SQLite.
+ const groupCreate=await rpc(host,make(systemId,"operator","aiverse.canvas.create",{
+   title:"Blocking group",idempotencyKey:"ci-group-board-create-1",
+ }));
+ assert.equal(groupCreate.ok,true,JSON.stringify(groupCreate.error));
+ const groupId=groupCreate.result.document.id;
+ const addGroupNote=async(expectedVersion,id,x)=>{
+   const v=await rpc(host,make(systemId,"operator","aiverse.canvas.edit",{
+     id:groupId,expectedVersion,idempotencyKey:"ci-group-note-"+id,
+     edit:{type:"note.add",id,text:id,x,y:10},
+   }));
+   assert.equal(v.ok,true,JSON.stringify(v.error));return v.result.document;
+ };
+ await addGroupNote(1,"group-note-a",25);
+ await addGroupNote(2,"group-note-b",80);
+ const createGroupFrame=make(systemId,"operator","aiverse.canvas.edit",{
+   id:groupId,expectedVersion:3,idempotencyKey:"ci-group-first-create",
+   edit:{type:"group.create",id:"group-shots",label:"Shot A+B",
+     nodeIds:["group-note-a","group-note-b"]},
+ });
+ const grouped=await rpc(host,createGroupFrame);
+ assert.equal(grouped.ok,true,JSON.stringify(grouped.error));
+ assert.equal(grouped.result.document.version,4);
+ assert.deepEqual(grouped.result.document.board.groups,[{
+   id:"group-shots",label:"Shot A+B",
+   nodeIds:["group-note-a","group-note-b"],
+ }]);
+ const replayGroup=await rpc(host,createGroupFrame);
+ assert.equal(replayGroup.ok,true,JSON.stringify(replayGroup.error));
+ assert.deepEqual(replayGroup.result.document,grouped.result.document);
+ const invalidGroup=await rpc(host,make(systemId,"operator","aiverse.canvas.edit",{
+   id:groupId,expectedVersion:4,idempotencyKey:"ci-group-foreign-note",
+   edit:{type:"group.create",id:"group-other",label:"Unsafe",
+     nodeIds:["group-note-a","foreign-note"]},
+ }));
+ assert.equal(invalidGroup.ok,false);
+ assert.equal(invalidGroup.error.code,"CANVAS_OWNER_UNAVAILABLE",
+   "Data group validation must deny references to missing notes");
+ const movedGroup=await agentActions.invoke({
+   runId:"ci-agent-run-1",operationId:"ci-group-move-agent-1",
+   method:"aiverse.canvas.edit",
+   params:{id:groupId,expectedVersion:4,
+     edit:{type:"group.move",id:"group-shots",dx:15,dy:20}},
+ });
+ assert.equal(movedGroup.document.version,5);
+ assert.deepEqual(movedGroup.document.board.nodes.map(n=>[n.x,n.y]),
+   [[40,30],[95,30]]);
+ const groupDuplicate=await rpc(host,make(systemId,"operator","aiverse.canvas.duplicate",{
+   id:groupId,expectedVersion:5,idempotencyKey:"ci-group-clone-1",
+ }));
+ assert.equal(groupDuplicate.ok,true,JSON.stringify(groupDuplicate.error));
+ assert.deepEqual(groupDuplicate.result.document.board.groups,
+   movedGroup.document.board.groups);
+ const groupHistory=await rpc(host,make(systemId,"operator","aiverse.canvas.history",{
+   id:groupId,limit:10,
+ }));
+ assert.equal(groupHistory.ok,true);
+ assert.deepEqual(groupHistory.result.document.map(d=>d.version),[5,4,3,2,1]);
+ assert.equal(groupHistory.result.document[2].board.groups,undefined,
+   "old v1 board is preserved without inventing empty group field");
+ const undoGroup=await rpc(host,make(systemId,"operator","aiverse.canvas.revert",{
+   id:groupId,expectedVersion:5,toVersion:3,
+   idempotencyKey:"ci-group-undo-v3",
+ }));
+ assert.equal(undoGroup.ok,true,JSON.stringify(undoGroup.error));
+ assert.equal(undoGroup.result.document.board.groups,undefined);
+ assert.equal(undoGroup.result.document.version,6);
+ const groupRecreated=await rpc(host,make(systemId,"operator","aiverse.canvas.edit",{
+   id:groupId,expectedVersion:6,idempotencyKey:"ci-group-recreate",
+   edit:{type:"group.create",id:"group-again",label:"New group",
+     nodeIds:["group-note-a","group-note-b"]},
+ }));
+ assert.equal(groupRecreated.ok,true);
+ assert.equal(groupRecreated.result.document.version,7);
  // Data-owned atomic duplicate is a SINGLE owner effect, not a sequence
  // of provisional note/edge writes from a browser.
  const atomic=make(systemId,"operator","aiverse.canvas.duplicate",{
@@ -544,6 +620,10 @@ try{
   real_os_grant_file_revocation_human_and_bot:true,
   os_exact_method_restriction_enforced_on_live_bot:true,
   atomic_duplicate_one_data_effect:true,duplicate_source_version_guard:true,
+  real_data_group_create_replay:true,grouped_board_persistent:true,
+  grouped_agent_move_atomic:true,group_clone_copies_members:true,
+  old_ungrouped_history_digest_preserved:true,
+  grouped_history_revert_to_legacy_board:true,
   canonical_revision_history:true,versioned_undo_persists_across_restart:true,
   indexed_history_keyset_pages:true,invalid_cursor_and_forged_actor_denied:true,
   stale_undo_denied:true,agent_can_read_but_cannot_revert:true,
