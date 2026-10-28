@@ -6,15 +6,16 @@
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {mkdtemp,mkdir,writeFile,rm} from "node:fs/promises";
-import {join,resolve,dirname} from "node:path";
+import {join,resolve} from "node:path";
 import {tmpdir} from "node:os";
 import {pathToFileURL} from "node:url";
 import {SystemRegistry} from "../../dist/packages/registry/src/index.js";
 import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js";
-import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge}
+import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,withCanvasOsPolicy}
   from "../../dist/apps/gateway/src/index.js";
 
 const pin="68f642cee430dc22381033f1338398b635993972";
+const osPin="0dc744057199970a34a60c11dff192e407ad64ed";
 assert.equal(process.env.CI,"true","never operate on owner machine");
 assert.equal(process.env.AIVERSE_GATEWAY_TOKEN,undefined);
 const source=resolve(process.env.AIVERSE_MC2_DATA_SOURCE||"data-source");
@@ -25,6 +26,10 @@ const {CanvasDocuments}=await imp("canvas/index.js");
 const {TrustedDataRoot,createStandaloneDataScope,createWorkspaceDataScope,
  openScopedDataDatabase}=await imp("scope/index.js");
 const {SqliteStorageDriver}=await imp("storage/index.js");
+const osSource=resolve(process.env.AIVERSE_MC2_OS_SOURCE||"os-source");
+assert.equal(execFileSync("git",["-C",osSource,"rev-parse","HEAD"],{
+ encoding:"utf8"}).trim(),osPin);
+const {evaluateActionPermission}=await import(pathToFileURL(join(osSource,"scripts","action-permission.mjs")).href);
 const root=await mkdtemp(join(tmpdir(),"aiverse-canvas-host-data-"));
 let host,second;
 const actor={kind:"human",id:"local-operator"};
@@ -50,17 +55,15 @@ try{
    'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "active"\n');
  const registry=new SystemRegistry();
  const systemId=registry.register(root).systemId;
- let allowedWrites=0,executed=0;
+ let allowedWrites=0,executed=0,osChecks=0,operatorGrant=true;
  function createBridge(){
-  return new CanvasOwnerBridge(registry,[{
+  const owner={
     dashboardSystemId:systemId,
     authorize(facts,request){
       facts.assertLease();
       if(facts.principal!=="local-operator")return false;
       if(facts.access==="write")allowedWrites++;
-      // Explicit admission from trusted local operator; negative control
-      // denies deletes entirely, regardless of Dashboard/browser intent.
-      return request.method!=="aiverse.canvas.delete";
+      return true;
     },
     execute(facts,request){
       facts.assertLease();
@@ -89,7 +92,11 @@ try{
         }
       }finally{db.database.close();}
     },
-  }]);
+  };
+  return new CanvasOwnerBridge(registry,[withCanvasOsPolicy(owner,{
+    operatorAdmitted:()=>operatorGrant,
+    evaluate:input=>{osChecks++;return evaluateActionPermission(input);},
+  })]);
  }
  const start=()=>startGateway(new QueryRouter(registry,new DisposableCache()),
   new SubscriptionHub(),{port:0,canvasBridge:createBridge()});
@@ -119,10 +126,18 @@ try{
   id:original.id,expectedVersion:2,idempotencyKey:"ci-delete-deny",
  }));
  assert.equal(unauthorized.ok,false);
- assert.equal(unauthorized.error.code,"CANVAS_ACCESS_DENIED");
+ assert.equal(unauthorized.error.code,"CANVAS_ACCESS_DENIED",
+   "OS default destructive action requires confirmation, not auto-approval");
  const film=await rpc(host,make(systemId,"film","aiverse.canvas.list",{limit:20}));
  assert.equal(film.ok,true);
  assert.deepEqual(film.result.document,[]);
+ await writeFile(join(root,"workspaces","film","WORKSPACE.yaml"),
+   'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "paused"\n');
+ const paused=await rpc(host,make(systemId,"film","aiverse.canvas.list",{limit:20}));
+ assert.equal(paused.ok,false);
+ assert.equal(paused.error.code,"CANVAS_ACCESS_DENIED");
+ await writeFile(join(root,"workspaces","film","WORKSPACE.yaml"),
+   'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "active"\n');
  const cross=await rpc(host,make(systemId,"film","aiverse.canvas.get",{id:original.id}));
  assert.equal(cross.ok,false);
  assert.equal(cross.error.code,"RECORD_NOT_FOUND");
@@ -140,11 +155,20 @@ try{
  }]);
  assert.equal(executed>=7,true);
  assert.equal(allowedWrites>=4,true);
+ assert.ok(osChecks>10,"actual OS evaluator must guard host read and final write edge");
+ operatorGrant=false;
+ const revoked=await rpc(second,make(systemId,"operator","aiverse.canvas.get",{id:original.id}));
+ assert.equal(revoked.ok,false);
+ assert.equal(revoked.error.code,"CANVAS_ACCESS_DENIED");
+ operatorGrant=true;
  console.log(JSON.stringify({
   ok:true,kind:"canvas-real-data-owner-ci",
   real_scoped_data_sqlite:true,personal_canvas_persisted_across_host_restart:true,
   two_workspace_scope_isolated:true,stale_version_rejected:true,
   idempotent_create:true,explicit_write_authorization_enforced:true,
+  real_os_permission_evaluator_at_effect_edge:true,
+  os_paused_workspace_denied:true,os_destructive_confirmation_denied:true,
+  revoked_operator_grant_denied:true,
   upstream_credentials_in_browser:false,private_owner_mac_verified:false,
  },null,2));
 }finally{
