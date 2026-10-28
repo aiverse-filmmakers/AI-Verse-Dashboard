@@ -21,6 +21,7 @@ const requests=[];
 const runs=new Map();
 
 const canvasDocuments=new Map();
+const canvasRevisions=new Map();
 const canvasIdempotency=new Map();
 let canvasSeq=0;
 const canvasScope=frame=>frame.systemId+"|"+frame.workspaceId;
@@ -36,10 +37,37 @@ function fixtureCanvas(frame){
     return doc;
   };
   const snapshot=()=>({source:"canonical-data",workspaceId:frame.workspaceId});
+  const revisionKey=id=>scope+"|"+id;
+  const saveRevision=doc=>{
+    const key=revisionKey(doc.id),items=canvasRevisions.get(key)??[];
+    if(!items.some(x=>x.version===doc.version))items.push(clone(doc));
+    canvasRevisions.set(key,items);
+  };
   if(frame.method==="aiverse.canvas.list")
     return {...snapshot(),document:[...store.values()].map(clone)};
   if(frame.method==="aiverse.canvas.get")
     return {...snapshot(),document:clone(owner(store.get(p.id)))};
+  if(frame.method==="aiverse.canvas.history"){
+    owner(store.get(p.id));
+    const archived=canvasRevisions.get(revisionKey(p.id))??[];
+    return {...snapshot(),document:archived.slice().sort((a,b)=>b.version-a.version)
+      .slice(0,p.limit??20).map(clone)};
+  }
+  if(frame.method==="aiverse.canvas.revert"){
+    const current=owner(store.get(p.id));
+    const key=scope+"|revert|"+p.idempotencyKey;
+    if(canvasIdempotency.has(key))return {...snapshot(),
+      document:clone(canvasIdempotency.get(key))};
+    if(current.version!==p.expectedVersion)throw canvasError("RECORD_VERSION_CONFLICT");
+    if(p.toVersion>=current.version)throw canvasError("CANVAS_VERSION_INVALID");
+    const found=(canvasRevisions.get(revisionKey(p.id))??[])
+      .find(d=>d.version===p.toVersion);
+    if(!found)throw canvasError("CANVAS_HISTORY_UNAVAILABLE");
+    const next={...clone(current),title:found.title,board:clone(found.board),
+      version:current.version+1,updatedAt:stamp()};
+    store.set(p.id,next);saveRevision(next);canvasIdempotency.set(key,clone(next));
+    return {...snapshot(),document:clone(next)};
+  }
   if(frame.method==="aiverse.canvas.duplicate"){
     const source=owner(store.get(p.id));
     const key=scope+"|duplicate|"+p.idempotencyKey;
@@ -49,7 +77,7 @@ function fixtureCanvas(frame){
     const now=stamp(),id="rec_"+(++canvasSeq);
     const doc={id,title:p.title??source.title+" copy",version:1,
       createdAt:now,updatedAt:now,board:clone(source.board)};
-    store.set(id,doc);canvasIdempotency.set(key,id);
+    store.set(id,doc);saveRevision(doc);canvasIdempotency.set(key,id);
     return {...snapshot(),document:clone(doc)};
   }
   if(frame.method==="aiverse.canvas.delete")throw canvasError("CANVAS_ACCESS_DENIED");
@@ -59,7 +87,7 @@ function fixtureCanvas(frame){
     const now=stamp(),id="rec_"+(++canvasSeq);
     const doc={id,title:p.title,version:1,createdAt:now,updatedAt:now,
       board:{nodes:[],edges:[]}};
-    store.set(id,doc);canvasIdempotency.set(key,id);
+    store.set(id,doc);saveRevision(doc);canvasIdempotency.set(key,id);
     return {...snapshot(),document:clone(doc)};
   }
   const doc=owner(store.get(p.id));
@@ -77,7 +105,7 @@ function fixtureCanvas(frame){
     else if(op.type==="edge.remove")doc.board.edges=doc.board.edges.filter(e=>e.id!==op.id);
     else throw canvasError("CANVAS_EDIT_UNSUPPORTED");
   }else throw canvasError("UNKNOWN_METHOD");
-  doc.version++;doc.updatedAt=stamp();
+  doc.version++;doc.updatedAt=stamp();saveRevision(doc);
   return {...snapshot(),document:clone(doc)};
 }
 
@@ -395,5 +423,56 @@ test("Canvas: stale atomic duplicate never creates a partial copy",async t=>{
   assert.equal([...records.values()].filter(d=>d.title==="Version guarded copy").length,0);
   assert.ok(requests.some(r=>r.method==="aiverse.canvas.duplicate"&&
     r.params?.id===item.id&&r.params.expectedVersion===1));
+  assert.deepEqual(errors,[]);
+});
+
+
+test("Canvas: verified history, two-step Undo, new version and persistence across reload",async t=>{
+  const {page,errors}=await pageFor(t);
+  const canvas=page.locator(".aiverse-canvas");
+  await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Undo storyboard");
+  await canvas.getByRole("button",{name:"Create",exact:true}).click();
+  await canvas.locator(".canvas-current-title").getByText("Undo storyboard").waitFor();
+  await canvas.getByRole("button",{name:"Add note"}).click();
+  await canvas.locator(".canvas-note").first().waitFor();
+  await canvas.getByRole("button",{name:"History",exact:true}).click();
+  const panel=canvas.getByRole("region",{name:"Canonical Canvas revision history"});
+  await panel.getByText("Current · v2").waitFor();
+  await panel.getByRole("button",{name:"Undo last change"}).click();
+  await canvas.getByRole("status").getByText(/Confirm restoring v1/).waitFor();
+  assert.equal(await canvas.locator(".canvas-note").count(),1,
+    "first click cannot modify canonical board");
+  await panel.getByRole("button",{name:"Confirm restore v1"}).click();
+  await canvas.locator(".canvas-current-meta").getByText("Saved · v3").waitFor();
+  assert.equal(await canvas.locator(".canvas-note").count(),0);
+  await panel.getByText("Current · v3").waitFor();
+  const mutations=requests.filter(x=>x.method==="aiverse.canvas.revert");
+  assert.equal(mutations.at(-1)?.params.toVersion,1);
+  assert.equal(mutations.at(-1)?.params.expectedVersion,2);
+  await page.reload({waitUntil:"networkidle"});
+  await page.getByRole("button",{name:"Canvas library"}).click();
+  await page.getByRole("button",{name:"Undo storyboard",exact:true}).click();
+  await canvas.locator(".canvas-current-meta").getByText("Saved · v3").waitFor();
+  await canvas.getByRole("button",{name:"History",exact:true}).click();
+  await panel.getByText("Current · v3").waitFor();
+  assert.deepEqual(errors,[]);
+});
+test("Canvas: concurrent revision rejects undo and never shows success",async t=>{
+  const {page,errors}=await pageFor(t);
+  const canvas=page.locator(".aiverse-canvas");
+  await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Concurrent undo");
+  await canvas.getByRole("button",{name:"Create",exact:true}).click();
+  await canvas.getByRole("button",{name:"Add note"}).click();
+  await canvas.locator(".canvas-note").first().waitFor();
+  await canvas.getByRole("button",{name:"History",exact:true}).click();
+  const panel=canvas.getByRole("region",{name:"Canonical Canvas revision history"});
+  await panel.getByRole("button",{name:"Undo last change"}).click();
+  const record=[...canvasDocuments.get("aiverse-01|operator").values()]
+    .find(x=>x.title==="Concurrent undo");
+  assert.ok(record);record.version+=1;
+  await panel.getByRole("button",{name:"Confirm restore v1"}).click();
+  await canvas.getByRole("status").getByText(/Canvas changed elsewhere/).waitFor();
+  assert.equal(await canvas.locator(".canvas-note").count(),1);
+  assert.equal(record.version,3,"failed optimistic undo must not apply another effect");
   assert.deepEqual(errors,[]);
 });
