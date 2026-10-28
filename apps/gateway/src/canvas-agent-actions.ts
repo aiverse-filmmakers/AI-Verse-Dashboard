@@ -34,7 +34,7 @@ const deny=(code="CANVAS_AGENT_ACCESS_DENIED")=>
   Object.assign(new Error(code),{code});
 const allowed=new Set(["aiverse.canvas.list","aiverse.canvas.get",
   "aiverse.canvas.create","aiverse.canvas.rename","aiverse.canvas.edit",
-  "aiverse.canvas.duplicate"]);
+  "aiverse.canvas.duplicate","aiverse.canvas.history"]);
 
 export class CanvasAgentActions {
   private readonly root:string;
@@ -93,6 +93,7 @@ export class CanvasAgentActions {
       throw deny("CANVAS_AGENT_ACTION_INVALID");
     const candidate={...input.params,
       ...(input.method==="aiverse.canvas.list"||input.method==="aiverse.canvas.get"
+        ||input.method==="aiverse.canvas.history"
         ?{}:{idempotencyKey:input.operationId})};
     const parsed=validateCanvasOperation(input.method,candidate);
     if(!parsed)throw deny("CANVAS_AGENT_ACTION_INVALID");
