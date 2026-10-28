@@ -391,7 +391,7 @@ test("Canvas: stale atomic duplicate never creates a partial copy",async t=>{
   // displays the original canonical document version.
   item.version++;
   await canvas.getByRole("button",{name:"Duplicate"}).click();
-  await canvas.getByRole("status").getByText(/RECORD_VERSION_CONFLICT/).waitFor();
+  await canvas.getByRole("status").getByText(/Canvas changed elsewhere/).waitFor();
   assert.equal([...records.values()].filter(d=>d.title==="Version guarded copy").length,0);
   assert.ok(requests.some(r=>r.method==="aiverse.canvas.duplicate"&&
     r.params?.id===item.id&&r.params.expectedVersion===1));
