@@ -13,7 +13,7 @@ import {tmpdir} from "node:os";
 import {pathToFileURL} from "node:url";
 import {SystemRegistry} from "../../dist/packages/registry/src/index.js";
 import {createOsNativeCanvasGrantResolvers} from "../../dist/apps/gateway/src/index.js";
-const PIN="__OS_PIN__";
+const PIN="5388f3fab725c4be5f4394f0d0c98d20ee502c5e";
 const GATEWAY_PIN="9748dd0d5473b65ad95ef92df62fe0a13575e378";
 assert.equal(process.env.CI,"true");
 assert.equal(process.env.AIVERSE_GATEWAY_TOKEN,undefined);
