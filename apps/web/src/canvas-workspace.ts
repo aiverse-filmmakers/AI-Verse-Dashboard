@@ -319,7 +319,7 @@ export class CanvasWorkspace {
       if(!a||!b)continue;
       const line=document.createElementNS("http://www.w3.org/2000/svg","line");
       for(const [key,value] of [["x1",a.x+72],["y1",a.y+33],["x2",b.x+72],["y2",b.y+33]])
-        line.setAttribute(key,String(value));
+        line.setAttribute(String(key),String(value));
       line.setAttribute("stroke","#8ea5be");line.setAttribute("stroke-width","2");
       svg.append(line);
     }
