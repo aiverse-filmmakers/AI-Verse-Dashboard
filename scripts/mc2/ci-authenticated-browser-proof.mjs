@@ -101,7 +101,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       const answer=document.querySelector(".live-chat-pane .live-chat-message.assistant p")?.textContent??"";
       return status.startsWith("completed")&&answer.includes(expected);
     },marker,{timeout:24000});
-    const runId=(await first.locator(".live-chat-status").textContent()).match(/run-[A-Za-z0-9._:-]+/)?.[0];
+    const runId=(await first.locator(".live-chat-status").textContent()).split(" · ")[1];
     assert.ok(runId,"browser must receive a canonical run identifier");
     const finalAnswer=await first.locator(".live-chat-message.assistant p").textContent();
     assert.ok(finalAnswer.includes(marker),"canonical reply must reflect exact operator input");
