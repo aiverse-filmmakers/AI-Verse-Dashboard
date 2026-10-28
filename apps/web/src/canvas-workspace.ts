@@ -123,7 +123,7 @@ export class CanvasWorkspace {
     this.message("Workspace changed. Only its own Canvas documents can be opened.");
     this.render();void this.refresh();
   }
-  async refresh(){
+  async refresh(silent=false){
     if(this.destroyed||this.busy)return;
     const epoch=this.epoch,scope={...this.selected};
     try{
@@ -132,10 +132,10 @@ export class CanvasWorkspace {
       const docs=this.snapshot(response,scope);
       if(!Array.isArray(docs))throw Error("CANVAS_INVALID_PROJECTION");
       this.list=docs;
-      this.message(docs.length?docs.length+" saved Canvas document(s) in "+scope.workspaceId:
+      if(!silent)this.message(docs.length?docs.length+" saved Canvas document(s) in "+scope.workspaceId:
         "No saved canvases in this workspace. Scratch is unsaved until edited.");
       this.renderLibrary();
-    }catch(error){if(this.alive(epoch)){this.list=[];this.failure(error);this.renderLibrary();}}
+    }catch(error){if(this.alive(epoch)){this.list=[];if(!silent)this.failure(error);this.renderLibrary();}}
   }
   private async operate(run:()=>Promise<{result:unknown}>,success:string){
     if(this.busy||this.destroyed)return null;
@@ -152,7 +152,7 @@ export class CanvasWorkspace {
       if(this.alive(epoch)){this.failure(error);this.render();}
       return null;
     }finally{
-      if(this.alive(epoch)){this.busy=false;this.render();void this.refresh();}
+      if(this.alive(epoch)){this.busy=false;this.render();void this.refresh(true);}
     }
   }
   async open(id:string){
@@ -209,7 +209,7 @@ export class CanvasWorkspace {
       this.current=result;this.message(success+" · version "+result.version);
       this.render();
     }catch(error){if(this.alive(epoch)){this.failure(error);this.render();}}
-    finally{if(this.alive(epoch)){this.busy=false;this.render();void this.refresh();}}
+    finally{if(this.alive(epoch)){this.busy=false;this.render();void this.refresh(true);}}
   }
   async remove(){
     if(!this.current||this.busy)return;
@@ -230,7 +230,7 @@ export class CanvasWorkspace {
     this.busy=true;this.message("Copying using canonical Data operations…");this.render();
     let copy:CanvasDoc|null=null;
     try{
-      const start=this.snapshot(await this.client.canvasCreate(source.title+" copy",editId()),scope);
+      const start=this.snapshot(await this.client.canvasCreate(source.title.slice(0,135)+" copy",editId()),scope);
       if(Array.isArray(start))throw Error("CANVAS_INVALID_PROJECTION");
       copy=start;
       for(const n of source.board?.nodes??[]){
@@ -252,7 +252,7 @@ export class CanvasWorkspace {
     }catch(error){
       if(this.alive(epoch))this.message("Copy incomplete"+
         (copy?" (document "+copy.id+" may contain partial content). ":" · ")+codeOf(error));
-    }finally{if(this.alive(epoch)){this.busy=false;this.render();void this.refresh();}}
+    }finally{if(this.alive(epoch)){this.busy=false;this.render();void this.refresh(true);}}
   }
   private renderLibrary(){
     this.sidebar.hidden=!this.libraryOpen||!this.expanded;
