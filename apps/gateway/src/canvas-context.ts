@@ -35,6 +35,12 @@ export interface CanvasContextSnapshot{
   readonly noteCount:number;readonly edgeCount:number;
 }
 const IDENTIFIER=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const issuedSnapshots=new WeakSet<object>();
+/** Only in-process snapshots minted by a trusted canonical Canvas owner qualify. */
+export function isHostCanvasContextSnapshot(value:unknown):
+  value is CanvasContextSnapshot{
+  return !!value&&typeof value==="object"&&issuedSnapshots.has(value);
+}
 const DENIED="CANVAS_CONTEXT_DENIED";
 const fail=()=>Object.assign(Error(DENIED),{code:DENIED});
 const keys=(v:unknown,allowed:readonly string[])=>!!v&&typeof v==="object"
@@ -139,6 +145,8 @@ export class CanvasContextReader{
    edgeCount:document.board.edges.length,
   };
   this.lease(facts,signal);
-  return Object.freeze(snapshot);
+  const minted=Object.freeze(snapshot);
+  issuedSnapshots.add(minted);
+  return minted;
  }
 }
