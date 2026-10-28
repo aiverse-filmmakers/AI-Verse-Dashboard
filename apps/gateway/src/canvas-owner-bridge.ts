@@ -52,10 +52,12 @@ const note=z.discriminatedUnion("type",[
 const operations=new Map<string,{schema:z.ZodTypeAny;access:"read"|"write"}>([
   ["aiverse.canvas.list",{schema:z.object({limit:z.number().int().min(1).max(100).optional()}).strict(),access:"read"}],
   ["aiverse.canvas.get",{schema:z.object({id}).strict(),access:"read"}],
+  ["aiverse.canvas.history",{schema:z.object({id,limit:z.number().int().min(1).max(30).optional()}).strict(),access:"read"}],
   ["aiverse.canvas.create",{schema:mutation.extend({title}).strict(),access:"write"}],
   ["aiverse.canvas.rename",{schema:target.extend({title}).strict(),access:"write"}],
   ["aiverse.canvas.edit",{schema:target.extend({edit:note}).strict(),access:"write"}],
   ["aiverse.canvas.duplicate",{schema:target.extend({title:title.optional()}).strict(),access:"write"}],
+  ["aiverse.canvas.revert",{schema:target.extend({toVersion:z.number().int().min(1)}).strict(),access:"write"}],
   ["aiverse.canvas.delete",{schema:target,access:"write"}],
 ]);
 /** Shared strict Canvas action parser for trusted host agent and browser routes. */
@@ -75,6 +77,7 @@ function code(error:unknown):string{
   const safe=new Set(["CANVAS_ACCESS_DENIED","CANVAS_OWNER_UNAVAILABLE",
     "CANVAS_DOCUMENT_NOT_FOUND","RECORD_NOT_FOUND","RECORD_VERSION_CONFLICT",
     "IDEMPOTENCY_CONFLICT","CANVAS_NODE_CONFLICT","CANVAS_EDGE_CONFLICT",
+    "CANVAS_HISTORY_INVALID","CANVAS_HISTORY_UNAVAILABLE","CANVAS_HISTORY_LIMIT",
     "CANVAS_NODE_NOT_FOUND","CANVAS_EDGE_NOT_FOUND","CANVAS_SCHEMA_CONFLICT"]);
   return typeof value==="string"&&safe.has(value)?value:"CANVAS_OWNER_UNAVAILABLE";
 }
