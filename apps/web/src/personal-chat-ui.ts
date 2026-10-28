@@ -61,6 +61,9 @@ export class PersonalChatApplication {
   private readonly panesHost:HTMLElement;
   private readonly title:HTMLElement;
   private readonly createButton:HTMLButtonElement;
+  private readonly historyPanel:HTMLElement;
+  private readonly historyClient:DashboardClient;
+  private historyEpoch=0;
   private readonly parent:HTMLElement;
   private destroyed=false;
   constructor(container:HTMLElement,private readonly session:TrustedLocalChatSession){
@@ -68,6 +71,8 @@ export class PersonalChatApplication {
     const feed=new DashboardChatEventFeed(session.dashboardOrigin,
       session.authentication==="host-cookie" ? {mode:"host-cookie"} : this.requireBearer(session));
     this.feed=feed;
+    this.historyClient=new DashboardClient(session.dashboardOrigin,this.selected,
+      session.authentication==="host-cookie" ? {mode:"host-cookie"} : this.requireBearer(session));
     this.parent=container;
     container.replaceChildren();
     container.classList.add("aiverse-live-chat");
@@ -76,9 +81,13 @@ export class PersonalChatApplication {
     this.title=title;
     const create=button("Split chat",()=>{this.openPane();},"live-chat-split");
     this.createButton=create;
-    bar.append(title,create);
+    const previous=button("Previous chats",()=>{void this.toggleHistory();},"live-chat-history-toggle");
+    bar.append(title,previous,create);
+    this.historyPanel=el("section","live-chat-history");
+    this.historyPanel.hidden=true;
+    this.historyPanel.setAttribute("aria-label","Previous canonical conversations");
     this.panesHost=el("div","live-chat-panes");
-    container.append(bar,this.panesHost);
+    container.append(bar,this.historyPanel,this.panesHost);
     this.openPane();
   }
   get paneIds():string[]{return [...this.panes.keys()];}
@@ -87,6 +96,9 @@ export class PersonalChatApplication {
     if(this.destroyed)throw Error("Chat application closed");
     if(!next.systemId || !next.workspaceId)throw Error("Explicit OS scope required");
     this.selected={...next};
+    this.historyClient.retarget(this.selected);
+    this.historyEpoch++;
+    this.historyPanel.hidden=true;this.historyPanel.replaceChildren();
     this.title.textContent="AI-Verse · "+next.workspaceId;
     for(const pane of this.panes.values()){
       pane.generation++;
@@ -99,6 +111,74 @@ export class PersonalChatApplication {
       this.render(pane);
       pane.status.textContent="New workspace selected. Previous runs remain in Gateway.";
     }
+  }
+  private async toggleHistory():Promise<void>{
+    if(this.destroyed)return;
+    if(!this.historyPanel.hidden){this.historyEpoch++;this.historyPanel.hidden=true;return;}
+    this.historyPanel.hidden=false;
+    this.historyPanel.replaceChildren(el("p","live-chat-history-status","Loading from canonical Gateway…"));
+    const epoch=++this.historyEpoch;
+    const scope={...this.selected};
+    try{
+      const response=await this.historyClient.listGatewaySessions(20,0);
+      if(this.destroyed||epoch!==this.historyEpoch
+        ||scope.systemId!==this.selected.systemId
+        ||scope.workspaceId!==this.selected.workspaceId)return;
+      const page=response.result as Record<string,unknown>;
+      if(!page||page.source!=="canonical-gateway"
+        ||page.workspaceId!==scope.workspaceId||!Array.isArray(page.data)
+        ||typeof page.has_more!=="boolean")throw Error("CHAT_HISTORY_INVALID");
+      const rows=document.createDocumentFragment();
+      const heading=el("strong","live-chat-history-title","Previous chats");
+      rows.append(heading);
+      if(page.data.length===0)rows.append(el("p","live-chat-history-status","No canonical chats yet."));
+      for(const value of page.data){
+        if(!value||typeof value!=="object"||Array.isArray(value))
+          throw Error("CHAT_HISTORY_INVALID");
+        const record=value as Record<string,unknown>;
+        if(typeof record.session_id!=="string"
+          ||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(record.session_id)
+          ||record.workspace_id!==scope.workspaceId)
+          throw Error("CHAT_HISTORY_INVALID");
+        const item=el("div","live-chat-history-item");
+        const label=el("span","",typeof record.title==="string"
+          ?record.title.slice(0,120):record.session_id);
+        const open=button("Open conversation",()=>{
+          const first=this.panes.values().next().value as Pane|undefined;
+          if(first)void this.openHistoricalSession(first.id,record.session_id as string);
+        });
+        item.append(label,open);rows.append(item);
+      }
+      if(page.has_more)rows.append(el("p","live-chat-history-status",
+        "Showing the 20 most recent. Older chats are still in Gateway."));
+      this.historyPanel.replaceChildren(rows);
+    }catch(error){
+      if(epoch===this.historyEpoch)
+        this.historyPanel.replaceChildren(el("p","live-chat-history-status",
+          "History unavailable · "+errorCode(error)));
+    }
+  }
+  async openHistoricalSession(paneId:string,sessionId:string):Promise<void>{
+    const pane=this.panes.get(paneId);
+    if(!pane||this.destroyed||pane.busy)return;
+    const generation=++pane.generation;
+    pane.run.close();
+    pane.run=this.controller(view=>this.onChange(paneId,view));
+    pane.turns=[];pane.activeTurn=-1;pane.busy=true;
+    pane.status.textContent="Opening canonical conversation…";
+    this.render(pane);
+    const restored=await pane.run.openSession(sessionId);
+    if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation)return;
+    pane.turns=restored.turns.map(turn=>({role:turn.role,text:turn.content}));
+    pane.activeTurn=-1;
+    pane.busy=false;
+    if(restored.view.phase==="interrupted")
+      pane.status.textContent="History unavailable · "+(restored.view.errorCode??"CHAT_HISTORY_UNAVAILABLE");
+    else pane.status.textContent=restored.view.phase+" · "+sessionId+
+      (restored.view.contextLimited?" · Earlier conversation context unavailable or trimmed":"");
+    this.historyPanel.hidden=true;
+    this.historyEpoch++;
+    this.render(pane);
   }
   private requireBearer(s:TrustedLocalChatSession):string{
     if(typeof s.dashboardBearer!=="string")throw Error("Trusted native host session missing");
@@ -270,7 +350,7 @@ export class PersonalChatApplication {
     for(const other of this.panes.values())this.render(other);
   }
   destroy():void{
-    this.destroyed=true;
+    this.destroyed=true;this.historyEpoch++;
     for(const pane of this.panes.values())pane.run.close();
     this.panes.clear();
     this.parent.replaceChildren();
