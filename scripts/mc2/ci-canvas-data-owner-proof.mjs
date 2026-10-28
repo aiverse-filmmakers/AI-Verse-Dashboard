@@ -12,7 +12,7 @@ import {tmpdir} from "node:os";
 import {pathToFileURL} from "node:url";
 import {SystemRegistry} from "../../dist/packages/registry/src/index.js";
 import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js";
-import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner,CanvasAgentActions,createGatewayStoreCanvasRunVerifier,createCanvasOwnerPreflight,createOsNativeCanvasGrantResolvers}
+import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner,CanvasAgentActions,CanvasContextReader,createGatewayStoreCanvasRunVerifier,createCanvasOwnerPreflight,createOsNativeCanvasGrantResolvers}
   from "../../dist/apps/gateway/src/index.js";
 
 const pin="d1a135a490547890e7ba54d43cf77a71f67f67b1";
@@ -86,7 +86,7 @@ try{
  });
  let osChecks=0,actorAdmits=0,operatorGrant=true,actorGrant=true;
  let agentGrant=true,agentChecks=0;
- let agentActions;
+ let agentActions,contextReader;
  // Pre-existing canonical Data scopes are provisioned by the Data owner.
  // A Dashboard RPC must NEVER create a new Data database implicitly.
  const native={CanvasDocuments,TrustedDataRoot,createStandaloneDataScope,
@@ -191,6 +191,7 @@ try{
       evaluate:input=>{osChecks++;return evaluateActionPermission(input);},
     },
   });
+  contextReader=new CanvasContextReader(registry,owner);
   const actualVerifier=createGatewayStoreCanvasRunVerifier(registry,{
     dashboardSystemId:systemId,canonicalSystemId,
     approvedPrincipal:"operator",store:gatewayStore,
@@ -241,6 +242,30 @@ try{
      edit:{type:"note.text",id:"note-1",text:"Agent updated shot"}},
  });
  assert.equal(agentResult.document.version,3);
+ // Real native OS/Canvas owner snapshot: selected app context is derived
+ // from the current canonical Data revision, not browser-owned state.
+ const contextFacts={
+   systemId,workspaceId:"operator",root,principal:"local-operator",
+   access:"read",assertLease:()=>{},
+ };
+ const selectedContext=await contextReader.capture(contextFacts,{
+   documentId:original.id,selectedNodeIds:["note-1"],expectedVersion:3,
+ });
+ assert.equal(selectedContext.source,"canonical-data/canvas-selection");
+ assert.equal(selectedContext.documentVersion,3);
+ assert.equal(selectedContext.selectedNodes[0].text,"Agent updated shot");
+ assert.equal(selectedContext.selectedNodes[0].trust,"untrusted-canvas-text");
+ await assert.rejects(()=>contextReader.capture(contextFacts,{
+   documentId:original.id,selectedNodeIds:["note-1"],expectedVersion:2,
+ }),/CANVAS_CONTEXT_DENIED/);
+ await assert.rejects(()=>contextReader.capture(contextFacts,{
+   documentId:original.id,selectedNodeIds:["unlisted-1"],
+ }),/CANVAS_CONTEXT_DENIED/);
+ await saveGrants(installed.filter(g=>g.actor_kind!=="human"));
+ await assert.rejects(()=>contextReader.capture(contextFacts,{
+   documentId:original.id,selectedNodeIds:["note-1"],
+ }),/CANVAS_CONTEXT_DENIED|CANVAS_ACCESS_DENIED/);
+ await saveGrants(installed);
  // No cached run grant: withdrawing OS file bot authorization invalidates
  // even an otherwise running canonical GatewayStore run and session.
  await saveGrants(installed.filter(g=>g.actor_kind!=="bot"));
