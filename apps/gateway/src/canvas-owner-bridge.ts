@@ -16,7 +16,9 @@ export interface CanvasHostFacts {
   readonly systemId:string;
   readonly workspaceId:string;
   readonly root:string;
-  readonly principal:"local-operator";
+  readonly principal:"local-operator"|"verified-agent";
+  /** Set only by the trusted host after verifying a canonical running agent run. */
+  readonly agent?:{readonly runId:string;readonly actorId:string};
   readonly access:"read"|"write";
   /** Host + owner must revalidate immediately before any canonical effect. */
   assertLease():void;
@@ -55,6 +57,18 @@ const operations=new Map<string,{schema:z.ZodTypeAny;access:"read"|"write"}>([
   ["aiverse.canvas.edit",{schema:target.extend({edit:note}).strict(),access:"write"}],
   ["aiverse.canvas.delete",{schema:target,access:"write"}],
 ]);
+/** Shared strict Canvas action parser for trusted host agent and browser routes. */
+export function validateCanvasOperation(method:string,params:unknown):
+  {access:"read"|"write";params:Record<string,unknown>}|null{
+  const op=operations.get(method);
+  if(!op)return null;
+  const parsed=op.schema.safeParse(params??{});
+  return parsed.success?{access:op.access,params:parsed.data as Record<string,unknown>}:null;
+}
+
+/** Reuse the same bounded Data projection for local operator and verified agent. */
+export function projectCanvasDocument(value:unknown):unknown{return project(value);}
+
 function code(error:unknown):string{
   const value=(error as {code?:unknown})?.code;
   const safe=new Set(["CANVAS_ACCESS_DENIED","CANVAS_OWNER_UNAVAILABLE",
