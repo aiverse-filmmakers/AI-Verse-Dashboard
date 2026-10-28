@@ -10,6 +10,8 @@ on:
       - "apps/gateway/src/canvas-os-policy.ts"
       - "apps/gateway/src/canvas-data-owner.ts"
       - "apps/gateway/src/canvas-agent-actions.ts"
+      - "apps/gateway/src/canvas-context.ts"
+      - "test/canvas-context.test.ts"
       - "apps/gateway/src/canvas-gateway-run-verifier.ts"
       - "apps/gateway/src/canvas-os-grant.ts"
       - "test/canvas-os-grant.test.ts"
