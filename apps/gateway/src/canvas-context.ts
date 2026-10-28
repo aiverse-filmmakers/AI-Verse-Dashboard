@@ -84,11 +84,13 @@ export class CanvasContextReader{
  }
  private lease(facts:CanvasHostFacts,signal?:AbortSignal):void{
   if(signal?.aborted||facts.root!==this.root||
-    facts.systemId!==this.owner.dashboardSystemId||
-    this.registry.resolveRoot(facts.systemId)!==this.root||
-    this.registry.bindingGeneration(facts.systemId)!==this.generation)
-    throw fail();
-  try{facts.assertLease();}catch{throw fail();}
+    facts.systemId!==this.owner.dashboardSystemId)throw fail();
+  try{
+    if(this.registry.resolveRoot(facts.systemId)!==this.root||
+      this.registry.bindingGeneration(facts.systemId)!==this.generation)
+      throw fail();
+    facts.assertLease();
+  }catch{throw fail();}
   if(facts.workspaceId!=="operator"){
    try{
     if(getWorkspace(this.registry,facts.systemId,facts.workspaceId)
