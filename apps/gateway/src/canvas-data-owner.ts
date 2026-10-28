@@ -17,6 +17,7 @@ type NativeCanvas={
   create:(...args:any[])=>unknown;
   rename:(...args:any[])=>unknown;
   edit:(...args:any[])=>unknown;
+  duplicate:(...args:any[])=>unknown;
   delete:(...args:any[])=>unknown;
 };
 export interface NativeCanvasDataModules<Root,Scope,Database>{
@@ -109,6 +110,8 @@ export function createAdmittedCanvasDataOwner<Root,Scope,Database extends {close
           });
           case "aiverse.canvas.rename":return canvas.rename({...target,title:p.title});
           case "aiverse.canvas.edit":return canvas.edit({...target,edit:p.edit});
+          case "aiverse.canvas.duplicate":return canvas.duplicate({...target,
+            ...(p.title===undefined?{}:{title:p.title})});
           case "aiverse.canvas.delete":return canvas.delete(target);
           default:throw deny();
         }
