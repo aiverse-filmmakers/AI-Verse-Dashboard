@@ -57,6 +57,7 @@ export class CanvasWorkspace {
   private pendingDelete=false;
   private historyOpen=false;
   private history:CanvasDoc[]=[];
+  private historyHasMore=false;
   private pendingRevertVersion:number|null=null;
   private readonly header:HTMLElement;
   private readonly status:HTMLElement;
@@ -125,7 +126,7 @@ export class CanvasWorkspace {
     if(this.destroyed)throw Error("Canvas closed");
     this.epoch++;this.selected={...next};this.client.retarget(next);
     this.current=null;this.list=[];this.busy=false;this.selectedNote=null;
-    this.pendingDelete=false;this.historyOpen=false;this.history=[];
+    this.pendingDelete=false;this.historyOpen=false;this.history=[];this.historyHasMore=false;
     this.pendingRevertVersion=null;
     const label=this.header.querySelector(".canvas-scope");
     if(label)label.textContent=next.workspaceId;
@@ -173,7 +174,7 @@ export class CanvasWorkspace {
       if(!this.alive(epoch))return;
       if(Array.isArray(result))throw Error("CANVAS_INVALID_PROJECTION");
       this.current=result;this.selectedNote=null;
-      this.historyOpen=false;this.history=[];this.pendingRevertVersion=null;
+      this.historyOpen=false;this.history=[];this.historyHasMore=false;this.pendingRevertVersion=null;
       this.message("Saved Canvas · version "+result.version);
     }catch(error){if(this.alive(epoch))this.failure(error);}
     finally{if(this.alive(epoch)){this.busy=false;this.render();}}
@@ -181,7 +182,7 @@ export class CanvasWorkspace {
   scratch(){
     if(this.busy)return;
     this.current=null;this.selectedNote=null;this.pendingDelete=false;
-    this.historyOpen=false;this.history=[];this.pendingRevertVersion=null;
+    this.historyOpen=false;this.history=[];this.historyHasMore=false;this.pendingRevertVersion=null;
     this.message("Scratch canvas is empty. Its first edit creates a real Data document.");
     this.render();
   }
@@ -254,8 +255,31 @@ export class CanvasWorkspace {
       if(!Array.isArray(source)||source.some(x=>x.id!==documentId
         ||x.version>this.current!.version))
         throw Error("CANVAS_INVALID_PROJECTION");
-      this.history=source;this.historyOpen=true;this.pendingRevertVersion=null;
+      this.history=source;this.historyHasMore=source.length===20;
+      this.historyOpen=true;this.pendingRevertVersion=null;
       this.message(source.length+" verified Data revision(s) available.");
+    }catch(error){if(this.alive(epoch))this.failure(error);}
+    finally{if(this.alive(epoch)){this.busy=false;this.render();}}
+  }
+  async loadOlderHistory(){
+    if(this.destroyed||this.busy||!this.historyOpen||!this.historyHasMore
+      ||!this.current||!this.history.length)return;
+    const epoch=this.epoch,scope={...this.selected};
+    const documentId=this.current.id;
+    const cursor=this.history[this.history.length-1]!.version;
+    this.busy=true;this.render();
+    try{
+      const next=this.snapshot(await this.client.canvasHistory(documentId,20,cursor),scope);
+      if(!this.alive(epoch)||this.current?.id!==documentId)return;
+      if(!Array.isArray(next)||next.some(x=>x.id!==documentId||x.version>=cursor))
+        throw Error("CANVAS_INVALID_PROJECTION");
+      // Old snapshots are immutable. New pages are strictly descending
+      // and never replace a previously admitted owner revision.
+      const seen=new Set(this.history.map(x=>x.version));
+      if(next.some(x=>seen.has(x.version)))throw Error("CANVAS_INVALID_PROJECTION");
+      this.history.push(...next);
+      this.historyHasMore=next.length===20;
+      this.message(next.length+" older verified revision(s) loaded.");
     }catch(error){if(this.alive(epoch))this.failure(error);}
     finally{if(this.alive(epoch)){this.busy=false;this.render();}}
   }
@@ -304,6 +328,11 @@ export class CanvasWorkspace {
     }
     if(!this.history.length)this.historyPanel.append(
       node("p","canvas-hint","No verified revision snapshots found."));
+    if(this.historyHasMore){
+      const older=action("Load older versions",()=>{void this.loadOlderHistory();});
+      older.disabled=this.busy;
+      this.historyPanel.append(older);
+    }
   }
   private renderLibrary(){
     this.sidebar.hidden=!this.libraryOpen||!this.expanded;
