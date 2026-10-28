@@ -11,7 +11,7 @@ import {tmpdir} from "node:os";
 import {pathToFileURL} from "node:url";
 import {SystemRegistry} from "../../dist/packages/registry/src/index.js";
 import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js";
-import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,withCanvasOsPolicy}
+import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner}
   from "../../dist/apps/gateway/src/index.js";
 
 const pin="68f642cee430dc22381033f1338398b635993972";
@@ -55,48 +55,35 @@ try{
    'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "active"\n');
  const registry=new SystemRegistry();
  const systemId=registry.register(root).systemId;
- let allowedWrites=0,executed=0,osChecks=0,operatorGrant=true;
+ let osChecks=0,actorAdmits=0,operatorGrant=true,actorGrant=true;
+ // Pre-existing canonical Data scopes are provisioned by the Data owner.
+ // A Dashboard RPC must NEVER create a new Data database implicitly.
+ const native={CanvasDocuments,TrustedDataRoot,createStandaloneDataScope,
+   createWorkspaceDataScope,openScopedDataDatabase,SqliteStorageDriver};
+ const trustedRoot=TrustedDataRoot.fromExistingDirectory(root);
+ for(const scope of [
+   createStandaloneDataScope(trustedRoot,"local"),
+   createWorkspaceDataScope(trustedRoot,"film"),
+ ]){
+   const opened=openScopedDataDatabase(new SqliteStorageDriver(),scope,
+     {mode:"create-or-open"});
+   opened.database.close();
+ }
  function createBridge(){
-  const owner={
-    dashboardSystemId:systemId,
-    authorize(facts,request){
-      facts.assertLease();
-      if(facts.principal!=="local-operator")return false;
-      if(facts.access==="write")allowedWrites++;
-      return true;
+  const owner=createAdmittedCanvasDataOwner(registry,{
+    dashboardSystemId:systemId,native,
+    // Only CI's disposable host installs this grant source. Production
+    // requires an admitted native operator/OS identity authority.
+    admittedActor:()=>{
+      actorAdmits++;
+      return actorGrant?actor:null;
     },
-    execute(facts,request){
-      facts.assertLease();
-      executed++;
-      const rootAuthority=TrustedDataRoot.fromExistingDirectory(facts.root);
-      const scope=facts.workspaceId==="operator"
-        ?createStandaloneDataScope(rootAuthority,"local")
-        :createWorkspaceDataScope(rootAuthority,facts.workspaceId);
-      // Preinstalled disposable CI paths only. Production callers must
-      // use Data native initialization and owner authorization.
-      const db=openScopedDataDatabase(new SqliteStorageDriver(),scope);
-      try{
-        const canvas=new CanvasDocuments(db.database),p=request.params;
-        const args={id:p.id,expectedVersion:p.expectedVersion,
-          idempotencyKey:p.idempotencyKey,actor};
-        switch(request.method){
-          case "aiverse.canvas.list":return canvas.list(p.limit);
-          case "aiverse.canvas.get":return canvas.get(p.id);
-          case "aiverse.canvas.create":return canvas.create({
-            title:p.title,idempotencyKey:p.idempotencyKey,actor,
-          });
-          case "aiverse.canvas.rename":return canvas.rename({...args,title:p.title});
-          case "aiverse.canvas.edit":return canvas.edit({...args,edit:p.edit});
-          case "aiverse.canvas.delete":return canvas.delete(args);
-          default:throw Error("invalid Canvas owner action");
-        }
-      }finally{db.database.close();}
+    osPolicy:{
+      operatorAdmitted:()=>operatorGrant,
+      evaluate:input=>{osChecks++;return evaluateActionPermission(input);},
     },
-  };
-  return new CanvasOwnerBridge(registry,[withCanvasOsPolicy(owner,{
-    operatorAdmitted:()=>operatorGrant,
-    evaluate:input=>{osChecks++;return evaluateActionPermission(input);},
-  })]);
+  });
+  return new CanvasOwnerBridge(registry,[owner]);
  }
  const start=()=>startGateway(new QueryRouter(registry,new DisposableCache()),
   new SubscriptionHub(),{port:0,canvasBridge:createBridge()});
@@ -138,6 +125,13 @@ try{
  assert.equal(paused.error.code,"CANVAS_ACCESS_DENIED");
  await writeFile(join(root,"workspaces","film","WORKSPACE.yaml"),
    'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "active"\n');
+ // A declared workspace without a provisioned Data SQLite must fail closed.
+ await mkdir(join(root,"workspaces","empty"),{recursive:true});
+ await writeFile(join(root,"workspaces","empty","WORKSPACE.yaml"),
+   'schema_version: "2.0"\nid: "empty"\nname: "Empty"\nstatus: "active"\n');
+ const unprovisioned=await rpc(host,make(systemId,"empty","aiverse.canvas.list",{limit:10}));
+ assert.equal(unprovisioned.ok,false);
+ assert.equal(unprovisioned.error.code,"CANVAS_OWNER_UNAVAILABLE");
  const cross=await rpc(host,make(systemId,"film","aiverse.canvas.get",{id:original.id}));
  assert.equal(cross.ok,false);
  assert.equal(cross.error.code,"RECORD_NOT_FOUND");
@@ -153,14 +147,20 @@ try{
  assert.deepEqual(resumed.result.document.board.nodes,[{
   id:"note-1",kind:"note",text:"Scene planning",x:40,y:50,
  }]);
- assert.equal(executed>=7,true);
- assert.equal(allowedWrites>=4,true);
+ assert.ok(actorAdmits>10,"live actor grants must be independently checked");
  assert.ok(osChecks>10,"actual OS evaluator must guard host read and final write edge");
  operatorGrant=false;
  const revoked=await rpc(second,make(systemId,"operator","aiverse.canvas.get",{id:original.id}));
  assert.equal(revoked.ok,false);
  assert.equal(revoked.error.code,"CANVAS_ACCESS_DENIED");
  operatorGrant=true;
+ actorGrant=false;
+ const actorRevoked=await rpc(second,make(systemId,"operator","aiverse.canvas.get",{
+   id:original.id,
+ }));
+ assert.equal(actorRevoked.ok,false);
+ assert.equal(actorRevoked.error.code,"CANVAS_ACCESS_DENIED");
+ actorGrant=true;
  console.log(JSON.stringify({
   ok:true,kind:"canvas-real-data-owner-ci",
   real_scoped_data_sqlite:true,personal_canvas_persisted_across_host_restart:true,
@@ -168,7 +168,8 @@ try{
   idempotent_create:true,explicit_write_authorization_enforced:true,
   real_os_permission_evaluator_at_effect_edge:true,
   os_paused_workspace_denied:true,os_destructive_confirmation_denied:true,
-  revoked_operator_grant_denied:true,
+  revoked_operator_grant_denied:true,revoked_actor_grant_denied:true,
+  existing_data_database_required:true,
   upstream_credentials_in_browser:false,private_owner_mac_verified:false,
  },null,2));
 }finally{
