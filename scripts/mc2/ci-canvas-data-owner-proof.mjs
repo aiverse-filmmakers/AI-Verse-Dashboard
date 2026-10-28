@@ -188,6 +188,27 @@ try{
  }));
  assert.equal(versions.ok,true,JSON.stringify(versions.error));
  assert.deepEqual(versions.result.document.map(x=>x.version),[3,2,1]);
+ const historyPage=await rpc(host,make(systemId,"operator","aiverse.canvas.history",{
+   id:original.id,limit:1,beforeVersion:3,
+ }));
+ assert.equal(historyPage.ok,true,JSON.stringify(historyPage.error));
+ assert.deepEqual(historyPage.result.document.map(x=>x.version),[2]);
+ const historyPageNext=await rpc(host,make(systemId,"operator","aiverse.canvas.history",{
+   id:original.id,limit:1,beforeVersion:2,
+ }));
+ assert.equal(historyPageNext.ok,true,JSON.stringify(historyPageNext.error));
+ assert.deepEqual(historyPageNext.result.document.map(x=>x.version),[1]);
+ const foreignCursor=await rpc(host,make(systemId,"operator","aiverse.canvas.history",{
+   id:original.id,limit:20,beforeVersion:1,
+ }));
+ assert.equal(foreignCursor.ok,false);
+ assert.equal(foreignCursor.error.code,"INVALID_ENVELOPE");
+ const forgedCursor=await rpc(host,make(systemId,"operator","aiverse.canvas.history",{
+   id:original.id,limit:20,beforeVersion:3,actor:{kind:"bot",id:"root"},
+ }));
+ assert.equal(forgedCursor.ok,false);
+ assert.equal(forgedCursor.error.code,"INVALID_ENVELOPE");
+
  assert.equal(versions.result.document[1].board.nodes[0].text,"Scene planning");
  const agentHistory=await agentActions.invoke({
    runId:"ci-agent-run-1",operationId:"ci-agent-history-1",
@@ -320,6 +341,7 @@ try{
   existing_data_database_required:true,
   atomic_duplicate_one_data_effect:true,duplicate_source_version_guard:true,
   canonical_revision_history:true,versioned_undo_persists_across_restart:true,
+  indexed_history_keyset_pages:true,invalid_cursor_and_forged_actor_denied:true,
   stale_undo_denied:true,agent_can_read_but_cannot_revert:true,
   agent_write_via_same_data_owner:true,verified_agent_bot_provenance:true,
   real_gateway_store_run_and_session_admission:true,
