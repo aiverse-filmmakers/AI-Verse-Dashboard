@@ -154,6 +154,26 @@ try{
      edit:{type:"note.text",id:"note-1",text:"Agent updated shot"}},
  });
  assert.equal(agentResult.document.version,3);
+ // Data-owned atomic duplicate is a SINGLE owner effect, not a sequence
+ // of provisional note/edge writes from a browser.
+ const atomic=make(systemId,"operator","aiverse.canvas.duplicate",{
+   id:original.id,expectedVersion:3,title:"Shot copy",
+   idempotencyKey:"ci-atomic-clone-001",
+ });
+ const cloned=await rpc(host,atomic);
+ assert.equal(cloned.ok,true,JSON.stringify(cloned.error));
+ assert.equal(cloned.result.document.title,"Shot copy");
+ assert.equal(cloned.result.document.version,1);
+ assert.notEqual(cloned.result.document.id,original.id);
+ assert.deepEqual(cloned.result.document.board,agentResult.document.board);
+ const replayClone=await rpc(host,atomic);
+ assert.deepEqual(replayClone.result.document,cloned.result.document);
+ const staleClone=await rpc(host,make(systemId,"operator","aiverse.canvas.duplicate",{
+   id:original.id,expectedVersion:2,idempotencyKey:"ci-atomic-stale-002",
+ }));
+ assert.equal(staleClone.ok,false);
+ assert.equal(staleClone.error.code,"RECORD_VERSION_CONFLICT");
+
  assert.equal(agentResult.workspaceId,"operator");
  const scoped=openScopedDataDatabase(new SqliteStorageDriver(),
    createStandaloneDataScope(trustedRoot,"local"),{mode:"open-existing"});
@@ -255,6 +275,7 @@ try{
   os_paused_workspace_denied:true,os_destructive_confirmation_denied:true,
   revoked_operator_grant_denied:true,revoked_actor_grant_denied:true,
   existing_data_database_required:true,
+  atomic_duplicate_one_data_effect:true,duplicate_source_version_guard:true,
   agent_write_via_same_data_owner:true,verified_agent_bot_provenance:true,
   real_gateway_store_run_and_session_admission:true,
   revoked_agent_run_denied:true,agent_delete_without_approval_denied:true,
