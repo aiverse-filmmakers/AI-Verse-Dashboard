@@ -364,6 +364,96 @@ export class PersonalChatRunController {
             ? (error as {code:string}).code:"CHAT_RECONCILE_FAILED"});
     }
   }
+  /**
+   * Hydrates only authenticated canonical Gateway history. A fresh browser
+   * cannot synthesize missing turns or load another scope's sessions.
+   * At most 50 recent runs are read; older turns are explicitly limited.
+   */
+  async openSession(sessionId:string):Promise<{
+    view:ChatRunView;
+    turns:Array<{role:"user"|"assistant";content:string}>;
+  }>{
+    if(!SAFE_ID.test(sessionId))fail("CHAT_SESSION_ID_INVALID");
+    const scope=requiredScope(this.client.getScope());
+    const epoch=this.reset(scope),selection=this.client.selectionVersion();
+    this.show({phase:"submitting"});
+    const all:Array<Record<string,unknown>>=[];
+    let offset=0,more=false;
+    try{
+      for(let page=0;page<2;page++){
+        const response=await this.client.listGatewaySessionRuns(sessionId,25,offset);
+        if(!this.valid(epoch,scope,selection))return {view:this.snapshot(),turns:[]};
+        const data=response.result as Record<string,unknown>;
+        if(!data||data.source!=="canonical-gateway"
+          ||data.workspaceId!==scope.workspaceId || data.sessionId!==sessionId
+          ||!Array.isArray(data.data) || data.data.length>25
+          ||typeof data.has_more!=="boolean"
+          ||!(data.next_offset===null||(Number.isSafeInteger(data.next_offset)
+            && (data.next_offset as number)>=0)))
+          fail("CHAT_HISTORY_INVALID");
+        for(const entry of data.data){
+          if(!entry||typeof entry!=="object"||Array.isArray(entry))
+            fail("CHAT_HISTORY_INVALID");
+          const row=entry as Record<string,unknown>;
+          if(row.session_id!==sessionId
+            ||typeof row.run_id!=="string"||!SAFE_ID.test(row.run_id)
+            ||typeof row.status!=="string"
+            ||!(row.user_text===null||typeof row.user_text==="string")
+            ||!(row.output===null||typeof row.output==="string")
+            ||typeof row.user_text_truncated!=="boolean"
+            ||typeof row.output_truncated!=="boolean")fail("CHAT_HISTORY_INVALID");
+          all.push(row);
+        }
+        more=data.has_more;
+        if(!more)break;
+        if(typeof data.next_offset!=="number"||data.next_offset<=offset)
+          fail("CHAT_HISTORY_INVALID");
+        offset=data.next_offset;
+      }
+      if(!this.valid(epoch,scope,selection))return {view:this.snapshot(),turns:[]};
+      const ordered=all.reverse();
+      const turns:Array<{role:"user"|"assistant";content:string}>=[];
+      let limited=more;
+      const completed:Array<{role:"user"|"assistant";content:string}>=[];
+      for(const row of ordered){
+        if(row.user_text_truncated || row.output_truncated)limited=true;
+        if(typeof row.user_text==="string"&&row.user_text.length)
+          turns.push({role:"user",content:row.user_text});
+        else limited=true;
+        if(row.status==="completed"&&typeof row.output==="string"){
+          turns.push({role:"assistant",content:row.output});
+          if(typeof row.user_text==="string"&&row.user_text.length
+            && !row.user_text_truncated&&!row.output_truncated)
+            completed.push({role:"user",content:row.user_text},
+              {role:"assistant",content:row.output});
+          else limited=true;
+        }else limited=true;
+      }
+      const last=all[0];
+      // 'all' was reversed in-place above; its final entry is newest.
+      const newest=ordered.at(-1);
+      const canContinue=newest?.status==="completed"
+        && typeof newest.output==="string";
+      const history=completed.slice(-12);
+      this.confirmedTurns=history;
+      if(completed.length>12)limited=true;
+      this.contextLimited=limited;
+      this.confirmedRunId=canContinue?String(newest.run_id):undefined;
+      this.show({phase:!newest?"idle":canContinue?"completed":"recovery-required",
+        sessionId,runId:typeof newest?.run_id==="string"?newest.run_id:undefined,
+        output:canContinue?newest.output as string:"",
+        canonicalStatus:typeof newest?.status==="string"?newest.status:undefined,
+        errorCode:undefined,contextLimited:limited});
+      return {view:this.snapshot(),turns};
+    }catch(error){
+      if(this.valid(epoch,scope,selection)){
+        this.show({phase:"interrupted",errorCode:
+          typeof (error as {code?:unknown})?.code==="string"
+            ?(error as {code:string}).code:"CHAT_HISTORY_UNAVAILABLE"});
+      }
+      return {view:this.snapshot(),turns:[]};
+    }
+  }
   /** Recovery is by explicit canonical run ID, not a manufactured session list. */
   async recover(runId:string):Promise<ChatRunView>{
     if(!SAFE_ID.test(runId))fail("CHAT_RUN_ID_INVALID");
