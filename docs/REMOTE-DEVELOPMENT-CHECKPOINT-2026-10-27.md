@@ -342,3 +342,77 @@ The **macOS job** was queued at the last check and must be verified before
 claiming the newest entire matrix is green. A prior code commit
 `7189567` already passed the macOS build; the latest fix changed only
 a browser test's expected user-readable conflict message.
+
+
+## Tasks 19-24 owner-backed historical Canvas checkpoint, 28 October 2026
+
+**Full progression Tasks 8–24 source implemented. Do not rebuild
+any prior Canvas/Gateway/OS owner, library, duplication, or agent
+run verification.** Dashboard draft PR #42, Data draft PR #22,
+both unmerged and without production owner admission.
+
+This six-task batch added:
+1. `AI-Verse-Data/src/canvas/index.ts`: a new bounded revision
+   Data entity under existing scoped `creative-canvas` SQLite,
+   capturing authentic full Canvas snapshots and the **version's
+   own actor provenance** in the same transaction as create, edit,
+   rename, duplicate and revert. Digest-checked, not a signed archive.
+   Pre-history documents begin recording at next authorized edit.
+2. Data `history(id,limit)` (max 30) and
+   `revert(id,toVersion,expectedVersion,actor,idempotencyKey)`
+   create a *new* Data version from a verified, previously committed
+   revision. Stale, deleted and foreign-scope operations fail.
+   Replay is idempotent. Journal scan bound is 5000 scope records.
+3. Dashboard `aiverse.canvas.history` read and
+   `aiverse.canvas.revert` write through strict original command
+   registry, CanvasOwnerBridge, OS `read_local`/`modify_canonical_state`
+   policy, independently admitted real native Data owner and
+   DashboardClient. No browser-supplied older board or actor.
+4. Real first-party `apps/web/src/canvas-workspace.ts` History,
+   `Undo last change`, two-stage `Confirm restore vN`, clean
+   version list and correct updated Canvas after confirmation.
+5. `Reload Canvas` recovery from canonical scope after version
+   conflict; older UI retarget state cleared. Agent history reading
+   admitted only with fresh bot-grant/run proof; agent revert is
+   *not* allowed without reviewed human approval.
+6. Data + Dashboard + Chromium + pinned Gateway/OS/Data tests,
+   specifically historical persistence across restart, mixed
+   human/bot provenance, version conflict, no forged board,
+   owner-granted history, and agent destructive deny.
+
+Reviewed Data code SHA:
+`0948d424fb31d4561c5a5ba62c835ad40ee6ffd4`.
+Its [Release Smoke 40741080025](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40741080025),
+[all six CI jobs 40741080717](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40741080717)
+and [five-component acceptance 40741080151](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40741080151)
+passed. Dashboard code SHA:
+`4c527e17b0659150b40ad3a920943310c7238b2c`
+passed [cross-platform Dashboard CI 40741376157](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376157)
+and [Chromium QC 40741376101](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376101).
+Check [real canonical composition 40741376218](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376218)
+for its final status before declaring entire batch green.
+Docs commits after code do not change runtime behavior.
+
+**Outstanding owner gates:** production actor-grant authorization,
+real out-of-process trusted Gateway owner state/agent tool host,
+owner-admitted Data scope creation and native Mac installation,
+independent MC2.1 architectural review + Personal-first plan
+amendment, destructive approval receipts, indexed/retained Data
+revision history beyond 5000 events, signed audit integrity if
+required, private user's acceptance. Browser test fixture is
+disposable scoped simulation; pinned composition uses real Data,
+OS evaluator and Gateway records. Historical versions prior to
+archival setup cannot be recovered.
+
+**Next Task 25:** qualify Data-owned history pagination/retention
+and integrity with the existing index/query contracts, and then
+work through real host/OS approval gates without inventing agent
+identity, migrating the Data owner or duplicating systems.
+Keep owner-side tests and authorization fail-closed.
+
+**Formal roadmap remains 15/100**; next independent MC2.1
+approval would bring 17/100. Browser/GitHub first 90–93%
+is the pre-local **goal**, not actual current verified percentage.
+User expects task slice checkmarks, ahead/tasks and percentage
+progress bar at every completion. Batches only as explicitly
+requested, no duplicate slices. Do not merge PRs without approval.
