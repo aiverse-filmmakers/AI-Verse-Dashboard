@@ -216,3 +216,59 @@ remains a pre-local *target*, not current completion. User wants an
 overall percentage bar, recent slice/task completion, and next tasks
 in every completion report. Keep tasks bounded 1–4, avoid duplicate work,
 do not merge or deploy without admission.
+
+
+## Task 15 real GatewayStore-backed agent checkpoint, 28 October 2026
+
+**Tasks 8–15 source implemented, do not repeat.** Dashboard draft PR #42,
+branch `codex/dashboard-source-checkpoint`. This slice adds the
+host-only `createGatewayStoreCanvasRunVerifier()` to
+`apps/gateway/src/canvas-gateway-run-verifier.ts`, complementing
+Task 14's `CanvasAgentActions`. No second run/session index or document
+store was created. The verifier is based on exact upstream
+`AI-Verse-Gateway@9748dd0` real canonical `GatewayStore.getRun/getSession`.
+It binds the authenticated Gateway principal, matching canonical
+system/workspace, running run, current active session run, deadline,
+pending approval, active OS workspace and registered root generation.
+It re-reads Gateway run/session after a separately *owner-admitted* bot
+identity and revocable grant lease is fetched. Gateway does not
+independently mint a bot actor or Canvas grant, so no fake identity is
+derived from a chat/run ID.
+
+`test/canvas-gateway-run-verifier.test.ts` covers revoked/stale/foreign/
+paused/expired run and workspace, session preemption, missing actor grant,
+and status change during grant lookup. The existing pinned real
+`scripts/mc2/ci-canvas-data-owner-proof.mjs` now uses the actual
+pinned Gateway Store and real persisted run/session as its verified-run
+source, while independently checking real Data bot provenance and OS
+policy. Only the host bot-grant callback remains a *disposable CI fixture*
+because production OS actor authorization is not yet installed.
+Source commit [`7ee30ba`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/7ee30ba2554d4731de1b96002419fe46cfb0480a)
+passed [cross-platform CI 40727330201](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40727330201),
+[real OS+Data+Gateway composition 40727330245](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40727330245),
+[browser interaction QC 40727330183](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40727330183).
+Check the current HEAD's docs-only workflows separately.
+
+**Not yet installed:** a separate Gateway process needs a real trusted
+host/broker protocol or owner capability providing equivalent state
+reads without arbitrary Gateway-state file access; OS member actor-grants
+and canonical Data initialization require explicit approval. The
+model-to-native-tool action dispatch remains unconnected; the repeat
+check is not an atomic run-status/Data transaction; destructive
+approval receipts and private Mac acceptance are still missing.
+Do not enable an unauthorized native Canvas owner or advertise
+production agent writing.
+
+**Next Task 16:** Data-owned atomic clone and versioned undo qualification
+on the existing SQLite owner. First check Data PR #22's current schema,
+snapshot/events and existing transaction capability, then only implement
+missing Data-owned atomic operations if justified. Do not replicate
+the Data records in Dashboard. Host/OS owner admission can continue as
+a separately blocked parallel production dependency. Keep bounded slices,
+tests, PR/tracker/handoff parity and explicit approval gating.
+
+**Official accepted 15/100**, MC2.1 review/plan amendment still open;
+next independent acceptance +2 to 17/100. GitHub-first 90–93%
+remains a target before private final-local checks, not a measured
+current completion. Always show the user progress bar, completed task,
+next task and distinct formal score at the end of a slice.
