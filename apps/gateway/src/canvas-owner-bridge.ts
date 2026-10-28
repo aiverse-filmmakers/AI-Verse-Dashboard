@@ -52,7 +52,7 @@ const note=z.discriminatedUnion("type",[
 const operations=new Map<string,{schema:z.ZodTypeAny;access:"read"|"write"}>([
   ["aiverse.canvas.list",{schema:z.object({limit:z.number().int().min(1).max(100).optional()}).strict(),access:"read"}],
   ["aiverse.canvas.get",{schema:z.object({id}).strict(),access:"read"}],
-  ["aiverse.canvas.history",{schema:z.object({id,limit:z.number().int().min(1).max(30).optional()}).strict(),access:"read"}],
+  ["aiverse.canvas.history",{schema:z.object({id,limit:z.number().int().min(1).max(30).optional(),beforeVersion:z.number().int().min(2).optional()}).strict(),access:"read"}],
   ["aiverse.canvas.create",{schema:mutation.extend({title}).strict(),access:"write"}],
   ["aiverse.canvas.rename",{schema:target.extend({title}).strict(),access:"write"}],
   ["aiverse.canvas.edit",{schema:target.extend({edit:note}).strict(),access:"write"}],
