@@ -862,3 +862,59 @@ or start the next ready owner-backed milestone, after checking
 actual repo status and avoiding duplicate work. The canvas
 context's `WeakSet` identity is only valid in-process and
 must never be accepted from an HTTP body/model-supplied JSON.
+
+
+## Latest handoff: completed Tasks 143–212, 29 October 2026
+
+**START NEXT AT TASK 213.** Source slices through #212 are
+detailed in
+`docs/DEVELOPMENT-TASKS-143-212-2026-10-29.md`.
+Do not claim 212/212 project completion; these IDs count
+small source/test slices without a fixed total task
+denominator. Progress destination is the fixed ten-chapter,
+40-milestone current Personal-first GitHub engineering plan.
+
+Native Data [draft PR #23](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/23)
+stacked on Data PR #22. New grouping code in
+`src/canvas/index.ts`, 35 focused tests and group owner
+runbook. Last verified Data code SHA
+`35ebd098fbd809d75ba3727c1c3ead61f2f2f8d3`;
+[three-platform Data CI 40781700269](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40781700269)
+all green. Grouping is an OPTIONAL canonical board field
+so old boards/digests work with no automatic migration.
+
+Dashboard PR #42 pinned exact Data code into
+`.github/workflows/mc2-real-gateway.yml` and
+`scripts/mc2/ci-canvas-data-owner-proof.mjs`.
+Typed host bridge and UI: `apps/gateway/src/canvas-owner-bridge.ts`,
+`apps/web/src/canvas-workspace.ts`,
+`apps/web/src/personal-chat.css`,
+`test/canvas-group-boundary.test.ts` (33 assertions/scenarios).
+Native Data+Gateway composition
+[40781907477](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40781907477)
+green, CSS/UI source build/Chromium checks
+[40782054673](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40782054673)
+and [40782054681](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40782054681)
+green. No claim of on-Mac production install or end-user
+click-through with native credentials.
+
+Progress source: `docs/github-browser-progress.json` and
+`docs/github-chapters-milestones.json`. GB **~36/100
+provisional**, FA **15/100 accepted**. Chapter counts 10,
+milestones 40: 4 verified, 8 implemented draft,
+1 in progress (G03.4), 27 planned. The extra in-progress
+state is recognized by
+`scripts/verify-github-milestones.mjs` and its tests.
+Source progress workflow for 36-point JSON/test updates
+must show exact green CI before claiming newly reconciled
+score validation complete.
+
+Immediate next: independent owner-native human session/grants,
+actual Gateway model-to-app dispatcher, Data-backed
+workspace lifecycle and assets, then specialist Film
+feature. No fake UI, authority or usage projections.
+Private human Mac approval/account consent/installer
+remains owner-side.
+
+**Continue from Task 213, not 143.** Do not merge drafts
+or install real permissions without separate authorization.
