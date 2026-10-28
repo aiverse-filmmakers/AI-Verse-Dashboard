@@ -16,6 +16,7 @@ import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js"
 import {CanonicalGatewayBridge,QueryRouter,SubscriptionHub,startGateway} from "../../dist/apps/gateway/src/index.js";
 import {dashboardWsAuthProtocol,DASHBOARD_WS_PROTOCOL} from "../../dist/packages/protocol/src/index.js";
 import {DashboardClient,DashboardChatEventFeed,PersonalChatRunController} from "../../dist/packages/client/src/index.js";
+import {proveAuthenticatedBrowserWithCanonicalGateway} from "./ci-authenticated-browser-proof.mjs";
 
 const GATEWAY_REVISION="ceb8849ec062f0d3997ceb0207e42c25aedd20c6";
 const pinRoot=resolve(process.env.AIVERSE_MC2_GATEWAY_SOURCE||"gateway-source");
