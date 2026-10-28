@@ -58,7 +58,7 @@ jobs:
       - name: Build exact reviewed canonical Data Canvas owner in its own repository
         run: |
           cd data-source
-          npm ci
+          npm install --ignore-scripts
           npm run build
 
       - name: Prove authenticated Dashboard Canvas RPC writes real scoped Data SQLite
