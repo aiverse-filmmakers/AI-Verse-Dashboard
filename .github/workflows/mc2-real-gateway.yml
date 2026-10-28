@@ -44,6 +44,15 @@ jobs:
           npm ci
           npm run check
 
+      - name: Install pinned browser test dependencies without changing the lockfile
+        run: npm install --no-save --package-lock=false playwright@1.58.2 esbuild@0.25.12
+
+      - name: Install headless Chromium for real end-to-end Gateway/browser journey
+        run: npx playwright install --with-deps chromium
+
+      - name: Build the exact same first-party Personal Chat bundle used by the local launcher
+        run: npm run mc2:bundle
+
       - name: Exercise a real canonical Gateway server with ephemeral OS fixture
         env:
           CI: "true"
