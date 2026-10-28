@@ -20,7 +20,7 @@ This is a **planning estimate**, NOT a full independent code audit or a formal a
 | --- | ---: | ---: | --- |
 | Preserved architecture, provenance, OS/Gateway runtime proof | 15 | **15** | MC0/MC1 accepted and recorded; maintain architecture |
 | Real Personal Chat, Gateway transport, identity/scope, runs and recovery | 15 | **8** | Actual pinned Gateway chat + restart/reload evidence; finish native provider/model/commands/attachments/control acceptance |
-| Personal app + workspace + persistent Canvas + app actions | 15 | **8** | Data-owned Canvas history/notes/edges/undo, host+agent guards; add app context, real grouping, asset ownership and app action round-trip |
+| Personal app + workspace + persistent Canvas + app actions | 15 | **8** | Data-owned Canvas history/notes/edges/undo, host+agent guards and native selected app context; still needs grouping, asset ownership and production model action round-trip |
 | Native OS operator/agent identity, grants, approvals | 10 | **2** | Draft OS grant verifier and disposable Gateway integration; no installed human session issuer, grant lifecycle, approval receipts or Windows ACL |
 | Real providers/connections, generation jobs and owned creative assets | 10 | **1** | AUTH-1/Connections exploratory source; real connected provider lifecycle and actual image placement unavailable |
 | Owner-backed control panels: Brain, Memory, Skills, Automations, Token, Connections, security, agents | 15 | **0** | Do not claim integrated functional owner projections from static reference pages; choose/validate owner interfaces |
@@ -39,7 +39,7 @@ This is a **planning estimate**, NOT a full independent code audit or a formal a
 - Before every batch, check actual branch heads, owner repos, workstream evidence and what can honestly be done remotely. After each completed batch report **GB N/100 (estimate vs independently audited)**, **FA N/100 (accepted)**, **LR blockers**, and **batch slices X/Y**. A new chat MUST NOT revert to showing FA 15/100 as the only progress indicator.
 - Show a remaining-GB workstream breakdown and the **next increment that can change GB**, not just "more tasks."
 - If user expands scope (e.g., full Film 3D camera/lighting/edit suite), explicitly version this scorecard/rebaseline the denominator; do not silently dilute or falsely preserve percentages.
-- The 35/100 provisional estimate is **not an independently audited source-by-source inventory**. The next bounded task should replace the estimates with verified per-workstream subdeliverables and distinguish `green CI`, `draft`, `merged`, and `local-accepted` evidence. In the meantime say **"~35% provisional engineering estimate"**, not "34% verified finished."
+- The 35/100 provisional estimate is **not an independently audited source-by-source inventory**. The next bounded task should replace the estimates with verified per-workstream subdeliverables and distinguish `green CI`, `draft`, `merged`, and `local-accepted` evidence. In the meantime say **"~35% provisional engineering estimate"**, not "35% verified finished."
 
 ### Current authority/CI caveat
 
