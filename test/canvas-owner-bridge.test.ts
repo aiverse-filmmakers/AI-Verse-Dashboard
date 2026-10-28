@@ -146,6 +146,17 @@ describe("Canvas host owner routing, authorization and fail-closed behavior",()=
      id:"rec_1234",expectedVersion:1,idempotencyKey:"bad-root",
      root:"/etc/private",
    }),
+   frame("aiverse.canvas.history",systemId,"operator",{
+     id:"rec_1234",limit:1000,
+   }),
+   frame("aiverse.canvas.revert",systemId,"operator",{
+     id:"rec_1234",expectedVersion:3,toVersion:1,
+     idempotencyKey:"spoof",board:{nodes:[],edges:[]},
+   }),
+   frame("aiverse.canvas.revert",systemId,"operator",{
+     id:"rec_1234",expectedVersion:3,toVersion:0,
+     idempotencyKey:"bad-history-version",
+   }),
    frame("aiverse.canvas.unknown",systemId,"operator",{}),
   ];
   for(const input of frames){
