@@ -426,6 +426,11 @@ try{
  await mkdir(join(root,"workspaces","empty"),{recursive:true});
  await writeFile(join(root,"workspaces","empty","WORKSPACE.yaml"),
    'schema_version: "2.0"\nid: "empty"\nname: "Empty"\nstatus: "active"\n');
+ // Isolate the Data provisioning failure from the earlier no-grant denial.
+ // Disposable host explicitly admits this empty scope without creating SQLite.
+ await saveGrants([...installed,{...installed[1],
+   grant_id:"ci-empty-scope-grant",scope:"empty",lease_epoch:"empty-1",
+ }]);
  const unprovisioned=await rpc(host,make(systemId,"empty","aiverse.canvas.list",{limit:10}));
  assert.equal(unprovisioned.ok,false);
  assert.equal(unprovisioned.error.code,"CANVAS_OWNER_UNAVAILABLE");
