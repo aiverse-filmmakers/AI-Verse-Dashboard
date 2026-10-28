@@ -96,13 +96,14 @@
         },
         {
           "id": "G03.3",
-          "title": "Host-bound app context, selection and grouping",
-          "state": "planned",
-          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+          "title": "Host-bound selected Canvas context and verified note actions",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/gateway/src/canvas-context.ts"
         },
         {
           "id": "G03.4",
-          "title": "Workspace lifecycle, real assets and app action round-trip",
+          "title": "Canvas grouping, workspace lifecycle, assets and production app-action round-trip",
           "state": "planned",
           "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
         }
@@ -328,5 +329,6 @@
         }
       ]
     }
-  ]
+  ],
+  "lastReconciliation": "2026-10-28: G03.3 narrowed to the now-CI-proven host-only selection context; grouping stays G03.4, production model dispatcher still absent."
 }
