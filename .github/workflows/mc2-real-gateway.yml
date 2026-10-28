@@ -56,7 +56,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: aiverse-filmmakers/AI-Verse-OS
-          ref: 08b6f5d05b9cf04c511d6574a9f79ac244311018
+          ref: d304db51d11f8e4865e9d4dfbd2ceb7e79b7e0f7
           path: os-source
           persist-credentials: false
 
