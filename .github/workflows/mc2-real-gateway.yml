@@ -46,7 +46,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: aiverse-filmmakers/AI-Verse-Data
-          ref: 5caa5d08151f85e503e8ceace494458736b76886
+          ref: 512ad1515e7b8fa8c22e761a10cacc7d29f393f6
           path: data-source
           persist-credentials: false
 
