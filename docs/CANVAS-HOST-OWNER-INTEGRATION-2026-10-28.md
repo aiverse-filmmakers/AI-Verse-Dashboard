@@ -105,3 +105,55 @@ existing local RPC client, but the normal production launcher still has
 NO trusted installed Canvas owner. Private Mac authorization and actual
 owner admission have not happened. PR #42 remains draft, and formal accepted
 progress stays 15/100 until roadmap review. Inspect current-head GitHub CI.
+
+## Task 14: host-only verified agent action parity (28 October 2026)
+
+**Scope:** narrow trusted-host source contract, not a live model integration or
+production admission. New `CanvasAgentActions` lives in
+`apps/gateway/src/canvas-agent-actions.ts` and is exported only by the
+native Gateway package. There is **no** `/rpc` agent-route, public Canvas
+approval endpoint, model-controlled principal, or browser-level action
+impersonation. The real Personal user continues using the existing
+`CanvasOwnerBridge` and the six typed Canvas RPC operations.
+
+For an agent-proposed action, the trusted native host first obtains a **fresh
+canonical Gateway run authority** from an independently installed
+`verifyRun(runId)` callback. The callback must return source
+`canonical-gateway`, a running state, actual Dashboard system and workspace,
+the owner-admitted agent actor ID, and a revocable lease epoch. The dispatcher
+rejects revoked, stopped, forged, retargeted or mismatched scope, and
+revalidates the run binding before authorization and effect. It derives
+workspace and actor entirely from verified run facts, not model fields.
+An operation ID supplied by the host becomes the canonical Data idempotency
+key. Strict action schemas come from the same Canvas owner bridge that
+validates manual operations. Every saved Data projection is bounded and
+redacted by that same source code.
+
+`withCanvasOsPolicy` now requires **separate** `agentAdmitted` and
+`operatorAdmitted` callbacks. A permissive operator grant never authorizes
+agents by default. The existing native Data owner accepts a bot actor only
+for a verified agent principal with a matching actor ID. Data continues to
+own record provenance, optimistic versions and idempotent writes. The
+host-only agent API permits list/get/create/rename/note/connection edits,
+but **never delete** until OS approval receipts have an independently
+reviewed, true end-to-end capability. It also cannot change permissions,
+create arbitrary files, access provider credentials, or invoke arbitrary
+tools through this Canvas action vocabulary.
+
+**Test levels:** a focused agent boundary unit test verifies provenance,
+grant separation, revocation, scope changes, malformed model parameters and
+destructive-action denial. The pinned disposable OS+Data composition proof
+also submits a typed agent note edit into actual Data SQLite and reads
+the canonical record's `updatedBy.kind=bot` provenance. This uses a
+**disposable trusted run-verifier fixture**, not a real live provider or a
+member's Gateway agent run. Check exact current-head CI status before
+claiming green.
+
+**Still required for complete agent experience:** actual private Gateway
+run-to-agent identity verifier and actor-grant source installed and approved;
+a model/tool orchestration binding that invokes this native host action;
+approval receipts for destructive actions; agent UI receipts/recovery and
+conflict/cancellation handling; private Mac owner acceptance. The standalone
+`start-connected` launcher still installs no Canvas Data authority by
+default, as required. Never mark AI-driven Canvas as production usable from
+this source-only contract, and do not award roadmap acceptance points.
