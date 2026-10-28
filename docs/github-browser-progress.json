@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 34,
+  "provisionalEngineeringEarned": 35,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -45,9 +45,9 @@
       "id": "canvas",
       "title": "Workspace persistent Canvas and typed actions",
       "budget": 15,
-      "provisionalEarned": 7,
+      "provisionalEarned": 8,
       "evidenceStatus": "source-and-ci",
-      "remaining": "app-context, grouping, asset ownership and verified action round-trip"
+      "remaining": "real grouping/workspace lifecycle, provider-owned assets, and installed model-tool context/action routing; host-only selection bridge passes disposable real owner CI"
     },
     {
       "id": "os-authority",
@@ -117,7 +117,16 @@
     "osReaderVerifiedRun": 40762850957,
     "pendingDraftOSLifecyclePR": 111,
     "pendingDashboardPR": 42,
-    "pendingDataPR": 22
+    "pendingDataPR": 22,
+    "canvasContext": {
+      "implementationCommit": "fb85aa4c6af92416b8f2e6c21d19632a5c4a62ca",
+      "realComponentWorkflow": 40775792089,
+      "browserWorkflow": 40775791985,
+      "pendingMacMatrix": [
+        "Dashboard CI",
+        "progress-integrity"
+      ]
+    }
   },
-  "nextUnverifiedChange": "Stacked native OS grant lifecycle requires all-platform OS CI and real GatewayStore composition before awarding engineering credit."
+  "nextUnverifiedChange": "Independent native Mac owner session/approval, production model tool dispatch and true Canvas grouping remain pending; remote Canvas context is source-backed and verified on disposable canonical Gateway/OS/Data."
 }
