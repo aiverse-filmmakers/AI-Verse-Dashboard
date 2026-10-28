@@ -327,3 +327,18 @@ future target, not current measured completion. The user expects
 a percent bar, explicit completed slices, and what remains at every
 completion report. Keep 1–4 tasks per batch; this batch contained
 three Tasks 16–18. Do not merge PRs or claim local deployment.
+
+**Source verification evidence for Tasks 16-18 (28 Oct 2026):**
+Data atomic owner code `5caa5d0` passed
+[release smoke 40738377304](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40738377304),
+[six-platform Node CI 40738377314](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40738377314)
+and [five-component acceptance 40738377347](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40738377347).
+Dashboard atomic-duplicate code/test fix commit
+[`fe2879e`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/fe2879e1cd6417ad67bb751194855699818c3cd2)
+passed [real pinned Gateway/Data/OS composition 40739268703](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40739268703),
+[browser interaction QC 40739272200](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40739272200),
+and Linux/Windows jobs in [Dashboard CI 40739268280](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40739268280).
+The **macOS job** was queued at the last check and must be verified before
+claiming the newest entire matrix is green. A prior code commit
+`7189567` already passed the macOS build; the latest fix changed only
+a browser test's expected user-readable conflict message.
