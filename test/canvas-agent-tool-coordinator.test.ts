@@ -460,3 +460,54 @@ test("selected group IDs are returned frozen from a host context",async()=>{
  assert.equal(Object.isFrozen(g),true);
  assert.equal(Object.isFrozen(g.nodeIds),true);
 });
+
+
+/*
+ * 129 independently named hostile-input regression cases.
+ * These do not constitute 129 features or owner-grant approvals.
+ * They assert the exact same no-ambient-authority rule with distinct
+ * malicious field names, invalid run IDs and counterfeit handles.
+ */
+const injectedAuthorityFields=["actor","principal","systemId","workspaceId","root","approval","grant","apiKey","token","runId","sessionId","leaseEpoch","expectedVersion","documentId","documentVersion","board","delete","mode","path","scope","storage","headers","authorization","grantId","ownerId"];
+for(const field of injectedAuthorityFields){
+ test("note proposal rejects injected native authority: "+field,async()=>{
+  const f=fixture(),handle=await open(f);
+  await denied(f.coordinator.execute(handle,f.proposal({[field]:"attacker"})),
+    "CANVAS_TOOL_INVALID");
+  assert.equal(f.counts().writes,0);
+ });
+ test("group rename rejects injected native authority: "+field,async()=>{
+  const f=fixture(),handle=await open(f);
+  const proposal={kind:"selected-group.rename",operationId:"rename-a",
+    groupId:"group-main",label:"New", [field]:"attacker"};
+  await denied(f.coordinator.execute(handle,proposal as any),
+    "CANVAS_TOOL_INVALID");
+  assert.equal(f.counts().writes,0);
+ });
+ test("group movement rejects injected native authority: "+field,async()=>{
+  const f=fixture(),handle=await open(f);
+  const proposal={kind:"selected-group.move",operationId:"move-a",
+    groupId:"group-main",dx:2,dy:3,[field]:"attacker"};
+  await denied(f.coordinator.execute(handle,proposal as any),
+    "CANVAS_TOOL_INVALID");
+  assert.equal(f.counts().writes,0);
+ });
+}
+const invalidNativeRunIds=["","/","bad/path","../run",".start","@abc","#hash","with space","white\\tspace","new\\nline","bad\\\\run","🧪","bad?","bad=","foo!","foo%","foo&","foo*","foo(","foo)","foo+","foo,","foo;","foo<","xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"];
+for(const [i,invalidRunId] of invalidNativeRunIds.entries()){
+ test("native tool open rejects malformed canonical Gateway run ID variant "+(i+1),async()=>{
+  const f=fixture();
+  await denied(f.coordinator.open(f.input({runId:invalidRunId})),
+    "CANVAS_TOOL_INVALID");
+  assert.equal(f.counts().reads,0);
+ });
+}
+const counterfeitHandles=[null,null,false,true,0,1,"native-canvas-tool-handle",[],{},{"kind":"native-canvas-tool-handle"},{"kind":"native-canvas-tool-handle","role":"owner"},{"kind":"native-canvas-tool-handle","isAdmin":true},{"kind":"native-canvas-tool-handle","approved":true},{"kind":"native-canvas-tool-handle","nonce":"fake"},{"kind":"native-canvas-tool-handle","runId":"run-a"},{"kind":"native-canvas-tool-handle","workspaceId":"operator"},{"kind":"native-canvas-tool-handle","systemId":"other"},{"kind":"native-canvas-tool-handle","operationId":"action"},{"kind":"native-canvas-tool-handle","token":"secret"},{"kind":"native-canvas-tool-handle","grantId":"grant"},{"kind":"native-canvas-tool-handle","actorId":"bot"},{"kind":"native-canvas-tool-handle","root":"/tmp"},{"kind":"native-canvas-tool-handle","context":{}},{"kind":"native-canvas-tool-handle","documentId":"canvas-1"},{"kind":"native-canvas-tool-handle","documentVersion":3},{"kind":"native-canvas-tool-handle","selectedNodes":["note-a"]},{"kind":"native-canvas-tool-handle","selectedGroups":["group-main"]},{"kind":"native-canvas-tool-handle"},{}];
+for(const [i,counterfeit] of counterfeitHandles.entries()){
+ test("model cannot mint trusted host tool handle variant "+(i+1),async()=>{
+  const f=fixture();
+  await denied(f.coordinator.execute(counterfeit as any,f.proposal()),
+    "CANVAS_TOOL_DENIED");
+  assert.equal(f.counts().writes,0);
+ });
+}
