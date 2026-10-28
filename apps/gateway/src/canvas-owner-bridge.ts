@@ -38,6 +38,9 @@ const id=z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/)
 const text=z.string().max(5000);
 const position=z.number().finite().min(-100000).max(100000);
 const title=z.string().trim().min(1).max(140);
+const groupLabel=z.string().trim().min(1).max(80);
+const members=z.array(id).min(2).max(150).refine(v=>new Set(v).size===v.length,
+  "duplicate group member");
 const key=id;
 const mutation=z.object({idempotencyKey:key}).strict();
 const target=mutation.extend({id,expectedVersion:z.number().int().min(1)}).strict();
@@ -48,6 +51,12 @@ const note=z.discriminatedUnion("type",[
   z.object({type:z.literal("note.remove"),id}).strict(),
   z.object({type:z.literal("edge.add"),id,from:id,to:id}).strict(),
   z.object({type:z.literal("edge.remove"),id}).strict(),
+  z.object({type:z.literal("group.create"),id,label:groupLabel,nodeIds:members}).strict(),
+  z.object({type:z.literal("group.rename"),id,label:groupLabel}).strict(),
+  z.object({type:z.literal("group.members"),id,nodeIds:members}).strict(),
+  z.object({type:z.literal("group.move"),id,
+    dx:position,dy:position}).strict(),
+  z.object({type:z.literal("group.remove"),id}).strict(),
 ]);
 const operations=new Map<string,{schema:z.ZodTypeAny;access:"read"|"write"}>([
   ["aiverse.canvas.list",{schema:z.object({limit:z.number().int().min(1).max(100).optional()}).strict(),access:"read"}],
@@ -78,7 +87,8 @@ function code(error:unknown):string{
     "CANVAS_DOCUMENT_NOT_FOUND","RECORD_NOT_FOUND","RECORD_VERSION_CONFLICT",
     "IDEMPOTENCY_CONFLICT","CANVAS_NODE_CONFLICT","CANVAS_EDGE_CONFLICT",
     "CANVAS_HISTORY_INVALID","CANVAS_HISTORY_UNAVAILABLE","CANVAS_HISTORY_LIMIT",
-    "CANVAS_NODE_NOT_FOUND","CANVAS_EDGE_NOT_FOUND","CANVAS_SCHEMA_CONFLICT"]);
+    "CANVAS_NODE_NOT_FOUND","CANVAS_EDGE_NOT_FOUND","CANVAS_GROUP_CONFLICT",
+    "CANVAS_GROUP_NOT_FOUND","CANVAS_SCHEMA_CONFLICT"]);
   return typeof value==="string"&&safe.has(value)?value:"CANVAS_OWNER_UNAVAILABLE";
 }
 function project(value:unknown):unknown{
@@ -106,10 +116,29 @@ function project(value:unknown):unknown{
       throw Error("CANVAS_PROJECTION_INVALID");
     const nodeSchema=z.object({id,kind:z.literal("note"),text,x:position,y:position}).strict();
     const edgeSchema=z.object({id,from:id,to:id}).strict();
+    const groupSchema=z.object({id,label:groupLabel,nodeIds:members}).strict();
     const parsedNodes=z.array(nodeSchema).safeParse(board.nodes);
     const parsedEdges=z.array(edgeSchema).safeParse(board.edges);
     if(!parsedNodes.success||!parsedEdges.success)throw Error("CANVAS_PROJECTION_INVALID");
-    doc.board={nodes:parsedNodes.data,edges:parsedEdges.data};
+    const groups=(board as {groups?:unknown}).groups;
+    if(groups!==undefined){
+      const parsedGroups=z.array(groupSchema).max(50).safeParse(groups);
+      if(!parsedGroups.success)throw Error("CANVAS_PROJECTION_INVALID");
+      const notes=new Set(parsedNodes.data.map(n=>n.id));
+      const groupIds=new Set<string>(),assigned=new Set<string>();
+      for(const g of parsedGroups.data){
+        if(groupIds.has(g.id)||notes.has(g.id)
+          ||parsedEdges.data.some(e=>e.id===g.id)
+          ||g.nodeIds.some(n=>!notes.has(n)||assigned.has(n)))
+          throw Error("CANVAS_PROJECTION_INVALID");
+        groupIds.add(g.id);
+        for(const n of g.nodeIds)assigned.add(n);
+      }
+      doc.board={nodes:parsedNodes.data,edges:parsedEdges.data,
+        groups:parsedGroups.data};
+    }else{
+      doc.board={nodes:parsedNodes.data,edges:parsedEdges.data};
+    }
   }
   return doc;
 }
