@@ -8,6 +8,7 @@ on:
       - "apps/gateway/src/canonical-gateway-bridge.ts"
       - "apps/gateway/src/canvas-owner-bridge.ts"
       - "apps/gateway/src/canvas-os-policy.ts"
+      - "apps/gateway/src/canvas-data-owner.ts"
       - "packages/protocol/src/methods.ts"
       - "apps/gateway/src/local-app-session.ts"
       - "apps/gateway/src/server.ts"
