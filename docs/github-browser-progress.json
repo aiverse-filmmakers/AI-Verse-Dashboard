@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 35,
+  "provisionalEngineeringEarned": 36,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -45,9 +45,9 @@
       "id": "canvas",
       "title": "Workspace persistent Canvas and typed actions",
       "budget": 15,
-      "provisionalEarned": 8,
+      "provisionalEarned": 9,
       "evidenceStatus": "source-and-ci",
-      "remaining": "real grouping/workspace lifecycle, provider-owned assets, and installed model-tool context/action routing; host-only selection bridge passes disposable real owner CI"
+      "remaining": "Owner-backed Canvas group persistence/editor now passes Data and Gateway CI; next: complete real workspace lifecycle, asset ownership and production model-tool app dispatch, including installed human identity."
     },
     {
       "id": "os-authority",
@@ -126,7 +126,23 @@
         "Dashboard CI",
         "progress-integrity"
       ]
+    },
+    "canvasGroups": {
+      "dataSourceCommit": "35ebd098fbd809d75ba3727c1c3ead61f2f2f8d3",
+      "dataNativeCiRun": 40781700269,
+      "dataNativeCiPlatforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "dashboardComposedCiRun": 40781907477,
+      "sourceBranches": [
+        "codex/canvas-canonical-groups-v1",
+        "codex/dashboard-source-checkpoint"
+      ],
+      "dataPullRequest": 23,
+      "productStatus": "draft-source-ci-verified-not-installed"
     }
   },
-  "nextUnverifiedChange": "Independent native Mac owner session/approval, production model tool dispatch and true Canvas grouping remain pending; remote Canvas context is source-backed and verified on disposable canonical Gateway/OS/Data."
+  "nextUnverifiedChange": "G03.4 still partially implemented only; real workspace lifecycle, creative assets, installed model-tool dispatch and owner approval gates remain."
 }
