@@ -785,3 +785,39 @@ Canvas unavailable. Functional Canvas library/editing UI, agent action parity,
 safe delete confirmation and private Mac owner acceptance remain distinct
 tasks. The MC2.1 independent design review and plan amendment remain open.
 Accepted roadmap still **15/100**, next gated acceptance **17/100**.
+
+### Task 13: real first-party Canvas library/editor (28 October 2026)
+
+**Implemented, draft, not owner-accepted:** Dashboard PR #42 now mounts
+`CanvasWorkspace` from `apps/web/src/canvas-workspace.ts` inside
+the existing authenticated Personal Chat app, keeping chat panes visible.
+The first-party view starts with a visually empty unsaved Scratch Canvas;
+adding a note deliberately creates the real Data document only on that
+user action. The host-backed library lists and opens workspace-specific
+canonical documents, and supports create, rename, duplicate, explicit
+soft-delete request, note add/edit/remove/drag and connection add/remove.
+Every saved mutation goes via pre-existing typed `DashboardClient.canvas*`
+RPC to `CanvasOwnerBridge` then owner-authorized `CanvasDocuments`.
+The UI verifies canonical Data provenance and scope on projection and uses
+expected version + new idempotency keys per mutation, with explicit
+permission and version-conflict feedback and root/workspace epoch fencing.
+
+**Proven integration levels:** browser interaction fixture validates
+actual first-party Chromium UI, canonical-shaped HTTP RPC method payloads,
+saved note move ID/coordinates, Scratch reload/reopen, duplicate contents,
+destructive denial and scope isolation; **not a duplicate Data database**.
+Separate pinned Data SQLite + real OS permission composition remains in
+the previous Task 12 workflow. [Source validation commit
+`06f97bf`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/06f97bf4826bcb9c7daec99e06ca2ecc1e8a4aab)
+passed [browser QC run 40722781395](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40722781395).
+Inspect the latest source commit's remaining CI workflows before claiming
+all green; the latest docs-only commit does not change the implementation.
+
+**Not yet complete:** the normal private launcher still has no admitted
+OS actor/Data owner. Deletion is default-denied where OS requires an
+approval receipt. Sequential duplicate is not atomic and reports partial
+failure rather than concealing it. Undo, asset persistence, agent parity,
+real native provider/login and final owner Mac acceptance are separate
+gates. DO NOT award historical roadmap points yet: MC2.1 independent review
+and Personal-first plan amendment remain outstanding. Formal total is
+15/100; next design milestone, if approved, adds 2 to reach 17/100.
