@@ -5,7 +5,7 @@ import {mkdtempSync,mkdirSync,writeFileSync,rmSync,realpathSync}
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {SystemRegistry} from "../packages/registry/src/index.js";
-import {CanvasContextReader,type ApprovedCanvasOwner,type CanvasHostFacts}
+import {CanvasContextReader,CanvasAgentActions,type ApprovedCanvasOwner,type CanvasHostFacts}
  from "../apps/gateway/src/index.js";
 const roots:string[]=[];
 afterEach(()=>roots.splice(0).forEach(r=>rmSync(r,{recursive:true,force:true})));
@@ -35,6 +35,7 @@ function fixture(){
  let allow=true,execCount=0,authCount=0,doc:any=projection(),leaseOk=true;
  let onAuthorize:()=>void|Promise<void>=()=>{};
  let onExecute:()=>void|Promise<void>=()=>{};
+ let lastMethod="";
  const owner:ApprovedCanvasOwner={
   dashboardSystemId:systemId,
   async authorize(facts,request){
@@ -43,7 +44,7 @@ function fixture(){
    await onAuthorize();return allow;
   },
   async execute(facts,request){
-   execCount++;await onExecute();return doc;
+   execCount++;lastMethod=request.method;await onExecute();return doc;
   },
  };
  const ctx=new CanvasContextReader(registry,owner);
@@ -55,13 +56,13 @@ function fixture(){
  const req=(more:Record<string,unknown>={})=>({
   documentId:"rec_1",selectedNodeIds:["note-a"],...more,
  });
- return {ctx,root,systemId,registry,manifest,human,bot,req,
+ return {ctx,owner,root,systemId,registry,manifest,human,bot,req,
   setAllow:(v:boolean)=>{allow=v},
   setDoc:(v:any)=>{doc=v},
   setLease:(v:boolean)=>{leaseOk=v},
   duringAuth:(fn:()=>void|Promise<void>)=>{onAuthorize=fn},
   duringExecute:(fn:()=>void|Promise<void>)=>{onExecute=fn},
-  counts:()=>({authCount,execCount}),
+  counts:()=>({authCount,execCount,lastMethod}),
  };
 }
 describe("owner-backed selected Canvas context",()=>{
@@ -80,7 +81,7 @@ describe("owner-backed selected Canvas context",()=>{
  });
  it("never mutates Data for context capture",async()=>{
   const f=fixture();await f.ctx.capture(f.human,f.req());
-  assert.deepEqual(f.counts(),{authCount:1,execCount:1});
+  assert.deepEqual(f.counts(),{authCount:1,execCount:1,lastMethod:"aiverse.canvas.get"});
  });
  it("rejects absent independently admitted owner authorization",async()=>{
   const f=fixture();f.setAllow(false);
@@ -243,5 +244,81 @@ describe("owner-backed selected Canvas context",()=>{
  it("owner identity lease revoked during read discards context",async()=>{
   const f=fixture();f.duringExecute(()=>f.setLease(false));
   await assert.rejects(f.ctx.capture(f.human,f.req()),/CANVAS_CONTEXT_DENIED/);
+ });
+});
+
+describe("selected host Canvas snapshot to verified agent write",()=>{
+ const agent=f=>new CanvasAgentActions(f.registry,f.owner,{
+  verifyRun:async runId=>({
+   source:"canonical-gateway" as const,state:"running" as const,runId,
+   systemId:f.systemId,workspaceId:"operator",actorId:"bot-1",leaseEpoch:"lease-1",
+  }),
+ });
+ it("edits selected note through the same Data owner and canonical run verifier",async()=>{
+  const f=fixture(),s=await f.ctx.capture(f.human,f.req());
+  const r=await agent(f).invokeSelectedNoteEdit({
+   runId:"run-1",operationId:"edit-selected-1",context:s,
+   noteId:"note-a",text:"New selected text",
+  });
+  assert.equal(r.source,"canonical-data");
+  assert.equal(r.agentRunId,"run-1");
+  assert.equal(f.counts().lastMethod,"aiverse.canvas.edit");
+  assert.ok(f.counts().authCount>=3);
+ });
+ it("rejects JSON round-trip of host snapshot: model cannot mint permission",async()=>{
+  const f=fixture(),s=await f.ctx.capture(f.human,f.req());
+  await assert.rejects(agent(f).invokeSelectedNoteEdit({
+   runId:"run-1",operationId:"json-forgery",context:JSON.parse(JSON.stringify(s)),
+   noteId:"note-a",text:"forgery",
+  }),/CANVAS_AGENT_ACTION_INVALID/);
+  assert.equal(f.counts().execCount,1);
+ });
+ it("refuses edits to unselected notes even if they exist on the board",async()=>{
+  const f=fixture(),s=await f.ctx.capture(f.human,f.req());
+  await assert.rejects(agent(f).invokeSelectedNoteEdit({
+   runId:"run-1",operationId:"unselected-write",context:s,
+   noteId:"note-b",text:"must not happen",
+  }),/CANVAS_AGENT_ACTION_INVALID/);
+  assert.equal(f.counts().execCount,1);
+ });
+ it("rejects scope mismatch between minted context and active Gateway run",async()=>{
+  const f=fixture(),s=await f.ctx.capture({...f.human,workspaceId:"film"},f.req());
+  await assert.rejects(agent(f).invokeSelectedNoteEdit({
+   runId:"run-1",operationId:"wrong-workspace",context:s,
+   noteId:"note-a",text:"wrong target",
+  }),/CANVAS_AGENT_ACCESS_DENIED/);
+  assert.equal(f.counts().execCount,1);
+ });
+ it("rejects overlong paid/model generated note text before reaching owner",async()=>{
+  const f=fixture(),s=await f.ctx.capture(f.human,f.req());
+  await assert.rejects(agent(f).invokeSelectedNoteEdit({
+   runId:"run-1",operationId:"oversize",context:s,
+   noteId:"note-a",text:"x".repeat(5001),
+  }),/CANVAS_AGENT_ACTION_INVALID/);
+  assert.equal(f.counts().execCount,1);
+ });
+ it("does not accept forged action root or owner fields",async()=>{
+  const f=fixture(),s=await f.ctx.capture(f.human,f.req());
+  await assert.rejects(agent(f).invokeSelectedNoteEdit({
+   runId:"run-1",operationId:"injection",context:s,noteId:"note-a",
+   text:"test",root:"/etc",
+  } as any),/CANVAS_AGENT_ACTION_INVALID/);
+  assert.equal(f.counts().execCount,1);
+ });
+ it("aborted selected-note action never reaches Data write",async()=>{
+  const f=fixture(),s=await f.ctx.capture(f.human,f.req());
+  const ac=new AbortController();ac.abort();
+  await assert.rejects(agent(f).invokeSelectedNoteEdit({
+   runId:"run-1",operationId:"aborted",context:s,noteId:"note-a",text:"new",
+  },ac.signal),/CANVAS_AGENT_ACCESS_DENIED/);
+  assert.equal(f.counts().execCount,1);
+ });
+ it("system unregistration invalidates previously minted selected context",async()=>{
+  const f=fixture(),s=await f.ctx.capture(f.human,f.req());
+  f.registry.unregister(f.systemId);
+  await assert.rejects(agent(f).invokeSelectedNoteEdit({
+   runId:"run-1",operationId:"unregistered",context:s,noteId:"note-a",text:"new",
+  }),/CANVAS_AGENT_ACCESS_DENIED/);
+  assert.equal(f.counts().execCount,1);
  });
 });
