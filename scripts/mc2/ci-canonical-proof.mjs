@@ -17,6 +17,7 @@ import {CanonicalGatewayBridge,QueryRouter,SubscriptionHub,startGateway} from ".
 import {dashboardWsAuthProtocol,DASHBOARD_WS_PROTOCOL} from "../../dist/packages/protocol/src/index.js";
 import {DashboardClient,DashboardChatEventFeed,PersonalChatRunController} from "../../dist/packages/client/src/index.js";
 import {proveAuthenticatedBrowserWithCanonicalGateway} from "./ci-authenticated-browser-proof.mjs";
+import {proveFullProcessRestart} from "./ci-process-restart-proof.mjs";
 
 const GATEWAY_REVISION="9748dd0d5473b65ad95ef92df62fe0a13575e378";
 const pinRoot=resolve(process.env.AIVERSE_MC2_GATEWAY_SOURCE||"gateway-source");
@@ -210,6 +211,15 @@ try {
   const browserProof=await proveAuthenticatedBrowserWithCanonicalGateway({
     registry,bridge,systemId,canonicalOrigin,
   });
+  // Exit BOTH long-lived host processes before the new child-process proof:
+  // no Gateway or Dashboard service may remain to serve the restored chat.
+  if(ws){ws.terminate();ws=undefined;}
+  await local.close();local=undefined;
+  await canonical.close();canonical=undefined;
+  const restartProof=await proveFullProcessRestart({
+    home,osRoot,token,systemId,
+    initialRunId:runId,initialSessionId:done.sessionId,initialMarker:marker,
+  });
   console.log(JSON.stringify({ok:true,kind:"mc2-real-gateway-ci",
     gateway_revision:GATEWAY_REVISION,
     scope:"disposable-operator",model:"aiverse",
@@ -219,6 +229,7 @@ try {
     idempotent_run_replay:true,
     personal_chat_controller_end_to_end:true,
     ...browserProof,
+    ...restartProof,
     installed_local_host_startup:true,
     local_host_authentication_denial:true,
     private_member_system_access:false,real_provider_access:false,
