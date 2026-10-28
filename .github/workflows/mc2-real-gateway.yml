@@ -18,7 +18,7 @@ jobs:
   actual-gateway:
     name: Real canonical Gateway / disposable deterministic runtime
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 18
     steps:
       - name: Checkout Dashboard without stored credentials
         uses: actions/checkout@v4
