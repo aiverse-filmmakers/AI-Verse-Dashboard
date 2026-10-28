@@ -33,7 +33,8 @@ const workspace=/^(operator|[a-z0-9][a-z0-9-]{0,127})$/;
 const deny=(code="CANVAS_AGENT_ACCESS_DENIED")=>
   Object.assign(new Error(code),{code});
 const allowed=new Set(["aiverse.canvas.list","aiverse.canvas.get",
-  "aiverse.canvas.create","aiverse.canvas.rename","aiverse.canvas.edit"]);
+  "aiverse.canvas.create","aiverse.canvas.rename","aiverse.canvas.edit",
+  "aiverse.canvas.duplicate"]);
 
 export class CanvasAgentActions {
   private readonly root:string;
