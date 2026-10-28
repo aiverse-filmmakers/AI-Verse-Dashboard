@@ -110,7 +110,9 @@ export class LocalApplicationSession {
   isAllowedFrame(value:unknown):boolean{
     if(!value||typeof value!=="object"||Array.isArray(value))return false;
     const frame=value as {systemId?:unknown;workspaceId?:unknown;method?:unknown};
-    return typeof frame.method==="string"&&frame.method.startsWith("aiverse.gateway.")
+    return typeof frame.method==="string"&&(
+      frame.method.startsWith("aiverse.gateway.") ||
+      frame.method.startsWith("aiverse.canvas."))
       && frame.systemId===this.scope.systemId
       && frame.workspaceId===this.scope.workspaceId;
   }
