@@ -254,3 +254,77 @@ private launcher still cannot attach an unreviewed Data owner or mint
 operator/agent permissions. Atomic duplicate is qualified source, not
 an admitted production member deployment. Formal accepted roadmap score
 remains 15/100 pending independent review; next gate 17/100.
+
+
+## Tasks 19–24: historical Canvas revisions and confirmed restore
+
+**19 | Data archival.** Trusted canonical Data owner in
+[Data PR #22](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/22)
+uses a new scoped Data `creative-canvas.revisions` entity under the
+existing SQLite owner, not a second database. Create, edit, rename,
+clone and revert archive bounded full snapshots in their existing
+atomic transactions. Each revision includes original record identity,
+version, title, board, original update timestamps, consistency hash,
+and version's actual Data provenance actor. Legacy documents become
+history-aware at their next authorized edit; unavailable earlier
+versions are never fabricated.
+
+**20 | Verified Data undo.** `CanvasDocuments.history(id,limit)` returns
+up to 30 verified snapshots, newest first. `revert(id,toVersion,
+expectedVersion,actor,idempotencyKey)` restores only an existing,
+verified, same-scope and previously committed snapshot, creating a
+*new* version in the same optimistic and idempotent Data record engine.
+Stale, deleted, foreign, corrupt and future target revisions fail
+closed. Neither the UI nor an agent can supply historical board data.
+Snapshot journal scanning currently refuses scopes at the bound
+of 5,000 total revision records, rather than inventing completeness.
+No signed tamper-proof archive, deleted-document recovery or arbitrary
+historic migration is implied.
+
+**21 | Same trusted host/OS route.** The new strictly validated
+`aiverse.canvas.history` (read) and `aiverse.canvas.revert` (write)
+are added to the same Dashboard protocol registry, native Data
+attachment and versioned `DashboardClient` transport. OS
+`read_local` and `modify_canonical_state` checks, actor grants,
+scope roots, version fences and per-request idempotency remain
+mandatory. The bridge projects only bounded public Canvas
+documents, not Data provenance store paths, secrets or receipts.
+Raw source board and model-supplied actor/grant/approval fields
+are rejected by strict schemas.
+
+**22 | First-party UI.** In the real authenticated Personal Canvas
+editor, History lists actual owner-returned revisions, not
+browser-cached snapshots. The user clicks an older version then
+**Confirm restore vN**, which writes a new canonical Data version
+only if it remains current. `Undo last change` is shown for the
+prior available revision. The clean revision panel uses accessible
+buttons and bounded scroll; no fake success when the owner is absent.
+
+**23 | Recovery and agent admission.** A first-party
+`Reload Canvas` control resolves concurrent version conflicts
+from the canonical Data owner. Reload/retarget clears old history and
+confirmation. An authorized canonical Gateway agent can **read**
+bounded history under its own bot lease and OS grant, but
+`aiverse.canvas.revert` is **not** in the agent tool allowlist and
+always fails closed absent reviewed human approval receipts. This
+is deliberate, not missing permission propagation.
+
+**24 | Tests and handoff.** Data tests cover real SQLite restart,
+human→bot→human actor sequences, atomic revision archiving,
+exact-idempotency replay, stale/revoked/foreign/deleted history,
+and versioned undo. Browser tests cover confirmed undo, fresh
+history after reload and stale undo reloading current state.
+The pinned disposable Gateway/OS/Data composition test writes
+through human/agent actor admission to native Data, reads
+the true revision archive, restores old content with original
+provenance, verifies new versions and rejects injected board
+or agent revert. Each true production authority remains a
+review/installation gate.
+
+**Source pin:** `AI-Verse-Data@0948d424fb31d4561c5a5ba62c835ad40ee6ffd4`.
+The Data six-job CI, smoke, and five-component release checks
+passed. Dashboard verified code and exact CI run IDs are
+recorded separately in the execution tracker. Both source PRs
+remain draft and unmerged; the production launcher still lacks
+an independently granted Canvas owner. No private Mac
+or real model-provider end-to-end acceptance has occurred.
