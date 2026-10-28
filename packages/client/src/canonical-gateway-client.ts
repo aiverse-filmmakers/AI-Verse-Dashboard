@@ -204,6 +204,70 @@ export class CanonicalGatewayClient {
       state:"ready",runtime:string(status.runtime),model:"aiverse",
       observedAt:typeof status.at === "string" ? status.at : new Date().toISOString()};
   }
+  /** Gateway-owned read-only indices. All identities are scope-validated. */
+  async listSessions(args:{limit?:number;offset?:number;signal?:AbortSignal}={}):
+    Promise<{data:Array<Record<string,unknown>>;has_more:boolean;next_offset:number|null}>{
+    const size=args.limit??20,offset=args.offset??0;
+    if(!Number.isSafeInteger(size)||size<1||size>25
+      ||!Number.isSafeInteger(offset)||offset<0||offset>10_000)
+      throw new GatewayTransportError("INVALID_HISTORY_QUERY");
+    const page=await this.request("GET","/v1/sessions?workspace_id="+
+      encodeURIComponent(this.binding.workspaceId)+"&limit="+size+"&offset="+offset,
+      undefined,undefined,args.signal);
+    return this.historyPage(page,"session");
+  }
+  async listSessionRuns(args:{sessionId:string;limit?:number;offset?:number;signal?:AbortSignal}):
+    Promise<{data:Array<Record<string,unknown>>;has_more:boolean;next_offset:number|null}>{
+    const sessionId=safeId(args.sessionId);
+    const size=args.limit??20,offset=args.offset??0;
+    if(!Number.isSafeInteger(size)||size<1||size>25
+      ||!Number.isSafeInteger(offset)||offset<0||offset>10_000)
+      throw new GatewayTransportError("INVALID_HISTORY_QUERY");
+    const page=await this.request("GET","/v1/sessions/"+sessionId+"/runs?workspace_id="+
+      encodeURIComponent(this.binding.workspaceId)+"&limit="+size+"&offset="+offset,
+      undefined,undefined,args.signal);
+    return this.historyPage(page,"run",args.sessionId);
+  }
+  private historyPage(page:Record<string,unknown>,kind:"session"|"run",sessionId?:string){
+    if(page.object!=="list"||!Array.isArray(page.data)||page.data.length>25
+      ||typeof page.has_more!=="boolean"
+      ||!(page.next_offset===null || (Number.isSafeInteger(page.next_offset)
+        && (page.next_offset as number)>=0 && (page.next_offset as number)<=10_000)))
+      throw new GatewayTransportError("INVALID_RESPONSE");
+    const data=page.data.map(entry=>{
+      const item=record(entry);
+      const key=kind==="session"?"session_id":"run_id";
+      if(typeof item[key]!=="string"||!ID.test(item[key] as string)
+        ||typeof item.session_id!=="string"||!ID.test(item.session_id)
+        ||(sessionId!==undefined&&item.session_id!==sessionId))
+        throw new GatewayTransportError("HISTORY_BINDING_MISMATCH");
+      if(kind==="session"){
+        if(item.system_id!==this.binding.canonicalSystemId ||
+          item.workspace_id!==this.binding.workspaceId)
+          throw new GatewayTransportError("HISTORY_BINDING_MISMATCH");
+        return {session_id:item.session_id,system_id:item.system_id,
+          workspace_id:item.workspace_id,title:typeof item.title==="string"?item.title.slice(0,120):item.session_id,
+          status:typeof item.status==="string"?item.status:"unknown",
+          updated_at:typeof item.updated_at==="string"?item.updated_at:"",
+          created_at:typeof item.created_at==="string"?item.created_at:"",
+          active_run_id:typeof item.active_run_id==="string"?item.active_run_id:null};
+      }
+      if(typeof item.status!=="string"
+        ||!(item.user_text===null || typeof item.user_text==="string")
+        ||!(item.output===null || typeof item.output==="string")
+        ||typeof item.user_text_truncated!=="boolean"
+        ||typeof item.output_truncated!=="boolean")
+        throw new GatewayTransportError("INVALID_RESPONSE");
+      return {run_id:item.run_id,session_id:item.session_id,
+        status:item.status,created_at:typeof item.created_at==="string"?item.created_at:"",
+        completed_at:typeof item.completed_at==="string"?item.completed_at:null,
+        user_text:typeof item.user_text==="string"?item.user_text.slice(0,4096):null,
+        output:typeof item.output==="string"?item.output.slice(0,12000):null,
+        user_text_truncated:item.user_text_truncated,
+        output_truncated:item.output_truncated};
+    });
+    return {data,has_more:page.has_more,next_offset:page.next_offset as number|null};
+  }
   async createRun(args: {
     messages: GatewayMessage[];
     /** Stable client-supplied ID for the *same* submission, retained on retry. */
