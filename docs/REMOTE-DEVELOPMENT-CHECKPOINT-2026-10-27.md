@@ -272,3 +272,58 @@ next independent acceptance +2 to 17/100. GitHub-first 90–93%
 remains a target before private final-local checks, not a measured
 current completion. Always show the user progress bar, completed task,
 next task and distinct formal score at the end of a slice.
+
+## Tasks 16-18 atomic duplicate checkpoint, 28 October 2026
+
+**Do not repeat Tasks 8-18:** Gateway chat + restart, Data Canvas,
+secure Canvas bridge, native OS authorization, first-party Canvas
+library and editor, agent action boundary, real GatewayStore run
+verification and now atomic Data duplication are all implemented
+source slices in Dashboard [draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+and Data [draft PR #22](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/22).
+No production merge/admission.
+
+**Task 16** qualified existing Data schema/event/transaction authority:
+the previous Data provenance has version IDs and receipts but does
+NOT retain immutable pre-edit Canvas board snapshots. We therefore
+did *not* invent fake historical Undo. Instead, introduced
+`CanvasDocuments.duplicate()` in Data itself: an immediate scoped
+SQLite transaction, source expectedVersion, full notes/connections
+and Data actor, idempotent after retries even when the source changes.
+Tested Data code pin:
+`5caa5d08151f85e503e8ceace494458736b76886`.
+Release smoke, five-component acceptance and all six cross-platform
+CI jobs passed that SHA. Data PR #22 remains a draft.
+
+**Task 17** wired the same `aiverse.canvas.duplicate` contract through
+Dashboard's method registry, strict RPC schema, `withCanvasOsPolicy`
+modify-canonical-state class, native Data owner `duplicate()`
+dispatch, host-only agent vocabulary and typed
+`DashboardClient.canvasDuplicate`. The updated
+`scripts/mc2/ci-canvas-data-owner-proof.mjs` pins the new Data SHA
+and checks actual Data graph equality, version 1, idempotent retry
+and stale source rejection over Dashboard authenticated RPC.
+Permission, actor, idempotency, workspace and real OS checks are not
+duplicated or bypassed.
+
+**Task 18** replaced the old multi-request duplicate in
+`apps/web/src/canvas-workspace.ts` with ONE `canvasDuplicate` RPC
+and canonical projected result. Existing browser QC now asserts one
+RPC and complete copied note/edge graph. Additional Chromium QC
+denies stale-source copy and confirms no partial library item.
+No UI-only shadow copy, no preview backend mutation.
+
+**Next Task 19:** define a true Data-owned historical Canvas
+revision archive and revert/undo contract, covering snapshot
+authenticity, retention, actor receipts, optimistic version
+conflicts and OS approval for destructive reversals. Do not turn
+localStorage or a model-supplied "before" board into authoritative
+history. Production OS actor grants, Gateway tool host, owner-admitted
+Data provisioning and Mac testing remain separate gates.
+
+**Progress:** formal accepted **15/100**, next MC2.1 accepted gate
+**17/100** if independently approved. GitHub-first **90–93%** is a
+future target, not current measured completion. The user expects
+a percent bar, explicit completed slices, and what remains at every
+completion report. Keep 1–4 tasks per batch; this batch contained
+three Tasks 16–18. Do not merge PRs or claim local deployment.
