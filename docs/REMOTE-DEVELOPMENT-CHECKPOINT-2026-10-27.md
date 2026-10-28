@@ -918,3 +918,48 @@ remains owner-side.
 
 **Continue from Task 213, not 143.** Do not merge drafts
 or install real permissions without separate authorization.
+
+
+## Current handoff: Tasks 213–412, 29 October 2026
+
+**Next task 413.** Source code through #412 recorded in
+`docs/DEVELOPMENT-TASKS-213-412-2026-10-29.md` (four meaningful
+source/real-integration slices and 196 distinctly named tests).
+Do NOT repeat host-only tool coordinator or falsely treat 200
+small tasks as 200 features.
+
+New `apps/gateway/src/canvas-agent-tool-coordinator.ts`,
+selected group extensions to
+`apps/gateway/src/canvas-context.ts` and
+`apps/gateway/src/canvas-agent-actions.ts`, and typed exports.
+Host-only selected Canvas tool reads via real canonical running
+Gateway bot + human OS/Data owner and mints opaque WeakMap handle.
+Bounded proposed note edits and selected group rename/move
+are rechecked against live Gateway run, OS grant, Data scope
+and optimistic version. This is a **native host code primitive**,
+not a production model, HTTP route or user authentication system.
+Sensitive note/label data labeled untrusted; no model-side actor,
+scope, root or approval. Security/runbook:
+`docs/NATIVE-CANVAS-MODEL-TOOL-BOUNDARY-2026-10-29.md`.
+
+`test/canvas-agent-tool-coordinator.test.ts` has 205 named
+tests (129 hostile variants). Source commit
+`b2e5920cd2998c929eba3345379b7a45761fbc54`
+passed full Dashboard Node22 Linux/macOS/Windows
+[40788246223](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246223),
+Chromium [40788246028](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246028),
+and progress integrity [40788246082](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246082).
+The **latest pinned real Gateway+OS+Data composition
+[40788246113](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246113)
+was in progress at writing. CHECK run outcome and fix demonstrated
+failure before treating this milestone as source-complete.**
+
+**Score:** GB ~36/100 provisional while integration pending,
+formal FA 15/100 accepted. No Mac local acceptance percent.
+The finite 10 chapters and 40 milestone targets are unchanged;
+G03.4 Canvas/workspace remains in progress due to real installed
+model dispatch, workspace lifecycle and assets.
+
+Avoid unreviewed tool exposure, paid user action and fake
+approval on the next phase. True native authenticated session
+and consent remain separate Mac/OS owner dependencies.
