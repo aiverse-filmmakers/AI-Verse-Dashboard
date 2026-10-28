@@ -40,6 +40,18 @@ function fixtureCanvas(frame){
     return {...snapshot(),document:[...store.values()].map(clone)};
   if(frame.method==="aiverse.canvas.get")
     return {...snapshot(),document:clone(owner(store.get(p.id)))};
+  if(frame.method==="aiverse.canvas.duplicate"){
+    const source=owner(store.get(p.id));
+    const key=scope+"|duplicate|"+p.idempotencyKey;
+    if(canvasIdempotency.has(key))return {...snapshot(),
+      document:clone(owner(store.get(canvasIdempotency.get(key))))};
+    if(source.version!==p.expectedVersion)throw canvasError("RECORD_VERSION_CONFLICT");
+    const now=stamp(),id="rec_"+(++canvasSeq);
+    const doc={id,title:p.title??source.title+" copy",version:1,
+      createdAt:now,updatedAt:now,board:clone(source.board)};
+    store.set(id,doc);canvasIdempotency.set(key,id);
+    return {...snapshot(),document:clone(doc)};
+  }
   if(frame.method==="aiverse.canvas.delete")throw canvasError("CANVAS_ACCESS_DENIED");
   if(frame.method==="aiverse.canvas.create"){
     const key=scope+"|"+p.idempotencyKey;
@@ -324,12 +336,19 @@ test("Canvas: named documents, rename, node connections, move and canonical dupl
   const moved=before.board.nodes.find(n=>n.id===move.params.edit.id);
   assert.equal(moved.x,move.params.edit.x);
   assert.equal(moved.y,move.params.edit.y);
+  const beforeCopyRequests=requests.length;
   await canvas.getByRole("button",{name:"Duplicate"}).click();
   await canvas.locator(".canvas-current-title").getByText("Shot sequence copy").waitFor();
+  const copyRequests=requests.slice(beforeCopyRequests)
+    .filter(r=>r.method.startsWith("aiverse.canvas.")&&
+      r.method!=="aiverse.canvas.list");
+  assert.deepEqual(copyRequests.map(r=>r.method),["aiverse.canvas.duplicate"],
+    "one atomic Data-owned request, no partial Canvas document effects");
   const docs=[...canvasDocuments.get("aiverse-01|operator").values()];
   const copy=docs.find(d=>d.title==="Shot sequence copy");
   assert.equal(copy.board.nodes.length,2);
   assert.equal(copy.board.edges.length,1);
+  assert.equal(copy.version,1,"atomic duplicate is created as one record");
   assert.ok(requests.some(r=>r.method==="aiverse.canvas.edit"&&r.params?.edit?.type==="note.move"));
   assert.ok(requests.some(r=>r.method==="aiverse.canvas.edit"&&r.params?.edit?.type==="edge.add"));
   assert.deepEqual(errors,[]);
