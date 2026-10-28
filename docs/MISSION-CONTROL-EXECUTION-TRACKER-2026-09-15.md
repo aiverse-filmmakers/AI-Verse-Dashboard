@@ -1410,3 +1410,47 @@ consent, signed installer or private dogfood completed.
 owner-authenticated scope (or the next source-backed ready
 milestone), after checking exact CI. Do not rebuild Data
 grouping, Canvas RPC or their 68 regressions.
+
+
+### Tasks 213–412: verified host-selected Canvas model-tool foundation (29 Oct 2026)
+
+**200 small slices** committed and individually mapped in
+[Task ledger 213–412](DEVELOPMENT-TASKS-213-412-2026-10-29.md):
+4 source/integration implementation slices and 196 named test-case
+tasks, with nine additional supplementary cases. These cases
+are testing activity, not 196 additional user features or GB points.
+
+Candidate first-party native (host-only) Canvas model-tool interface:
+`apps/gateway/src/canvas-agent-tool-coordinator.ts`.
+A host selects Canvas notes/edges/groups; an independently live
+canonical Gateway bot read and a human OS/Data owner-authorized
+selected context must agree on document, version, workspace.
+An in-process WeakMap handle, never a model-provided JSON handle,
+can invoke only selected note text edit or selected group
+rename/move. OS/Gateway/Data authorization and optimistic Data
+revision are repeated at effect edge. No HTTP/tool registration
+and no host grants issued. Selected Canvas note text and group
+labels are explicitly untrusted data.
+
+`test/canvas-agent-tool-coordinator.test.ts` now runs **205
+independently named targeted/hostile scenarios**, including 129
+variant authority and counterfeit-handle probes. All Dashboard
+CI Node22 Linux/macOS/Windows jobs passed at code
+`b2e5920cd2998c929eba3345379b7a45761fbc54`
+[CI 40788246223](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246223).
+Chromium [40788246028](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246028)
+and integrity [40788246082](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246082)
+passed at same code.
+New pinned real Gateway+OS+Data composition:
+[40788246113](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246113).
+At this checkpoint the real composition run was **still in progress**,
+and MUST be checked before awarding any new engineering points
+or claiming source-composition acceptance.
+
+**GB remains ~36/100 provisional** until cross-repo composition
+passes and source evidence reconciled. **Formal FA stays 15/100**,
+MC2.1 independent architecture acceptance not completed. 10
+chapters / 40 milestones unchanged, G03.4 in progress.
+Next task **413**, not 213. Real native authenticated Mac owner
+session, approved provider/model tool dispatcher, real user consent,
+asset storage, private installation and dogfood still pending.
