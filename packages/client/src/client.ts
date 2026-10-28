@@ -130,6 +130,10 @@ export class DashboardClient {
     return this.query("aiverse.canvas.edit",{noCache:true,
       params:{id,edit,expectedVersion,idempotencyKey}});
   }
+  async canvasDuplicate(id:string,expectedVersion:number,idempotencyKey:string,title?:string){
+    return this.query("aiverse.canvas.duplicate",{noCache:true,
+      params:{id,expectedVersion,idempotencyKey,...(title===undefined?{}:{title})}});
+  }
   async canvasDelete(id:string,expectedVersion:number,idempotencyKey:string){
     return this.query("aiverse.canvas.delete",{noCache:true,
       params:{id,expectedVersion,idempotencyKey}});
