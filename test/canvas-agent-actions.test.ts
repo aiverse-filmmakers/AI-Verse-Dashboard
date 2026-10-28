@@ -140,13 +140,13 @@ describe("host-only Canvas agent action boundary",()=>{
     h.setWorkspace("film");
     const manifest=join(h.root,"workspaces","film","WORKSPACE.yaml");
     writeFileSync(manifest,
-      'schema_version: "2.0"\\nid: "film"\\nname: "Film"\\nstatus: "paused"\\n');
+      'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "paused"\n');
     await assert.rejects(()=>h.actions.invoke(h.command("aiverse.canvas.get",{
       id:"rec_1234",
     })),/CANVAS_AGENT_ACCESS_DENIED/);
     assert.equal(h.values().executed,0);
     writeFileSync(manifest,
-      'schema_version: "2.0"\\nid: "film"\\nname: "Film"\\nstatus: "active"\\n');
+      'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "active"\n');
     const result=await h.actions.invoke(h.command("aiverse.canvas.get",{id:"rec_1234"}));
     assert.equal(result.workspaceId,"film");
     assert.equal(h.values().executed,1);
