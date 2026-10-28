@@ -30,3 +30,35 @@ The real Data source's pinned CI has previously passed six Linux/macOS/Windows N
 4. **Private/macOS owner acceptance:** install/package credentials, real provider integration, graceful restart and final dogfood remain separate.
 
 The score remains the historical **15/100 accepted**, because the living plan's MC2.1 review/amendment and subsequent source acceptance gates are still draft. Next formal acceptance increment is MC2.1's **2 points**, making 17/100, not a forced +1 for each small code slice.
+
+## Task 12: native owner attachment, separate from production admission
+
+Dashboard now exports `createAdmittedCanvasDataOwner()` from
+`apps/gateway/src/canvas-data-owner.ts`. It binds the **existing** native Data
+`CanvasDocuments`, `TrustedDataRoot`, scope constructors,
+`openScopedDataDatabase` and `SqliteStorageDriver` to `CanvasOwnerBridge`.
+Only the trusted host provides those installed modules, the OS permission
+evaluator and an independent `admittedActor(facts, request)` grant resolver.
+A browser cannot supply any of them. The adapter pins the approved OS root
+and registry generation, rechecks root/actor grants, and relies on the existing
+`withCanvasOsPolicy` to recheck OS policy before the Data effect.
+
+The adapter opens only an **existing** canonical Data SQLite database
+(`mode: "open-existing"`). OS/Data initialization and scope provisioning
+belong to a separate, owner-admitted installation lifecycle and never happen
+implicitly from a Canvas RPC. Data still owns versions, idempotency, provenance
+and soft deletion. Every opened database is closed in a finally block.
+
+The disposable CI proof now uses this same native attachment factory rather
+than duplicating an owner dispatcher inside the test. Real pinned OS and Data
+modules are used. The test provisions throwaway databases **before** opening
+Dashboard RPC, and checks scope isolation, restart durability, actor revocation
+and refusal of unprovisioned workspace databases. Passing this proof establishes
+source integration, not a production Mac installation.
+
+**Deliberate product boundary:** `start-connected` does not auto-install an
+unverified native Data owner or mint a human actor. An authenticated browser
+cookie is not authorization. A real installed OS actor/grant authority and
+Data owner provisioning still need independent production admission before the
+private launcher can enable Canonical Canvas. The library UI can be built
+against typed RPC with honest unavailable and permission-denied states.
