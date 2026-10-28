@@ -1320,3 +1320,45 @@ qualifies any further estimate. Local/private Mac acceptance pending.
 and durable audit receipt, not a browser-supplied approval. Then move
 to substantive next Personal-first owner-backed features. Preserve
 the 30-task ledger and do not rebuild this lifecycle.
+
+
+### Tasks 93–142: fixed engineering milestones and native Canvas selection context (28 October 2026)
+
+**50 small source/test/CI/documentation slices numbered 93–142** are
+enumerated in [Tasks 93–142 ledger](DEVELOPMENT-TASKS-93-142-2026-10-28.md).
+They are not 50 formal roadmap points. The true deliverables are:
+(1) a 10-chapter / 40-milestone stable GitHub engineering inventory,
+(2) an owner-backed Canvas selection context reader, and (3) a
+verified Gateway agent note edit from a real host-issued context,
+while preserving canonical Data/OS scope and actor boundaries.
+
+- GitHub milestone baseline:
+  `docs/github-chapters-milestones.json` and
+  `scripts/verify-github-milestones.mjs`, with 15 regression checks,
+  cross-platform integrity CI and checked evidence pointers.
+- Context code:
+  `apps/gateway/src/canvas-context.ts` and
+  `CanvasAgentActions.invokeSelectedNoteEdit`, tested with 30
+  context and eight selected-note regression scenarios.
+  The owner-only reader returns only selected notes/edges, marked
+  untrusted, at the current canonical version. The host-only
+  snapshot cannot be JSON-forged, and the action still checks
+  actual Gateway run workspace and canonical Data write CAS.
+- Real [Gateway/OS/Data composition CI 40775792089](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40775792089)
+  and [Chromium CI 40775791985](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40775791985)
+  **passed** at code `fb85aa4c6af92416b8f2e6c21d19632a5c4a62ca`.
+  Dashboard Linux/Windows CI passed; newest macOS matrix
+  jobs queued at last check. Progress integrity CI on
+  reconciled JSON/tests must be rechecked after its commit.
+
+**Reporting now:** GB engineering **~35/100 provisional** (+1
+Canvas source/CI evidence point, not +50), formal FA **15/100
+accepted**, 10 fixed chapters, 40 named milestones, 4 verified,
+8 implemented in draft, 28 planned. Production Mac owner session,
+provider account consent, native signing/install and private dogfood
+not accepted. G03.3 implemented draft; G03.4 retains grouping and
+production app model-tool dispatch. **Next task 143** after exact
+current CI inspection and milestone prioritization.
+
+The original MC0–MC7 100-point formal acceptance structure
+and pending MC2.1 review have NOT been changed.
