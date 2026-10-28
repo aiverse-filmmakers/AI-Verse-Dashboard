@@ -6,12 +6,13 @@
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {mkdtemp,mkdir,writeFile,rm} from "node:fs/promises";
+import {existsSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {tmpdir} from "node:os";
 import {pathToFileURL} from "node:url";
 import {SystemRegistry} from "../../dist/packages/registry/src/index.js";
 import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js";
-import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner,CanvasAgentActions,createGatewayStoreCanvasRunVerifier}
+import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner,CanvasAgentActions,createGatewayStoreCanvasRunVerifier,createCanvasOwnerPreflight}
   from "../../dist/apps/gateway/src/index.js";
 
 const pin="d1a135a490547890e7ba54d43cf77a71f67f67b1";
@@ -26,7 +27,7 @@ const imp=async path=>import(pathToFileURL(join(source,"dist","src",path)).href)
 const {CanvasDocuments}=await imp("canvas/index.js");
 const {DataRecords}=await imp("records/index.js");
 const {TrustedDataRoot,createStandaloneDataScope,createWorkspaceDataScope,
- openScopedDataDatabase}=await imp("scope/index.js");
+ openScopedDataDatabase,inspectScopedDataDatabase}=await imp("scope/index.js");
 const {SqliteStorageDriver}=await imp("storage/index.js");
 const osSource=resolve(process.env.AIVERSE_MC2_OS_SOURCE||"os-source");
 assert.equal(execFileSync("git",["-C",osSource,"rev-parse","HEAD"],{
@@ -88,8 +89,16 @@ try{
  // Pre-existing canonical Data scopes are provisioned by the Data owner.
  // A Dashboard RPC must NEVER create a new Data database implicitly.
  const native={CanvasDocuments,TrustedDataRoot,createStandaloneDataScope,
-   createWorkspaceDataScope,openScopedDataDatabase,SqliteStorageDriver};
+   createWorkspaceDataScope,openScopedDataDatabase,inspectScopedDataDatabase,
+   SqliteStorageDriver};
+ const preflight=createCanvasOwnerPreflight(registry,systemId,native);
+ assert.deepEqual(preflight.inspect("operator").reason,"database-missing");
+ assert.deepEqual(preflight.inspect("film").reason,"database-missing");
+ assert.equal(existsSync(join(root,".ai-verse-data","data.sqlite")),false);
+ assert.equal(existsSync(join(root,"workspaces","film","data","ai-verse-data.sqlite")),false);
  const trustedRoot=TrustedDataRoot.fromExistingDirectory(root);
+ // Only the DISPOSABLE HOST itself provisions its canonical Data scopes.
+ // Neither browser nor Dashboard Canvas RPC can do this in production.
  for(const scope of [
    createStandaloneDataScope(trustedRoot,"local"),
    createWorkspaceDataScope(trustedRoot,"film"),
@@ -98,6 +107,13 @@ try{
      {mode:"create-or-open"});
    opened.database.close();
  }
+ assert.equal(preflight.inspect("operator").reason,"ready");
+ assert.equal(preflight.inspect("film").reason,"ready");
+ await writeFile(join(root,"workspaces/film","WORKSPACE.yaml"),
+   'schema_version: "2.0"\\nid: "film"\\nname: "Film"\\nstatus: "paused"\\n');
+ assert.equal(preflight.inspect("film").reason,"scope-inactive");
+ await writeFile(join(root,"workspaces/film","WORKSPACE.yaml"),
+   'schema_version: "2.0"\\nid: "film"\\nname: "Film"\\nstatus: "active"\\n');
  function createBridge(){
   const owner=createAdmittedCanvasDataOwner(registry,{
     dashboardSystemId:systemId,native,
@@ -339,6 +355,8 @@ try{
   os_paused_workspace_denied:true,os_destructive_confirmation_denied:true,
   revoked_operator_grant_denied:true,revoked_actor_grant_denied:true,
   existing_data_database_required:true,
+  real_data_readonly_preflight_no_auto_provision:true,
+  scoped_preflight_active_manifest_required:true,
   atomic_duplicate_one_data_effect:true,duplicate_source_version_guard:true,
   canonical_revision_history:true,versioned_undo_persists_across_restart:true,
   indexed_history_keyset_pages:true,invalid_cursor_and_forged_actor_denied:true,
