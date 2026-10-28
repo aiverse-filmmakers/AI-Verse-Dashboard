@@ -483,3 +483,15 @@ Formal acceptance remains **15/100**. Next MC2.1
 approved milestone is **17/100**. Browser/GitHub 90–93%
 is only a pre-local target, not current measured progress.
 Always show slices and a separate formal percentage bar.
+
+**Tasks 25–32 final code-head evidence:** Data
+`beec725e3eeaf17e61705854d172b291dd2afa54` fully green:
+[release smoke 40742775291](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40742775291),
+[six job CI 40742775603](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40742775603),
+[five-component acceptance 40742775695](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40742775695).
+Dashboard `c27034de7559a2398a5215902be4d6d62d6521ea` fully green:
+[Dashboard CI 40743057482](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743057482),
+[Chromium 40743057446](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743057446),
+[real pinned Gateway/OS/Data 40743058809](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743058809).
+All eight scoped **source** tasks can be treated as tested; no formal acceptance/merge
+or private owner Mac validation. Latest docs heads may run workflows separately.
