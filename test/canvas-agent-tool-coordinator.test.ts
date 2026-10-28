@@ -46,12 +46,25 @@ function fixture(){
    const p=request.params as any;
    if(p.expectedVersion!==doc.version)throw Object.assign(
      Error("RECORD_VERSION_CONFLICT"),{code:"RECORD_VERSION_CONFLICT"});
-   if(p.edit?.type!=="note.text")throw Error("unexpected edit");
-   const n=doc.board.nodes.find(x=>x.id===p.edit.id);
-   if(!n)throw Error("missing");
-   doc={...doc,version:doc.version+1,
-    board:{...doc.board,nodes:doc.board.nodes.map(x=>
-      x.id===n.id?{...x,text:p.edit.text}:x)}};
+   if(p.edit?.type==="note.text"){
+     const n=doc.board.nodes.find(x=>x.id===p.edit.id);
+     if(!n)throw Error("missing");
+     doc={...doc,version:doc.version+1,
+      board:{...doc.board,nodes:doc.board.nodes.map(x=>
+        x.id===n.id?{...x,text:p.edit.text}:x)}};
+   }else if(p.edit?.type==="group.rename"){
+     const g=doc.board.groups.find(x=>x.id===p.edit.id);
+     if(!g)throw Error("missing group");
+     doc={...doc,version:doc.version+1,board:{...doc.board,
+       groups:doc.board.groups.map(x=>x.id===g.id?
+         {...x,label:p.edit.label}:x)}};
+   }else if(p.edit?.type==="group.move"){
+     const g=doc.board.groups.find(x=>x.id===p.edit.id);
+     if(!g)throw Error("missing group");
+     doc={...doc,version:doc.version+1,board:{...doc.board,
+       nodes:doc.board.nodes.map(x=>g.nodeIds.includes(x.id)?
+         {...x,x:x.x+p.edit.dx,y:x.y+p.edit.dy}:x)}};
+   }else throw Error("unexpected edit");
    writes++;return doc;
   },
  };
@@ -72,7 +85,7 @@ function fixture(){
  const input=(changes:Record<string,unknown>={})=>({
   runId:"run-a",hostFacts:facts,selection:{
    documentId:"canvas-1",selectedNodeIds:["note-a"],
-   selectedEdgeIds:["edge-ab"],expectedVersion:3},...changes,
+   selectedEdgeIds:["edge-ab"],selectedGroupIds:["group-main"],expectedVersion:3},...changes,
  });
  const proposal=(changes:Record<string,unknown>={}):any=>({
   kind:"selected-note.replace-text",operationId:"change-1",noteId:"note-a",
@@ -317,4 +330,133 @@ test("multiple independent handles cannot be recreated from their public views",
  const f=fixture(),h=await open(f);
  const view=f.coordinator.describe(h);
  await denied(f.coordinator.execute(view as any,f.proposal()));
+});
+
+test("model context exposes explicitly selected group label and node IDs",async()=>{
+ const f=fixture(),h=await open(f),g=f.coordinator.describe(h).selection.groups[0];
+ assert.equal(g.label,"Camera pair");
+ assert.deepEqual(g.nodeIds,["note-a","note-b"]);
+ assert.equal(g.trust,"untrusted-canvas-label");
+});
+test("model context reports canonical group counts",async()=>{
+ const f=fixture(),h=await open(f),v=f.coordinator.describe(h);
+ assert.equal(v.selection.groupCount,1);
+ assert.equal(v.selection.groups.length,1);
+});
+test("unselected groups cannot be proposed by the model",async()=>{
+ const f=fixture(),h=await open(f);
+ await denied(f.coordinator.execute(h,{kind:"selected-group.rename",operationId:"other",
+   groupId:"other-group",label:"forged"}),"CANVAS_TOOL_INVALID");
+});
+test("selected group rename reaches owner after verified run",async()=>{
+ const f=fixture(),h=await open(f);
+ const r=await f.coordinator.execute(h,{kind:"selected-group.rename",
+   operationId:"rename-1",groupId:"group-main",label:"Dolly study"});
+ assert.equal((r.document as any).version,4);
+ assert.equal(f.doc().board.groups[0].label,"Dolly study");
+});
+test("selected group move shifts all and only grouped notes",async()=>{
+ const f=fixture(),h=await open(f);
+ const r=await f.coordinator.execute(h,{kind:"selected-group.move",
+   operationId:"move-1",groupId:"group-main",dx:15,dy:-5});
+ assert.deepEqual((r.document as any).board.nodes.map((n:any)=>[n.id,n.x,n.y]),[
+  ["note-a",25,15],["note-b",60,45],["note-c",100,150]]);
+});
+test("selected group rename rejects a blank label",async()=>{
+ const f=fixture(),h=await open(f);
+ await denied(f.coordinator.execute(h,{kind:"selected-group.rename",
+   operationId:"rename-1",groupId:"group-main",label:"    "}),"CANVAS_TOOL_INVALID");
+});
+test("selected group rename rejects oversized label",async()=>{
+ const f=fixture(),h=await open(f);
+ await denied(f.coordinator.execute(h,{kind:"selected-group.rename",
+   operationId:"rename-1",groupId:"group-main",label:"x".repeat(81)}),"CANVAS_TOOL_INVALID");
+});
+test("selected group rename rejects principal injection",async()=>{
+ const f=fixture(),h=await open(f);
+ await denied(f.coordinator.execute(h,{kind:"selected-group.rename",
+   operationId:"rename-1",groupId:"group-main",label:"A",principal:"root"} as any),
+   "CANVAS_TOOL_INVALID");
+});
+test("selected group rename rejects arbitrary system ID",async()=>{
+ const f=fixture(),h=await open(f);
+ await denied(f.coordinator.execute(h,{kind:"selected-group.rename",
+   operationId:"rename-1",groupId:"group-main",label:"A",systemId:"another"} as any),
+   "CANVAS_TOOL_INVALID");
+});
+test("selected group move rejects nonfinite deltas",async()=>{
+ const f=fixture(),h=await open(f);
+ for(const x of [NaN,Infinity,-Infinity]){
+  await denied(f.coordinator.execute(h,{kind:"selected-group.move",
+    operationId:"move-1",groupId:"group-main",dx:x,dy:0}),"CANVAS_TOOL_INVALID");
+ }
+});
+test("selected group move rejects extreme displacements",async()=>{
+ const f=fixture(),h=await open(f);
+ await denied(f.coordinator.execute(h,{kind:"selected-group.move",
+   operationId:"move-1",groupId:"group-main",dx:100001,dy:0}),"CANVAS_TOOL_INVALID");
+});
+test("selected group move rejects model-supplied approval",async()=>{
+ const f=fixture(),h=await open(f);
+ await denied(f.coordinator.execute(h,{kind:"selected-group.move",
+   operationId:"move-1",groupId:"group-main",dx:1,dy:0,approval:true} as any),
+   "CANVAS_TOOL_INVALID");
+});
+test("selected group move rejects unknown actor ID",async()=>{
+ const f=fixture(),h=await open(f);
+ await denied(f.coordinator.execute(h,{kind:"selected-group.move",
+   operationId:"move-1",groupId:"group-main",dx:1,dy:0,actor:"owner"} as any),
+   "CANVAS_TOOL_INVALID");
+});
+test("selected group move rejects an arbitrary document selection",async()=>{
+ const f=fixture(),h=await open(f);
+ await denied(f.coordinator.execute(h,{kind:"selected-group.move",
+   operationId:"move-1",groupId:"group-main",dx:1,dy:0,
+   documentId:"another"} as any),"CANVAS_TOOL_INVALID");
+});
+test("selected group rename denies revoked bot run before write",async()=>{
+ const f=fixture(),h=await open(f);f.setRun("stopped");
+ await assert.rejects(f.coordinator.execute(h,{kind:"selected-group.rename",
+   operationId:"rename-1",groupId:"group-main",label:"X"}),/CANVAS_AGENT_ACCESS_DENIED/);
+ assert.equal(f.counts().writes,0);
+});
+test("selected group move denies revoked grant before write",async()=>{
+ const f=fixture(),h=await open(f);f.setGrant(false);
+ await assert.rejects(f.coordinator.execute(h,{kind:"selected-group.move",
+   operationId:"move-1",groupId:"group-main",dx:10,dy:0}),/CANVAS_AGENT_ACCESS_DENIED/);
+ assert.equal(f.counts().writes,0);
+});
+test("selected group move denies changed run workspace before write",async()=>{
+ const f=fixture(),h=await open(f);f.setRunWorkspace("film");
+ await assert.rejects(f.coordinator.execute(h,{kind:"selected-group.move",
+   operationId:"move-1",groupId:"group-main",dx:10,dy:0}),/CANVAS_AGENT_ACCESS_DENIED/);
+});
+test("selected group rename rejects stale version when document has advanced",async()=>{
+ const f=fixture(),h=await open(f),d=f.doc();f.setDoc({...d,version:4});
+ await assert.rejects(f.coordinator.execute(h,{kind:"selected-group.rename",
+   operationId:"rename-1",groupId:"group-main",label:"New"}),/RECORD_VERSION_CONFLICT/);
+});
+test("selected group move rejects closed host selection capability",async()=>{
+ const f=fixture(),h=await open(f);f.coordinator.close(h);
+ await denied(f.coordinator.execute(h,{kind:"selected-group.move",
+   operationId:"move-1",groupId:"group-main",dx:1,dy:1}));
+});
+test("selected group context request rejects nonexistent group ID",async()=>{
+ const f=fixture();await assert.rejects(f.coordinator.open(f.input({
+   selection:{documentId:"canvas-1",selectedGroupIds:["missing"]},
+ })),/CANVAS_CONTEXT_DENIED/);
+});
+test("selected group context cannot be inferred from unselected groups",async()=>{
+ const f=fixture(),h=await f.coordinator.open(f.input({
+   selection:{documentId:"canvas-1",selectedNodeIds:["note-a"]},
+ }));
+ assert.equal(f.coordinator.describe(h).selection.groups.length,0);
+ await denied(f.coordinator.execute(h,{kind:"selected-group.rename",
+   operationId:"unselected",groupId:"group-main",label:"Unauthorized"}),
+   "CANVAS_TOOL_INVALID");
+});
+test("selected group IDs are returned frozen from a host context",async()=>{
+ const f=fixture(),h=await open(f),g=f.coordinator.describe(h).selection.groups[0];
+ assert.equal(Object.isFrozen(g),true);
+ assert.equal(Object.isFrozen(g.nodeIds),true);
 });
