@@ -156,7 +156,9 @@ export class CanvasWorkspace {
       if(!this.alive(epoch))return null;
       const result=this.snapshot(response,scope);
       if(Array.isArray(result))throw Error("CANVAS_INVALID_PROJECTION");
-      this.current=result;this.message(success);this.render();
+      this.current=result;this.historyOpen=false;this.history=[];
+      this.historyHasMore=false;this.pendingRevertVersion=null;
+      this.message(success);this.render();
       return result;
     }catch(error){
       if(this.alive(epoch)){this.failure(error);this.render();}
@@ -219,7 +221,9 @@ export class CanvasWorkspace {
       if(!this.alive(epoch))return;
       const result=this.snapshot(response,scope);
       if(Array.isArray(result))throw Error("CANVAS_INVALID_PROJECTION");
-      this.current=result;this.message(success+" · version "+result.version);
+      this.current=result;this.historyOpen=false;this.history=[];
+      this.historyHasMore=false;this.pendingRevertVersion=null;
+      this.message(success+" · version "+result.version);
       this.render();
     }catch(error){if(this.alive(epoch)){this.failure(error);this.render();}}
     finally{if(this.alive(epoch)){this.busy=false;this.render();void this.refresh(true);}}
@@ -294,10 +298,11 @@ export class CanvasWorkspace {
       this.render();return;
     }
     const d=this.current;
+    const reopenHistory=this.historyOpen;
     this.pendingRevertVersion=null;
     const saved=await this.operate(()=>this.client.canvasRevert(d.id,version,d.version,editId()),
       "Restored v"+version+" as a new canonical Canvas version.");
-    if(saved&&this.historyOpen)void this.openHistory();
+    if(saved&&reopenHistory)void this.openHistory();
   }
   private renderHistory(){
     this.historyPanel.replaceChildren();
