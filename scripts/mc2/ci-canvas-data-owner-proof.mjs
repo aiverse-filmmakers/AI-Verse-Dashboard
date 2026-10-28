@@ -14,7 +14,7 @@ import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js"
 import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner,CanvasAgentActions,createGatewayStoreCanvasRunVerifier}
   from "../../dist/apps/gateway/src/index.js";
 
-const pin="ed7363f2f5197b82317de9f7ccb98b61d4d9de64";
+const pin="0948d424fb31d4561c5a5ba62c835ad40ee6ffd4";
 const osPin="0dc744057199970a34a60c11dff192e407ad64ed";
 const gatewayPin="9748dd0d5473b65ad95ef92df62fe0a13575e378";
 assert.equal(process.env.CI,"true","never operate on owner machine");
