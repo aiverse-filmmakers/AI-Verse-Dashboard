@@ -1131,9 +1131,9 @@ remain unmerged.
 passed [Data smoke 40745957846](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957846),
 [six cross-platform jobs 40745957240](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957240)
 and [five-component acceptance 40745957276](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957276).
-**Dashboard final source/CI** must be checked on implementation
+**Dashboard final source/CI** fully passed on implementation
 [`f92d46a`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/f92d46ad9cc11a1867ae11f54912044037bccf47)
-before all ten tasks are counted green:
+with all three workflows green:
 [Dashboard CI 40746877698](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746877698),
 [Chromium 40746877403](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746877403),
 [MC2 pinned Gateway+OS+Data 40746878006](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746878006).
