@@ -149,7 +149,7 @@ export class CanvasOwnerBridge{
         systemId:system,workspaceId:workspace,root:installed.root,
         principal:"local-operator",access:operation.access,assertLease,
       };
-      const request:CanvasHostRequest={method:frame.method,params:payload.data};
+      const request:CanvasHostRequest={method:frame.method,params:payload.data as Record<string,unknown>};
       // Host owner must confirm permissions, including mutation approval
       // requirements, separately from cookie/bearer authentication.
       const authorized=await installed.owner.authorize(facts,request);
