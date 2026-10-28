@@ -7,8 +7,9 @@ import {DashboardClient,type ClientScope} from "../../../packages/client/src/ind
  */
 interface Note {id:string;kind:"note";text:string;x:number;y:number}
 interface Edge {id:string;from:string;to:string}
+interface Group {id:string;label:string;nodeIds:string[]}
 interface CanvasDoc {id:string;title:string;version:number;createdAt:string;updatedAt:string;
-  board?:{nodes:Note[];edges:Edge[]}}
+  board?:{nodes:Note[];edges:Edge[];groups?:Group[]}}
 const safeId=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const editId=()=>{if(!globalThis.crypto?.randomUUID)throw Error("CANVAS_RANDOM_UNAVAILABLE");return globalThis.crypto.randomUUID();};
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,text?:string):HTMLElementTagNameMap[K]=>{
@@ -39,6 +40,23 @@ function documentOf(response:unknown,scope:Required<ClientScope>):CanvasDoc|Canv
           !Number.isFinite(n.x)||!Number.isFinite(n.y))||
         d.board.edges.some(e=>!safeId.test(e.id)||!safeId.test(e.from)||!safeId.test(e.to)))
         throw Error("CANVAS_INVALID_PROJECTION");
+      if(d.board.groups!==undefined){
+        if(!Array.isArray(d.board.groups)||d.board.groups.length>50)
+          throw Error("CANVAS_INVALID_PROJECTION");
+        const members=new Set<string>(),groupIds=new Set<string>();
+        const noteIds=new Set(d.board.nodes.map(n=>n.id));
+        for(const g of d.board.groups){
+          if(!safeId.test(g.id)||groupIds.has(g.id)
+            ||noteIds.has(g.id)||d.board.edges.some(e=>e.id===g.id)
+            ||typeof g.label!=="string"||!g.label.trim()||g.label.length>80
+            ||!Array.isArray(g.nodeIds)||g.nodeIds.length<2
+            ||g.nodeIds.some(n=>!safeId.test(n)||!noteIds.has(n)
+              ||members.has(n))||new Set(g.nodeIds).size!==g.nodeIds.length)
+            throw Error("CANVAS_INVALID_PROJECTION");
+          groupIds.add(g.id);
+          for(const n of g.nodeIds)members.add(n);
+        }
+      }
     }
     return d;
   };
@@ -54,6 +72,7 @@ export class CanvasWorkspace {
   private list:CanvasDoc[]=[];
   private current:CanvasDoc|null=null;
   private selectedNote:string|null=null;
+  private readonly groupSelection=new Set<string>();
   private pendingDelete=false;
   private historyOpen=false;
   private history:CanvasDoc[]=[];
@@ -125,7 +144,7 @@ export class CanvasWorkspace {
   retarget(next:Required<ClientScope>){
     if(this.destroyed)throw Error("Canvas closed");
     this.epoch++;this.selected={...next};this.client.retarget(next);
-    this.current=null;this.list=[];this.busy=false;this.selectedNote=null;
+    this.current=null;this.list=[];this.busy=false;this.selectedNote=null;this.groupSelection.clear();
     this.pendingDelete=false;this.historyOpen=false;this.history=[];this.historyHasMore=false;
     this.pendingRevertVersion=null;
     const label=this.header.querySelector(".canvas-scope");
@@ -175,7 +194,7 @@ export class CanvasWorkspace {
       const result=this.snapshot(await this.client.canvasGet(id),scope);
       if(!this.alive(epoch))return;
       if(Array.isArray(result))throw Error("CANVAS_INVALID_PROJECTION");
-      this.current=result;this.selectedNote=null;
+      this.current=result;this.selectedNote=null;this.groupSelection.clear();
       this.historyOpen=false;this.history=[];this.historyHasMore=false;this.pendingRevertVersion=null;
       this.message("Saved Canvas · version "+result.version);
     }catch(error){if(this.alive(epoch))this.failure(error);}
@@ -183,7 +202,7 @@ export class CanvasWorkspace {
   }
   scratch(){
     if(this.busy)return;
-    this.current=null;this.selectedNote=null;this.pendingDelete=false;
+    this.current=null;this.selectedNote=null;this.groupSelection.clear();this.pendingDelete=false;
     this.historyOpen=false;this.history=[];this.historyHasMore=false;this.pendingRevertVersion=null;
     this.message("Scratch canvas is empty. Its first edit creates a real Data document.");
     this.render();
@@ -422,6 +441,11 @@ export class CanvasWorkspace {
         "canvas-note");
       card.style.left=note.x+"px";card.style.top=note.y+"px";
       card.dataset.noteId=note.id;
+      const group=this.current?.board?.groups?.find(g=>g.nodeIds.includes(note.id));
+      if(group){
+        card.dataset.groupId=group.id;
+        card.title="Grouped: "+group.label+" · drag to reposition note";
+      }
       card.disabled=this.busy;
       card.title="Select to edit. Drag to reposition.";
       card.addEventListener("pointerdown",event=>{
@@ -500,6 +524,7 @@ export class CanvasWorkspace {
       link.disabled=this.busy;connection.append(from,to,link);
       this.noteEditor.append(connection);
     }
+    this.renderGroups(notes);
     if(edges.length){
       const wrap=node("div","canvas-edge-list");
       for(const edge of edges){
@@ -512,6 +537,94 @@ export class CanvasWorkspace {
       }
       this.noteEditor.append(wrap);
     }
+  }
+  private renderGroups(notes:Note[]){
+    if(!this.current||notes.length<2)return;
+    const groups=this.current.board?.groups??[];
+    const panel=node("section","canvas-group-controls");
+    panel.setAttribute("aria-label","Saved note groups");
+    panel.append(node("strong","canvas-group-heading","Group notes"));
+    panel.append(node("p","canvas-hint",
+      "Select two or more notes, then save the group in canonical Data."));
+    // Selection is only transient UI state, never a separate persisted board.
+    const actual=new Set(notes.map(n=>n.id));
+    for(const id of [...this.groupSelection]){
+      if(!actual.has(id))this.groupSelection.delete(id);
+    }
+    const picks=node("div","canvas-group-selection");
+    for(const note of notes){
+      const label=node("label","canvas-group-option");
+      const checkbox=node("input","canvas-group-check");
+      checkbox.type="checkbox";checkbox.checked=this.groupSelection.has(note.id);
+      checkbox.disabled=this.busy;
+      checkbox.setAttribute("aria-label","Select note "+note.id+" for grouping");
+      checkbox.addEventListener("change",()=>{
+        if(checkbox.checked)this.groupSelection.add(note.id);
+        else this.groupSelection.delete(note.id);
+      });
+      label.append(checkbox,node("span","",note.text.slice(0,32)||note.id));
+      picks.append(label);
+    }
+    panel.append(picks);
+    const groupName=node("input","canvas-group-title");
+    groupName.placeholder="Group name";groupName.maxLength=80;
+    groupName.setAttribute("aria-label","New note group name");
+    const save=action("Group selected",()=>{
+      const ids=[...this.groupSelection],label=groupName.value.trim();
+      if(ids.length<2||!label||label.length>80){
+        this.message("Select at least two notes and enter a group name.");return;
+      }
+      if(groups.some(g=>ids.some(n=>g.nodeIds.includes(n)))){
+        this.message("A note can belong to only one group. Ungroup it first.");return;
+      }
+      this.groupSelection.clear();
+      void this.edit({type:"group.create",id:"group-"+editId(),
+        label,nodeIds:ids},"Group saved in canonical Data");
+    });
+    save.disabled=this.busy;
+    panel.append(groupName,save);
+    for(const group of groups){
+      const entry=node("div","canvas-group-entry");
+      const info=node("span","canvas-group-info",
+        group.label+" · "+group.nodeIds.length+" notes");
+      const renameInput=node("input","canvas-group-rename");
+      renameInput.value=group.label;renameInput.maxLength=80;
+      renameInput.setAttribute("aria-label","Rename group "+group.label);
+      const rename=action("Rename group",()=>{
+        const name=renameInput.value.trim();
+        if(!name||name.length>80){this.message("Group name must be 1–80 characters.");return;}
+        void this.edit({type:"group.rename",id:group.id,label:name},
+          "Group renamed in canonical Data");
+      });
+      const members=action("Use selected notes",()=>{
+        const ids=[...this.groupSelection];
+        if(ids.length<2){this.message("Select at least two notes.");return;}
+        if(groups.some(g=>g.id!==group.id&&g.nodeIds.some(n=>ids.includes(n)))){
+          this.message("Notes already assigned to another group must be ungrouped first.");return;
+        }
+        this.groupSelection.clear();
+        void this.edit({type:"group.members",id:group.id,nodeIds:ids},
+          "Group members updated");
+      });
+      const move=(label:string,dx:number,dy:number)=>{
+        const b=action(label,()=>void this.edit({
+          type:"group.move",id:group.id,dx,dy,
+        },"Group moved together"));
+        b.disabled=this.busy;entry.append(b);
+      };
+      const remove=action("Ungroup",()=>void this.edit({
+        type:"group.remove",id:group.id,
+      },"Notes ungrouped; notes themselves preserved"));
+      rename.disabled=this.busy;members.disabled=this.busy;
+      remove.disabled=this.busy;renameInput.disabled=this.busy;
+      entry.append(info,renameInput,rename,members);
+      move("Move group left",-20,0);
+      move("Move group right",20,0);
+      move("Move group up",0,-20);
+      move("Move group down",0,20);
+      entry.append(remove);panel.append(entry);
+    }
+    this.noteEditor.append(panel);
   }
   destroy(){this.destroyed=true;this.epoch++;this.host.replaceChildren();}
 }
