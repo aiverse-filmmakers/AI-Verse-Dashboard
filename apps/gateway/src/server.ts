@@ -13,6 +13,7 @@ import {
 } from "./auth.js";
 import { SubscriptionHub } from "./subscriptions.js";
 import { CanonicalGatewayBridge } from "./canonical-gateway-bridge.js";
+import { CanvasOwnerBridge } from "./canvas-owner-bridge.js";
 import { LocalApplicationSession } from "./local-app-session.js";
 
 /**
@@ -56,7 +57,7 @@ export interface GatewayServer {
 export async function startGateway(
   router: QueryRouter,
   hub: SubscriptionHub,
-  opts?: { port?: number; host?: string; authToken?: string; canonicalBridge?: CanonicalGatewayBridge; localApp?: LocalApplicationSession },
+  opts?: { port?: number; host?: string; authToken?: string; canonicalBridge?: CanonicalGatewayBridge; canvasBridge?: CanvasOwnerBridge; localApp?: LocalApplicationSession },
 ): Promise<GatewayServer> {
   const host = "127.0.0.1";
   const authToken = createGatewayAuthToken(opts?.authToken);
@@ -64,7 +65,7 @@ export async function startGateway(
     throw new Error("gateway binds loopback only; remote access must use a tunnel");
   }
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    void handleHttp(req, res, router, authToken, opts?.canonicalBridge, opts?.localApp);
+    void handleHttp(req, res, router, authToken, opts?.canonicalBridge, opts?.localApp,opts?.canvasBridge);
   });
   const wss = new WebSocketServer({
     noServer: true,
@@ -152,6 +153,7 @@ async function handleHttp(
   authToken: string,
   canonicalBridge?: CanonicalGatewayBridge,
   localApp?: LocalApplicationSession,
+  canvasBridge?: CanvasOwnerBridge,
 ): Promise<void> {
   try {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -187,6 +189,30 @@ async function handleHttp(
       if(cookieAuthorized && !bearerAuthorized && !localApp?.isAllowedFrame(frame)) {
         res.writeHead(403,{"content-type":"application/json","cache-control":"no-store"});
         res.end(JSON.stringify({ok:false,error:{code:"LOCAL_APP_SCOPE_DENIED",message:"Scoped local app session required"}}));
+        return;
+      }
+      if(CanvasOwnerBridge.recognizes(frame)){
+        if(!canvasBridge){
+          const tagged=frame && typeof frame==="object"&&!Array.isArray(frame)
+            ?frame as Record<string,unknown>:{};
+          res.writeHead(200,{"content-type":"application/json","cache-control":"no-store"});
+          res.end(JSON.stringify({type:"res",v:"1.0",
+            id:typeof tagged.id==="string"&&tagged.id.length<=128?tagged.id:"unparseable",
+            ok:false,error:{code:"CANVAS_OWNER_UNAVAILABLE",
+              message:"Canonical Canvas Data owner not configured"},
+            observedAt:new Date().toISOString()}));
+          return;
+        }
+        const abort=new AbortController();
+        const stop=()=>abort.abort();
+        res.on("close",stop);
+        try{
+          const out=await canvasBridge.handle(frame,abort.signal);
+          if(!res.writableEnded&&!res.destroyed){
+            res.writeHead(200,{"content-type":"application/json","cache-control":"no-store"});
+            res.end(JSON.stringify(out));
+          }
+        }finally{res.off("close",stop);}
         return;
       }
       // Canonical operations are authenticated, deliberately opt-in and
