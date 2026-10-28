@@ -1005,7 +1005,7 @@ all passed.
 passed [Dashboard CI 40741376157](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376157)
 on Linux/Windows/macOS and [Chromium browser QC 40741376101](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376101).
 [Real pinned Gateway/OS/Data composition 40741376218](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376218)
-must be checked for completion before calling the whole batch green.
+**passed** on the tested code revision after the final source run completed.
 (The later docs commits do not introduce runtime source changes.)
 
 **Safeguards:** No deleted document restoration, unbounded
