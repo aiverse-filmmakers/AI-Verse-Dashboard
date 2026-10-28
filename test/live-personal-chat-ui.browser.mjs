@@ -519,3 +519,24 @@ test("Canvas: Load older history returns disjoint keyset pages and no browser re
   {local:0,session:0});
  assert.deepEqual(errors,[]);
 });
+
+test("Canvas: switching to atomic copy clears stale source history and reopens correct scope",async t=>{
+ const {page,errors}=await pageFor(t);
+ const canvas=page.locator(".aiverse-canvas");
+ await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Source history");
+ await canvas.getByRole("button",{name:"Create",exact:true}).click();
+ await canvas.locator(".canvas-current-title").getByText("Source history").waitFor();
+ await canvas.getByRole("button",{name:"Add note"}).click();
+ await canvas.locator(".canvas-note").first().waitFor();
+ await canvas.getByRole("button",{name:"History",exact:true}).click();
+ const panel=canvas.getByRole("region",{name:"Canonical Canvas revision history"});
+ await panel.getByText("Current · v2").waitFor();
+ await canvas.getByRole("button",{name:"Duplicate"}).click();
+ await canvas.locator(".canvas-current-title").getByText("Source history copy").waitFor();
+ assert.equal(await panel.isVisible(),false,
+   "a copy must not inherit visible revisions of its source document");
+ await canvas.getByRole("button",{name:"History",exact:true}).click();
+ await panel.getByText("Current · v1").waitFor();
+ assert.equal(await panel.locator(".canvas-history-item").count(),1);
+ assert.deepEqual(errors,[]);
+});
