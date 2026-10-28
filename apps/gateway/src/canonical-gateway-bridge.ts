@@ -22,6 +22,7 @@ export interface ApprovedCanonicalGateway {
 }
 const methods = new Set([
   "aiverse.gateway.status", "aiverse.gateway.run.create", "aiverse.gateway.run.get",
+  "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
 ]);
 const identifier = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
 const input = z.object({
@@ -33,6 +34,9 @@ const input = z.object({
   sessionId: identifier.optional(),
 }).strict();
 const getInput = z.object({runId:identifier}).strict();
+const pageInput=z.object({limit:z.number().int().min(1).max(25).optional(),
+  offset:z.number().int().min(0).max(10_000).optional()}).strict();
+const historyInput=pageInput.extend({sessionId:identifier}).strict();
 const SAFE_CODES = new Set([
   "GATEWAY_NOT_READY", "MODEL_UNAVAILABLE", "RUN_BINDING_MISMATCH",
   "SYSTEM_BINDING_MISMATCH", "STALE_BINDING", "GATEWAY_CREDENTIAL_UNAVAILABLE",
@@ -42,6 +46,8 @@ const SAFE_CODES = new Set([
   "INVALID_ENVELOPE", "UNKNOWN_METHOD",
   "SESSION_BINDING_MISMATCH", "IDEMPOTENCY_CONFLICT", "FORBIDDEN", "UNAUTHENTICATED",
   "HTTP_401", "HTTP_403", "HTTP_404", "HTTP_409", "HTTP_429", "HTTP_503",
+  "SESSION_NOT_FOUND", "INVALID_HISTORY_QUERY", "INVALID_HISTORY_SCOPE",
+  "HISTORY_BINDING_MISMATCH", "HISTORY_INDEX_TOO_LARGE",
 ]);
 function failureCode(error: unknown): string {
   const code=(error as {code?:unknown})?.code;
@@ -187,8 +193,20 @@ export class CanonicalGatewayBridge {
               runtimeKind:value.runtime,readinessEvidence:"authenticated-status-and-models",
               inferenceVerified:false},
             capabilities:{runCreate:true,runGet:true,events:true,controls:false,
-              conversationLibrary:false,providerSelection:false},
+              conversationLibrary:true,providerSelection:false},
             source:"canonical-gateway"});
+        }
+        if(frame.method==="aiverse.gateway.session.list"){
+          const parsed=pageInput.safeParse(frame.params??{});
+          if(!parsed.success)throw new GatewayTransportError("INVALID_ENVELOPE");
+          return respond(true,{...await client.listSessions({...parsed.data,signal}),
+            source:"canonical-gateway",workspaceId:workspace});
+        }
+        if(frame.method==="aiverse.gateway.session.runs"){
+          const parsed=historyInput.safeParse(frame.params);
+          if(!parsed.success)throw new GatewayTransportError("INVALID_ENVELOPE");
+          return respond(true,{...await client.listSessionRuns({...parsed.data,signal}),
+            source:"canonical-gateway",workspaceId:workspace,sessionId:parsed.data.sessionId});
         }
         if(frame.method==="aiverse.gateway.run.create"){
           const parse=input.safeParse(frame.params);
