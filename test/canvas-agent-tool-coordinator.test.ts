@@ -74,7 +74,7 @@ function fixture(){
    documentId:"canvas-1",selectedNodeIds:["note-a"],
    selectedEdgeIds:["edge-ab"],expectedVersion:3},...changes,
  });
- const proposal=(changes:Record<string,unknown>={})=>({
+ const proposal=(changes:Record<string,unknown>={}):any=>({
   kind:"selected-note.replace-text",operationId:"change-1",noteId:"note-a",
   text:"Camera moves to right",...changes,
  });
