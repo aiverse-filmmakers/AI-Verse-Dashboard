@@ -474,5 +474,9 @@ test("Canvas: concurrent revision rejects undo and never shows success",async t=
   await canvas.getByRole("status").getByText(/Canvas changed elsewhere/).waitFor();
   assert.equal(await canvas.locator(".canvas-note").count(),1);
   assert.equal(record.version,3,"failed optimistic undo must not apply another effect");
+  await canvas.getByRole("button",{name:"Reload Canvas"}).click();
+  await canvas.locator(".canvas-current-meta").getByText("Saved · v3").waitFor();
+  assert.equal(await canvas.locator(".canvas-note").count(),1,
+    "reload uses the newer canonical board after stale undo failure");
   assert.deepEqual(errors,[]);
 });
