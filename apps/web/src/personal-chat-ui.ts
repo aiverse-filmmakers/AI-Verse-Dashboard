@@ -177,7 +177,8 @@ export class PersonalChatApplication {
     }
     pane.busy=view.phase==="submitting"||view.phase==="running";
     pane.status.textContent=view.phase+(view.runId?" · "+view.runId:"")
-      +(view.errorCode?" · "+view.errorCode:"");
+      +(view.errorCode?" · "+view.errorCode:"")
+      +(view.contextLimited?" · Earlier conversation context unavailable or trimmed":"");
     this.render(pane);
   }
   private render(pane:Pane):void{
