@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 36,
+  "provisionalEngineeringEarned": 37,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -45,9 +45,9 @@
       "id": "canvas",
       "title": "Workspace persistent Canvas and typed actions",
       "budget": 15,
-      "provisionalEarned": 9,
+      "provisionalEarned": 10,
       "evidenceStatus": "source-and-ci",
-      "remaining": "Owner-backed Canvas group persistence/editor now passes Data and Gateway CI; next: complete real workspace lifecycle, asset ownership and production model-tool app dispatch, including installed human identity."
+      "remaining": "Native host-only tool coordinator and selected note/group actions passed real Gateway/OS/Data CI; remaining real installed model tool dispatch, workspace lifecycle, persisted creative assets and private owner approval."
     },
     {
       "id": "os-authority",
@@ -142,7 +142,16 @@
       ],
       "dataPullRequest": 23,
       "productStatus": "draft-source-ci-verified-not-installed"
+    },
+    "canvasNativeTool": {
+      "implementationCommit": "b2e5920cd2998c929eba3345379b7a45761fbc54",
+      "dashboardCi": 40788246223,
+      "browserCi": 40788246028,
+      "progressCi": 40788246082,
+      "realGatewayOsDataCi": 40788246113,
+      "registeredUnitCases": 205,
+      "phase": "draft-source-and-disposable-ci-only-not-a-production-model-dispatcher"
     }
   },
-  "nextUnverifiedChange": "G03.4 still partially implemented only; real workspace lifecycle, creative assets, installed model-tool dispatch and owner approval gates remain."
+  "nextUnverifiedChange": "G03.4 remains in-progress: the in-process host model tool bridge is CI-proven but not installed or routed into an actual provider model runtime. OS human approval, workspace lifecycle and real assets still need implementation."
 }
