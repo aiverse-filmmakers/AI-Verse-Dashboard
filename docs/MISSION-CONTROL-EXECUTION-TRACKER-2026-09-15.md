@@ -1101,3 +1101,63 @@ passed [cross-platform Dashboard CI 40743057482](https://github.com/aiverse-film
 [Chromium interaction QC 40743057446](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743057446)
 and [real pinned Gateway/OS/Data composition 40743058809](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743058809).
 The later documentation commits do not change runtime code.
+
+
+### Tasks 33–42: owner-admission and lifecycle qualification (28 October 2026)
+
+**Ten bounded GitHub-first tasks, source code plus owner-contract qualification.
+No Mac install, operator or bot grant minting, production database creation,
+revised roadmap acceptance or PR merge.** The existing Dashboard
+[draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+and Data
+[draft PR #22](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/22)
+remain unmerged.
+
+| Task | Real scope and delivered result | Gate |
+| --- | --- | --- |
+| **33** | Actual OS `action-permission.mjs` stop-check: policy floor is **not** human identity or bot-grant source; Gateway store owns run truth | Source review |
+| **34** | Data owner exports trusted `inspectScopedDataDatabase` via its readonly `inspectMigration` contract, no file/schema creation | Data build |
+| **35** | Data tests no-create, correct existing bound scope/unchanged mtime, mismatched foreign binding, forged weakmap scope, symlink escape | Data CI |
+| **36** | New host-only Dashboard `createCanvasOwnerPreflight` pins real OS root generation and active workspace, maps safe Data readiness states | Dashboard build |
+| **37** | Host preflight tests missing/quarantined/foreign Data, unavailable migration, inactive workspace and root rebind; no public RPC | Dashboard CI |
+| **38** | Hardened `CanvasOwnerBridge`: paused workspace blocks human canonical read and mutation before owner effect | RPC tests |
+| **39** | Hardened `CanvasAgentActions`: paused workspace blocks admitted bot work; reactivation requires real active manifest | Agent tests |
+| **40** | Real pinned Data+Gateway composition qualifies missing scope, then host-only disposal fixture creates actual Data scope, then preflight reports ready | MC2 real Data proof |
+| **41** | Disposable real Data `backupTo` snapshot reopens with original binding and real document/history; no new backup system | MC2 backup smoke |
+| **42** | Full cross-platform/Chromium/integration CI and truthful owner runbook/tracker/new-chat checkpoint | GitHub Actions |
+
+**Data verified implementation**:
+[`d1a135a`](https://github.com/aiverse-filmmakers/AI-Verse-Data/commit/d1a135a490547890e7ba54d43cf77a71f67f67b1)
+passed [Data smoke 40745957846](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957846),
+[six cross-platform jobs 40745957240](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957240)
+and [five-component acceptance 40745957276](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957276).
+**Dashboard final source/CI** must be checked on implementation
+[`f92d46a`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/f92d46ad9cc11a1867ae11f54912044037bccf47)
+before all ten tasks are counted green:
+[Dashboard CI 40746877698](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746877698),
+[Chromium 40746877403](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746877403),
+[MC2 pinned Gateway+OS+Data 40746878006](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746878006).
+Docs-only commits after code may have their own Actions runs.
+False test fixtures were corrected with real multiline OS manifests.
+Only the **disposable CI host** calls Data's existing `create-or-open`.
+
+**Production blocking dependencies:** admitted native operator/agent
+grant issuer and revocation, actual out-of-process Gateway tool/owner
+transport, approved human action receipts, canonical Data backup
+retention/restore policy, owner-selected provisioning, approved
+installer and private local Mac acceptance. A working preflight
+does not grant permission or initialize any real database.
+The OS action policy's `allow` for a local mutation is **not**
+an actor identity. Do not fabricate grants or add a backdoor
+"auto approve" fallback.
+
+**Formal accepted roadmap remains 15/100**, pending independent
+MC2.1 review and Personal-first amendment; next formal acceptance
+**17/100** if approved. GitHub-first 90–93% before Mac work is
+a future target, not measured total completion.
+
+**Next Task 43:** qualify OS-side independently issued,
+revocable actor-grant and human approval receipt contract in the
+actual OS owner repository, comparing all existing grant machinery.
+Do not fabricate production identities or bypass owner approvals.
+Continue with proof-driven development, not redundant scaffolding.
