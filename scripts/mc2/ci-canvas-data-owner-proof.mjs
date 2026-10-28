@@ -11,7 +11,7 @@ import {tmpdir} from "node:os";
 import {pathToFileURL} from "node:url";
 import {SystemRegistry} from "../../dist/packages/registry/src/index.js";
 import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js";
-import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner}
+import {QueryRouter,SubscriptionHub,startGateway,CanvasOwnerBridge,createAdmittedCanvasDataOwner,CanvasAgentActions}
   from "../../dist/apps/gateway/src/index.js";
 
 const pin="68f642cee430dc22381033f1338398b635993972";
@@ -23,6 +23,7 @@ assert.equal(execFileSync("git",["-C",source,"rev-parse","HEAD"],{
  encoding:"utf8"}).trim(),pin);
 const imp=async path=>import(pathToFileURL(join(source,"dist","src",path)).href);
 const {CanvasDocuments}=await imp("canvas/index.js");
+const {DataRecords}=await imp("records/index.js");
 const {TrustedDataRoot,createStandaloneDataScope,createWorkspaceDataScope,
  openScopedDataDatabase}=await imp("scope/index.js");
 const {SqliteStorageDriver}=await imp("storage/index.js");
@@ -56,6 +57,8 @@ try{
  const registry=new SystemRegistry();
  const systemId=registry.register(root).systemId;
  let osChecks=0,actorAdmits=0,operatorGrant=true,actorGrant=true;
+ let agentGrant=true,agentRunning=true,agentChecks=0;
+ let agentActions;
  // Pre-existing canonical Data scopes are provisioned by the Data owner.
  // A Dashboard RPC must NEVER create a new Data database implicitly.
  const native={CanvasDocuments,TrustedDataRoot,createStandaloneDataScope,
@@ -74,13 +77,25 @@ try{
     dashboardSystemId:systemId,native,
     // Only CI's disposable host installs this grant source. Production
     // requires an admitted native operator/OS identity authority.
-    admittedActor:()=>{
+    admittedActor:facts=>{
       actorAdmits++;
-      return actorGrant?actor:null;
+      return facts.principal==="verified-agent"
+        ?agentGrant?{kind:"bot",id:"ci-canvas-bot"}:null
+        :actorGrant?actor:null;
     },
     osPolicy:{
       operatorAdmitted:()=>operatorGrant,
+      agentAdmitted:facts=>agentGrant&&facts.agent?.runId==="ci-agent-run-1",
       evaluate:input=>{osChecks++;return evaluateActionPermission(input);},
+    },
+  });
+  agentActions=new CanvasAgentActions(registry,owner,{
+    verifyRun:runId=>{
+      agentChecks++;
+      return agentRunning&&runId==="ci-agent-run-1"
+        ?{source:"canonical-gateway",state:"running",runId,systemId,
+          workspaceId:"operator",actorId:"ci-canvas-bot",leaseEpoch:"lease-1"}
+        :null;
     },
   });
   return new CanvasOwnerBridge(registry,[owner]);
@@ -103,6 +118,44 @@ try{
  }));
  assert.equal(note.ok,true,JSON.stringify(note.error));
  assert.equal(note.result.document.version,2);
+ const agentResult=await agentActions.invoke({
+   runId:"ci-agent-run-1",operationId:"ci-agent-note-1",
+   method:"aiverse.canvas.edit",params:{id:original.id,expectedVersion:2,
+     edit:{type:"note.text",id:"note-1",text:"Agent updated shot"}},
+ });
+ assert.equal(agentResult.document.version,3);
+ assert.equal(agentResult.workspaceId,"operator");
+ const scoped=openScopedDataDatabase(new SqliteStorageDriver(),
+   createStandaloneDataScope(trustedRoot,"local"),{mode:"open-existing"});
+ try{
+   const snapshot=new DataRecords(scoped.database).get({
+     spaceId:"creative-canvas",entity:"documents",recordId:original.id});
+   assert.equal(snapshot.updatedBy.kind,"bot");
+   assert.equal(snapshot.updatedBy.id,"ci-canvas-bot");
+ }finally{scoped.database.close();}
+ await assert.rejects(()=>agentActions.invoke({
+   runId:"ci-agent-run-1",operationId:"ci-agent-forged-1",
+   method:"aiverse.canvas.edit",params:{id:original.id,expectedVersion:3,
+     actor:"forged",edit:{type:"note.text",id:"note-1",text:"forged"}},
+ }),/CANVAS_AGENT_ACTION_INVALID/);
+ await assert.rejects(()=>agentActions.invoke({
+   runId:"ci-agent-run-1",operationId:"ci-agent-delete-1",
+   method:"aiverse.canvas.delete",params:{id:original.id,expectedVersion:3},
+ }),/CANVAS_AGENT_ACTION_INVALID/);
+ agentGrant=false;
+ await assert.rejects(()=>agentActions.invoke({
+   runId:"ci-agent-run-1",operationId:"ci-agent-grant-denied-1",
+   method:"aiverse.canvas.edit",params:{id:original.id,expectedVersion:3,
+     edit:{type:"note.text",id:"note-1",text:"unauthorized"}},
+ }),/CANVAS_ACCESS_DENIED/);
+ agentGrant=true;
+ agentRunning=false;
+ await assert.rejects(()=>agentActions.invoke({
+   runId:"ci-agent-run-1",operationId:"ci-agent-run-stopped-1",
+   method:"aiverse.canvas.edit",params:{id:original.id,expectedVersion:3,
+     edit:{type:"note.text",id:"note-1",text:"finished"}},
+ }),/CANVAS_AGENT_ACCESS_DENIED/);
+ agentRunning=true;
  const stale=await rpc(host,make(systemId,"operator","aiverse.canvas.edit",{
   id:original.id,expectedVersion:1,idempotencyKey:"ci-edit-stale",
   edit:{type:"note.move",id:"note-1",x:70,y:90},
@@ -143,11 +196,12 @@ try{
  }));
  assert.equal(resumed.ok,true,JSON.stringify(resumed.error));
  assert.equal(resumed.result.document.id,original.id);
- assert.equal(resumed.result.document.version,2);
+ assert.equal(resumed.result.document.version,3);
  assert.deepEqual(resumed.result.document.board.nodes,[{
-  id:"note-1",kind:"note",text:"Scene planning",x:40,y:50,
+  id:"note-1",kind:"note",text:"Agent updated shot",x:40,y:50,
  }]);
  assert.ok(actorAdmits>10,"live actor grants must be independently checked");
+ assert.ok(agentChecks>3,"trusted agent run must be freshly verified");
  assert.ok(osChecks>10,"actual OS evaluator must guard host read and final write edge");
  operatorGrant=false;
  const revoked=await rpc(second,make(systemId,"operator","aiverse.canvas.get",{id:original.id}));
@@ -170,6 +224,8 @@ try{
   os_paused_workspace_denied:true,os_destructive_confirmation_denied:true,
   revoked_operator_grant_denied:true,revoked_actor_grant_denied:true,
   existing_data_database_required:true,
+  agent_write_via_same_data_owner:true,verified_agent_bot_provenance:true,
+  revoked_agent_run_denied:true,agent_delete_without_approval_denied:true,
   upstream_credentials_in_browser:false,private_owner_mac_verified:false,
  },null,2));
 }finally{
