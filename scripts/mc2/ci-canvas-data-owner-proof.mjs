@@ -183,6 +183,49 @@ try{
    assert.equal(snapshot.updatedBy.kind,"bot");
    assert.equal(snapshot.updatedBy.id,"ci-canvas-bot");
  }finally{scoped.database.close();}
+ const versions=await rpc(host,make(systemId,"operator","aiverse.canvas.history",{
+  id:original.id,limit:20,
+ }));
+ assert.equal(versions.ok,true,JSON.stringify(versions.error));
+ assert.deepEqual(versions.result.document.map(x=>x.version),[3,2,1]);
+ assert.equal(versions.result.document[1].board.nodes[0].text,"Scene planning");
+ const agentHistory=await agentActions.invoke({
+   runId:"ci-agent-run-1",operationId:"ci-agent-history-1",
+   method:"aiverse.canvas.history",params:{id:original.id,limit:5},
+ });
+ assert.equal(agentHistory.document.length,3);
+ await assert.rejects(()=>agentActions.invoke({
+   runId:"ci-agent-run-1",operationId:"ci-agent-revert-forbidden",
+   method:"aiverse.canvas.revert",
+   params:{id:original.id,expectedVersion:3,toVersion:2},
+ }),/CANVAS_AGENT_ACTION_INVALID/);
+ const revert=make(systemId,"operator","aiverse.canvas.revert",{
+   id:original.id,expectedVersion:3,toVersion:2,
+   idempotencyKey:"ci-revert-3-to-2",
+ });
+ const restored=await rpc(host,revert);
+ assert.equal(restored.ok,true,JSON.stringify(restored.error));
+ assert.equal(restored.result.document.version,4);
+ assert.equal(restored.result.document.board.nodes[0].text,"Scene planning");
+ assert.deepEqual((await rpc(host,revert)).result.document,restored.result.document,
+   "same Data undo idempotency key must replay one new version");
+ const staleUndo=await rpc(host,make(systemId,"operator","aiverse.canvas.revert",{
+   id:original.id,expectedVersion:3,toVersion:1,
+   idempotencyKey:"ci-revert-stale",
+ }));
+ assert.equal(staleUndo.ok,false);
+ assert.equal(staleUndo.error.code,"RECORD_VERSION_CONFLICT");
+ const noSpoof=await rpc(host,make(systemId,"operator","aiverse.canvas.revert",{
+   id:original.id,expectedVersion:4,toVersion:1,
+   idempotencyKey:"ci-revert-forged-board",
+   board:{nodes:[],edges:[]},
+ }));
+ assert.equal(noSpoof.ok,false);
+ assert.equal(noSpoof.error.code,"INVALID_ENVELOPE");
+ const finalHistory=await rpc(host,make(systemId,"operator","aiverse.canvas.history",{
+   id:original.id,limit:20,
+ }));
+ assert.deepEqual(finalHistory.result.document.map(x=>x.version),[4,3,2,1]);
  await assert.rejects(()=>agentActions.invoke({
    runId:"ci-agent-run-1",operationId:"ci-agent-forged-1",
    method:"aiverse.canvas.edit",params:{id:original.id,expectedVersion:3,
@@ -247,9 +290,9 @@ try{
  }));
  assert.equal(resumed.ok,true,JSON.stringify(resumed.error));
  assert.equal(resumed.result.document.id,original.id);
- assert.equal(resumed.result.document.version,3);
+ assert.equal(resumed.result.document.version,4);
  assert.deepEqual(resumed.result.document.board.nodes,[{
-  id:"note-1",kind:"note",text:"Agent updated shot",x:40,y:50,
+  id:"note-1",kind:"note",text:"Scene planning",x:40,y:50,
  }]);
  assert.ok(actorAdmits>10,"live actor grants must be independently checked");
  assert.ok(agentChecks>3,"trusted agent run must be freshly verified");
@@ -276,6 +319,8 @@ try{
   revoked_operator_grant_denied:true,revoked_actor_grant_denied:true,
   existing_data_database_required:true,
   atomic_duplicate_one_data_effect:true,duplicate_source_version_guard:true,
+  canonical_revision_history:true,versioned_undo_persists_across_restart:true,
+  stale_undo_denied:true,agent_can_read_but_cannot_revert:true,
   agent_write_via_same_data_owner:true,verified_agent_bot_provenance:true,
   real_gateway_store_run_and_session_admission:true,
   revoked_agent_run_denied:true,agent_delete_without_approval_denied:true,
