@@ -7,6 +7,7 @@ on:
     paths:
       - apps/web/preview/**
       - apps/web/src/personal-chat-ui.ts
+      - apps/web/src/canvas-workspace.ts
       - apps/web/src/personal-chat.css
       - apps/web/local-app/**
       - apps/gateway/src/local-app-session.ts
