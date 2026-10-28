@@ -260,7 +260,7 @@ try{
    runId:"ci-agent-run-1",operationId:"ci-ungranted-duplicate",
    method:"aiverse.canvas.duplicate",
    params:{id:original.id,expectedVersion:3},
- }),/CANVAS_AGENT_ACCESS_DENIED/);
+ }),/CANVAS_ACCESS_DENIED/);
 
 
  // Data-owned atomic duplicate is a SINGLE owner effect, not a sequence
