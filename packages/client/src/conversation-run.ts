@@ -185,6 +185,7 @@ export class PersonalChatRunController {
   /** Confirmed only by canonical run.get, never by streamed deltas or a UI mock. */
   private confirmedTurns:Array<{role:"user"|"assistant";content:string}>=[];
   private contextLimited=false;
+  private confirmedRunId?:string;
   private view: ChatRunView;
   constructor(private readonly client:DashboardClient,
     private readonly feed:ChatEventFeed,
@@ -201,7 +202,7 @@ export class PersonalChatRunController {
     this.epoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
     this.seen.clear();this.lastSeq=0;this.activeRequest=undefined;
-    this.confirmedTurns=[];this.contextLimited=false;
+    this.confirmedTurns=[];this.contextLimited=false;this.confirmedRunId=undefined;
     this.view={...scope,phase:"idle",output:""};
     this.changed(this.snapshot());
     return this.epoch;
@@ -215,7 +216,7 @@ export class PersonalChatRunController {
     this.epoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
     this.seen.clear();this.activeRequest=undefined;
-    this.confirmedTurns=[];this.contextLimited=false;
+    this.confirmedTurns=[];this.contextLimited=false;this.confirmedRunId=undefined;
     this.show({phase:"idle",runId:undefined,sessionId:undefined,
       output:"",errorCode:undefined,contextLimited:false});
   }
@@ -243,12 +244,16 @@ export class PersonalChatRunController {
     }
     return kept.flat().map(x=>({...x}));
   }
-  private confirmCanonicalOutput(run:{status:string;output?:string}):void{
-    if(run.status!=="completed"||run.output===undefined||!this.activeRequest)return;
+  private confirmCanonicalOutput(run:{runId:string;status:string;output?:string}):void{
+    if(run.status!=="completed"||run.output===undefined||!this.activeRequest
+      ||this.confirmedRunId===run.runId)return;
     // Future messages use only the canonical GET result, never speculative SSE.
+    this.confirmedRunId=run.runId;
+    const before=this.confirmedTurns.length;
     this.confirmedTurns.push({role:"user",content:this.activeRequest.text},
       {role:"assistant",content:run.output});
     this.confirmedTurns=this.boundedHistory();
+    if(this.confirmedTurns.length<before+2)this.contextLimited=true;
   }
   /** New message continues only an authenticated, completed canonical session. */
   async send(text:string,idempotencyKey:string,sessionId?:string):Promise<ChatRunView> {
@@ -259,11 +264,13 @@ export class PersonalChatRunController {
       fail("CHAT_PREVIOUS_RUN_UNRESOLVED");
     const scope=requiredScope(this.client.getScope());
     const confirmed=this.boundedHistory();
+    const previousConfirmedRun=this.confirmedRunId;
     const selectedSession=sessionId ?? (this.view.phase==="completed"?this.view.sessionId:undefined);
     const limited=this.contextLimited || Boolean(sessionId && confirmed.length===0);
     const messages=[...confirmed,{role:"user" as const,content:text}];
     const epoch=this.reset(scope),selection=this.client.selectionVersion();
     this.confirmedTurns=confirmed;
+    this.confirmedRunId=previousConfirmedRun;
     this.contextLimited=limited;
     this.activeRequest={text,key:idempotencyKey,messages,
       ...(selectedSession?{sessionId:selectedSession}:{})};
@@ -290,10 +297,11 @@ export class PersonalChatRunController {
       });
       if(!this.valid(epoch,scope,selection))return this.snapshot();
       const run=asRun(response.result,scope);
-      this.confirmCanonicalOutput(run);
       this.show({runId:run.runId,sessionId:run.sessionId,
-        phase:phase(run.status),canonicalStatus:run.status,output:run.output??""});
-      if(!TERMINAL.has(this.view.phase))this.subscribe(epoch,scope,selection,run.runId);
+        phase:run.status==="completed"?"running":phase(run.status),
+        canonicalStatus:run.status,output:run.status==="completed"?"":run.output??""});
+      if(run.status==="completed")await this.reconcile(epoch,scope,selection,run.runId);
+      else if(!TERMINAL.has(this.view.phase))this.subscribe(epoch,scope,selection,run.runId);
     }catch(error){
       if(this.valid(epoch,scope,selection))
         this.show({phase:"interrupted",errorCode:
@@ -345,7 +353,8 @@ export class PersonalChatRunController {
       this.confirmCanonicalOutput(run);
       this.show({phase:phase(run.status),canonicalStatus:run.status,
         sessionId:run.sessionId,
-        ...(run.output!==undefined?{output:run.output}:{}),errorCode:undefined});
+        ...(run.output!==undefined?{output:run.output}:{}),
+        errorCode:undefined,contextLimited:this.contextLimited});
     }catch(error){
       if(this.valid(epoch,scope,selection) && this.view.runId===runId)
         this.show({phase:"interrupted",
