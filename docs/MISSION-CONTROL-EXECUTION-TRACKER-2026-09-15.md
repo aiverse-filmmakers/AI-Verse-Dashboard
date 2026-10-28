@@ -750,3 +750,38 @@ New `@ai-verse/data/canvas` exports `CanvasDocuments` over **an already-open tru
 **Exact real evidence:** [Source commit `e2ee162097a5d19b1edf771c25ee5a1cea5c9767`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/e2ee162097a5d19b1edf771c25ee5a1cea5c9767) passed [real Gateway + Data + pinned OS composition 40714138321](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40714138321), [cross-platform Dashboard CI 40714138602](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40714138602), and [Chromium browser QC 40714138199](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40714138199). The disposable integration now imports the exact real OS evaluator from `AI-Verse-OS@0dc744057199970a34a60c11dff192e407ad64ed`, pinned Data Canvas `68f642cee430dc22381033f1338398b635993972` and real Gateway `9748dd0d5473b65ad95ef92df62fe0a13575e378`. It validates the same canonical SQLite Canvas across host restart, workspace isolation, idempotency and version conflicts, and **new OS floor checks**: paused workspace denied, delete requiring confirmation denied, separate operator grant revocation denied, and OS policy rechecked at the effect edge. All these flags were true; `private_owner_mac_verified` remained false.
 
 **Next steps:** obtain an eligible independent reviewer for focused design PR #43, then record exact acceptance and 17/100 only after approval/merge. In parallel continue owner-authorized Data lifecycle registration (no arbitrary host filesystem paths), then the real user-visible Canvas library and edit UI. Do not turn the simulated CI operator grant into production authority or expose the OS evaluator to the browser; real installed OS policy/actor provenance and owner approval remain separate admission gates.
+
+### Task 12: native Canvas owner lifecycle attachment (28 October 2026)
+
+**Implemented in Dashboard draft PR #42 without duplicating the Data owner.**
+New `apps/gateway/src/canvas-data-owner.ts` exports
+`createAdmittedCanvasDataOwner()`, an opt-in bridge that takes the actual
+installed native Data modules, a pinned registered Dashboard OS system,
+an OS permission evaluator, and an *independent host actor admission* callback.
+It uses the existing `CanvasOwnerBridge` validation and
+`withCanvasOsPolicy()` checks, rechecks the registry root/lease/generation,
+obtains a live human actor grant before each operation, then delegates every
+document operation directly to `CanvasDocuments`. It opens only an already
+provisioned scoped SQLite database (`open-existing`) and closes it after
+each operation. No browser-supplied roots, actor IDs or auth receipts are
+accepted; no new document store or privilege parser was implemented.
+
+**CI migration:** `scripts/mc2/ci-canvas-data-owner-proof.mjs` now imports
+the same production-shaped native attachment factory instead of its old
+duplicate inline Data dispatcher. It explicitly initializes disposable
+Data scopes before Dashboard starts, exercises real OS policy and native
+Data over localhost RPC, and adds revocable Data actor grant and missing
+workspace database denial. Implementation commit
+[`a966c46`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/a966c46379155e01595cab2c9beee7326edd7c07)
+passed all three GitHub workflows: [CI 40719388514](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40719388514),
+[browser QC 40719388527](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40719388527)
+and [real owner composition 40719388603](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40719388603).
+Check the latest documentation commit's workflow status separately.
+
+**Scope still open:** actual member OS actor-admission provenance,
+Data installation/provisioning, and an authenticated private deployment that
+installs this adapter are not certified. Default Dashboard launcher keeps
+Canvas unavailable. Functional Canvas library/editing UI, agent action parity,
+safe delete confirmation and private Mac owner acceptance remain distinct
+tasks. The MC2.1 independent design review and plan amendment remain open.
+Accepted roadmap still **15/100**, next gated acceptance **17/100**.
