@@ -311,9 +311,27 @@ test("Canvas: named documents, rename, node connections, move and canonical dupl
   // Drag a note; only release generates a canonical note.move mutation.
   const first=canvas.locator(".canvas-note").first();
   const box=await first.boundingBox();
+  await page.evaluate(()=>{window.__canvasPointerLog=[];
+    for(const kind of ["pointerdown","pointermove","pointerup","pointercancel"]){
+      window.addEventListener(kind,event=>{
+        window.__canvasPointerLog.push({kind,
+          target:event.target?.className?.toString()?.slice(0,70),
+          x:event.clientX,y:event.clientY,pid:event.pointerId});
+      },{capture:true,once:false});
+    }
+  });
   await page.mouse.move(box.x+40,box.y+35);
   await page.mouse.down();await page.mouse.move(box.x+75,box.y+75,{steps:4});await page.mouse.up();
-  await page.waitForFunction(()=>[...document.querySelectorAll(".canvas-note")][0]?.style.left!=="50px");
+  const point=await page.evaluate(()=>({
+    left:document.querySelector(".canvas-note")?.style.left,
+    pointer:window.__canvasPointerLog.slice(-15),
+    current:document.querySelector(".canvas-current-title")?.textContent,
+    status:document.querySelector(".canvas-status")?.textContent,
+  }));
+  assert.notEqual(point.left,"50px",
+    "Drag must move the note in the UI: "+JSON.stringify({
+      point,changes:requests.filter(r=>r.method==="aiverse.canvas.edit").slice(-3),
+    }));
   await canvas.getByRole("button",{name:"Duplicate"}).click();
   await canvas.locator(".canvas-current-title").getByText("Shot sequence copy").waitFor();
   const docs=[...canvasDocuments.get("aiverse-01|operator").values()];
