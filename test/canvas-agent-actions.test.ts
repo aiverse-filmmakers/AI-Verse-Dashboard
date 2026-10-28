@@ -105,7 +105,19 @@ describe("host-only Canvas agent action boundary",()=>{
     await assert.rejects(()=>h.actions.invoke(h.command("aiverse.canvas.delete",{
       id:"rec_1234",expectedVersion:1,
     })),/CANVAS_AGENT_ACTION_INVALID/);
+    await assert.rejects(()=>h.actions.invoke(h.command("aiverse.canvas.revert",{
+      id:"rec_1234",toVersion:1,expectedVersion:2,
+    })),/CANVAS_AGENT_ACTION_INVALID/);
     assert.equal(h.values().executed,0);
+  });
+  it("allows admitted agents to read bounded Canvas history but never revert",async()=>{
+    const h=harness();
+    const r=await h.actions.invoke(h.command("aiverse.canvas.history",{
+      id:"rec_1234",limit:10,
+    }));
+    assert.equal(r.source,"canonical-data");
+    assert.equal((r.document as {version:number}).version,2);
+    assert.equal(h.values().executed,1);
   });
   it("denies revoked grant, run stopped, workspace rebind and run identity drift",async()=>{
     const h=harness(),action=h.command("aiverse.canvas.get",{id:"rec_1234"});
