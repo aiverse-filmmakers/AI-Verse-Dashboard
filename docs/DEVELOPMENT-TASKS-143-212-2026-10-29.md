@@ -100,3 +100,22 @@ Date: 29 October 2026 (source branch prepared 28 October, local time).
 - **Milestones:** 10 chapters, 40 planned outcomes, existing 4 verified / 8 implemented-in-draft / 28 planned statuses unchanged because G03.4 includes additional owner integrations.
 
 **Next Task 213:** prioritize native owner-authenticated model/app action dispatch or the next genuinely ready owner-backed capability, inspect exact CI/source first, and do not rebuild grouping or counted regressions.
+
+
+## Final native and composed verification
+
+The latest exact Data grouping code `35ebd098fbd809d75ba3727c1c3ead61f2f2f8d3`
+passed native [CI 40781700269](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40781700269)
+on Ubuntu, macOS and Windows. Dashboard real composition
+[40781907477](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40781907477)
+passed with the pinned actual Data source and OS Gateway.
+First-party UI compiled/tested and browser QC passed at
+[40782054673](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40782054673)
+and [40782054681](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40782054681).
+
+Final fixed milestone states: **4 verified; 8 implemented
+in draft; 1 in progress (G03.4); 27 planned**. No
+new formal accepted points were awarded. GB **~36/100
+provisional**. Task #213 is next. This proof does not
+establish private installed Mac owner identity, approved
+model-tool dispatch or account consent.
