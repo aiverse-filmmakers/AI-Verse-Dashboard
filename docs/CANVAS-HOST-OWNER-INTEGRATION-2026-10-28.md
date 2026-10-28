@@ -62,3 +62,46 @@ cookie is not authorization. A real installed OS actor/grant authority and
 Data owner provisioning still need independent production admission before the
 private launcher can enable Canonical Canvas. The library UI can be built
 against typed RPC with honest unavailable and permission-denied states.
+
+## Task 13: real first-party Canvas library and editor
+
+The authenticated Personal Chat app mounts a separate `CanvasWorkspace`
+beside its existing resizable chat panes. Source:
+`apps/web/src/canvas-workspace.ts` with first-party styling in
+`apps/web/src/personal-chat.css`. The Canvas view is open by default,
+including an empty unsaved Scratch area. It never claims Scratch is persisted
+until the human adds the first note, which creates a real Data-owned document.
+
+The actual existing typed `DashboardClient.canvas*` operations power:
+library refresh/list/open; named document creation, rename, versioned soft-delete
+request, duplicate by successive canonical create/note/edge edits, note
+add/text/remove, pointer-driven coordinate move, and note links/unlinks.
+All saved document snapshots must carry `source:"canonical-data"` and
+the currently selected OS workspace, and are checked before rendering.
+Workspace retarget drops stale state and invalidates in-flight read results.
+No localStorage, sessionStorage, second persistence layer or model-generated
+Canvas content is treated as canonical truth.
+
+**Important limitations:** duplication currently uses multiple sequential
+owner-authorized mutations. It is not atomic, so an interrupted copy can
+remain partial; the app explicitly reports this instead of misrepresenting
+success. Canonical version conflicts are surfaced rather than blindly
+overwritten. Delete requires a second user click and the existing OS
+authorization still rejects destructive actions that require a formal
+human approval receipt. Undo and agent action parity need distinct future
+Data/OS contracts. Workspace changes through a cookie-bound localhost
+session still require the trusted host to authorize and rebind scope.
+
+The browser test in `test/live-personal-chat-ui.browser.mjs` exercises
+real DOM controls over a deliberately synthetic Dashboard-shaped server:
+Scratch save and reopen across page reload, named Canvas CRUD behavior,
+note edits and repositioning, edge creation, canonical duplicate copy,
+OS delete denial and workspace isolation. This browser fixture does NOT
+replace the separately verified real pinned Data SQLite + OS integration
+in `scripts/mc2/ci-canvas-data-owner-proof.mjs`.
+
+**Release gate unchanged:** The browser UI is real and connected to the
+existing local RPC client, but the normal production launcher still has
+NO trusted installed Canvas owner. Private Mac authorization and actual
+owner admission have not happened. PR #42 remains draft, and formal accepted
+progress stays 15/100 until roadmap review. Inspect current-head GitHub CI.
