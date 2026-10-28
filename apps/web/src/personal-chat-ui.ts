@@ -1,5 +1,6 @@
 import {DashboardClient,DashboardChatEventFeed,PersonalChatRunController,
   type ChatRunView,type ClientScope} from "../../../packages/client/src/index.js";
+import {CanvasWorkspace} from "./canvas-workspace.js";
 
 /**
  * Real Personal Chat UI for a trusted local/desktop Dashboard session.
@@ -63,6 +64,7 @@ export class PersonalChatApplication {
   private readonly createButton:HTMLButtonElement;
   private readonly historyPanel:HTMLElement;
   private readonly historyClient:DashboardClient;
+  private readonly canvas:CanvasWorkspace;
   private historyEpoch=0;
   private readonly parent:HTMLElement;
   private destroyed=false;
@@ -87,7 +89,14 @@ export class PersonalChatApplication {
     this.historyPanel.hidden=true;
     this.historyPanel.setAttribute("aria-label","Previous canonical conversations");
     this.panesHost=el("div","live-chat-panes");
-    container.append(bar,this.historyPanel,this.panesHost);
+    const body=el("div","live-chat-workspace");
+    const canvasHost=el("aside","live-chat-canvas-host");
+    canvasHost.setAttribute("aria-label","Personal Canvas and document library");
+    body.append(this.panesHost,canvasHost);
+    container.append(bar,this.historyPanel,body);
+    this.canvas=new CanvasWorkspace(canvasHost,
+      new DashboardClient(session.dashboardOrigin,this.selected,
+        session.authentication==="host-cookie" ? {mode:"host-cookie"} : this.requireBearer(session)));
     this.openPane();
   }
   get paneIds():string[]{return [...this.panes.keys()];}
@@ -97,6 +106,7 @@ export class PersonalChatApplication {
     if(!next.systemId || !next.workspaceId)throw Error("Explicit OS scope required");
     this.selected={...next};
     this.historyClient.retarget(this.selected);
+    this.canvas.retarget(this.selected);
     this.historyEpoch++;
     this.historyPanel.hidden=true;this.historyPanel.replaceChildren();
     this.title.textContent="AI-Verse · "+next.workspaceId;
@@ -351,6 +361,7 @@ export class PersonalChatApplication {
   }
   destroy():void{
     this.destroyed=true;this.historyEpoch++;
+    this.canvas.destroy();
     for(const pane of this.panes.values())pane.run.close();
     this.panes.clear();
     this.parent.replaceChildren();
