@@ -110,10 +110,10 @@ try{
  assert.equal(preflight.inspect("operator").reason,"ready");
  assert.equal(preflight.inspect("film").reason,"ready");
  await writeFile(join(root,"workspaces/film","WORKSPACE.yaml"),
-   'schema_version: "2.0"\\nid: "film"\\nname: "Film"\\nstatus: "paused"\\n');
+   'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "paused"\n');
  assert.equal(preflight.inspect("film").reason,"scope-inactive");
  await writeFile(join(root,"workspaces/film","WORKSPACE.yaml"),
-   'schema_version: "2.0"\\nid: "film"\\nname: "Film"\\nstatus: "active"\\n');
+   'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "active"\n');
  function createBridge(){
   const owner=createAdmittedCanvasDataOwner(registry,{
     dashboardSystemId:systemId,native,
