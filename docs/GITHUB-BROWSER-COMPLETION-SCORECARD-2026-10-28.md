@@ -13,14 +13,14 @@ The historic **90–93/100 formal-roadmap pre-local** ambition was an aspiration
 
 ## GB scope and the provisional baseline
 
-**Current provisional engineering estimate: ~35/100 GB points (~35%).**
+**Current provisional engineering estimate: ~36/100 GB points (~36%).**
 This is a **planning estimate**, NOT a full independent code audit or a formal accepted score. The verified minimum is the older MC0+MC1 15 points, but the Personal Chat, Canvas, Data and actor-grant source/CI since then substantively increase remote work completed. Rounded category partials below represent **estimated** readiness based on the checked 28 October branch, not claims of accepted gates. Do not report decimal precision. Revise category points against pinned source/CI with an explicit audit and record evidence before treating the score as verified.
 
 | Remote-capable current-scope workstream | Fixed GB budget | Provisional earned | Known evidence / main remaining work |
 | --- | ---: | ---: | --- |
 | Preserved architecture, provenance, OS/Gateway runtime proof | 15 | **15** | MC0/MC1 accepted and recorded; maintain architecture |
 | Real Personal Chat, Gateway transport, identity/scope, runs and recovery | 15 | **8** | Actual pinned Gateway chat + restart/reload evidence; finish native provider/model/commands/attachments/control acceptance |
-| Personal app + workspace + persistent Canvas + app actions | 15 | **8** | Data-owned Canvas history/notes/edges/undo, host+agent guards and native selected app context; still needs grouping, asset ownership and production model action round-trip |
+| Personal app + workspace + persistent Canvas + app actions | 15 | **9** | Data-owned Canvas history/notes/edges/undo, host+agent guards and native selected app context; still needs grouping, asset ownership and production model action round-trip |
 | Native OS operator/agent identity, grants, approvals | 10 | **2** | Draft OS grant verifier and disposable Gateway integration; no installed human session issuer, grant lifecycle, approval receipts or Windows ACL |
 | Real providers/connections, generation jobs and owned creative assets | 10 | **1** | AUTH-1/Connections exploratory source; real connected provider lifecycle and actual image placement unavailable |
 | Owner-backed control panels: Brain, Memory, Skills, Automations, Token, Connections, security, agents | 15 | **0** | Do not claim integrated functional owner projections from static reference pages; choose/validate owner interfaces |
@@ -28,7 +28,7 @@ This is a **planning estimate**, NOT a full independent code audit or a formal a
 | Product UX, accessibility, responsive/focus and regression | 5 | **1** | First-party UI/Chromium tests exist; full reviewed accessibility and usability pass pending |
 | CI-built macOS desktop package, supervised Gateway and installer preparation | 5 | **0** | Local launcher is NOT signed/reviewed desktop package; create true installable CI artifact with owner boundaries |
 | Independent remote security, release evidence and handoff closure | 5 | **0** | Green component tests and handoffs do NOT equal independent whole-system security/release review |
-| **Total** | **100** | **35 (provisional)** | **65 estimated GB points remaining** |
+| **Total** | **100** | **36 (provisional)** | **64 estimated GB points remaining** |
 
 ### Progress rules
 
@@ -39,7 +39,7 @@ This is a **planning estimate**, NOT a full independent code audit or a formal a
 - Before every batch, check actual branch heads, owner repos, workstream evidence and what can honestly be done remotely. After each completed batch report **GB N/100 (estimate vs independently audited)**, **FA N/100 (accepted)**, **LR blockers**, and **batch slices X/Y**. A new chat MUST NOT revert to showing FA 15/100 as the only progress indicator.
 - Show a remaining-GB workstream breakdown and the **next increment that can change GB**, not just "more tasks."
 - If user expands scope (e.g., full Film 3D camera/lighting/edit suite), explicitly version this scorecard/rebaseline the denominator; do not silently dilute or falsely preserve percentages.
-- The 35/100 provisional estimate is **not an independently audited source-by-source inventory**. The next bounded task should replace the estimates with verified per-workstream subdeliverables and distinguish `green CI`, `draft`, `merged`, and `local-accepted` evidence. In the meantime say **"~35% provisional engineering estimate"**, not "35% verified finished."
+- The 35/100 provisional estimate is **not an independently audited source-by-source inventory**. The next bounded task should replace the estimates with verified per-workstream subdeliverables and distinguish `green CI`, `draft`, `merged`, and `local-accepted` evidence. In the meantime say **"~36% provisional engineering estimate"**, not "35% verified finished."
 
 ### Current authority/CI caveat
 
@@ -57,9 +57,29 @@ and guarded selected-note action, exact Dashboard code
 and [real Chromium browser CI 40775791985](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40775791985).
 Linux and Windows jobs of that code's ordinary CI and progress ledger
 passed; macOS jobs were queued at last check. The provisional Canvas
-category increases **7 to 8**, so GB estimate is **~35/100**, not a
+category increases **7 to 8**, so GB estimate is **~36/100**, not a
 new formal acceptance point. G03.3 is **implemented in draft**,
 not production accepted. Grouping and production model/app dispatch
 remain in G03.4. The milestone inventory now has 10 chapters and
 40 named milestones. Source-by-source GB estimate ratification
 still remains a separate review.
+
+### Grouping milestone source increment, 29 October 2026
+
+Tasks 143–212 added canonical note grouping to the actual Data owner
+and usable first-party Canvas group controls: create/rename/change
+members/move together/ungroup, with unchanged old revision checksums,
+persistent scoped SQLite, idempotent retries, atomic clone and undo.
+Data's 35 focused cases passed all three Node 22 platforms in
+[Data CI 40781700269](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40781700269);
+the corresponding exact Data owner was pinned and exercised through
+[Dashboard real Gateway/OS/Data CI 40781907477](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40781907477).
+The Dashboard boundary has 33 separate typed/projection/security cases,
+and the real first-party editor also passed ordinary CI. Subsequent
+CSS-only/layout and documentation commits have their own runs.
+
+This supports a **one-point provisional Canvas category increase**
+8→9, so **GB ~36/100 provisional**; it does not accept MC2.1,
+clear local Mac gating, or close the entire G03.4 milestone
+(workspace lifecycle, assets and production model-tool dispatch are
+still missing). The original formal acceptance stays **15/100**.
