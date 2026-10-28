@@ -207,6 +207,9 @@ try {
     "Personal Chat controller must display authoritative runtime reply");
   chat.close();
   await checkInstalledLocalLaunch(canonicalOrigin,home,token);
+  const browserProof=await proveAuthenticatedBrowserWithCanonicalGateway({
+    registry,bridge,systemId,canonicalOrigin,
+  });
   console.log(JSON.stringify({ok:true,kind:"mc2-real-gateway-ci",
     gateway_revision:GATEWAY_REVISION,
     scope:"disposable-operator",model:"aiverse",
