@@ -341,6 +341,7 @@ export class CanvasWorkspace {
     },"Note added");});
     const duplicate=action("Duplicate",()=>{void this.duplicate();});
     const history=action("History",()=>{void this.openHistory();});
+    const reload=action("Reload Canvas",()=>{if(this.current)void this.open(this.current.id);});
     const renameInput=node("input","canvas-rename-title");
     renameInput.maxLength=140;renameInput.value=this.current?.title??"";
     renameInput.setAttribute("aria-label","Rename Canvas title");
@@ -350,9 +351,10 @@ export class CanvasWorkspace {
     add.disabled=this.busy;create.disabled=this.busy;newTitle.disabled=this.busy;
     duplicate.disabled=this.busy||!isSaved;
     history.disabled=this.busy||!isSaved;
+    reload.disabled=this.busy||!isSaved;
     rename.disabled=this.busy||!isSaved;renameInput.disabled=this.busy||!isSaved;
     remove.disabled=this.busy||!isSaved;
-    actions.append(newTitle,create,add,renameInput,rename,duplicate,history,remove);
+    actions.append(newTitle,create,add,renameInput,rename,duplicate,history,reload,remove);
     this.controls.append(actions);
     this.renderHistory();
     this.renderBoard();
