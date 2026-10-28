@@ -381,6 +381,38 @@ try{
    id:original.id,limit:20,
  }));
  assert.deepEqual(finalHistory.result.document.map(x=>x.version),[4,3,2,1]);
+ // Prove selected app-context -> verified canonical Gateway agent -> real
+ // Data versioned edit, without using a JSON-supplied fake context token.
+ const contextCreate=await rpc(host,make(systemId,"operator","aiverse.canvas.create",{
+   title:"Selection target",idempotencyKey:"ci-context-target-1",
+ }));
+ assert.equal(contextCreate.ok,true,JSON.stringify(contextCreate.error));
+ const contextDoc=contextCreate.result.document;
+ const contextAdd=await rpc(host,make(systemId,"operator","aiverse.canvas.edit",{
+   id:contextDoc.id,expectedVersion:1,idempotencyKey:"ci-context-node-1",
+   edit:{type:"note.add",id:"selected-scene-note",text:"Old angle",x:12,y:20},
+ }));
+ assert.equal(contextAdd.ok,true,JSON.stringify(contextAdd.error));
+ const mintedContext=await contextReader.capture(contextFacts,{
+   documentId:contextDoc.id,selectedNodeIds:["selected-scene-note"],expectedVersion:2,
+ });
+ const selectedEdit=await agentActions.invokeSelectedNoteEdit({
+   runId:"ci-agent-run-1",operationId:"ci-context-verified-edit-1",
+   context:mintedContext,noteId:"selected-scene-note",
+   text:"Updated shot from verified Canvas context",
+ });
+ assert.equal(selectedEdit.document.version,3);
+ assert.equal(selectedEdit.document.board.nodes[0].text,
+   "Updated shot from verified Canvas context");
+ await assert.rejects(()=>agentActions.invokeSelectedNoteEdit({
+   runId:"ci-agent-run-1",operationId:"ci-context-json-forgery-1",
+   context:JSON.parse(JSON.stringify(mintedContext)),
+   noteId:"selected-scene-note",text:"forged",
+ }),/CANVAS_AGENT_ACTION_INVALID/);
+ await assert.rejects(()=>agentActions.invokeSelectedNoteEdit({
+   runId:"ci-agent-run-1",operationId:"ci-context-stale-edit-2",
+   context:mintedContext,noteId:"selected-scene-note",text:"stale",
+ }),/RECORD_VERSION_CONFLICT|CANVAS_/);
  // Canonical Data already owns SQLite-consistent backups. Qualify that
  // existing owner contract on disposable CI data without adding new backup
  // files to Dashboard or copying live scope paths into a browser.
@@ -517,6 +549,10 @@ try{
   stale_undo_denied:true,agent_can_read_but_cannot_revert:true,
   agent_write_via_same_data_owner:true,verified_agent_bot_provenance:true,
   real_gateway_store_run_and_session_admission:true,
+  canonical_canvas_context_selection_read:true,
+  verified_host_snapshot_to_agent_data_write:true,
+  model_json_context_forgery_denied:true,
+  stale_selected_context_data_version_denied:true,
   revoked_agent_run_denied:true,agent_delete_without_approval_denied:true,
   upstream_credentials_in_browser:false,private_owner_mac_verified:false,
  },null,2));
