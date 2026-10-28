@@ -32,7 +32,7 @@ const {GatewayStore}=await import(pathToFileURL(join(gatewaySource,
 const root=await mkdtemp(join(tmpdir(),"native-canvas-owner-ci-"));
 const result={};
 try{
- for(const sub of ["operator","workspaces","workspaces/film",
+ for(const sub of ["operator","system","workspaces","workspaces/film",
   ".aiverse",".aiverse/os"])await mkdir(join(root,sub),{recursive:true});
  await writeFile(join(root,"AI-VERSE.yaml"),
   'schema_version: "2.0"\narchitecture: unified-workspace\n');
