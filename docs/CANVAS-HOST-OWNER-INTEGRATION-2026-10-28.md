@@ -204,3 +204,53 @@ run-status+Data write transaction**. Explicit approval receipts,
 worker/model tool transport, cancellation race resolution and private
 owner Mac acceptance remain independent gates. The normal launcher stays
 without Canvas owner or agent dispatch by default.
+
+## Tasks 16–18: atomic duplicate across Data, host and first-party UI
+
+**Task 16, Data owner.** Data draft PR #22 now exports a native
+`CanvasDocuments.duplicate({id,expectedVersion,title?,actor,idempotencyKey})`
+over the same canonical scoped `creative-canvas.documents` schema.
+The source's current complete board is checked under one SQLite
+`immediate` transaction and copied into a *single* new canonical Data
+record. All notes/edges, provenance, version 1 and two-level Data
+idempotency/operation receipts are committed together. A repeated
+identical request replays the original copy even if source later changes;
+changed retries and stale new source versions fail closed. No new
+Dashboard/OS storage or duplicate document model exists.
+The pinned reviewed Data implementation SHA for Dashboard composition
+is `5caa5d08151f85e503e8ceace494458736b76886`.
+Data release smoke, release acceptance and six-node Node 22/24
+Linux/macOS/Windows matrix passed on that source commit.
+
+**Task 17, trusted host RPC and agent parity.** The exact same new
+`aiverse.canvas.duplicate` operation is part of the existing Dashboard
+method registry, strict Canvas bridge contract (ID, expected version,
+optional bounded title and idempotency key), native Data owner method
+dispatch, OS `modify_canonical_state` policy and host-only agent
+allowlist. No raw `board`, filesystem path, grant/actor or privilege
+data is accepted from HTTP/model input. The real OS+Data+Gateway CI
+proof now sends one authenticated duplicate action into the pinned
+actual Data owner and checks full graph equality, new version 1,
+idempotent result and rejection of a stale source version.
+
+**Task 18, real first-party Canvas library.** The authenticated
+`CanvasWorkspace.duplicate()` now sends exactly one
+`DashboardClient.canvasDuplicate()` typed RPC and displays its
+canonical response. The old multi-request create/add-note/add-edge
+copy loop was **removed**, not kept as a fallback. Chromium tests
+check the one-RPC shape and complete copied graph, plus concurrent
+source version drift failing without a partial library item.
+
+**Undo qualification:** Data's existing provenance events/receipts
+store metadata about record versions and actors but no canonical
+immutable pre-edit board snapshots. A reliable historical Undo
+requires a separately designed Data-owned revision archive with
+scope, version, actor, idempotency, retention and OS approval semantics.
+We **did not** add an Undo button or browser-held "previous version"
+shortcut. A user cannot assume a fully reversible edit yet.
+
+**Release boundary:** Both PRs remain drafts and unmerged. The normal
+private launcher still cannot attach an unreviewed Data owner or mint
+operator/agent permissions. Atomic duplicate is qualified source, not
+an admitted production member deployment. Formal accepted roadmap score
+remains 15/100 pending independent review; next gate 17/100.
