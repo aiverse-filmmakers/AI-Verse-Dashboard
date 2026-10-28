@@ -68,7 +68,10 @@ export class CanvasAgentActions {
       ||claim.workspaceId!==previous.workspaceId||claim.systemId!==previous.systemId))
       throw deny();
     if(claim.workspaceId!=="operator")
-      getWorkspace(this.registry,claim.systemId,claim.workspaceId);
+      {
+        const manifest=getWorkspace(this.registry,claim.systemId,claim.workspaceId);
+        if(manifest.summary.status!=="active")throw deny();
+      }
     this.checkLease(signal);
     return claim;
   }
@@ -102,7 +105,10 @@ export class CanvasAgentActions {
     const assertLease=()=>{
       this.checkLease(signal);
       if(claim.workspaceId!=="operator")
-        getWorkspace(this.registry,claim.systemId,claim.workspaceId);
+        {
+        const manifest=getWorkspace(this.registry,claim.systemId,claim.workspaceId);
+        if(manifest.summary.status!=="active")throw deny();
+      }
     };
     const facts:CanvasHostFacts={
       systemId:claim.systemId,workspaceId:claim.workspaceId,root:this.root,
