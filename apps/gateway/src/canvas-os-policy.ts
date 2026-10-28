@@ -54,7 +54,8 @@ function classFor(method:string){
     case "aiverse.canvas.get":return "read_local";
     case "aiverse.canvas.create":
     case "aiverse.canvas.rename":
-    case "aiverse.canvas.edit":return "modify_canonical_state";
+    case "aiverse.canvas.edit":
+    case "aiverse.canvas.duplicate":return "modify_canonical_state";
     case "aiverse.canvas.delete":return "delete_data";
     default:throw deny();
   }
