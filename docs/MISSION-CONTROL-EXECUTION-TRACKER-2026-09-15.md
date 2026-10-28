@@ -1252,3 +1252,29 @@ newest full matrix green until that job completes.
 The other latest-head core OS workflows mostly passed,
 with Four Repo Acceptance/Shared Member Skills still queued or running
 at the same check. No production grant authority accepted.
+
+
+## Progress measurement amendment, 28 October 2026: separate GitHub completion from accepted points
+
+The operator requested a **separate percentage for all engineering that the
+browser/GitHub agent can genuinely complete before private Mac/account action**.
+The authoritative new reporting instructions and fixed workstream ledger are in
+[GitHub/Browser Completion Scorecard](GITHUB-BROWSER-COMPLETION-SCORECARD-2026-10-28.md).
+
+**Always report two percentages side by side:** GB (GitHub/browser current-scope
+build completion) **~34/100 provisional engineering estimate** and FA (this
+tracker's formal gate acceptance) **15/100 accepted**. The GB estimate is not
+a ratified code inventory; do not present it as a verified score until the next
+per-workstream evidence audit. A third private Mac/release readiness field must
+show **specific pending owner-only gates, not a fabricated percentage**.
+
+**GB=100%** specifically means *all currently scoped remote-capable code,
+owner integrations, runnable UI, negative/positive CI, unsigned desktop
+package prep, audits and release handoffs are finished*. It does **not**
+mean private-owner credentials are connected, production OS grants are installed,
+macOS signing/notarization completed or local dogfood accepted.
+Do not confuse the historical 90–93/100 pre-local **formal roadmap ambition**
+with GB 90–93%. Separate denominators, separate goals.
+
+The 15/100 accepted progress ledger is **not changed** by this amendment,
+and PRs are not merged or accepted by writing a scorecard.
