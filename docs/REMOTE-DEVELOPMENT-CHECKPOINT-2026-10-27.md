@@ -752,3 +752,58 @@ rebaseline GB publicly instead of changing percentage silently.
 
 The new scorecard is committed to the real Dashboard
 `codex/dashboard-source-checkpoint` draft PR #42, not main.
+
+
+## Tasks 63–92: source handoff, 28 October 2026
+
+**Continue from Task 93, not from Task 63.** Completed thirty bounded
+source/test/CI/documentation slices enumerated in
+`docs/CANVAS-NATIVE-OWNER-LIFECYCLE-TASKS-63-92-2026-10-28.md`.
+These slices are NOT a claim of 30 accepted roadmap points or
+installed OS ownership.
+
+New OS draft PR #111 (`codex/canvas-owner-grant-lifecycle-v1`) is
+stacked on OS read-only grant verifier draft PR #110; read-only
+grant verifier has not been replaced. Candidate OS lifecycle
+`scripts/canvas-grant-owner-lifecycle.mjs` requires an injected
+trusted native owner approval for each exact permission diff
+and a verified running GatewayStore bot session. It uses
+CAS, lock, atomic private file, before/after revocation, expiry,
+workspace and run rechecks, and request deep-copy/freeze.
+Windows is intentionally denied until ACL-qualified. A genuine
+native Mac owner authenticator, tamper-evident durable audit,
+real human destructive approval receipt issuer and private
+owner credentials were NOT introduced.
+
+OS code/test commit (latest at handoff):
+`d304db51d11f8e4865e9d4dfbd2ceb7e79b7e0f7`,
+`tests/canvas-grant-owner-lifecycle.test.mjs`;
+[OS lifecycle CI 40772532207](https://github.com/aiverse-filmmakers/AI-Verse-OS/actions/runs/40772532207).
+Check the final conclusions, not the queue state.
+
+Dashboard draft PR #42 now has
+`scripts/mc2/ci-canvas-native-owner-lifecycle-proof.mjs`
+which loads the exact pinned OS source plus actual
+canonical GatewayStore and Dashboard OS grant adapter,
+proves unapproved grant denial, authorized issuance,
+method-specific permissions, one-grant revocation,
+canceled run denial and revoke-all. Dashboard CI workflow
+has this as an extra real integration step. Last pinned
+Dashboard composed code: `dff258f709daa5b4cbf4f9dbbd124f48a9076e7a`,
+[real composition 40772577730](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40772577730).
+Check exact final run state.
+
+**Progress reporting contract** remains mandatory: machine-readable
+`docs/github-browser-progress.json` plus validator/tests and
+`docs/GITHUB-BROWSER-COMPLETION-SCORECARD-2026-10-28.md`.
+Baseline GitHub/browser **~34/100 provisional** (do NOT count 30 slices
+as 30 points). Formal acceptance **15/100**, not moved. Local
+production is a list of owner-only blockers, no fictional
+percentage. If exact latest CI fully succeeds, reconcile a
+limited GB increment in the OS authority category with
+audited evidence, then update JSON and the narrative scorecard
+together. Keep documentation and new chats in sync.
+
+Next Task 93: qualify real native Mac operator session and
+independently authenticated grant/approval issuance audit.
+No automatic production grant issuer, no merging draft PRs.
