@@ -4,6 +4,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import {fileURLToPath} from "node:url";
 const expected=["foundation","chat","canvas","os-authority","providers",
   "controls","film","ux","desktop","audit"];
 const allowed=new Set(["formally-accepted","source-and-ci",
@@ -40,7 +41,7 @@ export function validateGithubBrowserProgress(data){
     local:{numericalScore:null,blockers:data.localProduction.blockingGates.length}};
 }
 const asEntrypoint=process.argv[1]
- &&path.resolve(process.argv[1])===path.resolve(new URL(import.meta.url).pathname);
+ &&path.resolve(process.argv[1])===fileURLToPath(import.meta.url);
 if(asEntrypoint){
  const file=path.resolve(process.argv[2]||"docs/github-browser-progress.json");
  const report=validateGithubBrowserProgress(JSON.parse(fs.readFileSync(file,"utf8")));
