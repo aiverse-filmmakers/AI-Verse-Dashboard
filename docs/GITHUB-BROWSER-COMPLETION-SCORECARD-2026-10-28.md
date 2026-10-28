@@ -39,7 +39,7 @@ This is a **planning estimate**, NOT a full independent code audit or a formal a
 - Before every batch, check actual branch heads, owner repos, workstream evidence and what can honestly be done remotely. After each completed batch report **GB N/100 (estimate vs independently audited)**, **FA N/100 (accepted)**, **LR blockers**, and **batch slices X/Y**. A new chat MUST NOT revert to showing FA 15/100 as the only progress indicator.
 - Show a remaining-GB workstream breakdown and the **next increment that can change GB**, not just "more tasks."
 - If user expands scope (e.g., full Film 3D camera/lighting/edit suite), explicitly version this scorecard/rebaseline the denominator; do not silently dilute or falsely preserve percentages.
-- The 35/100 provisional estimate is **not an independently audited source-by-source inventory**. The next bounded task should replace the estimates with verified per-workstream subdeliverables and distinguish `green CI`, `draft`, `merged`, and `local-accepted` evidence. In the meantime say **"~37% provisional engineering estimate"**, not "35% verified finished."
+- The 37/100 provisional estimate is **not an independently audited source-by-source inventory**. The next bounded task should replace the estimates with verified per-workstream subdeliverables and distinguish `green CI`, `draft`, `merged`, and `local-accepted` evidence. In the meantime say **"~37% provisional engineering estimate"**, not "37% verified finished."
 
 ### Current authority/CI caveat
 
@@ -57,7 +57,7 @@ and guarded selected-note action, exact Dashboard code
 and [real Chromium browser CI 40775791985](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40775791985).
 Linux and Windows jobs of that code's ordinary CI and progress ledger
 passed; macOS jobs were queued at last check. The provisional Canvas
-category increases **7 to 8**, so GB estimate is **~37/100**, not a
+category increased **7 to 8**, bringing GB to **~35/100 at that checkpoint**, not a
 new formal acceptance point. G03.3 is **implemented in draft**,
 not production accepted. Grouping and production model/app dispatch
 remain in G03.4. The milestone inventory now has 10 chapters and
@@ -79,7 +79,7 @@ and the real first-party editor also passed ordinary CI. Subsequent
 CSS-only/layout and documentation commits have their own runs.
 
 This supports a **one-point provisional Canvas category increase**
-8→9, so **GB ~37/100 provisional**; it does not accept MC2.1,
+8→9, bringing **GB to ~36/100 provisional at that checkpoint**; it does not accept MC2.1,
 clear local Mac gating, or close the entire G03.4 milestone
 (workspace lifecycle, assets and production model-tool dispatch are
 still missing). The original formal acceptance stays **15/100**.
