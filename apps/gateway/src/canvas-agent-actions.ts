@@ -2,6 +2,8 @@ import type {SystemRegistry} from "../../../packages/registry/src/index.js";
 import {getWorkspace} from "../../../packages/os-read-adapter/src/index.js";
 import type {ApprovedCanvasOwner,CanvasHostFacts,CanvasHostRequest} from "./canvas-owner-bridge.js";
 import {validateCanvasOperation,projectCanvasDocument} from "./canvas-owner-bridge.js";
+import {isHostCanvasContextSnapshot,type CanvasContextSnapshot}
+  from "./canvas-context.js";
 
 /**
  * Trusted host-only agent entrypoint. No HTTP route or browser/model callback
@@ -74,6 +76,38 @@ export class CanvasAgentActions {
       }
     this.checkLease(signal);
     return claim;
+  }
+  /**
+   * Trusted host-only selected-note action. The context must be an actual
+   * in-process CanvasContextReader snapshot (WeakSet-minted, not JSON),
+   * and its target must match a fresh running canonical Gateway run.
+   * Native OS grants and Data version checks are repeated by invoke().
+   */
+  async invokeSelectedNoteEdit(input:{
+    runId:string;operationId:string;context:CanvasContextSnapshot;
+    noteId:string;text:string;
+  },signal?:AbortSignal){
+    if(!input||typeof input!=="object"||Array.isArray(input)
+      ||Object.keys(input).sort().join(",")!=="context,noteId,operationId,runId,text"
+      ||!identifier.test(input.runId)||!identifier.test(input.operationId)
+      ||!identifier.test(input.noteId)||typeof input.text!=="string"
+      ||input.text.length>5000||!isHostCanvasContextSnapshot(input.context)
+      ||!input.context.selectedNodes.some(n=>n.id===input.noteId))
+      throw deny("CANVAS_AGENT_ACTION_INVALID");
+    const claim=await this.verify(input.runId,undefined,signal);
+    if(claim.systemId!==input.context.systemId
+      ||claim.workspaceId!==input.context.workspaceId)
+      throw deny();
+    this.checkLease(signal);
+    return this.invoke({
+      runId:input.runId,operationId:input.operationId,
+      method:"aiverse.canvas.edit",
+      params:{
+        id:input.context.documentId,
+        expectedVersion:input.context.documentVersion,
+        edit:{type:"note.text",id:input.noteId,text:input.text},
+      },
+    },signal);
   }
   async invoke(input:CanvasAgentAction,signal?:AbortSignal):Promise<{
     source:"canonical-data";workspaceId:string;agentRunId:string;document:unknown;
