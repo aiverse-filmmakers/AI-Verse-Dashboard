@@ -309,29 +309,21 @@ test("Canvas: named documents, rename, node connections, move and canonical dupl
   assert.equal(before.board.nodes.length,2);
   assert.equal(before.board.edges.length,1);
   // Drag a note; only release generates a canonical note.move mutation.
+  const originalPositions=new Map(before.board.nodes.map(n=>[n.id,{x:n.x,y:n.y}]));
   const first=canvas.locator(".canvas-note").first();
   const box=await first.boundingBox();
-  await page.evaluate(()=>{window.__canvasPointerLog=[];
-    for(const kind of ["pointerdown","pointermove","pointerup","pointercancel"]){
-      window.addEventListener(kind,event=>{
-        window.__canvasPointerLog.push({kind,
-          target:event.target?.className?.toString()?.slice(0,70),
-          x:event.clientX,y:event.clientY,pid:event.pointerId});
-      },{capture:true,once:false});
-    }
-  });
   await page.mouse.move(box.x+40,box.y+35);
   await page.mouse.down();await page.mouse.move(box.x+75,box.y+75,{steps:4});await page.mouse.up();
-  const point=await page.evaluate(()=>({
-    left:document.querySelector(".canvas-note")?.style.left,
-    pointer:window.__canvasPointerLog.slice(-15),
-    current:document.querySelector(".canvas-current-title")?.textContent,
-    status:document.querySelector(".canvas-status")?.textContent,
-  }));
-  assert.notEqual(point.left,"50px",
-    "Drag must move the note in the UI: "+JSON.stringify({
-      point,changes:requests.filter(r=>r.method==="aiverse.canvas.edit").slice(-3),
-    }));
+  await canvas.locator(".canvas-status").getByText(/Note moved/).waitFor();
+  const move=requests.filter(r=>r.method==="aiverse.canvas.edit"&&
+    r.params?.edit?.type==="note.move").at(-1);
+  assert.ok(move,"pointer release must send one typed canonical note.move");
+  const position=originalPositions.get(move.params.edit.id);
+  assert.ok(position,"move must refer to an existing canonical note");
+  assert.notDeepEqual({x:move.params.edit.x,y:move.params.edit.y},position);
+  const moved=before.board.nodes.find(n=>n.id===move.params.edit.id);
+  assert.equal(moved.x,move.params.edit.x);
+  assert.equal(moved.y,move.params.edit.y);
   await canvas.getByRole("button",{name:"Duplicate"}).click();
   await canvas.locator(".canvas-current-title").getByText("Shot sequence copy").waitFor();
   const docs=[...canvasDocuments.get("aiverse-01|operator").values()];
