@@ -83,3 +83,23 @@ All 50 **source tasks are committed** but their newest exact-head integration/CI
 Formal roadmap remains **15/100 accepted**; GitHub engineering baseline was **~34/100 provisional** pending exact successful checks and per-workstream audits; owner-local/production still requires real Mac human sessions, grants, connected providers, build/install, approvals and sign-off.
 
 **Task 143:** qualify native installed owner-session authority and real bounded model-to-app context dispatch based on owner contracts. Start by checking current exact CI and reviewing these chapter milestones, then choose the next genuinely blocked/ready milestone. Do not duplicate the context reader, OS grant lifecycle, owner Data persistence or separate progress ledger.
+
+
+## CI follow-up and provisional GB increment
+
+Source/code `fb85aa4c6af92416b8f2e6c21d19632a5c4a62ca`
+passed [real canonical Gateway/OS/Data composition 40775792089](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40775792089)
+and [real Chromium browser QC 40775791985](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40775791985).
+The final selected-note action tests and context denial
+were included. Linux/Windows Dashboard CI passed; corresponding
+macOS jobs remained queued last checked. The progress ledger/tests
+were reconciled after this commit and require new exact-head
+green integrity proof.
+
+We moved the provisional Canvas engineering score **7→8**, making
+GitHub/browser progress **~35/100 provisional**. Original MC formal
+acceptance remains **15/100**. G03.3 implemented in draft
+(not production accepted), while grouping and production app
+dispatch remain G03.4. Overall: four verified milestones,
+eight implemented/draft, 28 planned. Flexible tasks are
+exactly through **#142**; the next new task is #143.
