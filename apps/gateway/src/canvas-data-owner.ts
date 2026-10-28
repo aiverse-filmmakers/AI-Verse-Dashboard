@@ -10,7 +10,7 @@ import {withCanvasOsPolicy,type CanvasOsPolicy} from "./canvas-os-policy.js";
  * Deliberately no Dashboard database, Data installation, OS permission parser,
  * actor minting, or browser-visible path is introduced here.
  */
-export type CanvasDataActor={readonly kind:"human";readonly id:string};
+export type CanvasDataActor={readonly kind:"human"|"bot";readonly id:string};
 type NativeCanvas={
   list:(...args:any[])=>unknown;
   get:(...args:any[])=>unknown;
@@ -56,15 +56,17 @@ export function createAdmittedCanvasDataOwner<Root,Scope,Database extends {close
     if(facts.systemId!==systemId || facts.root!==approvedRoot
       ||registry.resolveRoot(systemId)!==approvedRoot
       ||registry.bindingGeneration(systemId)!==generation
-      ||facts.principal!=="local-operator")throw deny();
+      ||(facts.principal!=="local-operator"&&facts.principal!=="verified-agent"))throw deny();
   };
   const admit=async(facts:CanvasHostFacts,request:CanvasHostRequest)=>{
     verify(facts);
     const grant=await options.admittedActor(facts,request);
     verify(facts);
-    if(!grant||grant.kind!=="human"||typeof grant.id!=="string"
-      ||!actorId.test(grant.id))throw deny();
-    return {kind:"human" as const,id:grant.id};
+    const expectedKind=facts.principal==="verified-agent"?"bot":"human";
+    if(!grant||grant.kind!==expectedKind||typeof grant.id!=="string"
+      ||!actorId.test(grant.id)
+      ||(facts.principal==="verified-agent"&&grant.id!==facts.agent?.actorId))throw deny();
+    return {kind:expectedKind,id:grant.id};
   };
   const owner:ApprovedCanvasOwner={
     dashboardSystemId:systemId,
