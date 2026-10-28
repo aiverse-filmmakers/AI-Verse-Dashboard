@@ -27,6 +27,6 @@ export type { ApprovedCanonicalGateway } from "./canonical-gateway-bridge.js";
 export { startGateway, DEFAULT_PORT } from "./server.js";
 export type { GatewayServer } from "./server.js";
 export {CanvasContextReader} from "./canvas-context.js";
-export type {CanvasSelectionRequest,CanvasContextSnapshot,SelectedCanvasNote,SelectedCanvasEdge} from "./canvas-context.js";
+export type {CanvasSelectionRequest,CanvasContextSnapshot,SelectedCanvasNote,SelectedCanvasEdge,SelectedCanvasGroup} from "./canvas-context.js";
 export {CanvasAgentToolCoordinator} from "./canvas-agent-tool-coordinator.js";
-export type {CanvasToolHandle,CanvasModelContext,CanvasSelectedNoteProposal} from "./canvas-agent-tool-coordinator.js";
+export type {CanvasToolHandle,CanvasModelContext,CanvasSelectedNoteProposal,CanvasSelectedGroupProposal,CanvasToolProposal} from "./canvas-agent-tool-coordinator.js";
