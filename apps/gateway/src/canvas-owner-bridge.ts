@@ -55,6 +55,7 @@ const operations=new Map<string,{schema:z.ZodTypeAny;access:"read"|"write"}>([
   ["aiverse.canvas.create",{schema:mutation.extend({title}).strict(),access:"write"}],
   ["aiverse.canvas.rename",{schema:target.extend({title}).strict(),access:"write"}],
   ["aiverse.canvas.edit",{schema:target.extend({edit:note}).strict(),access:"write"}],
+  ["aiverse.canvas.duplicate",{schema:target.extend({title:title.optional()}).strict(),access:"write"}],
   ["aiverse.canvas.delete",{schema:target,access:"write"}],
 ]);
 /** Shared strict Canvas action parser for trusted host agent and browser routes. */
