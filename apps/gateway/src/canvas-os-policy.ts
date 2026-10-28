@@ -30,6 +30,8 @@ export interface CanvasOsPolicy{
   }):OsActionPermissionResult|Promise<OsActionPermissionResult>;
   /** Authenticated independent native/OS actor-grant lookup. Cookie != grant. */
   operatorAdmitted(facts:CanvasHostFacts,req:CanvasHostRequest):boolean|Promise<boolean>;
+  /** Separate native agent-run admission. Absence blocks all agent actions. */
+  agentAdmitted?(facts:CanvasHostFacts,req:CanvasHostRequest):boolean|Promise<boolean>;
 }
 const ownerSource="ai-verse-os/action-permission-v1";
 const deny=()=>Object.assign(new Error("CANVAS_ACCESS_DENIED"),{code:"CANVAS_ACCESS_DENIED"});
@@ -59,7 +61,10 @@ function classFor(method:string){
 }
 function checkRootAndScope(facts:CanvasHostFacts,owner:ApprovedCanvasOwner){
   facts.assertLease();
-  if(facts.systemId!==owner.dashboardSystemId||facts.principal!=="local-operator"
+  if(facts.systemId!==owner.dashboardSystemId
+    ||(facts.principal!=="local-operator"&&facts.principal!=="verified-agent")
+    ||(facts.principal==="verified-agent"&&(!facts.agent?.runId||!facts.agent?.actorId))
+    ||(facts.principal==="local-operator"&&facts.agent!==undefined)
     ||!/^(operator|[a-z0-9][a-z0-9-]{0,127})$/.test(facts.workspaceId))
     throw deny();
 }
@@ -73,9 +78,15 @@ export function withCanvasOsPolicy(
 ):ApprovedCanvasOwner{
   const admit=async(facts:CanvasHostFacts,req:CanvasHostRequest):Promise<boolean>=>{
     checkRootAndScope(facts,owner);
-    if(await policy.operatorAdmitted(facts,req)!==true)throw deny();
+    const granted=facts.principal==="verified-agent"
+      ?await policy.agentAdmitted?.(facts,req)
+      :await policy.operatorAdmitted(facts,req);
+    if(granted!==true)throw deny();
     facts.assertLease();
     const actionClass=classFor(req.method);
+    // Approval receipts are not supported by this host. Even if the OS's
+    // destructive policy is relaxed, an agent cannot silently delete.
+    if(facts.principal==="verified-agent"&&actionClass==="delete_data")throw deny();
     if(facts.access!==(actionClass==="read_local"?"read":"write"))throw deny();
     const scope=facts.workspaceId==="operator"?"operator":"workspace:"+facts.workspaceId;
     const immutable={
