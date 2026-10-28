@@ -821,3 +821,40 @@ real native provider/login and final owner Mac acceptance are separate
 gates. DO NOT award historical roadmap points yet: MC2.1 independent review
 and Personal-first plan amendment remain outstanding. Formal total is
 15/100; next design milestone, if approved, adds 2 to reach 17/100.
+
+### Task 14: verified agent-to-Canvas action boundary (28 October 2026)
+
+**GitHub-first owner source + real Data CI, no production agent installed.** Dashboard
+[PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+introduces `CanvasAgentActions`, a **host-only** dispatcher for currently
+running agent actions. It reuses the exact Canvas action schema, protected
+canonical owner, bounded document projection, OS evaluator and Data owner
+as the first-party UI, but does not expose any new model/browser HTTP route.
+An independent Gateway run verifier supplies workspace, agent actor and
+revocable lease epoch, with fresh verification before admission and effect.
+OS grants are split so the default human `operatorAdmitted` can never
+implicitly admit `agentAdmitted`. Data writes bear real `bot` provenance
+only for the verified agent actor; model-supplied actor, workspace, root,
+credential/approval flags and idempotency overrides are rejected. Agents may
+read/create/rename/edit notes and edges; agent delete remains categorically
+blocked, even if an external OS policy loosens its default floor, because
+there is no reviewed approval-receipt contract.
+
+**Evidence:** [source commit `0536bfa`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/0536bfad0c70e294f91b887f893bcde00bb58e9d)
+passed [cross-platform CI 40725634383](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40725634383),
+[real OS + Data + Gateway composition 40725634303](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40725634303),
+and [browser QC 40725634501](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40725634501).
+The Data test directly reads updated record provenance from the real
+canonical scoped SQLite. The test's Gateway run-verifier is a disposable
+trusted fixture and **not** member-provider or production run authorization.
+Check documentation-head CI separately.
+
+**Outstanding acceptance gates:** attach actual native Gateway run/actor
+verifier, true agent tool-host invocation, member OS permissions and
+pre-provisioned Data owner to a private installation. Approval receipts,
+undo/atomic clone, UI agent receipts and stop/recovery safety remain future
+slices. No Mac test or live provider performed. No original Data/OS/Gateway
+repo changed and no launch/merge. The formal baseline remains **15/100**;
+MC2.1 design approval still required for **17/100**. Continue GitHub-first
+toward the *aspirational* 90–93% pre-local target without inflating the
+current roadmap score.
