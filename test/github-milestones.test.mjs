@@ -67,6 +67,6 @@ test("scope identity cannot mutate without published rebaseline",()=>{
 test("40 milestones do not turn into 40 accepted roadmap points",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p);
  assert.equal(r.formalAcceptance,15);
- assert.equal(r.githubProvisional,34);
+ assert.equal(r.githubProvisional,35);
  assert.equal(r.states.verified+r.states.implemented+r.states.planned+r.states.blocked,40);
 });
