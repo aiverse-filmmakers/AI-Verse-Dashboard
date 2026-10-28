@@ -94,8 +94,10 @@ export function createGatewayStoreCanvasRunVerifier(
       ||session.status!=="active"
       ||session.active_run_id!==runId)throw fail();
     if(run.workspace_id!=="operator"){
-      try{getWorkspace(registry,dashboardSystemId,run.workspace_id);}
-      catch{throw fail();}
+      try{
+        const workspace=getWorkspace(registry,dashboardSystemId,run.workspace_id);
+        if(workspace.summary.status!=="active")throw fail();
+      }catch{throw fail();}
     }
     return {run,session};
   };
