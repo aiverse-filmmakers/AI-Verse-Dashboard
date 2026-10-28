@@ -18,6 +18,8 @@ export interface ChatRunView {
   output: string;
   errorCode?: string;
   canonicalStatus?: string;
+  /** Canonical session is known but preceding raw turns are unavailable. */
+  contextLimited?: boolean;
 }
 export interface ChatRunEvent {
   systemId: string;
@@ -176,7 +178,13 @@ export class PersonalChatRunController {
   private unsubscribe?:()=>void;
   private seen=new Set<string>();
   private lastSeq=0;
-  private activeRequest?:{text:string;key:string;sessionId?:string};
+  private activeRequest?:{
+    text:string;key:string;sessionId?:string;
+    messages:Array<{role:"user"|"assistant";content:string}>;
+  };
+  /** Confirmed only by canonical run.get, never by streamed deltas or a UI mock. */
+  private confirmedTurns:Array<{role:"user"|"assistant";content:string}>=[];
+  private contextLimited=false;
   private view: ChatRunView;
   constructor(private readonly client:DashboardClient,
     private readonly feed:ChatEventFeed,
@@ -193,6 +201,7 @@ export class PersonalChatRunController {
     this.epoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
     this.seen.clear();this.lastSeq=0;this.activeRequest=undefined;
+    this.confirmedTurns=[];this.contextLimited=false;
     this.view={...scope,phase:"idle",output:""};
     this.changed(this.snapshot());
     return this.epoch;
@@ -206,22 +215,59 @@ export class PersonalChatRunController {
     this.epoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
     this.seen.clear();this.activeRequest=undefined;
-    this.show({phase:"idle",runId:undefined,sessionId:undefined,output:"",errorCode:undefined});
+    this.confirmedTurns=[];this.contextLimited=false;
+    this.show({phase:"idle",runId:undefined,sessionId:undefined,
+      output:"",errorCode:undefined,contextLimited:false});
   }
   private valid(epoch:number,scope:Required<ClientScope>,selection:number):boolean{
     return epoch===this.epoch && current(scope,this.client.getScope())
       && this.client.selectionVersion()===selection;
   }
-  /** Stable idempotency key supplied by caller; never regenerated on network retry. */
+  /**
+   * Context is bounded, ordered and drawn only from canonical completed replies.
+   * Never trim a single turn midway; drop the oldest complete pair if needed.
+   * No unverified stream text or model-created history is admitted.
+   */
+  private boundedHistory():Array<{role:"user"|"assistant";content:string}>{
+    const pairs:Array<Array<{role:"user"|"assistant";content:string}>>=[];
+    for(let i=0;i+1<this.confirmedTurns.length;i+=2){
+      const pair=this.confirmedTurns.slice(i,i+2);
+      if(pair[0]?.role==="user"&&pair[1]?.role==="assistant")pairs.push(pair);
+    }
+    const kept:Array<Array<{role:"user"|"assistant";content:string}>>=[];
+    let size=0;
+    for(let i=pairs.length-1;i>=0 && kept.length<6;i--){
+      const pair=pairs[i],bytes=pair.reduce((sum,x)=>sum+new TextEncoder().encode(x.content).byteLength,0);
+      if(bytes>18_000 || size+bytes>18_000)break;
+      kept.unshift(pair);size+=bytes;
+    }
+    return kept.flat().map(x=>({...x}));
+  }
+  private confirmCanonicalOutput(run:{status:string;output?:string}):void{
+    if(run.status!=="completed"||run.output===undefined||!this.activeRequest)return;
+    // Future messages use only the canonical GET result, never speculative SSE.
+    this.confirmedTurns.push({role:"user",content:this.activeRequest.text},
+      {role:"assistant",content:run.output});
+    this.confirmedTurns=this.boundedHistory();
+  }
+  /** New message continues only an authenticated, completed canonical session. */
   async send(text:string,idempotencyKey:string,sessionId?:string):Promise<ChatRunView> {
     if(!text.trim() || text.length>32_768)fail("CHAT_MESSAGE_INVALID");
     if(!SAFE_ID.test(idempotencyKey) || (sessionId && !SAFE_ID.test(sessionId)))
       fail("CHAT_REQUEST_ID_INVALID");
-    if(["submitting","running"].includes(this.view.phase))fail("CHAT_RUN_ALREADY_ACTIVE");
+    if(this.view.phase!=="idle" && this.view.phase!=="completed")
+      fail("CHAT_PREVIOUS_RUN_UNRESOLVED");
     const scope=requiredScope(this.client.getScope());
+    const confirmed=this.boundedHistory();
+    const selectedSession=sessionId ?? (this.view.phase==="completed"?this.view.sessionId:undefined);
+    const limited=this.contextLimited || Boolean(sessionId && confirmed.length===0);
+    const messages=[...confirmed,{role:"user" as const,content:text}];
     const epoch=this.reset(scope),selection=this.client.selectionVersion();
-    this.activeRequest={text,key:idempotencyKey,...(sessionId?{sessionId}:{})};
-    this.show({phase:"submitting"});
+    this.confirmedTurns=confirmed;
+    this.contextLimited=limited;
+    this.activeRequest={text,key:idempotencyKey,messages,
+      ...(selectedSession?{sessionId:selectedSession}:{})};
+    this.show({phase:"submitting",contextLimited:limited});
     return this.submit(epoch,scope,selection);
   }
   /** Retry an uncertain submission with the SAME canonical idempotency key. */
@@ -239,11 +285,12 @@ export class PersonalChatRunController {
     if(!request)fail("CHAT_REQUEST_MISSING");
     try{
       const response=await this.client.createGatewayRun({
-        messages:[{role:"user",content:request.text}],idempotencyKey:request.key,
+        messages:request.messages,idempotencyKey:request.key,
         ...(request.sessionId?{sessionId:request.sessionId}:{}),
       });
       if(!this.valid(epoch,scope,selection))return this.snapshot();
       const run=asRun(response.result,scope);
+      this.confirmCanonicalOutput(run);
       this.show({runId:run.runId,sessionId:run.sessionId,
         phase:phase(run.status),canonicalStatus:run.status,output:run.output??""});
       if(!TERMINAL.has(this.view.phase))this.subscribe(epoch,scope,selection,run.runId);
@@ -295,6 +342,7 @@ export class PersonalChatRunController {
       const response=await this.client.getGatewayRun(runId);
       if(!this.valid(epoch,scope,selection) || this.view.runId!==runId)return;
       const run=asRun(response.result,scope,runId);
+      this.confirmCanonicalOutput(run);
       this.show({phase:phase(run.status),canonicalStatus:run.status,
         sessionId:run.sessionId,
         ...(run.output!==undefined?{output:run.output}:{}),errorCode:undefined});
@@ -315,8 +363,10 @@ export class PersonalChatRunController {
       const response=await this.client.getGatewayRun(runId);
       if(!this.valid(epoch,scope,selection))return this.snapshot();
       const run=asRun(response.result,scope,runId);
+      this.contextLimited=true;
       this.show({runId:run.runId,sessionId:run.sessionId,
-        phase:phase(run.status),canonicalStatus:run.status,output:run.output??""});
+        phase:phase(run.status),canonicalStatus:run.status,
+        output:run.output??"",contextLimited:true});
       if(!TERMINAL.has(this.view.phase) && this.view.phase!=="recovery-required"
         && this.view.phase!=="paused")this.subscribe(epoch,scope,selection,runId);
     }catch(error){
