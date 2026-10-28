@@ -216,6 +216,19 @@ try{
  assert.equal(original.version,1);
  const retry=await rpc(host,create);
  assert.deepEqual(retry.result.document,original);
+ // Revocation of a trusted OS operator file takes effect on the NEXT RPC.
+ await saveGrants(installed.filter(g=>g.grant_id!=="ci-operator-grant"));
+ const revokedHuman=await rpc(host,make(systemId,"operator","aiverse.canvas.get",{
+   id:original.id,
+ }));
+ assert.equal(revokedHuman.ok,false);
+ assert.equal(revokedHuman.error.code,"CANVAS_ACCESS_DENIED");
+ await saveGrants(installed);
+ const resumedHuman=await rpc(host,make(systemId,"operator","aiverse.canvas.get",{
+   id:original.id,
+ }));
+ assert.equal(resumedHuman.ok,true);
+
  const note=await rpc(host,make(systemId,"operator","aiverse.canvas.edit",{
   id:original.id,expectedVersion:1,idempotencyKey:"ci-edit-1",
   edit:{type:"note.add",id:"note-1",text:"Scene planning",x:40,y:50},
@@ -228,6 +241,20 @@ try{
      edit:{type:"note.text",id:"note-1",text:"Agent updated shot"}},
  });
  assert.equal(agentResult.document.version,3);
+ // No cached run grant: withdrawing OS file bot authorization invalidates
+ // even an otherwise running canonical GatewayStore run and session.
+ await saveGrants(installed.filter(g=>g.actor_kind!=="bot"));
+ await assert.rejects(()=>agentActions.invoke({
+   runId:"ci-agent-run-1",operationId:"ci-revoked-file-1",
+   method:"aiverse.canvas.get",params:{id:original.id},
+ }),/CANVAS_AGENT_ACCESS_DENIED/);
+ await saveGrants(installed);
+ const admittedAgain=await agentActions.invoke({
+   runId:"ci-agent-run-1",operationId:"ci-regranted-file-1",
+   method:"aiverse.canvas.get",params:{id:original.id},
+ });
+ assert.equal(admittedAgain.document.version,3);
+
  // Data-owned atomic duplicate is a SINGLE owner effect, not a sequence
  // of provisional note/edge writes from a browser.
  const atomic=make(systemId,"operator","aiverse.canvas.duplicate",{
@@ -444,6 +471,7 @@ try{
   real_data_readonly_preflight_no_auto_provision:true,
   canonical_data_backup_reopen_and_binding_verified:true,
   scoped_preflight_active_manifest_required:true,
+  real_os_grant_file_revocation_human_and_bot:true,
   atomic_duplicate_one_data_effect:true,duplicate_source_version_guard:true,
   canonical_revision_history:true,versioned_undo_persists_across_restart:true,
   indexed_history_keyset_pages:true,invalid_cursor_and_forged_actor_denied:true,
