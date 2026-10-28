@@ -263,6 +263,34 @@ try{
    id:original.id,limit:20,
  }));
  assert.deepEqual(finalHistory.result.document.map(x=>x.version),[4,3,2,1]);
+ // Canonical Data already owns SQLite-consistent backups. Qualify that
+ // existing owner contract on disposable CI data without adding new backup
+ // files to Dashboard or copying live scope paths into a browser.
+ const personalScope=createStandaloneDataScope(trustedRoot,"local");
+ const backupLocation=join(root,"disposable-canvas-backup.sqlite");
+ const liveForBackup=openScopedDataDatabase(new SqliteStorageDriver(),personalScope,
+   {mode:"open-existing"});
+ try{
+   const receipt=await liveForBackup.database.backupTo(backupLocation);
+   assert.ok(receipt.totalPages>=1);
+ }finally{liveForBackup.database.close();}
+ const backupDriver=new SqliteStorageDriver();
+ const backupStatus=backupDriver.inspectMigration({
+   location:backupLocation,expectedBinding:personalScope.binding,
+ });
+ assert.equal(backupStatus.state,"current");
+ const restoredBackup=backupDriver.open({
+   location:backupLocation,mode:"open-existing",
+   expectedBinding:personalScope.binding,
+ });
+ try{
+   const backedDoc=new CanvasDocuments(restoredBackup);
+   const state=backedDoc.get(original.id);
+   assert.equal(state.version,4);
+   assert.equal(state.board.nodes[0].text,"Scene planning");
+   assert.deepEqual(backedDoc.history(original.id).map(x=>x.version),[4,3,2,1]);
+ }finally{restoredBackup.close();}
+
  await assert.rejects(()=>agentActions.invoke({
    runId:"ci-agent-run-1",operationId:"ci-agent-forged-1",
    method:"aiverse.canvas.edit",params:{id:original.id,expectedVersion:3,
@@ -356,6 +384,7 @@ try{
   revoked_operator_grant_denied:true,revoked_actor_grant_denied:true,
   existing_data_database_required:true,
   real_data_readonly_preflight_no_auto_provision:true,
+  canonical_data_backup_reopen_and_binding_verified:true,
   scoped_preflight_active_manifest_required:true,
   atomic_duplicate_one_data_effect:true,duplicate_source_version_guard:true,
   canonical_revision_history:true,versioned_undo_persists_across_restart:true,
