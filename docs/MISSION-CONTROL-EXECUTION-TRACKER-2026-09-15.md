@@ -975,3 +975,59 @@ The **macOS job** was queued at the last check and must be verified before
 claiming the newest entire matrix is green. A prior code commit
 `7189567` already passed the macOS build; the latest fix changed only
 a browser test's expected user-readable conflict message.
+
+
+### Tasks 19–24: verified versioned Canvas Undo (28 October 2026)
+
+Six *bounded* GitHub-first development slices, each building on the
+existing canonical Data, OS and Gateway owner contracts rather than
+creating parallel state. **Source implemented, PRs draft/unmerged,
+no owner Mac release acceptance.**
+
+| Task | Implemented canonical source | Gate |
+| --- | --- | --- |
+| **19** | Full version snapshots in the same scoped Data SQLite transaction; archived version's own actor preserved | Data owner CI |
+| **20** | Data `history()`/optimistic `revert()` create new versions from verified archived truth, with deterministic idempotency | Data owner CI |
+| **21** | Strict `aiverse.canvas.history` and `aiverse.canvas.revert` routed through original Dashboard typed protocol, OS policy, native Data owner | Dashboard / real composition |
+| **22** | Real authenticated Personal Canvas History panel, latest-step Undo and two-stage confirm restore, no browser canonical snapshots | Chromium QC |
+| **23** | Explicit Reload Canvas after conflicts; stale/revoked agent cannot write; agents can only read bounded historical snapshots, not revert | Chromium + real composition |
+| **24** | Cross-platform Data and Dashboard, real Gateway + OS + Data, browser regression, recovery and provenance tests; tracker/handoff updated | CI & docs |
+
+**Data owner** revision
+[`0948d42`](https://github.com/aiverse-filmmakers/AI-Verse-Data/commit/0948d424fb31d4561c5a5ba62c835ad40ee6ffd4):
+[Release Smoke 40741080025](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40741080025),
+[Six-platform CI 40741080717](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40741080717),
+[Five-component acceptance 40741080151](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40741080151)
+all passed.
+
+**Dashboard** code and regression
+[`4c527e1`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/4c527e17b0659150b40ad3a920943310c7238b2c)
+passed [Dashboard CI 40741376157](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376157)
+on Linux/Windows/macOS and [Chromium browser QC 40741376101](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376101).
+[Real pinned Gateway/OS/Data composition 40741376218](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376218)
+must be checked for completion before calling the whole batch green.
+(The later docs commits do not introduce runtime source changes.)
+
+**Safeguards:** No deleted document restoration, unbounded
+revision history, unsupported historical reconstruction before the
+journal was introduced, signed archive, agent-triggered destructive
+revert or production authorization claims. Data archival scans have
+a hard 5,000-record bound per scope. Agents are allowed to read
+authorized revisions but are denied `aiverse.canvas.revert`;
+a human must explicitly confirm a restore. Stale versions fail
+with `RECORD_VERSION_CONFLICT`; the UI offers a canonical reload.
+Running source CI is evidence only for source readiness.
+
+**Acceptance status remains 15/100.** The independent MC2.1
+review and Personal-first plan amendment are still pending; next
+proper roadmap advancement 17/100 if approved. The 90–93%
+GitHub/browser pre-local ambition is a target, not current
+measured project completion.
+
+**Next Task 25 qualification:** evaluate the owner Data history
+read bound, retention/pagination and revision integrity before
+expanding Canvas reliability further, plus separately qualify
+the missing independently admitted installed OS bot grant,
+local native Data provisioning and approved Gateway tool host.
+Avoid new browser-owned state or "Undo" shortcuts. Do not
+merge/enable member production paths without explicit approval.
