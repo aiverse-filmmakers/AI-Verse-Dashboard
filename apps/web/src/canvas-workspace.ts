@@ -314,6 +314,9 @@ export class CanvasWorkspace {
     const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
     svg.setAttribute("class","canvas-edges");svg.setAttribute("aria-hidden","true");
     svg.setAttribute("width","100%");svg.setAttribute("height","100%");
+    svg.setAttribute("viewBox","0 0 "+Math.max(320,this.board.clientWidth)+
+      " "+Math.max(330,this.board.clientHeight));
+    svg.setAttribute("preserveAspectRatio","none");
     for(const e of edges){
       const a=notes.find(n=>n.id===e.from),b=notes.find(n=>n.id===e.to);
       if(!a||!b)continue;
