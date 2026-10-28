@@ -315,8 +315,9 @@ describe("selected host Canvas snapshot to verified agent write",()=>{
  });
  it("system unregistration invalidates previously minted selected context",async()=>{
   const f=fixture(),s=await f.ctx.capture(f.human,f.req());
+  const runningAction=agent(f);
   f.registry.unregister(f.systemId);
-  await assert.rejects(agent(f).invokeSelectedNoteEdit({
+  await assert.rejects(runningAction.invokeSelectedNoteEdit({
    runId:"run-1",operationId:"unregistered",context:s,noteId:"note-a",text:"new",
   }),/CANVAS_AGENT_ACCESS_DENIED/);
   assert.equal(f.counts().execCount,1);
