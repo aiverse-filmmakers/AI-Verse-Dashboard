@@ -6,7 +6,7 @@ const file=new URL("../docs/github-browser-progress.json",import.meta.url);
 const base=()=>JSON.parse(readFileSync(file,"utf8"));
 test("GitHub score, formal roadmap and local release are separate",()=>{
  const r=validateGithubBrowserProgress(base());
- assert.deepEqual(r.remote,{earned:35,total:100,provisional:true});
+ assert.deepEqual(r.remote,{earned:36,total:100,provisional:true});
  assert.deepEqual(r.formal,{earned:15,total:100});
  assert.equal(r.local.numericalScore,null);
  assert.ok(r.local.blockers>=5);
