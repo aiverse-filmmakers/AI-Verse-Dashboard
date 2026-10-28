@@ -70,6 +70,16 @@
 .canvas-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
 .canvas-actions input{font:inherit;min-width:110px;max-width:155px;padding:7px 8px;border:1px solid #dde3ea;border-radius:8px}
 .aiverse-canvas .canvas-actions button{padding:6px 9px}
+.canvas-history{background:#fff;padding:12px 14px;border-bottom:1px solid #e7ebf0;
+  display:grid;gap:7px;max-height:240px;overflow-y:auto}
+.canvas-history[hidden]{display:none}
+.canvas-history-heading,.canvas-history-item{display:flex;align-items:center;
+  justify-content:space-between;gap:12px}
+.canvas-history-heading{margin-bottom:4px;font-size:12px}
+.canvas-history-item{border:1px solid #e7ebf0;border-radius:10px;
+  background:#fafbfd;padding:8px 10px;font-size:11px;color:#506178}
+.canvas-history-item span{min-width:0;overflow-wrap:anywhere}
+.canvas-history-item button,.canvas-history-heading button{font-size:11px;padding:5px 8px;flex:none}
 .canvas-board{min-height:330px;height:46vh;max-height:680px;position:relative;overflow:auto;background-color:#f8fafc;
   background-image:radial-gradient(#dce2e9 .8px,transparent .8px);background-size:22px 22px;flex:none}
 .canvas-empty{position:absolute;top:44%;left:50%;transform:translate(-50%,-50%);max-width:240px;color:#7f8b98;
