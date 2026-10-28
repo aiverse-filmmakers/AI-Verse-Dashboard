@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-28",
+  "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
+  "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
+  "totalBudget": 100,
+  "provisionalEngineeringEarned": 34,
+  "sourceAuditComplete": false,
+  "formalRoadmap": {
+    "accepted": 15,
+    "total": 100,
+    "nextGate": "MC2.1 independent design review and Personal-first amendment",
+    "nextPotentialAccepted": 17
+  },
+  "localProduction": {
+    "numericalScore": null,
+    "reason": "unmeasured private owner installation, consent, signing and acceptance",
+    "blockingGates": [
+      "real native Mac human session and approved grants",
+      "interactive provider/account consent",
+      "owner Data provisioning and backup policy",
+      "real Mac desktop install and clean-machine verification",
+      "human destructive-action approvals",
+      "owner dogfood and release signoff"
+    ]
+  },
+  "categories": [
+    {
+      "id": "foundation",
+      "title": "Architecture and runtime baseline",
+      "budget": 15,
+      "provisionalEarned": 15,
+      "evidenceStatus": "formally-accepted",
+      "remaining": "preserve accepted ownership and MC1 proof"
+    },
+    {
+      "id": "chat",
+      "title": "Personal chat and canonical Gateway",
+      "budget": 15,
+      "provisionalEarned": 8,
+      "evidenceStatus": "source-and-ci",
+      "remaining": "real provider/model/attachment/commands controls"
+    },
+    {
+      "id": "canvas",
+      "title": "Workspace persistent Canvas and typed actions",
+      "budget": 15,
+      "provisionalEarned": 7,
+      "evidenceStatus": "source-and-ci",
+      "remaining": "app-context, grouping, asset ownership and verified action round-trip"
+    },
+    {
+      "id": "os-authority",
+      "title": "Native OS actor identity grants and approvals",
+      "budget": 10,
+      "provisionalEarned": 2,
+      "evidenceStatus": "draft-with-provisional-gaps",
+      "remaining": "installed owner human session, audited grant lifecycle, approval receipts; stacked OS PR #111 work is not accepted"
+    },
+    {
+      "id": "providers",
+      "title": "Connected providers and creative jobs",
+      "budget": 10,
+      "provisionalEarned": 1,
+      "evidenceStatus": "source-only",
+      "remaining": "actual connections, generation job, asset storage and placement"
+    },
+    {
+      "id": "controls",
+      "title": "Owner-backed control panels",
+      "budget": 15,
+      "provisionalEarned": 0,
+      "evidenceStatus": "planned",
+      "remaining": "Brain, Memory, Skills, Automation, Token, Connections, fleet and Security projections"
+    },
+    {
+      "id": "film",
+      "title": "One first real filmmaking feature",
+      "budget": 5,
+      "provisionalEarned": 0,
+      "evidenceStatus": "planned",
+      "remaining": "first specialist film tool (not entire film suite)"
+    },
+    {
+      "id": "ux",
+      "title": "Accessibility responsive usability",
+      "budget": 5,
+      "provisionalEarned": 1,
+      "evidenceStatus": "source-and-ci",
+      "remaining": "broad accessibility and usability gate"
+    },
+    {
+      "id": "desktop",
+      "title": "GitHub CI-produced Mac desktop package",
+      "budget": 5,
+      "provisionalEarned": 0,
+      "evidenceStatus": "planned",
+      "remaining": "real package and supervised Gateway install path"
+    },
+    {
+      "id": "audit",
+      "title": "Independent remote security and source closure",
+      "budget": 5,
+      "provisionalEarned": 0,
+      "evidenceStatus": "planned",
+      "remaining": "third-party security, lifecycle and release gate audit"
+    }
+  ],
+  "evidence": {
+    "dashboardCodeCommit": "f0f5e1e42cc6ef13bd18a66f40481b38fd1ed309",
+    "dashboardVerifiedRuns": [
+      40763120455,
+      40763120327,
+      40763120328
+    ],
+    "osGrantReaderVerifiedCommit": "a9b6eaf785c6782fe09f2b99a624d1abb8f520b3",
+    "osReaderVerifiedRun": 40762850957,
+    "pendingDraftOSLifecyclePR": 111,
+    "pendingDashboardPR": 42,
+    "pendingDataPR": 22
+  },
+  "nextUnverifiedChange": "Stacked native OS grant lifecycle requires all-platform OS CI and real GatewayStore composition before awarding engineering credit."
+}
