@@ -11,6 +11,8 @@ on:
       - "apps/gateway/src/canvas-data-owner.ts"
       - "apps/gateway/src/canvas-agent-actions.ts"
       - "apps/gateway/src/canvas-context.ts"
+      - "apps/gateway/src/canvas-agent-tool-coordinator.ts"
+      - "test/canvas-agent-tool-coordinator.test.ts"
       - "test/canvas-context.test.ts"
       - "apps/gateway/src/canvas-gateway-run-verifier.ts"
       - "apps/gateway/src/canvas-os-grant.ts"
