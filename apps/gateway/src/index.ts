@@ -11,6 +11,8 @@ export type { HubEvent, DeliveredEvent } from "./subscriptions.js";
 export { CanonicalGatewayBridge } from "./canonical-gateway-bridge.js";
 export { CanvasOwnerBridge } from "./canvas-owner-bridge.js";
 export {withCanvasOsPolicy} from "./canvas-os-policy.js";
+export {createAdmittedCanvasDataOwner} from "./canvas-data-owner.js";
+export type {AdmittedCanvasDataOwner,NativeCanvasDataModules,CanvasDataActor} from "./canvas-data-owner.js";
 export type {CanvasOsPolicy,OsActionPermissionResult} from "./canvas-os-policy.js";
 export type {CanvasHostFacts,CanvasHostRequest,ApprovedCanvasOwner} from "./canvas-owner-bridge.js";
 export type { ApprovedCanonicalGateway } from "./canonical-gateway-bridge.js";
