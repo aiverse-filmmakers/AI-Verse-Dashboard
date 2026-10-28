@@ -416,3 +416,70 @@ is the pre-local **goal**, not actual current verified percentage.
 User expects task slice checkmarks, ahead/tasks and percentage
 progress bar at every completion. Batches only as explicitly
 requested, no duplicate slices. Do not merge PRs without approval.
+
+
+## Tasks 25–32 indexed Canvas revision owner checkpoint (28 October 2026)
+
+**DO NOT REPEAT TASKS 8–32.** Continue from the existing
+Dashboard `codex/dashboard-source-checkpoint` draft
+[PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+and Data `codex/canvas-document-owner-v1` draft
+[PR #22](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/22).
+They remain unmerged and no production Mac deployment exists.
+
+New source tasks:
+- **25** Indexed Data-owned `_records` Canvas revision query:
+  partial JSON-expression index on `creative-canvas.revisions`,
+  no separate DB/schema format or workspace-wide archive scan.
+- **26** Bounded, stable Data history `beforeVersion` keyset
+  cursor with at most 30 verified versions per page.
+- **27** Direct indexed historical `revert` to one exact requested
+  prior version; Data continues to own optimistic locking,
+  idempotency and actor provenance.
+- **28** Fail closed for a tampered, in-place modified or
+  duplicate-version revision. Multiple documents with
+  interleaved 74-version and 38-version histories tested.
+  No automated retention pruning until a real owner backup
+  and retention policy exists.
+- **29** Dashboard Canvas bridge strict optional `beforeVersion`
+  schema, typed `DashboardClient.canvasHistory`, existing
+  native Data owner dispatch. No forged actor/root/grant.
+- **30** Functional Canvas History `Load older versions`
+  button, 20 per page, rejects repeated/foreign/out-of-order
+  pages; clears stale history when another document is
+  created, duplicated, renamed or edited. No browser store.
+- **31** Agent invalid-cursor and forged-actor denial, plus
+  the pinned authenticated real Gateway/OS/Data proof
+  now checking history pages with cursor 3 then 2 and
+  rejecting `beforeVersion=1`.
+- **32** CI coverage and handoff. The originally verified
+  Data source commit `3e76b71` passed all standard checks.
+  Latest test-only Data integrity commit `beec725e` must
+  have its own last check; Dashboard `40e5573` passed
+  CI, real composition and Chromium, while the current
+  later document-switch code `c27034d` needs a matching
+  latest-head CI check. The Dashboard composition pin uses
+  the exact code/test Data revision; do not silently
+  move to unreviewed downstream sources.
+
+**Known limits:** The index, digest and safe keysets do not
+imply signed tamper-proof historical audit or automatic
+backups. History snapshots before Data archive admission
+cannot be reconstructed. Production actor/OS grants and
+native scope provisioning are absent, same as before.
+An agent cannot invoke destructive revert without
+independently reviewed human approvals. A running CI
+check is not evidence of passing. CI is not installed
+member/owner acceptance.
+
+**Next Task 33:** first inspect the OS owner actor-grant
+contract and Data scoped provisioning/backup lifecycle
+against real source; stage only compatible native
+authorization or owner-run installer mechanics. Avoid
+duplicating Gateway, storage or credentials and do not
+infer power from an operator chat token. Continue
+bounded slices, formal review gates and tests.
+Formal acceptance remains **15/100**. Next MC2.1
+approved milestone is **17/100**. Browser/GitHub 90–93%
+is only a pre-local target, not current measured progress.
+Always show slices and a separate formal percentage bar.
