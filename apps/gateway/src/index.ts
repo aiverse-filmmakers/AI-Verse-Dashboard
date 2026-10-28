@@ -26,3 +26,5 @@ export type {CanvasHostFacts,CanvasHostRequest,ApprovedCanvasOwner} from "./canv
 export type { ApprovedCanonicalGateway } from "./canonical-gateway-bridge.js";
 export { startGateway, DEFAULT_PORT } from "./server.js";
 export type { GatewayServer } from "./server.js";
+export {CanvasContextReader} from "./canvas-context.js";
+export type {CanvasSelectionRequest,CanvasContextSnapshot,SelectedCanvasNote,SelectedCanvasEdge} from "./canvas-context.js";
