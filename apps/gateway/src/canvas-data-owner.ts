@@ -18,6 +18,8 @@ type NativeCanvas={
   rename:(...args:any[])=>unknown;
   edit:(...args:any[])=>unknown;
   duplicate:(...args:any[])=>unknown;
+  history:(...args:any[])=>unknown;
+  revert:(...args:any[])=>unknown;
   delete:(...args:any[])=>unknown;
 };
 export interface NativeCanvasDataModules<Root,Scope,Database>{
@@ -105,6 +107,7 @@ export function createAdmittedCanvasDataOwner<Root,Scope,Database extends {close
         switch(request.method){
           case "aiverse.canvas.list":return canvas.list(p.limit);
           case "aiverse.canvas.get":return canvas.get(p.id);
+          case "aiverse.canvas.history":return canvas.history(p.id,p.limit);
           case "aiverse.canvas.create":return canvas.create({
             title:p.title,idempotencyKey:p.idempotencyKey,actor,
           });
@@ -112,6 +115,7 @@ export function createAdmittedCanvasDataOwner<Root,Scope,Database extends {close
           case "aiverse.canvas.edit":return canvas.edit({...target,edit:p.edit});
           case "aiverse.canvas.duplicate":return canvas.duplicate({...target,
             ...(p.title===undefined?{}:{title:p.title})});
+          case "aiverse.canvas.revert":return canvas.revert({...target,toVersion:p.toVersion});
           case "aiverse.canvas.delete":return canvas.delete(target);
           default:throw deny();
         }
