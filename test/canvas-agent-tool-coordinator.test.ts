@@ -59,10 +59,10 @@ function fixture(){
        groups:doc.board.groups.map((x:any)=>x.id===g.id?
          {...x,label:p.edit.label}:x)}};
    }else if(p.edit?.type==="group.move"){
-     const g=doc.board.groups.find(x=>x.id===p.edit.id);
+     const g=doc.board.groups.find((x:any)=>x.id===p.edit.id);
      if(!g)throw Error("missing group");
      doc={...doc,version:doc.version+1,board:{...doc.board,
-       nodes:doc.board.nodes.map(x=>g.nodeIds.includes(x.id)?
+       nodes:doc.board.nodes.map((x:any)=>g.nodeIds.includes(x.id)?
          {...x,x:x.x+p.edit.dx,y:x.y+p.edit.dy}:x)}};
    }else throw Error("unexpected edit");
    writes++;return doc;
