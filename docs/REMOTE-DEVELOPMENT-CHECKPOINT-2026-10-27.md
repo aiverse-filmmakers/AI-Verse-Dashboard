@@ -390,7 +390,7 @@ passed. Dashboard code SHA:
 passed [cross-platform Dashboard CI 40741376157](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376157)
 and [Chromium QC 40741376101](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376101).
 Check [real canonical composition 40741376218](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376218)
-for its final status before declaring entire batch green.
+passed on the tested implementation SHA.
 Docs commits after code do not change runtime behavior.
 
 **Outstanding owner gates:** production actor-grant authorization,
