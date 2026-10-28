@@ -6,8 +6,11 @@ on:
   pull_request:
     paths:
       - docs/github-browser-progress.json
+      - docs/github-chapters-milestones.json
       - scripts/verify-github-browser-progress.mjs
+      - scripts/verify-github-milestones.mjs
       - test/github-browser-progress.test.mjs
+      - test/github-milestones.test.mjs
       - .github/workflows/github-browser-progress.yml
   workflow_dispatch:
 permissions:
@@ -28,6 +31,8 @@ jobs:
         with:
           node-version: "22"
       - name: Validate remote and formal progress schema
-        run: node --test test/github-browser-progress.test.mjs
+        run: node --test test/github-browser-progress.test.mjs test/github-milestones.test.mjs
       - name: Print independently bounded completion indicators
-        run: node scripts/verify-github-browser-progress.mjs
+        run: |
+          node scripts/verify-github-browser-progress.mjs
+          node scripts/verify-github-milestones.mjs
