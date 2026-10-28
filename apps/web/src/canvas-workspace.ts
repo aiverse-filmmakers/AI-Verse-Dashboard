@@ -55,12 +55,16 @@ export class CanvasWorkspace {
   private current:CanvasDoc|null=null;
   private selectedNote:string|null=null;
   private pendingDelete=false;
+  private historyOpen=false;
+  private history:CanvasDoc[]=[];
+  private pendingRevertVersion:number|null=null;
   private readonly header:HTMLElement;
   private readonly status:HTMLElement;
   private readonly sidebar:HTMLElement;
   private readonly board:HTMLElement;
   private readonly controls:HTMLElement;
   private readonly noteEditor:HTMLElement;
+  private readonly historyPanel:HTMLElement;
   private readonly content:HTMLElement;
   private readonly libraryToggle:HTMLButtonElement;
   private readonly collapseToggle:HTMLButtonElement;
@@ -87,9 +91,11 @@ export class CanvasWorkspace {
     this.board=node("div","canvas-board");
     this.board.setAttribute("aria-label","Canonical Canvas board");
     this.noteEditor=node("div","canvas-note-editor");
+    this.historyPanel=node("section","canvas-history");
+    this.historyPanel.setAttribute("aria-label","Canonical Canvas revision history");
     this.status=node("p","canvas-status","Scratch canvas is empty and unsaved.");
     this.status.setAttribute("role","status");
-    this.content.append(this.controls,this.board,this.noteEditor,this.status);
+    this.content.append(this.controls,this.historyPanel,this.board,this.noteEditor,this.status);
     this.body.append(this.sidebar,this.content);
     host.replaceChildren(this.header,this.body);
     this.renderVisibility();this.render();
@@ -102,6 +108,8 @@ export class CanvasWorkspace {
     this.message(c==="CANVAS_OWNER_UNAVAILABLE"?"Canvas Data owner not connected on this host."
       :c==="CANVAS_ACCESS_DENIED"?"Action denied by OS permissions or operator approval."
       :c==="RECORD_VERSION_CONFLICT"?"Canvas changed elsewhere. Reload it before editing."
+      :c==="CANVAS_HISTORY_UNAVAILABLE"?"That saved Canvas version is unavailable."
+      :c==="CANVAS_HISTORY_INVALID"?"Canvas history could not be verified."
       :"Canvas action unavailable: "+c);
   }
   private snapshot(response:{result:unknown},scope:Required<ClientScope>){
@@ -117,7 +125,8 @@ export class CanvasWorkspace {
     if(this.destroyed)throw Error("Canvas closed");
     this.epoch++;this.selected={...next};this.client.retarget(next);
     this.current=null;this.list=[];this.busy=false;this.selectedNote=null;
-    this.pendingDelete=false;
+    this.pendingDelete=false;this.historyOpen=false;this.history=[];
+    this.pendingRevertVersion=null;
     const label=this.header.querySelector(".canvas-scope");
     if(label)label.textContent=next.workspaceId;
     this.message("Workspace changed. Only its own Canvas documents can be opened.");
@@ -163,13 +172,16 @@ export class CanvasWorkspace {
       const result=this.snapshot(await this.client.canvasGet(id),scope);
       if(!this.alive(epoch))return;
       if(Array.isArray(result))throw Error("CANVAS_INVALID_PROJECTION");
-      this.current=result;this.selectedNote=null;this.message("Saved Canvas · version "+result.version);
+      this.current=result;this.selectedNote=null;
+      this.historyOpen=false;this.history=[];this.pendingRevertVersion=null;
+      this.message("Saved Canvas · version "+result.version);
     }catch(error){if(this.alive(epoch))this.failure(error);}
     finally{if(this.alive(epoch)){this.busy=false;this.render();}}
   }
   scratch(){
     if(this.busy)return;
     this.current=null;this.selectedNote=null;this.pendingDelete=false;
+    this.historyOpen=false;this.history=[];this.pendingRevertVersion=null;
     this.message("Scratch canvas is empty. Its first edit creates a real Data document.");
     this.render();
   }
@@ -232,6 +244,67 @@ export class CanvasWorkspace {
       editId(),source.title.slice(0,135)+" copy"),
       "Atomic copy saved in canonical Data.");
   }
+  async openHistory(){
+    if(this.destroyed||this.busy||!this.current)return;
+    const epoch=this.epoch,scope={...this.selected},documentId=this.current.id;
+    this.busy=true;this.render();
+    try{
+      const source=this.snapshot(await this.client.canvasHistory(documentId,20),scope);
+      if(!this.alive(epoch)||this.current?.id!==documentId)return;
+      if(!Array.isArray(source)||source.some(x=>x.id!==documentId
+        ||x.version>this.current!.version))
+        throw Error("CANVAS_INVALID_PROJECTION");
+      this.history=source;this.historyOpen=true;this.pendingRevertVersion=null;
+      this.message(source.length+" verified Data revision(s) available.");
+    }catch(error){if(this.alive(epoch))this.failure(error);}
+    finally{if(this.alive(epoch)){this.busy=false;this.render();}}
+  }
+  async revert(version:number){
+    if(this.destroyed||this.busy||!this.current
+      ||!this.historyOpen||!this.history.some(x=>x.version===version)
+      ||version>=this.current.version)return;
+    if(this.pendingRevertVersion!==version){
+      this.pendingRevertVersion=version;
+      this.message("Confirm restoring v"+version+
+        ". This writes a new canonical version; the current version remains in history.");
+      this.render();return;
+    }
+    const d=this.current;
+    this.pendingRevertVersion=null;
+    const saved=await this.operate(()=>this.client.canvasRevert(d.id,version,d.version,editId()),
+      "Restored v"+version+" as a new canonical Canvas version.");
+    if(saved&&this.historyOpen)void this.openHistory();
+  }
+  private renderHistory(){
+    this.historyPanel.replaceChildren();
+    this.historyPanel.hidden=!this.historyOpen||!this.current;
+    if(this.historyPanel.hidden)return;
+    const heading=node("div","canvas-history-heading");
+    heading.append(node("strong","","Saved versions"));
+    heading.append(action("Close history",()=>{
+      this.historyOpen=false;this.pendingRevertVersion=null;this.render();
+    }));
+    this.historyPanel.append(heading);
+    const live=this.current!;
+    for(const version of this.history){
+      const item=node("div","canvas-history-item");
+      const label=node("span","",version.version===live.version
+        ?"Current · v"+version.version
+        :"v"+version.version+" · "+version.title);
+      item.append(label);
+      if(version.version<live.version){
+        const confirm=this.pendingRevertVersion===version.version;
+        const b=action(confirm?"Confirm restore v"+version.version:
+          version.version===live.version-1?"Undo last change":"Restore v"+version.version,
+          ()=>{void this.revert(version.version);});
+        b.disabled=this.busy;
+        item.append(b);
+      }
+      this.historyPanel.append(item);
+    }
+    if(!this.history.length)this.historyPanel.append(
+      node("p","canvas-hint","No verified revision snapshots found."));
+  }
   private renderLibrary(){
     this.sidebar.hidden=!this.libraryOpen||!this.expanded;
     this.libraryToggle.setAttribute("aria-expanded",String(this.libraryOpen));
@@ -267,6 +340,7 @@ export class CanvasWorkspace {
       y:60+(this.current?.board?.nodes.length??0)%5*26,
     },"Note added");});
     const duplicate=action("Duplicate",()=>{void this.duplicate();});
+    const history=action("History",()=>{void this.openHistory();});
     const renameInput=node("input","canvas-rename-title");
     renameInput.maxLength=140;renameInput.value=this.current?.title??"";
     renameInput.setAttribute("aria-label","Rename Canvas title");
@@ -275,10 +349,12 @@ export class CanvasWorkspace {
     const isSaved=Boolean(this.current);
     add.disabled=this.busy;create.disabled=this.busy;newTitle.disabled=this.busy;
     duplicate.disabled=this.busy||!isSaved;
+    history.disabled=this.busy||!isSaved;
     rename.disabled=this.busy||!isSaved;renameInput.disabled=this.busy||!isSaved;
     remove.disabled=this.busy||!isSaved;
-    actions.append(newTitle,create,add,renameInput,rename,duplicate,remove);
+    actions.append(newTitle,create,add,renameInput,rename,duplicate,history,remove);
     this.controls.append(actions);
+    this.renderHistory();
     this.renderBoard();
   }
   private renderBoard(){
