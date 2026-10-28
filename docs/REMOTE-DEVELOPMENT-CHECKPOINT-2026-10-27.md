@@ -807,3 +807,58 @@ together. Keep documentation and new chats in sync.
 Next Task 93: qualify real native Mac operator session and
 independently authenticated grant/approval issuance audit.
 No automatic production grant issuer, no merging draft PRs.
+
+
+## Resume AFTER Tasks 93–142 (28 October 2026)
+
+**Next Task 143. Do not reimplement Tasks 8–142.** Tasks 93–142
+are itemized in `docs/DEVELOPMENT-TASKS-93-142-2026-10-28.md`.
+
+The operator wants **flexible small tasks but fixed chapters and
+milestones**. We committed exactly 10 engineering chapters and
+40 named milestone outcomes in
+`docs/github-chapters-milestones.json`, validated by
+`scripts/verify-github-milestones.mjs` and
+`test/github-milestones.test.mjs`. Four original foundation
+milestones are verified, eight other milestones including native
+Canvas context are implemented in drafts, and 28 are planned.
+The GB budget is the 100-point separate engineering scorecard,
+not MC formal acceptance.
+
+New `apps/gateway/src/canvas-context.ts` implements bounded
+canonical Data-backed app selection context, strict native host
+identity/root/scope/revision, selected/untrusted note text only,
+immediate grant rechecks, nonserializable minted snapshot.
+`CanvasAgentActions.invokeSelectedNoteEdit` uses the minted
+selection, checks canonical run system/workspace and delegates
+to existing typed Data owner effect with idempotency and CAS.
+`test/canvas-context.test.ts` has 38 test scenarios.
+`scripts/mc2/ci-canvas-data-owner-proof.mjs` additionally
+exercises real scoped SQLite, OS grant verifier, GatewayStore,
+selected note write, JSON-forged context and stale Data version.
+
+**Last verified implementation code SHA:**
+`fb85aa4c6af92416b8f2e6c21d19632a5c4a62ca`.
+[Real OS/Gateway/Data CI 40775792089](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40775792089)
+and [Chromium CI 40775791985](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40775791985)
+passed. Linux/Windows Dashboard CI passed; macOS CI queued at
+last check. Documentation and progress-data commits after code
+do not alter runtime behavior but progress validator/tests
+must pass at new exact head before claiming newest score integrity
+green. Dashboard PR #42 remains draft/unmerged; OS native
+issuer PR #111 and reader PR #110 also draft/unmerged.
+
+**Progress**: GitHub/browser estimate **~35/100 provisional**,
+FA **15/100 formally accepted**. Local Mac production readiness
+is deliberately an *unscored blocker list*: native independently
+authenticated owner session, OS grant/approval audit, owner Data
+installation/provisioning, actual model-tool dispatch, provider
+consent, desktop delivery and dogfood. Do not conflate source
+capability with deployment.
+
+**Next Task 143** should qualify the genuine production
+model-tool/context transport and native owner identity,
+or start the next ready owner-backed milestone, after checking
+actual repo status and avoiding duplicate work. The canvas
+context's `WeakSet` identity is only valid in-process and
+must never be accepted from an HTTP body/model-supplied JSON.
