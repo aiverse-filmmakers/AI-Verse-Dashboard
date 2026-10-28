@@ -495,3 +495,110 @@ Dashboard `c27034de7559a2398a5215902be4d6d62d6521ea` fully green:
 [real pinned Gateway/OS/Data 40743058809](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743058809).
 All eight scoped **source** tasks can be treated as tested; no formal acceptance/merge
 or private owner Mac validation. Latest docs heads may run workflows separately.
+
+
+## Tasks 33–42 real owner lifecycle checkpoint, 28 October 2026
+
+**DO NOT REBUILD Tasks 8–42.** Source-implemented, independently
+CI-verified in existing Dashboard draft
+[PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+and Data draft
+[PR #22](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/22).
+Both PRs remain unmerged, with no private Mac production acceptance.
+
+Ten bounded slices delivered:
+
+**33 | OS/Gateway grant qualification.** Actual OS
+`scripts/action-permission.mjs` at `0dc7440` provides
+action-class policy evaluation, **NOT** actor identity, bot
+lease or human approval receipts. Canonical Gateway run/session
+records do not issue bot authority. No fake actor/grant was
+minted. This remains a real production blocking dependency.
+
+**34 | Data readonly preflight.** New Data
+`inspectScopedDataDatabase(driver,scope)` in the existing
+WeakMap-trusted scope owner calls native read-only SQLite
+`inspectMigration` using the exact scope binding, with
+zero file/provision/migration side effects.
+
+**35 | Data scope safety tests.** Missing database and no new
+file, healthy binding/unchanged file mtime, mismatched
+standalone owner, fake constructed scope and symlink escape
+all tested. No browser migration/installer created.
+
+**36 | Host-only readiness.** Dashboard
+`apps/gateway/src/canvas-owner-preflight.ts` implements
+`createCanvasOwnerPreflight()` for a pinned OS registered
+root and active workspace. It returns only `ready` and
+safe reason codes. No HTTP RPC or bearer-accessible
+provisioning path.
+
+**37 | Readiness denial tests.** Dashboard
+`test/canvas-owner-preflight.test.ts` covers missing,
+quarantined, foreign, migration-required/incomplete,
+paused, invalid and rebound scopes.
+
+**38 | Human pause enforcement.** `CanvasOwnerBridge`
+rechecks real OS workspace manifest active status at
+the owner effect edge. A paused workspace cannot use
+Canvas read or write.
+
+**39 | Agent pause enforcement.**
+`CanvasAgentActions` also revokes real canonical agent
+Canvas reads/writes while workspace manifest paused,
+including during effect-edge checks. Tests verify a real
+manifest resumes operation only after it becomes active.
+
+**40 | Real native Data lifecycle proof.**
+`scripts/mc2/ci-canvas-data-owner-proof.mjs` tests
+`database-missing`, then ONLY disposable CI trusted host
+calls the existing Data `create-or-open` on canonical
+Personal and Film scopes, and host readiness reports
+`ready`. Paused workspace is again refused.
+Browser/Cookies never create a Data database.
+
+**41 | Data backup proof.** Existing canonical Data
+`backupTo` creates disposable SQLite backup with
+authentic binding. Reopen validates document, notes,
+version and history. This does not install live backup
+schedules or determine retention.
+
+**42 | CI and handoff.** Exact verified Data code SHA
+`d1a135a490547890e7ba54d43cf77a71f67f67b1`:
+[release smoke 40745957846](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957846),
+[six-platform CI 40745957240](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957240),
+[five-component acceptance 40745957276](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957276),
+all **passed**.
+Dashboard verified source
+`f92d46ad9cc11a1867ae11f54912044037bccf47`:
+[all-platform Dashboard CI 40746877698](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746877698),
+[Chromium QC 40746877403](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746877403),
+[real canonical Gateway/OS/Data integration 40746878006](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746878006),
+all **passed**. Later documentation-only commits
+do not change runtime code. False test fixtures with
+literal escaped newline manifests were fixed before
+final green CI.
+
+Read the new runbook:
+`docs/CANVAS-OWNER-ADMISSION-PREFLIGHT-2026-10-28.md`
+for precise **not-yet-installed** actor grant, native
+scope provisioning, approved owner backup, Gateway
+model tool and private owner Mac gates.
+
+**Next Task 43 qualification:** research the actual OS
+repository's native actor grant/approval machinery and
+create an independently reviewed production owner
+contract only where necessary. Do not use Gateway bearer,
+browser cookies, manual `agentGrant=true` or an OS
+permission floor as identity. If authoritatively
+missing, retain denial and explicit blocker.
+Never create parallel Data storage/OS policy engines.
+Do not auto-merge drafts.
+
+**Progress:** officially accepted roadmap **15/100**,
+pending MC2.1 design and Personal-first amendment
+independent acceptance; next formal gate **17/100**
+if approved. GitHub-first **90–93%** is a future
+pre-local target, not actual current completion.
+User wants explicit per-task slice count, completion,
+next tasks and percentage bar every batch.
