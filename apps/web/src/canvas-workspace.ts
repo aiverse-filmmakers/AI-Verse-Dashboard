@@ -130,6 +130,10 @@ export class CanvasWorkspace {
       :c==="RECORD_VERSION_CONFLICT"?"Canvas changed elsewhere. Reload it before editing."
       :c==="CANVAS_HISTORY_UNAVAILABLE"?"That saved Canvas version is unavailable."
       :c==="CANVAS_HISTORY_INVALID"?"Canvas history could not be verified."
+      :c==="CANVAS_GROUP_CONFLICT"?"Group ID or members conflict with another group."
+      :c==="CANVAS_GROUP_NOT_FOUND"?"Group no longer exists. Reload Canvas."
+      :c==="CANVAS_BOARD_INVALID"?"Invalid or overlapping group members. Reload Canvas."
+      :c==="CANVAS_POSITION_INVALID"?"Group movement would exceed the Canvas bounds."
       :"Canvas action unavailable: "+c);
   }
   private snapshot(response:{result:unknown},scope:Required<ClientScope>){
