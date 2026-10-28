@@ -1161,3 +1161,77 @@ revocable actor-grant and human approval receipt contract in the
 actual OS owner repository, comparing all existing grant machinery.
 Do not fabricate production identities or bypass owner approvals.
 Continue with proof-driven development, not redundant scaffolding.
+
+
+### Tasks 43–62: native OS Canvas grants, independent actor admission (28 October 2026)
+
+**Twenty bounded source development slices, not twenty accepted roadmap points.**
+The existing Dashboard
+[draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+and Data [draft PR #22](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/22)
+remain unmerged. A new OS grant-reader
+[draft PR #110](https://github.com/aiverse-filmmakers/AI-Verse-OS/pull/110)
+is also unmerged. None are installed as private user grants.
+
+| # | Bounded source task/result | Gate |
+| --- | --- | --- |
+| **43** | Inspected the actual native OS action-permission and GatewayStore; identified missing actor issuer and approval receipts | Source stop-check |
+| **44** | Created isolated OS grant branch and draft PR #110, not a main-branch mutation | Draft review |
+| **45** | Implemented readonly OS owner-private file contract; no issue/write/install endpoint | OS tests |
+| **46** | Strict human grant scope, actor, method, principal and expiry verification | OS tests |
+| **47** | Strict bot grant bound to authenticated run + session + workspace + method | OS tests |
+| **48** | Fresh owner file read for immediate revoke, generation epoch change and bounded TTL | OS tests |
+| **49** | Fail closed on symlink, nonregular/oversized/foreign owner file, duplicates and unknown fields | OS tests |
+| **50** | Dedicated Linux/macOS/Windows Node 22 native OS grant matrix and draft PR CI | OS Actions |
+| **51** | Native OS grant reader checks real active workspace using existing OS action-permission evaluator | OS workspace tests |
+| **52** | Trusted Dashboard `createOsNativeCanvasGrantResolvers`, pinned root generation and no browser endpoint | Dashboard CI |
+| **53** | Separate native human session authenticator required; Dashboard cookie/name insufficient | Dashboard tests |
+| **54** | Separate Gateway bot session validator required; model-supplied run/session rejected | Dashboard tests |
+| **55** | OS grant-derived actor returned to actual Data owner, retaining all canonical Data controls | Real composition |
+| **56** | OS policy operator/agent admission uses same native grant, freshly checked per effect | Policy integration |
+| **57** | Genuine GatewayStore run verifier uses OS grant for baseline `get`, then exact method grant at write | MC2 proof |
+| **58** | Removing a human OS grant denies next authenticated Canvas RPC | Real CI proof |
+| **59** | Removing bot OS grant denies otherwise-running canonical Gateway agent | Real CI proof |
+| **60** | Method-specific bot restrictions: `edit` grant never automatically authorizes `duplicate` | Real CI proof |
+| **61** | Cross-platform, real Gateway+OS+Data and browser CI, isolated fixture corrections | GitHub Actions |
+| **62** | OS/Dashboard owner runbooks, full tracker and new-chat handoff with production blockers | Docs |
+
+**Pinned OS implementation SHA:** `a9b6eaf785c6782fe09f2b99a624d1abb8f520b3`
+in new OS [draft PR #110](https://github.com/aiverse-filmmakers/AI-Verse-OS/pull/110).
+It includes native active workspace denial and actual multiline test
+manifests. Verify [OS readonly grant CI run 40762850957](https://github.com/aiverse-filmmakers/AI-Verse-OS/actions/runs/40762850957)
+before marking it green.
+
+**Dashboard last code/pin SHA:** `201ae6770e735a38f993c9c4cc1b2ecb1449f7b3`.
+Exact [Dashboard CI 40762883313](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40762883313),
+[Chromium 40762883146](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40762883146),
+and [real canonical Gateway/OS/Data composition 40762883505](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40762883505)
+must pass before Tasks 43–62 can be called fully source-verified.
+The Dashboard CI uses the OS draft code pin; Data remains the
+previously tested native owner commit `d1a135a`. The CI host
+explicitly installs disposable owner-private grants, never
+browser/modeller-selected files.
+
+**Critical production gaps (NOT implemented):** independent local
+operator session authenticator, independently approved grant
+issuer/renewal/revocation audit lifecycle, cross-process Gateway
+cancellation/Data-write transaction fencing, signed tamper-proof
+audit if required, real Windows ACL owner validation, human
+approval receipt issuance/consumption for destructive actions,
+installed model-tool dispatch, owner's Data provisioning/backup
+policy, private Mac acceptance and merged owner reviews.
+A read-only verifier is not an issuer. The CI's human/bot
+authentication callbacks are **disposable test doubles**, with
+the bot callback additionally checking true canonical Gateway
+run/session state. Do not ship these callbacks as production authority.
+
+Formal accepted roadmap still **15/100**. MC2.1 independent
+acceptance plus Personal-first amendment pending; next approved
+gate **17/100**, not automatically incremented by code slices.
+GitHub-first 90–93% before local acceptance is a *target*,
+not measured current system completion.
+
+**Next Task 63:** qualify the OS **native human-session authenticator
+and explicit operator grant issuance/revocation lifecycle** before
+production attachment. If unavailable, keep all grants absent and
+deny, do not substitute a Dashboard bearer or default bot identity.
