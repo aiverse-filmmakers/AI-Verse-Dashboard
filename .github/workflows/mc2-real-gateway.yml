@@ -10,6 +10,8 @@ on:
       - "apps/gateway/src/canvas-os-policy.ts"
       - "apps/gateway/src/canvas-data-owner.ts"
       - "apps/gateway/src/canvas-agent-actions.ts"
+      - "apps/gateway/src/canvas-gateway-run-verifier.ts"
+      - "test/canvas-gateway-run-verifier.test.ts"
       - "test/canvas-agent-actions.test.ts"
       - "packages/protocol/src/methods.ts"
       - "apps/gateway/src/local-app-session.ts"
@@ -78,6 +80,7 @@ jobs:
           CI: "true"
           AIVERSE_MC2_DATA_SOURCE: data-source
           AIVERSE_MC2_OS_SOURCE: os-source
+          AIVERSE_MC2_GATEWAY_SOURCE: gateway-source
         run: node scripts/mc2/ci-canvas-data-owner-proof.mjs
 
       - name: Install pinned browser test dependencies without changing the lockfile
