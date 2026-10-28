@@ -1,6 +1,6 @@
 import {describe,it,afterEach} from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from "node:fs";
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync,realpathSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {SystemRegistry} from "../packages/registry/src/index.js";
@@ -63,7 +63,7 @@ describe("Canvas host owner routing, authorization and fail-closed behavior",()=
    dashboardSystemId:systemId,
    authorize(facts:CanvasHostFacts,request:CanvasHostRequest){
     facts.assertLease();authorized++;
-    assert.equal(facts.root,root);
+    assert.equal(facts.root,realpathSync(root));
     assert.equal(facts.principal,"local-operator");
     assert.ok(["read","write"].includes(facts.access));
     assert.ok(!JSON.stringify(request.params).includes(root));
