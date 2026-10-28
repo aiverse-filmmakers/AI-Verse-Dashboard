@@ -180,6 +180,47 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     assert.equal(await first.locator(".live-chat-message.user").count(),2);
     assert.equal(await second.locator(".live-chat-message.user").count(),1);
 
+    // Simulate an application restart without storing a transcript in the
+    // browser. Canonical Gateway alone must supply the session list and turns.
+    await page.reload({waitUntil:"domcontentloaded"});
+    await page.locator(".live-chat-pane").first().waitFor();
+    assert.equal(await page.locator(".live-chat-message").count(),0,
+      "a reload must not hydrate an invented browser-local transcript");
+    await page.getByRole("button",{name:"Previous chats"}).click();
+    const selected=page.locator(".live-chat-history-item")
+      .filter({hasText:continued.params.sessionId});
+    await selected.getByRole("button",{name:"Open conversation"}).click();
+    await page.waitForFunction(expected=>{
+      const pane=document.querySelector(".live-chat-pane");
+      return (pane?.querySelectorAll(".live-chat-message.user").length??0)===2
+        && (pane?.querySelectorAll(".live-chat-message.assistant").length??0)===2
+        && (pane?.textContent??"").includes(expected);
+    },followup,{timeout:18000});
+    const resumed=page.locator(".live-chat-pane").first();
+    assert.equal(await resumed.locator(".live-chat-message.user").count(),2);
+    assert.ok((await resumed.locator(".live-chat-message.assistant").last().textContent())
+      .includes(followup),"history comes from canonical completed output");
+    const afterRestart=marker+"-after-reload";
+    await resumed.locator(".live-chat-input").fill(afterRestart);
+    await resumed.getByRole("button",{name:"Send",exact:true}).click();
+    await page.waitForFunction(expected=>{
+      const pane=document.querySelector(".live-chat-pane");
+      const last=[...(pane?.querySelectorAll(".live-chat-message.assistant p")??[])].at(-1);
+      return (pane?.querySelector(".live-chat-status")?.textContent??"")
+        .startsWith("completed")&&last?.textContent?.includes(expected);
+    },afterRestart,{timeout:24000});
+    const finalCreate=trackedRequests.filter(req=>req.frame?.method==="aiverse.gateway.run.create").at(-1)?.frame;
+    assert.equal(finalCreate.params.sessionId,continued.params.sessionId,
+      "a reopened chat continues the same Gateway-owned canonical session");
+    assert.equal(finalCreate.params.messages.length,5);
+    assert.deepEqual(finalCreate.params.messages.map(x=>x.role),
+      ["user","assistant","user","assistant","user"]);
+    assert.equal(finalCreate.params.messages[0].content,marker);
+    assert.equal(finalCreate.params.messages[2].content,followup);
+    assert.equal(finalCreate.params.messages[4].content,afterRestart);
+    assert.equal(await page.evaluate(()=>localStorage.length),0);
+    assert.equal(await page.evaluate(()=>sessionStorage.length),0);
+
     // Logout revokes session authorization and existing WS subscriptions.
     await page.getByRole("button",{name:"Disconnect"}).click();
     await page.locator("#pair-form").waitFor({state:"visible"});
@@ -198,6 +239,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       canonical_assistant_delta_to_chromium:true,
       canonical_terminal_get_verified:true,
       canonical_followup_same_session_and_confirmed_history:true,
+      canonical_history_reopened_after_browser_reload:true,
       scoped_two_chat_panes:true,
       cookie_logout_revoked:true,
       member_provider_used:false,
