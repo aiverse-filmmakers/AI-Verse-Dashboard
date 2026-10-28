@@ -905,3 +905,58 @@ is a future target rather than current score. **Next Task 16:** qualify
 Data-owned atomic clone and undo/version reversal against the existing
 canonical record owner; add only a demonstrated missing contract and tests,
 without building Dashboard document storage or bypassing OS approvals.
+
+### Tasks 16–18: atomic Canvas duplication delivery (28 October 2026)
+
+**Bounded 3-task implementation, not a release or accepted-roadmap gate.**
+Data PR #22 and Dashboard PR #42 remain drafts and unmerged.
+
+- **Task 16: Data owner contract + honest Undo qualification.**
+  Native `CanvasDocuments.duplicate()` performs a single SQLite transaction
+  containing source version validation, full graph copy and Data-owned
+  idempotency; cloned record is version 1. No partial document writes,
+  even when an operation fails. New tests cover graph integrity,
+  same-request replay after source advances, source version conflict,
+  changed-request idempotency conflict and single-record cardinality.
+  The tested Data source pin is `5caa5d08151f85e503e8ceace494458736b76886`.
+  **Undo not yet available:** Data history retains provenance metadata,
+  not full trusted before-state. Do not invent a browser undo stack as
+  canonical history.
+- **Task 17: strict owner-authorized Dashboard/agent transport.**
+  `aiverse.canvas.duplicate` added once to the typed Dashboard command
+  registry, strict `CanvasOwnerBridge` schema and permission class,
+  `DashboardClient`, native Data attachment and the existing
+  host-only agent allowlist. Reject model/browser-injected raw board,
+  actor, filesystem root and malformed version/operation fields.
+  Updated pinned Data+OS+Gateway composition CI exercises the actual
+  method over authenticated Dashboard RPC, checks copied board,
+  one-record version and idempotent replay, and denies stale copy.
+- **Task 18: real first-party library copy UX.**
+  Removed all multi-step create+note+edge duplication from
+  `apps/web/src/canvas-workspace.ts`. A single authenticated
+  `DashboardClient.canvasDuplicate` now copies the selected version
+  atomically and displays the owner projection only upon success.
+  Chromium test fixture mirrors the canonical one-record operation,
+  asserts exactly one duplicate call with no interim note mutations
+  and refuses an externally advanced source version without creating
+  a partial Canvas library entry.
+
+**Validation evidence:** Data six-job OS/Node 22+24 CI, release smoke
+and five-component acceptance checks passed on the code pin. Dashboard
+current-head Chromium/browser QC, cross-platform `npm run check` and
+real pinned Gateway/Data/OS composition should all pass before these
+three tasks are counted as fully source-verified; see run IDs in Actions.
+Do not equate CI source verification with a connected private Mac app.
+
+**Deferred contract:** Data-owned authentic historical undo/revision
+archive, approvals for destructive undo/delete, real installed
+human/agent grants, production owner acceptance and actual Mac
+dogfood remain next. Next qualified Task 19 should focus narrowly on
+Data-owned revision/history design and approved actor/OS retention
+semantics, not UI-only undo or another document store.
+
+**Accepted roadmap remains 15/100.** No fabricated point gain.
+MC2.1 independent acceptance and the Personal-first amendment remain
+pending; next 2-point acceptance would make 17/100. GitHub-first 90–93%
+pre-local readiness is a goal, not verified current whole-project
+completion. 
