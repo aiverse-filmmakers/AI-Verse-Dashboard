@@ -39,8 +39,8 @@ function fixture(){
  const owner:ApprovedCanvasOwner={
   dashboardSystemId:systemId,
   async authorize(facts,request){
-   authCount++;assert.equal(request.method,"aiverse.canvas.get");
-   assert.deepEqual(request.params,{id:"rec_1"});
+   authCount++;assert.ok(["aiverse.canvas.get","aiverse.canvas.edit"].includes(request.method));
+   if(request.method==="aiverse.canvas.get")assert.deepEqual(request.params,{id:"rec_1"});
    await onAuthorize();return allow;
   },
   async execute(facts,request){
@@ -248,7 +248,7 @@ describe("owner-backed selected Canvas context",()=>{
 });
 
 describe("selected host Canvas snapshot to verified agent write",()=>{
- const agent=f=>new CanvasAgentActions(f.registry,f.owner,{
+ const agent=(f:ReturnType<typeof fixture>)=>new CanvasAgentActions(f.registry,f.owner,{
   verifyRun:async runId=>({
    source:"canonical-gateway" as const,state:"running" as const,runId,
    systemId:f.systemId,workspaceId:"operator",actorId:"bot-1",leaseEpoch:"lease-1",
