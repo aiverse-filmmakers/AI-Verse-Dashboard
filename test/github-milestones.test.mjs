@@ -8,7 +8,7 @@ test("keeps 10 known chapters and exactly 40 finite milestones",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p,{checkFiles:true});
  assert.equal(r.chapterCount,10);assert.equal(r.milestoneCount,40);
  assert.equal(r.completedMilestones,4);
- assert.equal(r.githubProvisional,36);
+ assert.equal(r.githubProvisional,37);
  assert.equal(r.formalAcceptance,15);
  assert.equal(r.localProductionAccepted,false);
 });
@@ -75,6 +75,6 @@ test("partially built Canvas milestone is neither fully accepted nor untouched",
 test("40 milestones do not turn into 40 accepted roadmap points",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p);
  assert.equal(r.formalAcceptance,15);
- assert.equal(r.githubProvisional,36);
+ assert.equal(r.githubProvisional,37);
  assert.equal(r.states.verified+r.states.implemented+r.states['in-progress']+r.states.planned+r.states.blocked,40);
 });
