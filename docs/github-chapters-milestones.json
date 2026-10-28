@@ -1,0 +1,321 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-28",
+  "scope": "personal-first-dashboard-v1",
+  "status": "planned-milestone-baseline-draft",
+  "note": "Engineering checkpoints, not formal roadmap acceptance. Changing milestones requires explicit versioned rebaseline.",
+  "chapterCount": 10,
+  "milestoneCount": 40,
+  "chapters": [
+    {
+      "id": "foundation",
+      "title": "Architecture & runtime",
+      "gbBudget": 15,
+      "milestones": [
+        {
+          "id": "G01.1",
+          "title": "System design and owner boundary",
+          "state": "verified",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G01.2",
+          "title": "Canonical Gateway routing and Qwen proof",
+          "state": "verified",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G01.3",
+          "title": "Clean CI baseline and third-party attribution",
+          "state": "verified",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G01.4",
+          "title": "Architecture preservation and source-pinning",
+          "state": "verified",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "chat",
+      "title": "Personal Chat & Gateway",
+      "gbBudget": 15,
+      "milestones": [
+        {
+          "id": "G02.1",
+          "title": "Typed authenticated canonical Gateway transport",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G02.2",
+          "title": "Multi-turn persistence, restart and conversation continuity",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G02.3",
+          "title": "Supported model/provider selection, stream and controls",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G02.4",
+          "title": "Attachments, commands and skills in real chat",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "canvas",
+      "title": "Personal, Workspace & Canvas",
+      "gbBudget": 15,
+      "milestones": [
+        {
+          "id": "G03.1",
+          "title": "Scoped persistent documents and version history",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G03.2",
+          "title": "Real editor, undo and owner-backed agent mutations",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G03.3",
+          "title": "Host-bound app context, selection and grouping",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G03.4",
+          "title": "Workspace lifecycle, real assets and app action round-trip",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "os-authority",
+      "title": "OS actors, grants & approvals",
+      "gbBudget": 10,
+      "milestones": [
+        {
+          "id": "G04.1",
+          "title": "Read-only canonical OS grant admission",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G04.2",
+          "title": "Native owner grant issue/revoke with reviewed live-session authority",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G04.3",
+          "title": "Owner approval receipts, audited lifecycle and secure platform ACL",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G04.4",
+          "title": "Cross-process cancellation, effects and recovery",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "providers",
+      "title": "Providers, generations & assets",
+      "gbBudget": 10,
+      "milestones": [
+        {
+          "id": "G05.1",
+          "title": "Owner-governed AI/provider authorization",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G05.2",
+          "title": "Supported model and reasoning discovery",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G05.3",
+          "title": "Real image generation job with charge approval",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G05.4",
+          "title": "Canonical persisted assets and Canvas placement",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "controls",
+      "title": "Owner-backed Control Center",
+      "gbBudget": 15,
+      "milestones": [
+        {
+          "id": "G06.1",
+          "title": "Systems, workspaces and Gateway health/diagnostics",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G06.2",
+          "title": "Bots, runs, approvals, tasks and background automations",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G06.3",
+          "title": "Memory, Skills, Brain, Data and app projections",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G06.4",
+          "title": "Token/spend, Connections and security/audit projections",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "film",
+      "title": "First Filmmaking application",
+      "gbBudget": 5,
+      "milestones": [
+        {
+          "id": "G07.1",
+          "title": "First bounded film use-case and acceptance contract",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G07.2",
+          "title": "Real scene/script owner-backed input and state",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G07.3",
+          "title": "Filmmaking UI with shared chat/context",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G07.4",
+          "title": "Verified first film workflow and recovery",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "ux",
+      "title": "UX, responsive & accessibility",
+      "gbBudget": 5,
+      "milestones": [
+        {
+          "id": "G08.1",
+          "title": "Personal-first information architecture",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G08.2",
+          "title": "Mobile/desktop responsive panels and multi-chat interactions",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G08.3",
+          "title": "Keyboard, focus and screen-reader accessibility",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G08.4",
+          "title": "Cross-browser regression and owner-facing usability packet",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "desktop",
+      "title": "Mac desktop and distribution",
+      "gbBudget": 5,
+      "milestones": [
+        {
+          "id": "G09.1",
+          "title": "Native macOS host shell and secure OS bridge",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G09.2",
+          "title": "Multiple local system registrations and Gateway supervision",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G09.3",
+          "title": "CI-built installable unsigned artifact and update/repair",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G09.4",
+          "title": "Distribution lifecycle, signing handoff and native runbook",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "audit",
+      "title": "Security and remote release readiness",
+      "gbBudget": 5,
+      "milestones": [
+        {
+          "id": "G10.1",
+          "title": "Independent cross-owner architecture and licensing audit",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G10.2",
+          "title": "Secrets, scopes, hostile-content and abuse regression",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G10.3",
+          "title": "Two-system failure/restart/restore acceptance evidence",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G10.4",
+          "title": "Remote-to-owner handoff and clear local-only acceptance gates",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    }
+  ]
+}
