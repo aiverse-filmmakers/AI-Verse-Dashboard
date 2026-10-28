@@ -160,7 +160,11 @@ export class CanvasOwnerBridge{
           ||this.registry.resolveRoot(system)!==installed.root
           ||this.registry.bindingGeneration(system)!==installed.generation)
           throw Object.assign(Error("CANVAS_ACCESS_DENIED"),{code:"CANVAS_ACCESS_DENIED"});
-        if(workspace!=="operator")getWorkspace(this.registry,system,workspace);
+        if(workspace!=="operator"){
+          const manifest=getWorkspace(this.registry,system,workspace);
+          if(manifest.summary.status!=="active")
+            throw Object.assign(Error("CANVAS_ACCESS_DENIED"),{code:"CANVAS_ACCESS_DENIED"});
+        }
       };
       assertLease();
       const facts:CanvasHostFacts={
