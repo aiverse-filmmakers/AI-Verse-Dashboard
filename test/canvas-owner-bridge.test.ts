@@ -176,3 +176,36 @@ describe("Canvas host owner routing, authorization and fail-closed behavior",()=
   assert.equal(executed,0,"no owner effect on invalid or unregistered frames");
  });
 });
+
+describe("paused Canvas workspace cannot reach an approved canonical owner",()=>{
+ it("rejects owner read and write while paused and admits after reactivation",async()=>{
+  const {root,registry,systemId}=fixture();
+  let effects=0;
+  const bridge=new CanvasOwnerBridge(registry,[{
+   dashboardSystemId:systemId,authorize:()=>true,
+   execute:()=>{effects++;return documentProjection()},
+  }]);
+  const server=await startGateway(new QueryRouter(registry,new DisposableCache()),
+   new SubscriptionHub(),{port:0,canvasBridge:bridge});
+  closers.push(()=>server.close());
+  const headers={authorization:"Bearer "+server.authToken};
+  const manifest=join(root,"workspaces","filmmaking","WORKSPACE.yaml");
+  writeFileSync(manifest,
+   'schema_version: "2.0"\nid: "filmmaking"\nname: "Filmmaking"\nstatus: "paused"\n');
+  for(const method of ["aiverse.canvas.get","aiverse.canvas.create"]){
+   const params=method==="aiverse.canvas.get"
+    ?{id:"rec_1234"}:{title:"Denied",idempotencyKey:"paused-create"};
+   const denied=await call(server.port,"POST",
+    frame(method,systemId,"filmmaking",params),headers);
+   assert.equal(denied.body.ok,false);
+   assert.equal((denied.body.error as {code:string}).code,"CANVAS_ACCESS_DENIED");
+  }
+  assert.equal(effects,0);
+  writeFileSync(manifest,
+   'schema_version: "2.0"\nid: "filmmaking"\nname: "Filmmaking"\nstatus: "active"\n');
+  const ok=await call(server.port,"POST",
+    frame("aiverse.canvas.get",systemId,"filmmaking",{id:"rec_1234"}),headers);
+  assert.equal(ok.body.ok,true);
+  assert.equal(effects,1);
+ });
+});
