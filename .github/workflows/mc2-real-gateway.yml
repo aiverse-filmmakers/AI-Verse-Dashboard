@@ -36,6 +36,14 @@ jobs:
           path: gateway-source
           persist-credentials: false
 
+      - name: Checkout exact reviewed Data Canvas owner revision
+        uses: actions/checkout@v4
+        with:
+          repository: aiverse-filmmakers/AI-Verse-Data
+          ref: 68f642cee430dc22381033f1338398b635993972
+          path: data-source
+          persist-credentials: false
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -46,6 +54,18 @@ jobs:
         run: |
           npm ci
           npm run check
+
+      - name: Build exact reviewed canonical Data Canvas owner in its own repository
+        run: |
+          cd data-source
+          npm ci
+          npm run build
+
+      - name: Prove authenticated Dashboard Canvas RPC writes real scoped Data SQLite
+        env:
+          CI: "true"
+          AIVERSE_MC2_DATA_SOURCE: data-source
+        run: node scripts/mc2/ci-canvas-data-owner-proof.mjs
 
       - name: Install pinned browser test dependencies without changing the lockfile
         run: npm install --no-save --package-lock=false playwright@1.58.2 esbuild@0.25.12
