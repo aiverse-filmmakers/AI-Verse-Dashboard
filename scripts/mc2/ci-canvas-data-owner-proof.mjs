@@ -326,7 +326,7 @@ try{
      nodeIds:["group-note-a","foreign-note"]},
  }));
  assert.equal(invalidGroup.ok,false);
- assert.equal(invalidGroup.error.code,"CANVAS_OWNER_UNAVAILABLE",
+ assert.equal(invalidGroup.error.code,"CANVAS_BOARD_INVALID",
    "Data group validation must deny references to missing notes");
  const movedGroup=await agentActions.invoke({
    runId:"ci-agent-run-1",operationId:"ci-group-move-agent-1",
