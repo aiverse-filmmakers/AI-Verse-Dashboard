@@ -126,6 +126,44 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     assert.ok(trackedRequests.every(req=>!JSON.stringify(req.frame).includes(bearer)),
       "no privileged Dashboard bearer may appear in browser RPC frames");
 
+    // A follow-up in the SAME pane must reuse its canonical Gateway session
+    // AND carry the exact confirmed prior user/assistant messages.
+    const followup=marker+"-followup";
+    await first.locator(".live-chat-input").fill(followup);
+    await first.getByRole("button",{name:"Send",exact:true}).click();
+    await page.waitForFunction(expected=>{
+      const pane=document.querySelectorAll(".live-chat-pane")[0];
+      const status=pane?.querySelector(".live-chat-status")?.textContent??"";
+      const answers=[...(pane?.querySelectorAll(".live-chat-message.assistant p")??[])];
+      return status.startsWith("completed") && answers.length===2
+        && (answers[1]?.textContent??"").includes(expected);
+    },followup,{timeout:24000});
+    const creates=trackedRequests.filter(req=>req.frame?.method==="aiverse.gateway.run.create");
+    assert.equal(creates.length,2,"a follow-up must create one new canonical run");
+    const continued=creates[1].frame;
+    assert.ok(typeof continued.params?.sessionId==="string"
+      && continued.params.sessionId.length>0,
+      "follow-up must reuse the earlier authenticated canonical session");
+    assert.deepEqual(continued.params.messages,[
+      {role:"user",content:marker},
+      {role:"assistant",content:finalAnswer},
+      {role:"user",content:followup},
+    ],"no speculative stream text or missing raw turns in the follow-up");
+    // A prior canonical run, fetched by the trusted CI host, must bind the
+    // same principal/system/workspace and session as that follow-up request.
+    const hostResponse=await fetch(origin+"/rpc",{
+      method:"POST",
+      headers:{"content-type":"application/json",authorization:"Bearer "+bearer},
+      body:JSON.stringify({type:"req",v:"1.0",id:"verify-parent-session",
+        method:"aiverse.gateway.run.get",systemId,workspaceId:"operator",
+        params:{runId}}),
+    });
+    assert.equal(hostResponse.status,200);
+    const parent=await hostResponse.json();
+    assert.equal(parent.ok,true);
+    assert.equal(continued.params.sessionId,parent.result.sessionId,
+      "the Gateway created the follow-up within the previous run's real session");
+
     // Real split panes must not share active turns or scope data.
     await page.locator(".live-chat-toolbar .live-chat-split").click();
     assert.equal(await page.locator(".live-chat-pane").count(),2);
@@ -139,7 +177,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       const answer=pane?.querySelector(".live-chat-message.assistant p")?.textContent??"";
       return status.startsWith("completed")&&answer.includes(expected);
     },secondMarker,{timeout:24000});
-    assert.equal(await first.locator(".live-chat-message.user").count(),1);
+    assert.equal(await first.locator(".live-chat-message.user").count(),2);
     assert.equal(await second.locator(".live-chat-message.user").count(),1);
 
     // Logout revokes session authorization and existing WS subscriptions.
@@ -159,6 +197,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       local_pairing_http_only:true,
       canonical_assistant_delta_to_chromium:true,
       canonical_terminal_get_verified:true,
+      canonical_followup_same_session_and_confirmed_history:true,
       scoped_two_chat_panes:true,
       cookie_logout_revoked:true,
       member_provider_used:false,
