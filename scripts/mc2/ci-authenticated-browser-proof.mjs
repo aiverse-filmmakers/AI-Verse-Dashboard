@@ -164,7 +164,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     assert.match(await activityPanel.textContent(),/tool-call · agent/);
     await activityPanel.getByRole("button",{name:"Errors"}).click();
     assert.match(await activityPanel.textContent(),/No matching events/);
-    assert.equal(await activityPanel.locator(".personal-agent-activity-entry").count(),1,
+    assert.equal(await activityPanel.locator(".personal-agent-activity-local .personal-agent-activity-entry").count(),1,
       "filtered activity must retain its real session status");
     await activityPanel.getByRole("button",{name:"Tool calls"}).click();
     assert.match(await activityPanel.textContent(),/tool-call · agent/);
