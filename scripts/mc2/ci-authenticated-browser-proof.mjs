@@ -95,7 +95,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     // The Personal diagnostics panel must query the *real* authenticated
     // canonical Gateway status. Canvas remains genuinely unavailable in
     // this browser fixture since no approved Data owner was installed.
-    await page.getByRole("button",{name:"Workspace status"}).click();
+    await page.getByRole("button",{name:"Workspace status",exact:true}).click();
     const panel=page.locator(".personal-diagnostics");
     await panel.waitFor({state:"visible"});
     await page.waitForFunction(()=>{
@@ -132,7 +132,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     },null,{timeout:20000});
     assert.equal(await panel.locator('[data-state="available"]').count(),2);
     assert.equal(await panel.locator('[data-state="unavailable"]').count(),1);
-    await page.getByRole("button",{name:"Workspace status"}).click();
+    await page.getByRole("button",{name:"Workspace status",exact:true}).click();
     assert.equal(await panel.isVisible(),false);
     const marker="browser-canonical-proof-"+Date.now();
     const first=page.locator(".live-chat-pane").first();
