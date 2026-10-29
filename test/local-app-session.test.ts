@@ -268,6 +268,8 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     const scope=async(cookie:string)=>fetch(base+"/local-app/session",{
       headers:{cookie}});
     assert.equal((await scope(oldCookie)).status,200);
+    assert.equal(session.isAllowedBrowserStream("operator"),true);
+    assert.equal(session.isAllowedBrowserStream("film"),false);
     const ws=new WebSocket("ws://127.0.0.1:"+server.port+
       "/ws?systemId="+systemId,[DASHBOARD_WS_PROTOCOL],{
       headers:{origin:base,cookie:oldCookie},
@@ -291,6 +293,9 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     });
     assert.equal(fakeSwitch.status,404);
     session.rotateWorkspaceFromHost("film");
+    assert.equal(session.isAllowedBrowserStream("operator"),false);
+    assert.equal(session.isAllowedBrowserStream("film"),false,
+      "new owner scope cannot stream until browser is freshly paired");
     await closed;
     assert.equal(ws.readyState,WebSocket.CLOSED);
     const freshCode=session.pairingCode();
@@ -307,6 +312,8 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.deepEqual(next.scope,{systemId,workspaceId:"film"});
     const newCookie=(second.headers.get("set-cookie")??"").split(";")[0];
     assert.notEqual(newCookie,oldCookie);
+    assert.equal(session.isAllowedBrowserStream("film"),true);
+    assert.equal(session.isAllowedBrowserStream("operator"),false);
     const film=await rpc(server.port,{type:"req",v:"1.0",id:"film-only",
       method:"workspace.get",systemId,workspaceId:"film"},
       {cookie:newCookie,origin:base});

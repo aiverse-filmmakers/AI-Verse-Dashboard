@@ -180,6 +180,10 @@ export class LocalApplicationSession {
   isAllowedSocketSystem(systemId:string):boolean{
     return this.ownerStillApproved()&&systemId===this.scope.systemId;
   }
+  /** Recheck a running cookie-authorized stream before forwarding events. */
+  isAllowedBrowserStream(workspaceId:string):boolean{
+    return workspaceId===this.scope.workspaceId && this.active();
+  }
   isAllowedFrame(value:unknown):boolean{
     if(!value||typeof value!=="object"||Array.isArray(value))return false;
     const frame=value as {systemId?:unknown;workspaceId?:unknown;method?:unknown};

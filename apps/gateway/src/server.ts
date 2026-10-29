@@ -296,7 +296,10 @@ function handleSocket(
       canonicalEpoch++;
       canonicalCancel?.();
       canonicalCancel=undefined;
-      const invalid = !canonicalBridge || fields.length !== 3
+      const invalid = !canonicalBridge
+        || (localApp!==undefined && !localApp.isAllowedBrowserStream(
+          typeof request.workspaceId==="string"?request.workspaceId:""))
+        || fields.length !== 3
         || fields.some(key=>!["type","workspaceId","runId"].includes(key))
         || typeof request.workspaceId !== "string"
         || !/^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/.test(request.workspaceId)
@@ -321,8 +324,12 @@ function handleSocket(
       const epoch=canonicalEpoch;
       canonicalCancel=canonicalBridge.openEventStream(boundSystem,request.workspaceId as string,
         request.runId as string,
-        event=>{if(epoch===canonicalEpoch && ws.readyState===1)ws.send(JSON.stringify(event));},
-        code=>{if(epoch===canonicalEpoch && ws.readyState===1)ws.send(JSON.stringify({
+        event=>{if(epoch===canonicalEpoch && ws.readyState===1
+          && (!localApp||localApp.isAllowedBrowserStream(request.workspaceId as string)))
+          ws.send(JSON.stringify(event));},
+        code=>{if(epoch===canonicalEpoch && ws.readyState===1
+          && (!localApp||localApp.isAllowedBrowserStream(request.workspaceId as string)))
+          ws.send(JSON.stringify({
           type:"res",v:"1.0",id:"gateway-run-subscribe",ok:false,systemId:boundSystem,
           error:{code,message:"Canonical Gateway "+code},observedAt:new Date().toISOString(),
         }));});
