@@ -52,17 +52,39 @@ async function launch(mode,port,settings){
   }
 }
 async function stop(proc){
-  if(!proc || proc.child.exitCode!==null)return;
+  if(!proc)return;
   const child=proc.child;
-  const exiting=new Promise((resolve,reject)=>{
-    const timeout=setTimeout(()=>{child.kill("SIGKILL");reject(Error("RESTART_CHILD_CLOSE_TIMEOUT"));},20000);
-    child.once("exit",(code)=>{
+  if(child.exitCode===0)return;
+  if(child.exitCode!==null||child.signalCode!==null)
+    throw Error("RESTART_CHILD_EXIT_NOT_CLEAN");
+  if(!child.connected){
+    child.kill("SIGKILL");
+    throw Error("RESTART_CHILD_IPC_CLOSED");
+  }
+  await new Promise((resolve,reject)=>{
+    let settled=false;
+    const finish=error=>{
+      if(settled)return;
+      settled=true;
       clearTimeout(timeout);
-      if(code===0)resolve();else reject(Error("RESTART_CHILD_EXIT_NOT_CLEAN"));
-    });
+      child.off("exit",onExit);
+      child.off("error",onError);
+      if(error)reject(error);else resolve();
+    };
+    const onExit=code=>finish(code===0?null:Error("RESTART_CHILD_EXIT_NOT_CLEAN"));
+    const onError=()=>finish(Error("RESTART_CHILD_IPC_CLOSED"));
+    const timeout=setTimeout(()=>{
+      child.kill("SIGKILL");
+      finish(Error("RESTART_CHILD_CLOSE_TIMEOUT"));
+    },20000);
+    child.once("exit",onExit);
+    child.once("error",onError);
+    try{
+      child.send({type:"stop"},error=>{
+        if(error)finish(Error("RESTART_CHILD_IPC_CLOSED"));
+      });
+    }catch{finish(Error("RESTART_CHILD_IPC_CLOSED"));}
   });
-  child.send({type:"stop"});
-  await exiting;
 }
 function latestAnswerComplete(pane){
   return pane?.querySelector(".live-chat-status")?.textContent?.startsWith("completed");
@@ -87,6 +109,7 @@ export async function proveFullProcessRestart({
     AIVERSE_RESTART_TOKEN:token,
   };
   let gateway,host,browser,context;
+  let phase="starting child processes",primaryFailure=null;
   try {
     gateway=await launch("canonical",gatewayPort,gatewaySettings);
     host=await launch("dashboard",dashboardPort,dashboardSettings);
@@ -140,14 +163,18 @@ export async function proveFullProcessRestart({
         "the canonical previous user turn must be supplied, not invented");
       return frame;
     }
+    phase="initial browser pairing";
     await pair(host.info.pairingCode);
+    phase="initial canonical history restore";
     await restoreSession();
+    phase="initial same-session continuation";
     const markerOne="ci-process-first-"+Date.now();
     await continueInSession(markerOne);
     const priorHostPid=host.info.pid,priorGatewayPid=gateway.info.pid;
     const priorPairing=host.info.pairingCode;
     const cookie=(await context.cookies(dashboardOrigin)).find(c=>c.name==="aiverse_local_session");
     assert.ok(cookie?.httpOnly && cookie?.sameSite==="Strict");
+    phase="first child shutdown";
     await stop(host);host=undefined;
     await stop(gateway);gateway=undefined;
 
@@ -162,6 +189,7 @@ export async function proveFullProcessRestart({
 
     // Restart from SAME disk state and SAME bound ports; stale browser cookies
     // must not authenticate into the new server process.
+    phase="same-port process restart";
     gateway=await launch("canonical",gatewayPort,gatewaySettings);
     host=await launch("dashboard",dashboardPort,dashboardSettings);
     assert.notEqual(gateway.info.pid,priorGatewayPid);
@@ -174,8 +202,11 @@ export async function proveFullProcessRestart({
     await page.reload({waitUntil:"domcontentloaded"});
     await page.locator("#pair-form").waitFor({state:"visible"});
     assert.equal(await page.locator(".live-chat-pane").count(),0);
+    phase="restarted browser pairing";
     await pair(host.info.pairingCode);
+    phase="restarted canonical history restore";
     await restoreSession();
+    phase="post-restart continuation";
     const recoveredText=await page.locator(".live-chat-pane").first().innerText();
     assert.ok(recoveredText.includes(markerOne));
     assert.ok(recoveredText.includes(initialMarker));
@@ -206,10 +237,24 @@ export async function proveFullProcessRestart({
       browser_storage_not_used:true,
       owner_mac_tested:false,
     };
+  }catch(error){
+    primaryFailure=error;
+    // The CI phase and script location are safe; no child output or tokens.
+    const location=typeof error?.stack==="string"
+      ?error.stack.match(/ci-process-restart-proof\.mjs:\d+:\d+/)?.[0]??"unknown"
+      :"unknown";
+    console.error("RESTART_PROOF_FAILURE",JSON.stringify({
+      phase,errorClass:typeof error?.name==="string"?error.name:"Error",location,
+    }));
+    throw error;
   }finally{
-    if(context)await context.close();
-    if(browser)await browser.close();
-    if(host)await stop(host);
-    if(gateway)await stop(gateway);
+    let cleanupFailure=null;
+    for(const cleanup of [
+      ()=>context?.close(),()=>browser?.close(),
+      ()=>host?stop(host):undefined,()=>gateway?stop(gateway):undefined,
+    ]){
+      try{await cleanup();}catch(error){cleanupFailure??=error;}
+    }
+    if(!primaryFailure&&cleanupFailure)throw cleanupFailure;
   }
 }
