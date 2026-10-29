@@ -1,6 +1,7 @@
 import {DashboardClient,DashboardChatEventFeed,PersonalChatRunController,
   type ChatRunView,type ClientScope} from "../../../packages/client/src/index.js";
 import {CanvasWorkspace} from "./canvas-workspace.js";
+import {PersonalDiagnostics} from "./personal-diagnostics.js";
 
 /**
  * Real Personal Chat UI for a trusted local/desktop Dashboard session.
@@ -65,6 +66,7 @@ export class PersonalChatApplication {
   private readonly historyPanel:HTMLElement;
   private readonly historyClient:DashboardClient;
   private readonly canvas:CanvasWorkspace;
+  private readonly diagnostics:PersonalDiagnostics;
   private historyEpoch=0;
   private readonly parent:HTMLElement;
   private destroyed=false;
@@ -84,7 +86,11 @@ export class PersonalChatApplication {
     const create=button("Split chat",()=>{this.openPane();},"live-chat-split");
     this.createButton=create;
     const previous=button("Previous chats",()=>{void this.toggleHistory();},"live-chat-history-toggle");
-    bar.append(title,previous,create);
+    const diagnosticsToggle=button("Workspace status",()=>{
+      this.diagnostics.toggle();
+    },"live-chat-diagnostics-toggle");
+    bar.append(title,previous,diagnosticsToggle,create);
+    const diagnosticsHost=el("section","live-chat-diagnostics-host");
     this.historyPanel=el("section","live-chat-history");
     this.historyPanel.hidden=true;
     this.historyPanel.setAttribute("aria-label","Previous canonical conversations");
@@ -93,7 +99,11 @@ export class PersonalChatApplication {
     const canvasHost=el("aside","live-chat-canvas-host");
     canvasHost.setAttribute("aria-label","Personal Canvas and document library");
     body.append(this.panesHost,canvasHost);
-    container.append(bar,this.historyPanel,body);
+    container.append(bar,diagnosticsHost,this.historyPanel,body);
+    this.diagnostics=new PersonalDiagnostics(diagnosticsHost,
+      new DashboardClient(session.dashboardOrigin,this.selected,
+        session.authentication==="host-cookie"
+          ?{mode:"host-cookie"}:this.requireBearer(session)));
     this.canvas=new CanvasWorkspace(canvasHost,
       new DashboardClient(session.dashboardOrigin,this.selected,
         session.authentication==="host-cookie" ? {mode:"host-cookie"} : this.requireBearer(session)));
@@ -107,6 +117,7 @@ export class PersonalChatApplication {
     this.selected={...next};
     this.historyClient.retarget(this.selected);
     this.canvas.retarget(this.selected);
+    this.diagnostics.retarget(this.selected);
     this.historyEpoch++;
     this.historyPanel.hidden=true;this.historyPanel.replaceChildren();
     this.title.textContent="AI-Verse · "+next.workspaceId;
@@ -362,6 +373,7 @@ export class PersonalChatApplication {
   destroy():void{
     this.destroyed=true;this.historyEpoch++;
     this.canvas.destroy();
+    this.diagnostics.destroy();
     for(const pane of this.panes.values())pane.run.close();
     this.panes.clear();
     this.parent.replaceChildren();
