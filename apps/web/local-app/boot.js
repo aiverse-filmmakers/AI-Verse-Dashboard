@@ -13,10 +13,10 @@ const requestStatus=$("#workspace-request-status"),requestButton=$("#workspace-s
 let pendingId=null,selectedWorkspace=null;
 let chooserEpoch=0,sessionEpoch=0;
 function hideChooser(){
-  chooserEpoch++;
   chooser.hidden=true;chooserToggle.setAttribute("aria-expanded","false");
 }
 function resetChooser(){
+  chooserEpoch++;
   pendingId=null;
   requestStatus.textContent="No request pending.";
   requestButton.disabled=false;
