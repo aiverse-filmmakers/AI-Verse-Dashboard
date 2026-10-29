@@ -18,3 +18,13 @@
 .local-app-actions button{border:1px solid #dde3e9;border-radius:9px;background:#fff;padding:7px 12px;color:#36475a;cursor:pointer}
 #chat-root{height:calc(100dvh - 68px)}
 @media(max-width:500px){.local-pair{margin:40px 14px}.local-app-topbar{padding:12px}.local-app-actions{gap:6px}}
+
+/* First-party owner-approved workspace selector, available only after pairing. */
+.local-workspace-chooser{margin:12px 16px;padding:16px 20px;border:1px solid #d8e1ea;border-radius:14px;background:white;box-shadow:0 8px 24px #24364a12;max-width:640px}
+.local-workspace-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.local-workspace-chooser p{font-size:13px;color:#526477;line-height:1.5;margin:9px 0}
+.local-workspace-chooser form{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.local-workspace-chooser select{min-width:180px;flex:1;border:1px solid #c7d3df;border-radius:9px;padding:10px;background:#fff;color:#243141}
+.local-workspace-chooser button{border:1px solid #b7c7d8;background:#eef4fa;color:#28425c;padding:8px 12px;border-radius:9px;cursor:pointer}
+.local-workspace-chooser button:disabled{opacity:.55;cursor:not-allowed}
+.local-workspace-chooser label{font-size:12px;color:#526477}

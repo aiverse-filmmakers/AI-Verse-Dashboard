@@ -23,8 +23,18 @@
 <section id="connected" hidden>
   <header class="local-app-topbar">
     <div class="local-app-logo">Λ <strong>AI-Verse OS</strong><span>Personal</span></div>
-    <div class="local-app-actions"><span id="local-scope">Local session</span><button id="logout" type="button">Disconnect</button></div>
+    <div class="local-app-actions"><span id="local-scope">Local session</span><button id="open-workspace-chooser" type="button" aria-expanded="false" aria-controls="workspace-chooser">Workspaces</button><button id="logout" type="button">Disconnect</button></div>
   </header>
+  <section id="workspace-chooser" class="local-workspace-chooser" aria-label="Change OS workspace" hidden>
+    <div class="local-workspace-heading"><strong>Switch workspace</strong><button id="close-workspace-chooser" type="button">Close</button></div>
+    <p>Request a workspace. Your trusted terminal must approve before access changes.</p>
+    <form id="workspace-request-form">
+      <label for="workspace-options">Available OS workspaces</label>
+      <select id="workspace-options" required></select>
+      <button id="workspace-submit" type="submit">Request access</button>
+    </form>
+    <p id="workspace-request-status" role="status" aria-live="polite">No request pending.</p>
+  </section>
   <div id="chat-root"></div>
 </section>
 </main>
