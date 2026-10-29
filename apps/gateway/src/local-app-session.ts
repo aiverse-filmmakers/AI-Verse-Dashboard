@@ -12,12 +12,14 @@ import {statSync} from "node:fs";
 import type {IncomingMessage,ServerResponse} from "node:http";
 import type {WebSocket} from "ws";
 import type {SystemRegistry} from "../../../packages/registry/src/registry.js";
-import {getWorkspace} from "../../../packages/os-read-adapter/src/workspace.js";
+import {getWorkspace,listWorkspaces} from "../../../packages/os-read-adapter/src/workspace.js";
 
 const COOKIE="aiverse_local_session";
 const MAX_PAIR_ATTEMPTS=5;
 const PAIR_TTL=5*60*1000;
 const SESSION_TTL=8*60*60*1000;
+const WORKSPACE_REQUEST_TTL=90*1000;
+const MAX_WORKSPACE_REQUESTS=5;
 const ID=/^[a-z0-9][a-z0-9-]{0,63}$/;
 const WS=/^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/;
 // New canonical methods never inherit a browser permission by prefix.
@@ -69,6 +71,9 @@ export class LocalApplicationSession {
   private readonly ownerRoot?:string;
   private readonly ownerGeneration?:number;
   private workspaceIdentity?:{root:string;dev:number;ino:number};
+  private requestListener?:(item:{id:string;workspaceId:string})=>void;
+  private requestCount=0;
+  private pendingRequest?:{id:string;workspaceId:string;at:number;identity?:{root:string;dev:number;ino:number};state:"pending"|"denied"};
   private sessionsUntil=0;
   private attempts=0;
   private used=false;
@@ -96,6 +101,31 @@ export class LocalApplicationSession {
     const {rootReal}=getWorkspace(this.ownerRegistry,this.scope.systemId,workspaceId);
     const st=statSync(rootReal);
     return {root:rootReal,dev:st.dev,ino:st.ino};
+  }
+  /** Trusted host explicitly opts in. No browser-accessible grant issuer. */
+  setWorkspaceRequestListener(listener:(item:{id:string;workspaceId:string})=>void):void{
+    if(!this.ownerRegistry||this.requestListener)throw Error("LOCAL_APP_HOST_AUTHORITY_REQUIRED");
+    this.requestListener=listener;
+  }
+  /** Must be invoked from the trusted terminal, never from HTTP or RPC. */
+  approveWorkspaceRequest(id:string):string{
+    const pending=this.pendingRequest;
+    if(!pending||pending.id!==id||pending.state!=="pending"
+      ||Date.now()-pending.at>WORKSPACE_REQUEST_TTL)
+      throw Error("LOCAL_APP_REQUEST_INVALID");
+    if(!this.ownerStillApproved())throw Error("LOCAL_APP_OS_BINDING_STALE");
+    const candidate=this.captureWorkspaceIdentity(pending.workspaceId);
+    if(JSON.stringify(candidate)!==JSON.stringify(pending.identity))
+      throw Error("LOCAL_APP_WORKSPACE_CHANGED");
+    this.rotateWorkspaceFromHost(pending.workspaceId);
+    return pending.workspaceId;
+  }
+  denyWorkspaceRequest(id:string):void{
+    const pending=this.pendingRequest;
+    if(!pending||pending.id!==id||pending.state!=="pending"
+      ||Date.now()-pending.at>WORKSPACE_REQUEST_TTL)
+      throw Error("LOCAL_APP_REQUEST_INVALID");
+    pending.state="denied";
   }
   private ownerStillApproved():boolean{
     if(!this.ownerRegistry)return true; // legacy host mode cannot switch.
@@ -130,6 +160,8 @@ export class LocalApplicationSession {
     this.born=Date.now();
     this.attempts=0;
     this.used=false;
+    this.pendingRequest=undefined;
+    this.requestCount=0;
   }
   setBoundPort(port:number):void{
     if(this.port!==0||!Number.isInteger(port)||port<=0||port>65535)
@@ -148,6 +180,7 @@ export class LocalApplicationSession {
   }
   private revoke():void{
     this.sessionsUntil=0;
+    this.pendingRequest=undefined;
     if(this.expiryTimer)clearTimeout(this.expiryTimer);
     this.expiryTimer=undefined;
     for(const ws of this.sockets)ws.close(1008,"Session ended");
@@ -193,6 +226,12 @@ export class LocalApplicationSession {
       && frame.systemId===this.scope.systemId
       && frame.workspaceId===this.scope.workspaceId;
   }
+  private respond(res:ServerResponse,payload:unknown):void{
+    res.writeHead(200,{"content-type":"application/json; charset=utf-8",
+      "cache-control":"no-store","x-content-type-options":"nosniff",
+      "referrer-policy":"no-referrer","cross-origin-resource-policy":"same-origin"});
+    res.end(JSON.stringify(payload));
+  }
   /** Exact allowlisted same-origin assets. No filesystem path comes from HTTP. */
   private serveAsset(res:ServerResponse,body:string,media:string):void{
     res.writeHead(200,{"content-type":media,"cache-control":"no-store",
@@ -224,6 +263,71 @@ export class LocalApplicationSession {
         if(!this.isSession(req)){fail(res,401,"LOCAL_APP_UNPAIRED");return true;}
         this.serveAsset(res,this.assets.chat,"text/javascript; charset=utf-8");return true;
       }
+    }
+    // Narrow local host catalog. The generic workspace.list RPC stays denied.
+    if(url.pathname==="/local-app/workspaces"&&req.method==="GET"){
+      if(!this.isSession(req)){fail(res,401,"LOCAL_APP_UNPAIRED");return true;}
+      if(!this.requestListener||!this.ownerRegistry){
+        fail(res,403,"LOCAL_APP_CHOOSER_UNAVAILABLE");return true;
+      }
+      try{
+        const catalog=listWorkspaces(this.ownerRegistry,this.scope.systemId);
+        this.respond(res,{ok:true,selected:this.scope.workspaceId,workspaces:[
+          {id:"operator",name:"Personal",status:"active"},
+          ...catalog.slice(0,100).map(x=>({id:x.id,name:x.name,status:x.status})),
+        ]});
+      }catch{fail(res,503,"LOCAL_APP_CATALOG_UNAVAILABLE");}
+      return true;
+    }
+    if(url.pathname==="/local-app/workspace-request"&&req.method==="GET"){
+      if(!this.isSession(req)){fail(res,401,"LOCAL_APP_UNPAIRED");return true;}
+      if(!this.requestListener){fail(res,403,"LOCAL_APP_CHOOSER_UNAVAILABLE");return true;}
+      const pending=this.pendingRequest;
+      const state=pending?.state==="pending"&&Date.now()-pending.at>WORKSPACE_REQUEST_TTL
+        ?"expired":pending?.state??"none";
+      this.respond(res,{ok:true,state,id:pending?.id??null});return true;
+    }
+    if(url.pathname==="/local-app/workspace-request"&&req.method==="POST"){
+      if(!this.isAuthorizedBrowser(req)||req.headers["content-type"]!=="application/json"){
+        fail(res,403,"LOCAL_APP_ORIGIN_DENIED");return true;
+      }
+      if(!this.requestListener||!this.ownerRegistry){
+        fail(res,403,"LOCAL_APP_CHOOSER_UNAVAILABLE");return true;
+      }
+      if(this.requestCount>=MAX_WORKSPACE_REQUESTS){
+        fail(res,429,"LOCAL_APP_REQUEST_LIMIT");return true;
+      }
+      if(this.pendingRequest?.state==="pending"
+        &&Date.now()-this.pendingRequest.at<=WORKSPACE_REQUEST_TTL){
+        fail(res,409,"LOCAL_APP_REQUEST_PENDING");return true;
+      }
+      let raw="",size=0;
+      try{
+        for await(const chunk of req){
+          size+=Buffer.byteLength(chunk);
+          if(size>256)throw Error("oversized");
+          raw+=String(chunk);
+        }
+      }catch{fail(res,400,"LOCAL_APP_REQUEST_INVALID");return true;}
+      let target:unknown;
+      try{
+        const payload=JSON.parse(raw) as unknown;
+        if(payload&&typeof payload==="object"&&!Array.isArray(payload)
+          &&Object.keys(payload).length===1)
+          target=(payload as {workspaceId?:unknown}).workspaceId;
+      }catch{}
+      if(typeof target!=="string"||!WS.test(target)||target===this.scope.workspaceId){
+        fail(res,400,"LOCAL_APP_WORKSPACE_INVALID");return true;
+      }
+      let identity:typeof this.workspaceIdentity;
+      try{identity=this.captureWorkspaceIdentity(target);}
+      catch{fail(res,404,"LOCAL_APP_WORKSPACE_INVALID");return true;}
+      const pending={id:randomBytes(8).toString("hex"),workspaceId:target,
+        at:Date.now(),identity,state:"pending" as const};
+      this.pendingRequest=pending;this.requestCount++;
+      try{this.requestListener({id:pending.id,workspaceId:pending.workspaceId});}
+      catch{this.pendingRequest=undefined;fail(res,503,"LOCAL_APP_HOST_UNAVAILABLE");return true;}
+      this.respond(res,{ok:true,state:"pending",id:pending.id});return true;
     }
     if(url.pathname==="/local-app/session"&&req.method==="GET"){
       // Cross-site reads cannot discover even the permitted system identity.
