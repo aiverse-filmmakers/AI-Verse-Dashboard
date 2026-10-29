@@ -79,6 +79,10 @@ if(uiEnabled){
   }catch{fail("LOCAL_APP_ASSETS_UNAVAILABLE")}
   localApp=new LocalApplicationSession({systemId,workspaceId:"operator"},
     {html,boot,css,chat},registry);
+  localApp.setWorkspaceRequestListener(request=>{
+    process.stderr.write("\nWorkspace switch requested: "+request.workspaceId+
+      "\nApprove: :approve "+request.id+"\nDeny: :deny "+request.id+"\n");
+  });
 }
 let server:Awaited<ReturnType<typeof startGateway>>;
 try{
@@ -103,7 +107,7 @@ if(localApp){
     "One-time pairing code (expires in five minutes): "+
     localApp.pairingCode()+"\n"+
     "Enter this code in the local browser page, never into ChatGPT.\n"+
-    "Host commands: :workspaces, :use <workspace-id>, :use operator, :help\n\n");
+    "Host commands: :workspaces, :use <workspace-id>, :use operator, :approve <id>, :deny <id>, :help\n\n");
   // Only the actual TTY-host controls scope. No browser workspace.list,
   // remote URL, machine path, env key, or unverified arbitrary workspace ID.
   const terminal=createInterface({input:process.stdin,output:process.stderr,
@@ -112,7 +116,23 @@ if(localApp){
     for await(const raw of terminal){
       const command=raw.trim();
       if(command===":help"){
-        process.stderr.write("Commands: :workspaces, :use <id>, :use operator, :help\n");
+        process.stderr.write("Commands: :workspaces, :use <id>, :use operator, :approve <id>, :deny <id>, :help\n");
+        continue;
+      }
+      if(command.startsWith(":approve ")||command.startsWith(":deny ")){
+        const approve=command.startsWith(":approve ");
+        const id=command.slice(approve?9:6).trim();
+        try{
+          if(approve){
+            const target=localApp.approveWorkspaceRequest(id);
+            process.stderr.write("Approved workspace: "+target+
+              "\nOld browser revoked. New pairing code: "+
+              localApp.pairingCode()+"\nReload the browser and re-pair.\n");
+          }else{
+            localApp.denyWorkspaceRequest(id);
+            process.stderr.write("Workspace request denied.\n");
+          }
+        }catch{process.stderr.write("WORKSPACE_REQUEST_REJECTED\n");}
         continue;
       }
       if(command===":workspaces"){
