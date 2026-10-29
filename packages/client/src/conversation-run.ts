@@ -312,6 +312,39 @@ export class PersonalChatRunController {
     }
     return this.snapshot();
   }
+  /**
+   * A dropped event stream has a known canonical run ID. Reconnect only to that
+   * run after an authenticated GET; never create a new run or idempotency key.
+   * SSE replays from the beginning, so speculative deltas are discarded first.
+   */
+  async reconnect():Promise<ChatRunView> {
+    const runId=this.view.runId;
+    if(this.view.phase!=="interrupted" || !runId || !SAFE_ID.test(runId))
+      fail("CHAT_RECONNECT_UNAVAILABLE");
+    const scope=requiredScope(this.client.getScope());
+    const epoch=this.epoch,selection=this.client.selectionVersion();
+    this.unsubscribe?.();this.unsubscribe=undefined;
+    this.show({phase:"submitting",output:"",errorCode:undefined});
+    try{
+      const response=await this.client.getGatewayRun(runId);
+      if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
+      const run=asRun(response.result,scope,runId);
+      if(this.activeRequest?.sessionId && run.sessionId!==this.activeRequest.sessionId)
+        fail("CHAT_SESSION_BINDING_MISMATCH");
+      this.confirmCanonicalOutput(run);
+      const nextPhase=phase(run.status);
+      this.show({phase:nextPhase,canonicalStatus:run.status,sessionId:run.sessionId,
+        output:run.output??"",errorCode:undefined,contextLimited:this.contextLimited});
+      if(nextPhase==="running" || nextPhase==="submitting" || nextPhase==="interrupted")
+        this.subscribe(epoch,scope,selection,runId);
+    }catch(error){
+      if(this.valid(epoch,scope,selection) && this.view.runId===runId)
+        this.show({phase:"interrupted",errorCode:
+          typeof (error as {code?:unknown})?.code==="string"
+            ?(error as {code:string}).code:"CHAT_RECONNECT_FAILED"});
+    }
+    return this.snapshot();
+  }
   private subscribe(epoch:number,scope:Required<ClientScope>,selection:number,runId:string):void {
     this.unsubscribe?.();
     this.seen.clear();this.lastSeq=0;
