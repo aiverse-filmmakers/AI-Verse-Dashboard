@@ -5,7 +5,7 @@ import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {WebSocket} from "ws";
 import {SystemRegistry} from "../packages/registry/src/index.js";
-import {DisposableCache} from "../packages/os-read-adapter/src/index.js";
+import {DisposableCache,ADAPTER_ERRORS} from "../packages/os-read-adapter/src/index.js";
 import {QueryRouter,SubscriptionHub,startGateway} from "../apps/gateway/src/index.js";
 import {LocalApplicationSession} from "../apps/gateway/src/local-app-session.js";
 import {DASHBOARD_WS_PROTOCOL} from "../packages/protocol/src/index.js";
@@ -278,7 +278,7 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     const closed=new Promise<void>(resolve=>ws.once("close",()=>resolve()));
     assert.throws(()=>session.rotateWorkspaceFromHost("../escape"),/LOCAL_APP_SCOPE_INVALID/);
     assert.throws(()=>session.rotateWorkspaceFromHost("missing"),
-      (error:unknown)=>(error as {code?:string})?.code==="ADAPTER_UNKNOWN_WORKSPACE");
+      (error:unknown)=>(error as {code?:string})?.code===ADAPTER_ERRORS.UNKNOWN_WORKSPACE);
     assert.equal((await scope(oldCookie)).status,200,
       "invalid owner selection must not revoke the current browser");
     assert.equal((await rpc(server.port,{
