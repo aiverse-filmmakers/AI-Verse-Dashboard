@@ -1026,3 +1026,12 @@ milestone work: native owner-approved system/workspace selection,
 a real owner-backed agents/control screen, or provider model
 dispatch with proper host approvals; never silently broaden
 local cookie scopes.
+
+
+## Tasks 439–453 checkpoint, 29 October 2026
+
+Dashboard [draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42) continues on `codex/dashboard-source-checkpoint`. Tasks [439–453](DEVELOPMENT-TASKS-439-453-2026-10-29.md) add the fifth real owner-backed `workspace.get` observation in Personal Workspace Status and replace wildcard paired-browser Gateway/Canvas permissions with an explicit method allowlist. Access is still exactly host-paired system/workspace, never a second workspace authority or arbitrary system.list/workspace.list. Typed projection, live HTTP and Chromium regression coverage were added.
+
+Source `aea7544ffe4f2af909df7c75fcdefc117308348b` passed ordinary Dashboard Node 22 CI, browser QC and progress integrity. Its real process-restart composition run failed twice with an unhandled closed-IPC error. `5c371568dd380440343844bc281766eccb07d124` hardens cleanup and logs only the failed phase/error class/source location. **Full composition of this head is pending verification**. Do not mark all green or award new GB points until the exact run resolves.
+
+**GB ~38/100 provisional, FA 15/100 accepted. Next Task 454:** resolve composition gate, finalize evidence, then advance a real G06.1 owner capability rather than add mock panels. Local Mac owner authentication and deployment remain deferred.
