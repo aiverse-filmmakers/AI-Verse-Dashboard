@@ -21,7 +21,7 @@ export interface ApprovedCanonicalGateway {
   resolveBearer: HostGatewayBinding["resolveBearer"];
 }
 const methods = new Set([
-  "aiverse.gateway.status", "aiverse.gateway.run.create", "aiverse.gateway.run.get",
+  "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.create", "aiverse.gateway.run.get",
   "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
 ]);
 const identifier = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
@@ -195,6 +195,22 @@ export class CanonicalGatewayBridge {
             capabilities:{runCreate:true,runGet:true,events:true,controls:false,
               conversationLibrary:true,providerSelection:false},
             source:"canonical-gateway"});
+        }
+        if(frame.method==="aiverse.gateway.models"){
+          if(frame.params!==undefined && !z.object({}).strict().safeParse(frame.params).success)
+            throw new GatewayTransportError("INVALID_ENVELOPE");
+          // The real canonical /v1/models currently advertises exactly one
+          // virtual Gateway model. Never invent physical provider choices.
+          const value=await client.preflight(signal);
+          const runtimeKind=/^[a-z][a-z0-9_-]{0,31}$/.test(value.runtime)
+            ?value.runtime:"unavailable";
+          return respond(true,{
+            source:"canonical-gateway",workspaceId:workspace,
+            models:[{id:"aiverse",label:"AI-Verse Gateway",kind:"gateway-virtual"}],
+            runtimeKind,modelSelectionSupported:false,
+            providerSelectionSupported:false,inferenceVerified:false,
+            evidence:"authenticated-status-and-models",observedAt:value.observedAt,
+          });
         }
         if(frame.method==="aiverse.gateway.session.list"){
           const parsed=pageInput.safeParse(frame.params??{});
