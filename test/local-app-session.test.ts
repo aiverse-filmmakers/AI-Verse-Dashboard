@@ -342,6 +342,32 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       {cookie,origin:base});
     assert.equal(denied.status,401);
   });
+  it("rejects a caller-mutated scope object and a replaced workspace manifest",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const ownerScope={systemId,workspaceId:"operator"};
+    const session=new LocalApplicationSession(ownerScope,undefined,reg);
+    ownerScope.workspaceId="film";
+    assert.equal(session.isAllowedFrame({method:"system.get",systemId,
+      workspaceId:"film"}),false);
+    assert.equal(session.isAllowedFrame({method:"system.get",systemId,
+      workspaceId:"operator"}),true);
+    session.rotateWorkspaceFromHost("film");
+    const srv=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>srv.close());
+    const base="http://127.0.0.1:"+srv.port;
+    const reply=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(srv.port),
+      body:json({code:session.pairingCode()}),
+    });
+    assert.equal(reply.status,200);
+    const cookie=(reply.headers.get("set-cookie")??"").split(";")[0];
+    writeFileSync(join(root,"workspaces","film","WORKSPACE.yaml"),
+      'id: "other-workspace"\\nname: "Impersonation"\\nstatus: "active"\\n');
+    assert.equal((await fetch(base+"/local-app/session",{headers:{cookie}})).status,401);
+    assert.throws(()=>session.rotateWorkspaceFromHost("operator"),
+      /LOCAL_APP_OS_BINDING_STALE/);
+  });
   it("unbound host cannot rotate scope without an explicit OS owner",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
     const legacy=new LocalApplicationSession({systemId,workspaceId:"operator"});

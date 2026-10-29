@@ -8,6 +8,7 @@
  * No routes exist unless the privileged launcher explicitly enables this.
  */
 import {randomBytes,timingSafeEqual} from "node:crypto";
+import {statSync} from "node:fs";
 import type {IncomingMessage,ServerResponse} from "node:http";
 import type {WebSocket} from "ws";
 import type {SystemRegistry} from "../../../packages/registry/src/registry.js";
@@ -67,6 +68,7 @@ export class LocalApplicationSession {
   private sessionToken=randomBytes(32).toString("base64url");
   private readonly ownerRoot?:string;
   private readonly ownerGeneration?:number;
+  private workspaceIdentity?:{root:string;dev:number;ino:number};
   private sessionsUntil=0;
   private attempts=0;
   private used=false;
@@ -77,20 +79,35 @@ export class LocalApplicationSession {
     private readonly ownerRegistry?:SystemRegistry){
     if(!ID.test(scope.systemId)||!WS.test(scope.workspaceId))
       throw Error("LOCAL_APP_SCOPE_INVALID");
+    // Never retain a caller-owned mutable object as an authorization scope.
+    this.scope={systemId:scope.systemId,workspaceId:scope.workspaceId};
     if(ownerRegistry){
       // Only a trusted host can inject the registry. Capture exactly the
       // approved identity/generation; browser requests can never choose it.
       this.ownerRoot=ownerRegistry.resolveRoot(scope.systemId);
       this.ownerGeneration=ownerRegistry.bindingGeneration(scope.systemId);
-      if(scope.workspaceId!=="operator")
-        getWorkspace(ownerRegistry,scope.systemId,scope.workspaceId);
+      this.workspaceIdentity=this.captureWorkspaceIdentity(scope.workspaceId);
     }
+  }
+  private captureWorkspaceIdentity(workspaceId:string):
+    {root:string;dev:number;ino:number}|undefined{
+    if(workspaceId==="operator")return undefined;
+    if(!this.ownerRegistry)throw Error("LOCAL_APP_HOST_AUTHORITY_REQUIRED");
+    const {rootReal}=getWorkspace(this.ownerRegistry,this.scope.systemId,workspaceId);
+    const st=statSync(rootReal);
+    return {root:rootReal,dev:st.dev,ino:st.ino};
   }
   private ownerStillApproved():boolean{
     if(!this.ownerRegistry)return true; // legacy host mode cannot switch.
     try{
-      return this.ownerRegistry.resolveRoot(this.scope.systemId)===this.ownerRoot
-        && this.ownerRegistry.bindingGeneration(this.scope.systemId)===this.ownerGeneration;
+      if(this.ownerRegistry.resolveRoot(this.scope.systemId)!==this.ownerRoot
+        ||this.ownerRegistry.bindingGeneration(this.scope.systemId)!==this.ownerGeneration)
+        return false;
+      const current=this.captureWorkspaceIdentity(this.scope.workspaceId);
+      if(!current)return this.scope.workspaceId==="operator";
+      return current.root===this.workspaceIdentity?.root
+        && current.dev===this.workspaceIdentity?.dev
+        && current.ino===this.workspaceIdentity?.ino;
     }catch{return false;}
   }
   /**
@@ -102,12 +119,12 @@ export class LocalApplicationSession {
     if(!this.ownerRegistry)throw Error("LOCAL_APP_HOST_AUTHORITY_REQUIRED");
     if(!WS.test(workspaceId))throw Error("LOCAL_APP_SCOPE_INVALID");
     if(!this.ownerStillApproved())throw Error("LOCAL_APP_OS_BINDING_STALE");
-    if(workspaceId!=="operator")
-      getWorkspace(this.ownerRegistry,this.scope.systemId,workspaceId);
+    const nextIdentity=this.captureWorkspaceIdentity(workspaceId);
     // Validate everything before touching the old browser session. Explicit
     // re-pairing is required even if the host reselects the same workspace.
     this.revoke();
     this.scope={systemId:this.scope.systemId,workspaceId};
+    this.workspaceIdentity=nextIdentity;
     this.pairing=randomBytes(32).toString("base64url");
     this.sessionToken=randomBytes(32).toString("base64url");
     this.born=Date.now();
