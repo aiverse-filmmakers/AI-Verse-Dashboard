@@ -20,10 +20,10 @@ This is a **planning estimate**, NOT a full independent code audit or a formal a
 | --- | ---: | ---: | --- |
 | Preserved architecture, provenance, OS/Gateway runtime proof | 15 | **15** | MC0/MC1 accepted and recorded; maintain architecture |
 | Real Personal Chat, Gateway transport, identity/scope, runs and recovery | 15 | **8** | Actual pinned Gateway chat + restart/reload evidence; finish native provider/model/commands/attachments/control acceptance |
-| Personal app + workspace + persistent Canvas + app actions | 15 | **10** | Data-owned Canvas history/notes/edges/undo, host+agent guards and native selected app context; still needs grouping, asset ownership and production model action round-trip |
+| Personal app + workspace + persistent Canvas + app actions | 15 | **10** | Canonical Data-owned Canvas notes/edges, version history/undo, grouping, host-selected context and guarded note/group actions; still needs creative assets, real workspace lifecycle and installed production model action dispatch |
 | Native OS operator/agent identity, grants, approvals | 10 | **2** | Draft OS grant verifier and disposable Gateway integration; no installed human session issuer, grant lifecycle, approval receipts or Windows ACL |
 | Real providers/connections, generation jobs and owned creative assets | 10 | **1** | AUTH-1/Connections exploratory source; real connected provider lifecycle and actual image placement unavailable |
-| Owner-backed control panels: Brain, Memory, Skills, Automations, Token, Connections, security, agents | 15 | **0** | Do not claim integrated functional owner projections from static reference pages; choose/validate owner interfaces |
+| Owner-backed control panels: Brain, Memory, Skills, Automations, Token, Connections, security, agents | 15 | **1** | Real host-paired Personal OS/Gateway/Canvas/history diagnostics with exact scoped registry admission; remaining Brain, Memory, Skills, Automations, Token, Connections, audit and fleet panels |
 | First specifically scoped Filmmaking specialist feature | 5 | **0** | Define minimal testable first film tool, not the undefined complete future filmmaking suite |
 | Product UX, accessibility, responsive/focus and regression | 5 | **1** | First-party UI/Chromium tests exist; full reviewed accessibility and usability pass pending |
 | CI-built macOS desktop package, supervised Gateway and installer preparation | 5 | **0** | Local launcher is NOT signed/reviewed desktop package; create true installable CI artifact with owner boundaries |
