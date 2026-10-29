@@ -70,6 +70,9 @@ export class PersonalChatApplication {
   private readonly diagnostics:PersonalDiagnostics;
   private readonly activity:PersonalAgentActivity;
   private historyEpoch=0;
+  private historyNextOffset:number|null=null;
+  private historyLoading=false;
+  private readonly historySeen=new Set<string>();
   private readonly parent:HTMLElement;
   private destroyed=false;
   constructor(container:HTMLElement,private readonly session:TrustedLocalChatSession){
@@ -130,6 +133,7 @@ export class PersonalChatApplication {
     this.diagnostics.retarget(this.selected);
     this.activity.retarget(this.selected);
     this.historyEpoch++;
+    this.historyNextOffset=null;this.historyLoading=false;this.historySeen.clear();
     this.historyPanel.hidden=true;this.historyPanel.replaceChildren();
     this.title.textContent="AI-Verse · "+next.workspaceId;
     for(const pane of this.panes.values()){
@@ -146,32 +150,56 @@ export class PersonalChatApplication {
   }
   private async toggleHistory():Promise<void>{
     if(this.destroyed)return;
-    if(!this.historyPanel.hidden){this.historyEpoch++;this.historyPanel.hidden=true;return;}
+    this.historyEpoch++;
+    this.historyLoading=false;
+    this.historyNextOffset=null;
+    this.historySeen.clear();
+    if(!this.historyPanel.hidden){
+      this.historyPanel.hidden=true;
+      this.historyPanel.replaceChildren();
+      return;
+    }
     this.historyPanel.hidden=false;
+    this.historyNextOffset=0;
     this.historyPanel.replaceChildren(el("p","live-chat-history-status","Loading from canonical Gateway…"));
-    const epoch=++this.historyEpoch;
-    const scope={...this.selected};
+    await this.loadHistoryPage(0);
+  }
+  /** Read each bounded page from Gateway, never from browser-local chat storage. */
+  private async loadHistoryPage(offset:number):Promise<void>{
+    if(this.destroyed||this.historyPanel.hidden||this.historyLoading
+      ||this.historyNextOffset!==offset)return;
+    const epoch=this.historyEpoch,scope={...this.selected};
+    const previousButton=this.historyPanel.querySelector(".live-chat-history-more") as HTMLButtonElement|null;
+    this.historyLoading=true;
+    if(previousButton){previousButton.disabled=true;previousButton.textContent="Loading older chats…";}
     try{
-      const response=await this.historyClient.listGatewaySessions(20,0);
-      if(this.destroyed||epoch!==this.historyEpoch
+      const response=await this.historyClient.listGatewaySessions(20,offset);
+      if(this.destroyed||this.historyPanel.hidden||epoch!==this.historyEpoch
         ||scope.systemId!==this.selected.systemId
         ||scope.workspaceId!==this.selected.workspaceId)return;
       const page=response.result as Record<string,unknown>;
       if(!page||page.source!=="canonical-gateway"
         ||page.workspaceId!==scope.workspaceId||!Array.isArray(page.data)
-        ||typeof page.has_more!=="boolean")throw Error("CHAT_HISTORY_INVALID");
+        ||page.data.length>20||typeof page.has_more!=="boolean"
+        ||(page.has_more
+          ?!Number.isSafeInteger(page.next_offset)||typeof page.next_offset!=="number"
+            ||page.next_offset<=offset||page.next_offset>10_000
+          :page.next_offset!==null))throw Error("CHAT_HISTORY_INVALID");
       const rows=document.createDocumentFragment();
-      const heading=el("strong","live-chat-history-title","Previous chats");
-      rows.append(heading);
-      if(page.data.length===0)rows.append(el("p","live-chat-history-status","No canonical chats yet."));
+      if(offset===0)rows.append(el("strong","live-chat-history-title","Previous chats"));
+      if(page.data.length===0 && offset===0)
+        rows.append(el("p","live-chat-history-status","No canonical chats yet."));
+      const incoming=new Set<string>();
       for(const value of page.data){
         if(!value||typeof value!=="object"||Array.isArray(value))
           throw Error("CHAT_HISTORY_INVALID");
         const record=value as Record<string,unknown>;
         if(typeof record.session_id!=="string"
           ||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(record.session_id)
-          ||record.workspace_id!==scope.workspaceId)
+          ||record.workspace_id!==scope.workspaceId
+          ||this.historySeen.has(record.session_id)||incoming.has(record.session_id))
           throw Error("CHAT_HISTORY_INVALID");
+        incoming.add(record.session_id);
         const item=el("div","live-chat-history-item");
         const label=el("span","",typeof record.title==="string"
           ?record.title.slice(0,120):record.session_id);
@@ -181,13 +209,34 @@ export class PersonalChatApplication {
         });
         item.append(label,open);rows.append(item);
       }
-      if(page.has_more)rows.append(el("p","live-chat-history-status",
-        "Showing the 20 most recent. Older chats are still in Gateway."));
-      this.historyPanel.replaceChildren(rows);
+      if(offset===0)this.historyPanel.replaceChildren();
+      else{
+        previousButton?.remove();
+        this.historyPanel.querySelector(".live-chat-history-page-error")?.remove();
+      }
+      for(const sessionId of incoming)this.historySeen.add(sessionId);
+      this.historyPanel.append(rows);
+      this.historyNextOffset=page.has_more?page.next_offset as number:null;
+      if(this.historyNextOffset!==null){
+        const next=this.historyNextOffset;
+        this.historyPanel.append(button("Load older chats",()=>{
+          void this.loadHistoryPage(next);
+        },"live-chat-history-more"));
+      }
     }catch(error){
-      if(epoch===this.historyEpoch)
-        this.historyPanel.replaceChildren(el("p","live-chat-history-status",
-          "History unavailable · "+errorCode(error)));
+      if(this.destroyed||this.historyPanel.hidden||epoch!==this.historyEpoch)return;
+      const message="History unavailable · "+errorCode(error);
+      if(offset===0)this.historyPanel.replaceChildren(el("p","live-chat-history-status",message));
+      else{
+        this.historyPanel.querySelector(".live-chat-history-page-error")?.remove();
+        const warning=el("p","live-chat-history-status live-chat-history-page-error",message);
+        if(previousButton){
+          previousButton.disabled=false;previousButton.textContent="Load older chats";
+          this.historyPanel.insertBefore(warning,previousButton);
+        }else this.historyPanel.append(warning);
+      }
+    }finally{
+      if(epoch===this.historyEpoch)this.historyLoading=false;
     }
   }
   async openHistoricalSession(paneId:string,sessionId:string):Promise<void>{
@@ -210,6 +259,7 @@ export class PersonalChatApplication {
       (restored.view.contextLimited?" · Earlier conversation context unavailable or trimmed":"");
     this.historyPanel.hidden=true;
     this.historyEpoch++;
+    this.historyNextOffset=null;this.historySeen.clear();this.historyLoading=false;
     this.render(pane);
   }
   private requireBearer(s:TrustedLocalChatSession):string{
