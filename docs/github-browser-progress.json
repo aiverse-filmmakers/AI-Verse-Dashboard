@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 37,
+  "provisionalEngineeringEarned": 38,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -69,9 +69,9 @@
       "id": "controls",
       "title": "Owner-backed control panels",
       "budget": 15,
-      "provisionalEarned": 0,
-      "evidenceStatus": "planned",
-      "remaining": "Brain, Memory, Skills, Automation, Token, Connections, fleet and Security projections"
+      "provisionalEarned": 1,
+      "evidenceStatus": "source-and-ci",
+      "remaining": "Registered OS, Gateway, Canvas and scoped conversation diagnostics now real in paired Personal UI; remaining full systems/workspace navigation, agents, tasks, approvals, Brain, Memory, Skills, Token, Connections and security panels."
     },
     {
       "id": "film",
@@ -151,7 +151,15 @@
       "realGatewayOsDataCi": 40788246113,
       "registeredUnitCases": 205,
       "phase": "draft-source-and-disposable-ci-only-not-a-production-model-dispatcher"
+    },
+    "personalDiagnostics": {
+      "sourceCommit": "0f276bae960f98b0082bad4a7e1fe7685009e6b4",
+      "dashboardCi": 40832818420,
+      "realGatewayAndPairedBrowserCi": 40832818224,
+      "uiModule": "apps/web/src/personal-diagnostics.ts",
+      "browserProof": "scripts/mc2/ci-authenticated-browser-proof.mjs",
+      "stage": "draft-real-local-paired-browser-ci-not-installed-owner-Mac"
     }
   },
-  "nextUnverifiedChange": "G03.4 remains in-progress: the in-process host model tool bridge is CI-proven but not installed or routed into an actual provider model runtime. OS human approval, workspace lifecycle and real assets still need implementation."
+  "nextUnverifiedChange": "G06.1 in progress: a real narrow Personal diagnostics panel passes paired-browser CI but full native workspace navigation and broader owner health remain unimplemented. Owner Mac, private provider and signing gates unchanged."
 }
