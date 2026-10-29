@@ -282,6 +282,40 @@ test("MC2.5 split panes independently stream, resize, close and keep functional 
   assert.equal(await page.locator(".live-chat-toolbar .live-chat-split").isEnabled(),true);
   assert.deepEqual(errors,[]);
 });
+test("MC2.5 paired chat panes resize by keyboard and pointer without losing their controls",async t=>{
+  const {page,errors}=await pageFor(t);
+  await page.locator(".live-chat-toolbar .live-chat-split").click();
+  const pane=page.locator(".live-chat-pane").first();
+  const grip=pane.getByRole("separator",{name:"Resize conversation"});
+  const width=()=>pane.evaluate(el=>el.getBoundingClientRect().width);
+  const initial=await width();
+  await grip.focus();
+  await page.keyboard.press("ArrowRight");
+  const wider=await width();
+  assert.ok(wider>initial+15,"keyboard increment must actually widen the pane");
+  await page.keyboard.press("ArrowLeft");
+  const restored=await width();
+  assert.ok(restored<wider-15,"keyboard decrement must narrow the pane");
+  const bounds=await grip.boundingBox();
+  assert.ok(bounds,"resize handle must exist and be visible");
+  const x=bounds.x+bounds.width/2,y=bounds.y+Math.min(30,bounds.height/2);
+  await page.mouse.move(x,y);
+  await page.mouse.down();
+  await page.mouse.move(x+65,y,{steps:5});
+  await page.mouse.up();
+  const dragged=await width();
+  assert.ok(dragged>restored+35,"pointer drag must change the real pane width");
+  assert.ok(dragged<=750,"resizing must obey desktop maximum");
+  assert.equal(await pane.getByRole("button",{name:"New chat"}).count(),1);
+  assert.equal(await pane.getByRole("button",{name:"Recover run"}).count(),1);
+  await pane.getByRole("button",{name:"New chat"}).click();
+  assert.ok(Math.abs((await width())-dragged)<5,
+    "starting a fresh chat must not reset its pane width");
+  await page.setViewportSize({width:600,height:900});
+  assert.equal(await grip.isVisible(),false,"mobile uses stacked full-width chat panes");
+  assert.ok((await width())<610,"desktop width cannot overflow the mobile viewport");
+  assert.deepEqual(errors,[]);
+});
 test("MC2.5 retarget invalidates panes and denies cross-workspace recovery",async t=>{
   const {page,errors}=await pageFor(t);
   await page.locator(".live-chat-input").fill("Operator message");

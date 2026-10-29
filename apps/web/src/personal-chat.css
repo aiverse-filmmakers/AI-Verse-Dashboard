@@ -8,7 +8,12 @@
 .aiverse-live-chat button:focus-visible,.aiverse-live-chat textarea:focus-visible,.aiverse-live-chat input:focus-visible{outline:2px solid #587fac;outline-offset:2px}
 .aiverse-live-chat button:disabled{opacity:.45;cursor:default}
 .live-chat-panes{display:flex;flex:1;overflow-x:auto;gap:8px;padding:10px;align-items:stretch;min-height:480px}
-.live-chat-pane{min-width:280px;width:360px;max-width:min(92vw,750px);resize:horizontal;overflow:auto;background:#fff;border:1px solid #e2e5ea;border-radius:13px;display:flex;flex-direction:column;min-height:440px;flex:1}
+.live-chat-pane{position:relative;min-width:280px;width:360px;max-width:min(92vw,750px);resize:none;overflow:auto;background:#fff;border:1px solid #e2e5ea;border-radius:13px;display:flex;flex-direction:column;min-height:440px;flex:1}
+.live-chat-pane[data-user-sized="true"]{flex:0 0 var(--chat-pane-width,360px);width:var(--chat-pane-width,360px)}
+.live-pane-resizer{position:absolute;top:65px;bottom:8px;right:0;width:12px;z-index:5;
+  cursor:col-resize;touch-action:none;background:transparent;border-right:3px solid transparent}
+.live-pane-resizer:hover,.live-pane-resizer:focus-visible{border-right-color:#587fac;background:#edf2f7}
+.live-pane-resizer:focus-visible{outline:2px solid #587fac;outline-offset:-2px}
 .live-pane-heading{display:flex;align-items:center;justify-content:space-between;padding:12px;gap:8px;border-bottom:1px solid #eef0f3}
 .live-pane-actions{display:flex;gap:5px;flex-wrap:wrap}
 .live-pane-actions button{font-size:12px;padding:5px 7px}
@@ -28,7 +33,9 @@
 .live-chat-recovery button{font-size:11px}
 .live-chat-pane.live-chat-minimized{min-height:0;height:60px;max-height:60px;flex:none;resize:none;overflow:hidden}
 .live-chat-pane.live-chat-minimized>:not(.live-pane-heading){display:none}
-@media(max-width:750px){.live-chat-panes{flex-direction:column}.live-chat-pane{width:100%;max-width:100%;min-height:400px;resize:vertical}}
+@media(max-width:750px){.live-chat-panes{flex-direction:column}
+.live-chat-pane,.live-chat-pane[data-user-sized="true"]{flex:0 0 auto;width:100%;max-width:100%;min-height:400px;resize:vertical}
+.live-pane-resizer{display:none}}
 
 /* Canonical, read-only conversation library. Never stored by this browser. */
 .aiverse-live-chat .live-chat-history[hidden]{display:none}

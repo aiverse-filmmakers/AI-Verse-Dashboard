@@ -247,7 +247,52 @@ export class PersonalChatApplication {
       if(recoverInput.value.trim())void this.recover(paneId,recoverInput.value.trim());
     });
     recovery.append(recoverInput,recover);
-    section.append(heading,scope,log,status,form,recovery);
+
+    // Pointer + keyboard resizing changes layout only; no chat data, owner
+    // state or browser storage is modified by the resizer.
+    const grip=el("div","live-pane-resizer");
+    grip.setAttribute("role","separator");
+    grip.setAttribute("aria-label","Resize conversation");
+    grip.setAttribute("aria-orientation","vertical");
+    grip.setAttribute("aria-valuemin","280");
+    grip.setAttribute("aria-valuemax","750");
+    grip.setAttribute("aria-valuenow","360");
+    grip.tabIndex=0;
+    let activePointer:number|null=null,startX=0,startWidth=0;
+    const setPaneWidth=(width:number)=>{
+      const bounded=Math.round(Math.max(280,Math.min(750,width)));
+      section.style.setProperty("--chat-pane-width",bounded+"px");
+      section.dataset.userSized="true";
+      grip.setAttribute("aria-valuenow",String(bounded));
+    };
+    grip.addEventListener("pointerdown",event=>{
+      if(event.button!==0)return;
+      event.preventDefault();
+      activePointer=event.pointerId;
+      startX=event.clientX;
+      startWidth=section.getBoundingClientRect().width;
+      grip.setPointerCapture(event.pointerId);
+    });
+    grip.addEventListener("pointermove",event=>{
+      if(activePointer===event.pointerId)
+        setPaneWidth(startWidth+event.clientX-startX);
+    });
+    const stopResize=(event:PointerEvent)=>{
+      if(activePointer!==event.pointerId)return;
+      activePointer=null;
+      if(grip.hasPointerCapture(event.pointerId))
+        grip.releasePointerCapture(event.pointerId);
+    };
+    grip.addEventListener("pointerup",stopResize);
+    grip.addEventListener("pointercancel",stopResize);
+    grip.addEventListener("keydown",event=>{
+      if(event.key!=="ArrowLeft"&&event.key!=="ArrowRight")return;
+      event.preventDefault();
+      const step=event.shiftKey?64:32;
+      setPaneWidth(section.getBoundingClientRect().width+
+        (event.key==="ArrowRight"?step:-step));
+    });
+    section.append(heading,scope,log,status,form,recovery,grip);
     const pane:Pane={id:paneId,node:section,form,input,log,status,
       run:this.controller(view=>this.onChange(paneId,view)),
       turns:[],activeTurn:-1,busy:false,generation:0};
