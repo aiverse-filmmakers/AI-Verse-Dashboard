@@ -342,7 +342,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     const selector=page.locator("#workspace-chooser");
     await selector.waitFor({state:"visible"});
     const film=selector.locator("#workspace-options");
-    await film.locator('option[value="film"]').waitFor();
+    await film.locator('option[value="film"]').waitFor({state:"attached"});
     await film.selectOption("film");
     await selector.getByRole("button",{name:"Request access"}).click();
     await page.getByText(/Waiting for terminal approval/).waitFor();
