@@ -194,7 +194,7 @@
           "state": "in-progress",
           "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
           "evidenceRef": "apps/web/src/personal-agent-activity.ts",
-          "partialEvidence": "Read-only Dashboard-local SessionStore recent status and event kind, workspace-bound, redacted, verified via local HTTP and paired Chromium with real canonical Gateway. This is not persistent canonical Gateway agent fleet, approvals, task mutations, or automations."
+          "partialEvidence": "Bounded authenticated Dashboard-local in-memory SessionStore status/events PLUS independent real canonical persisted Gateway session/run status summaries, read-only, scope-checked, no prompt/output display and full disposable Chromium CI; actual bots, approvals, tasks, automation controls incomplete."
         },
         {
           "id": "G06.3",
@@ -338,5 +338,5 @@
       ]
     }
   ],
-  "lastReconciliation": "2026-10-29: G06.2 local agent activity partial, 4 verified, 8 implemented-in-draft, 4 in-progress (G03.4 G06.1 G06.2 G08.2), 24 planned; GB 40/100 provisional, FA 15/100 accepted."
+  "lastReconciliation": "2026-10-29: G06.2 partial real local and persisted Gateway activity, OS workspace manifest symlink hardening; GB ~41/100 provisional, FA 15/100. 4 verified/8 implemented/4 in-progress/24 planned, 10 chapters/40 milestones unchanged."
 }

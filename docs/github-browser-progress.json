@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 40,
+  "provisionalEngineeringEarned": 41,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -69,9 +69,9 @@
       "id": "controls",
       "title": "Owner-backed control panels",
       "budget": 15,
-      "provisionalEarned": 2,
+      "provisionalEarned": 3,
       "evidenceStatus": "source-and-ci",
-      "remaining": "Five-source authenticated workspace diagnostics and redacted Dashboard-local in-memory agent session/event activity with manual refresh and kind filters are source/CI-backed; full persistent Gateway agent fleet, approvals, automations, workspace lifecycle, Brain/Memory/Skills/Token/Connections still missing."
+      "remaining": "Five-source workspace diagnostics, workspace-bounded Dashboard-local session events and bounded persistent canonical Gateway session/run status are verified in real paired browser CI. Full agent fleet control, approvals, automations, native workspace lifecycle, Memory/Skills/Token/Connections and private owner acceptance remain missing."
     },
     {
       "id": "film",
@@ -186,7 +186,18 @@
       "source": "Dashboard-owned in-memory SessionStore; not canonical persistent Gateway history",
       "boundary": "paired host-only workspace, bounded 12 rows, no IDs/titles/prompts/paths, no cross-workspace records",
       "stage": "tested draft source only; no native owner acceptance"
+    },
+    "canonicalGatewayActivity": {
+      "sourceCommit": "93397cad32e709b27115ef853fc2d8de3cd4cb6c",
+      "hardeningCommit": "7fb93973766964a3c8cf98a73a5af47cb24607e2",
+      "dashboardCi": 40880147089,
+      "browserCi": 40880147102,
+      "gatewayCompositionCi": 40880147101,
+      "progressCi": 40880147139,
+      "source": "canonical Gateway persisted session/run history through existing authenticated owner binding",
+      "details": "independent from local in-memory sessions, bounded 3 sessions/6 recent runs, status/timestamp only; text/outputs never rendered",
+      "stage": "draft-verified-disposable-CI-not-owner-Mac"
     }
   },
-  "nextUnverifiedChange": "G06.2 partial: real Dashboard-local in-memory session/event monitor exists, but full canonical persistent bot/run fleet, approvals, task control, automations, native owner login, and installed permissions remain unimplemented. G06.1 multi-system/workspace lifecycle still incomplete."
+  "nextUnverifiedChange": "G06.2 still partial despite read-only persisted Gateway session/run status: no production bot fleet lifecycle, approve/deny receipts, canonical agent task dispatch, safe native workspace switches or automations UI. G06.1 and native Mac owner acceptance also pending."
 }

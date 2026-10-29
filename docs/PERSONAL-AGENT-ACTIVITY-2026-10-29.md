@@ -20,3 +20,14 @@ Named workspace reads first pass the canonical OS manifest/realpath verification
 ## Limitations and next owner gates
 
 This source does **not** expose the real persisted canonical Gateway bot fleet or run logs. The Dashboard-local SessionStore is ephemeral and may not be attached in a normal installation. No model/provider inference or remote automation status can be inferred from its lack of records. Real native owner auth, grant and approval lifecycle, persistent agent/read-only projections, multi-workspace navigation, privileged action controls, signed desktop delivery and private Mac acceptance remain pending.
+
+
+## Persistent canonical Gateway activity increment
+
+A second independent source in the same **Agent activity** panel reads **real persisted canonical Gateway** session and run history using pre-existing scoped host-authenticated `aiverse.gateway.session.list` and `aiverse.gateway.session.runs`. It requests at most three recent sessions and three recent runs for each of the two newest sessions. No run text, model output, prompts, tokens, session IDs or file refs are displayed. Status and date are validated and restricted to safe public fields. The local in-memory store may be unavailable while the persisted Gateway section remains usable, and vice versa. A change in system/workspace discards both pending sources.
+
+Source: `apps/web/src/personal-agent-activity.ts`. Browser proof: `scripts/mc2/ci-authenticated-browser-proof.mjs`. Source commit `93397cad32e709b27115ef853fc2d8de3cd4cb6c`, verified later in source head `7fb93973766964a3c8cf98a73a5af47cb24607e2`: Dashboard CI [40880147089](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40880147089), browser QC [40880147102](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40880147102), real Gateway [40880147101](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40880147101), all passed.
+
+The OS read-adapter also now refuses symlinked WORKSPACE.yaml and symlinked directory aliases, and rejects mismatched manifest directory IDs during workspace listing. This prevents a private external manifest from being advertised as a selectable workspace. Tests in `test/read-adapters.test.ts` pass all three platforms.
+
+This expands useful real Control Center source work but **does not** install a native owner session, implement agent commands, make the Gateway always available or complete G06.2.
