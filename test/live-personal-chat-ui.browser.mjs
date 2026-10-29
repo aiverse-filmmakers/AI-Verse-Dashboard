@@ -144,7 +144,21 @@ const server=createServer(async(req,res)=>{
         .end(JSON.stringify(body));return;
     }
     let result;
-    if(frame.method==="aiverse.gateway.run.create"){
+    if(frame.method==="aiverse.gateway.session.list"){
+      // The fixture models a bounded canonical Gateway history, not browser storage.
+      const count=frame.workspaceId==="operator"?47:3;
+      const all=Array.from({length:count},(_,index)=>({
+        session_id:"historical-"+String(index+1).padStart(3,"0"),
+        system_id:"canonical-a",workspace_id:frame.workspaceId,
+        title:"Canonical chat "+String(index+1).padStart(2,"0"),
+        status:"completed",updated_at:"2026-10-29T20:00:00Z",
+      }));
+      const offset=frame.params?.offset??0,limit=frame.params?.limit??20;
+      const has_more=offset+limit<count;
+      result={object:"list",data:all.slice(offset,offset+limit),has_more,
+        next_offset:has_more?offset+limit:null,
+        workspaceId:frame.workspaceId,source:"canonical-gateway"};
+    }else if(frame.method==="aiverse.gateway.run.create"){
       const runId="run-"+(++next);
       result={runId,sessionId:"session-"+next,systemId:"canonical-a",
         workspaceId:frame.workspaceId,status:"running",source:"canonical-gateway"};
@@ -257,6 +271,36 @@ test("MC2.5 actual browser interface sends canonical RPC, receives WS, and rende
     local:localStorage.length,session:sessionStorage.length,
   }));
   assert.deepEqual(browserStorage,{local:0,session:0},"real turns and tokens never enter preview localStorage");
+});
+test("Chat library pages through real scoped Gateway RPC without duplicates or browser storage",async t=>{
+  const {page,errors}=await pageFor(t);
+  const before=requests.length;
+  await page.getByRole("button",{name:"Previous chats"}).click();
+  await page.locator(".live-chat-history-item").first().waitFor();
+  assert.equal(await page.locator(".live-chat-history-item").count(),20);
+  assert.equal(await page.getByRole("button",{name:"Load older chats"}).count(),1);
+  await page.getByRole("button",{name:"Load older chats"}).click();
+  await page.locator(".live-chat-history-item").nth(39).waitFor();
+  assert.equal(await page.locator(".live-chat-history-item").count(),40);
+  await page.getByRole("button",{name:"Load older chats"}).click();
+  await page.locator(".live-chat-history-item").nth(46).waitFor();
+  assert.equal(await page.locator(".live-chat-history-item").count(),47);
+  assert.equal(await page.getByRole("button",{name:"Load older chats"}).count(),0);
+  const titles=await page.locator(".live-chat-history-item span").allTextContents();
+  assert.equal(new Set(titles).size,47,"repeated pages must not duplicate canonical sessions");
+  const offsets=requests.slice(before)
+    .filter(x=>x.method==="aiverse.gateway.session.list")
+    .map(x=>[x.workspaceId,x.params.limit,x.params.offset]);
+  assert.deepEqual(offsets,[["operator",20,0],["operator",20,20],["operator",20,40]]);
+  await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"film"}));
+  assert.equal(await page.locator(".live-chat-history-item").count(),0);
+  await page.getByRole("button",{name:"Previous chats"}).click();
+  await page.locator(".live-chat-history-item").first().waitFor();
+  assert.equal(await page.locator(".live-chat-history-item").count(),3);
+  assert.equal(await page.getByRole("button",{name:"Load older chats"}).count(),0);
+  assert.deepEqual(errors,[]);
+  assert.deepEqual(await page.evaluate(()=>({local:localStorage.length,session:sessionStorage.length})),
+    {local:0,session:0});
 });
 test("MC2.5 split panes independently stream, resize, close and keep functional controls",async t=>{
   const {page,errors}=await pageFor(t);
