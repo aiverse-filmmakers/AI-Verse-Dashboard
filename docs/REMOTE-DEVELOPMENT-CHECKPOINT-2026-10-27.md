@@ -1035,3 +1035,12 @@ Dashboard [draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboar
 Source `aea7544ffe4f2af909df7c75fcdefc117308348b` passed ordinary Dashboard Node 22 CI, browser QC and progress integrity. Its real process-restart composition run failed twice with an unhandled closed-IPC error. `5c371568dd380440343844bc281766eccb07d124` hardens cleanup and logs only the failed phase/error class/source location. **Full composition of this head is pending verification**. Do not mark all green or award new GB points until the exact run resolves.
 
 **GB ~38/100 provisional, FA 15/100 accepted. Next Task 454:** resolve composition gate, finalize evidence, then advance a real G06.1 owner capability rather than add mock panels. Local Mac owner authentication and deployment remain deferred.
+
+
+## Tasks 454–461: Real chat resizing and verified owner diagnostics, 29 October 2026
+
+Task ledger: [454–461](DEVELOPMENT-TASKS-454-461-2026-10-29.md). Dashboard draft PR #42 now has a fifth real paired-scope workspace manifest diagnostic, an explicit future-safe browser RPC method allowlist and real pointer/keyboard chat pane resizing with mobile full-width layout. Native first-party UI and Browser CI, Node 22 all platforms, and pinned real Gateway composition are **green** at source `0e915209fe2d151c2d9306ab156d05522460d4bf`, runs 40874888256, 40874888550 and 40874888319. The restart harness `5c371568` also passed real composition run 40874360134. These are tested draft source, not a member installation.
+
+The finite plan remains 10 chapters/40 milestones, now 4 verified, 8 implemented-in-draft, 3 in-progress (G03.4, G06.1, G08.2), 25 planned. **GB ~39/100 provisional**, UX category +1 for verified functional resizing; **FA 15/100 formally accepted**, unchanged. Local Mac/account/release gates remain separate.
+
+**Next Task #462:** prefer owner-backed native workspace lifecycle and system selection (G06.1) or a scoped provider/asset capability (G05), subject to existing authority contracts; no broad cookie permission expansion, no mock panels and no duplicate databases.

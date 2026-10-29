@@ -254,8 +254,10 @@
         {
           "id": "G08.2",
           "title": "Mobile/desktop responsive panels and multi-chat interactions",
-          "state": "planned",
-          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+          "state": "in-progress",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/web/src/personal-chat-ui.ts",
+          "partialEvidence": "Source and Chromium-verified real pointer/keyboard chat pane resizing with width continuity and mobile stacked fallback; broader responsive application layout not yet accepted."
         },
         {
           "id": "G08.3",
@@ -334,5 +336,5 @@
       ]
     }
   ],
-  "lastReconciliation": "2026-10-29: G06.1 in-progress based on green exact registered OS, Gateway, Canvas and conversation diagnostics CI; 10 chapters and 40 milestones unchanged."
+  "lastReconciliation": "2026-10-29: verified Dashboard owner workspace manifest, exact paired browser method allowlist and responsive chat pane resizing. G03.4, G06.1, G08.2 in-progress; 4 verified, 8 implemented draft, 25 planned. 39/100 GB provisional, FA 15/100 unchanged."
 }

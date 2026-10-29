@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 38,
+  "provisionalEngineeringEarned": 39,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -85,9 +85,9 @@
       "id": "ux",
       "title": "Accessibility responsive usability",
       "budget": 5,
-      "provisionalEarned": 1,
+      "provisionalEarned": 2,
       "evidenceStatus": "source-and-ci",
-      "remaining": "broad accessibility and usability gate"
+      "remaining": "Functional desktop chat pane keyboard and pointer resizing, width continuity and mobile stacked fallback proven in Chromium; still needs broader responsive/accessibility review."
     },
     {
       "id": "desktop",
@@ -159,7 +159,23 @@
       "uiModule": "apps/web/src/personal-diagnostics.ts",
       "browserProof": "scripts/mc2/ci-authenticated-browser-proof.mjs",
       "stage": "draft-real-local-paired-browser-ci-not-installed-owner-Mac"
+    },
+    "chatPaneResize": {
+      "sourceCommit": "0e915209fe2d151c2d9306ab156d05522460d4bf",
+      "dashboardCi": 40874888256,
+      "browserCi": 40874888550,
+      "realGatewayOsDataCi": 40874888319,
+      "feature": "real pointer and keyboard resizing for host-authenticated conversation panes, mobile full-width fallback",
+      "stage": "draft-source-and-disposable-ci-verified-not-owner-mac"
+    },
+    "workspaceManifest": {
+      "sourceCommit": "aea7544ffe4f2af909df7c75fcdefc117308348b",
+      "hardenedRestartProofCommit": "5c371568dd380440343844bc281766eccb07d124",
+      "dashboardCi": 40874360197,
+      "browserCi": 40874360151,
+      "realGatewayCi": 40874360134,
+      "phase": "draft-authenticated-paired-workspace-manifest-and-exact-browser-rpc-allowlist"
     }
   },
-  "nextUnverifiedChange": "G06.1 in progress: a real narrow Personal diagnostics panel passes paired-browser CI but full native workspace navigation and broader owner health remain unimplemented. Owner Mac, private provider and signing gates unchanged."
+  "nextUnverifiedChange": "G06.1 remains in progress: owner-authorized system/workspace lifecycle selection, real native operator session and broad owner operational panels remain. G08.2 now partially implemented with verified chat resizing, but wider responsive/accessibility sign-off remains."
 }
