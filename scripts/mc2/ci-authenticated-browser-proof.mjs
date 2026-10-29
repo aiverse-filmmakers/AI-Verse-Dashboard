@@ -10,6 +10,7 @@ import {chromium} from "playwright";
 import {LocalApplicationSession} from "../../dist/apps/gateway/src/local-app-session.js";
 import {QueryRouter,SubscriptionHub,startGateway} from "../../dist/apps/gateway/src/index.js";
 import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js";
+import {SessionStore} from "../../dist/packages/live/src/index.js";
 
 const localAssets=async()=>{
   const paths=[
@@ -37,7 +38,14 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
   const app=new LocalApplicationSession({systemId,workspaceId:"operator"},assets);
   let server,browser,context;
   try{
-    server=await startGateway(new QueryRouter(registry,new DisposableCache()),
+    const localRouter=new QueryRouter(registry,new DisposableCache());
+    const sessions=new SessionStore();
+    const session=sessions.create(systemId,"operator",{sessionId:"activity-proof",
+      title:"PRIVATE ACTIVITY TITLE"});
+    sessions.append(systemId,session.sessionId,{id:"activity-entry",kind:"tool-call",
+      role:"agent",body:"PRIVATE ACTIVITY BODY"});
+    localRouter.attachSessions(sessions);
+    server=await startGateway(localRouter,
       new SubscriptionHub(),{port:0,canonicalBridge:bridge,localApp:app});
     const origin="http://127.0.0.1:"+server.port;
     const bearer=server.authToken;
@@ -144,6 +152,20 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     assert.equal(await canvasCard.getAttribute("data-state"),"unavailable");
     await page.getByRole("button",{name:"Workspace status",exact:true}).click();
     assert.equal(await panel.isVisible(),false);
+
+    await page.getByRole("button",{name:"Agent activity",exact:true}).click();
+    const activityPanel=page.locator(".personal-agent-activity");
+    await activityPanel.waitFor({state:"visible"});
+    await page.getByText("Recent sessions (up to 12)").waitFor();
+    assert.match(await activityPanel.textContent(),/1 local session/);
+    assert.match(await activityPanel.textContent(),/tool-call · agent/);
+    assert.doesNotMatch(await activityPanel.textContent(),/PRIVATE ACTIVITY|activity-proof/);
+    assert.ok(trackedRequests.some(req=>req.frame?.method==="operator.activity"
+      && req.frame.systemId===systemId&&req.frame.workspaceId==="operator"
+      && req.headers.authorization===undefined));
+    await page.getByRole("button",{name:"Refresh activity",exact:true}).click();
+    await page.getByText("Recent activity (up to 12)").waitFor();
+    await page.getByRole("button",{name:"Agent activity",exact:true}).click();
     const marker="browser-canonical-proof-"+Date.now();
     const first=page.locator(".live-chat-pane").first();
     await first.locator(".live-chat-input").fill(marker);
@@ -300,6 +322,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       public_registered_os_projection:true,
       paired_workspace_manifest_checked:true,
       future_browser_rpc_methods_default_denied:true,
+      scoped_real_local_agent_activity_visible:true,
       member_provider_used:false,
       member_mac_verified:false,
     };

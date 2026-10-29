@@ -9,6 +9,7 @@ import {DisposableCache} from "../packages/os-read-adapter/src/index.js";
 import {QueryRouter,SubscriptionHub,startGateway} from "../apps/gateway/src/index.js";
 import {LocalApplicationSession} from "../apps/gateway/src/local-app-session.js";
 import {DASHBOARD_WS_PROTOCOL} from "../packages/protocol/src/index.js";
+import {SessionStore} from "../packages/live/src/index.js";
 
 function fixture(){
   const root=mkdtempSync(join(tmpdir(),"dash-local-session-"));
@@ -189,7 +190,16 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
   it("admits only the current workspace manifest and rejects future wildcard methods",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
     const pairing=new LocalApplicationSession({systemId,workspaceId:"film"});
-    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+    const router=new QueryRouter(reg,new DisposableCache());
+    const memory=new SessionStore();
+    const own=memory.create(systemId,"film",{title:"PRIVATE SCENE SECRET",sessionId:"film-session"});
+    memory.append(systemId,own.sessionId,{id:"entry-film",role:"agent",kind:"tool-call",
+      body:"PRIVATE PROMPT /tmp/member/secret.docx"});
+    const other=memory.create(systemId,"operator",{title:"PRIVATE OTHER",sessionId:"op-session"});
+    memory.append(systemId,other.sessionId,{id:"entry-other",role:"user",kind:"message",
+      body:"CROSS WORKSPACE SECRET"});
+    router.attachSessions(memory);
+    const server=await startGateway(router,
       new SubscriptionHub(),{port:0,localApp:pairing});
     closers.push(()=>server.close());
     const base="http://127.0.0.1:"+server.port;
@@ -203,9 +213,9 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       type:"req",v:"1.0",id:"workspace-manifest-security",method,
       systemId:sys,workspaceId,
     },{cookie,origin:base});
-    const own=await ask("workspace.get","film");
-    assert.equal(own.status,200);
-    const body=await own.json() as {ok:boolean;result?:{workspace?:Record<string,unknown>}};
+    const workspaceInfo=await ask("workspace.get","film");
+    assert.equal(workspaceInfo.status,200);
+    const body=await workspaceInfo.json() as {ok:boolean;result?:{workspace?:Record<string,unknown>}};
     assert.equal(body.ok,true);
     assert.deepEqual(body.result?.workspace,{id:"film",name:"Film",status:"active"});
     assert.equal("root" in (body.result?.workspace??{}),false);
@@ -216,6 +226,20 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.equal((await ask("aiverse.gateway.future.privileged","film")).status,403);
     assert.equal((await ask("aiverse.canvas.future.privileged","film")).status,403);
     assert.equal((await ask("source.preview","film")).status,403);
+    const activity=await ask("operator.activity","film");
+    assert.equal(activity.status,200);
+    const activityBody=await activity.json() as {ok:boolean;result?:{
+      source:string;workspaceId:string;retention:string;sessionCount:number;
+      sessions:Array<{status:string;entryCount:number}>;
+      events:Array<{kind:string;role:string}>}};
+    assert.equal(activityBody.ok,true);
+    assert.equal(activityBody.result?.source,"dashboard-local-sessions");
+    assert.equal(activityBody.result?.sessionCount,1);
+    assert.deepEqual(activityBody.result?.events.map(x=>x.kind),["tool-call"]);
+    assert.equal(activityBody.result?.retention,"in-memory-only");
+    assert.doesNotMatch(JSON.stringify(activityBody),/PRIVATE|CROSS WORKSPACE|\\/tmp|film-session|entry-film|op-session|secret/);
+    assert.equal((await ask("operator.activity","operator")).status,403);
+    assert.equal((await ask("operator.activity","film","another-system")).status,403);
   });
   it("locks pairing after five incorrect attempts without accepting the correct code",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);

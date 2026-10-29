@@ -27,7 +27,7 @@ import type { PurposeMutationBridge } from "./purpose-mutation-bridge.js";
 export const GATEWAY_VERSION = "gateway-0.1.0-alpha.0";
 export const GATEWAY_PHASE = "phase-2-live" as const;
 const SUPPORTED_QUERIES = [
-  "system.list", "system.get", "system.info", "workspace.list", "workspace.get",
+  "system.list", "system.get", "system.info", "workspace.list", "workspace.get", "operator.activity",
   "workspace.health", "workspace.inbox.list", "purpose.get", "task.list", "agent.list",
   "agent.sessions", "run.list", "run.get", "run.logs", "source.preview",
 ] as const;
@@ -120,6 +120,31 @@ export class QueryRouter {
         return { systemId: rec.systemId, authorized: rec.authorized, workspaces: listWorkspaces(this.registry, rec.systemId).length };
       }
       case "workspace.list": return { workspaces: listWorkspaces(this.registry, req.systemId as string) };
+      case "operator.activity": {
+        const systemId=req.systemId as string, workspaceId=req.workspaceId as string;
+        // The implicit operator scope is OS-root-bound. Named workspaces must
+        // pass the canonical manifest/realpath owner check before any read.
+        if(workspaceId==="operator")this.registry.resolveRoot(systemId);
+        else getWorkspace(this.registry,systemId,workspaceId);
+        const sessions=this.requireSessions();
+        const summaries=sessions.summaries(systemId,workspaceId);
+        const allowedStates=new Set(["active","idle","working","waiting","blocked","done","aborted"]);
+        const recent=summaries.slice()
+          .sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,12)
+          .map(s=>({
+            status:allowedStates.has(s.status)?s.status:"blocked",
+            entryCount:Math.max(0,Math.min(s.entryCount,500)),
+            updatedAt:s.updatedAt,
+          }));
+        // Intentionally no prompt bodies, session IDs, titles, providers,
+        // file refs, errors or agent outputs in the browser projection.
+        const events=sessions.recentEntries(systemId,workspaceId,{limit:12})
+          .slice().reverse()
+          .map(entry=>({kind:entry.kind,role:entry.role,createdAt:entry.createdAt}));
+        return {source:"dashboard-local-sessions",systemId,workspaceId,
+          retention:"in-memory-only",sessionCount:summaries.length,
+          sessions:recent,events,observedAt:new Date().toISOString()};
+      }
       case "workspace.get": {
         const { summary } = getWorkspace(this.registry, req.systemId as string, req.workspaceId as string);
         return { workspace: summary };
