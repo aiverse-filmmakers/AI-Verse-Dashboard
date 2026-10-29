@@ -424,10 +424,24 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     assert.ok(scopedHistory.body.result.data.length>=1);
     assert.ok(scopedHistory.body.result.data.every(x=>x.workspace_id==="film"),
       "canonical session list must contain no cross-workspace conversations");
+    const filmRunId=(await filmChat.locator(".live-chat-status").textContent()).split(" · ")[1];
+    assert.ok(filmRunId,"film response must preserve its canonical run identifier");
+    const verifiedFilm=await page.evaluate(async runId=>{
+      const scope=(await(await fetch("/local-app/session")).json()).scope;
+      const result=await fetch("/rpc",{method:"POST",credentials:"same-origin",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({type:"req",v:"1.0",id:"film-run-proof",
+          method:"aiverse.gateway.run.get",...scope,params:{runId}})});
+      return result.json();
+    },filmRunId);
+    assert.equal(verifiedFilm.ok,true);
+    assert.equal(verifiedFilm.result.workspaceId,"film");
     assert.ok(scopedHistory.body.result.data.some(x=>
-      x.session_id===filmRuns[0].frame.params.sessionId
-      ||typeof x.session_id==="string"),
-      "the selected workspace must return actual Gateway-backed history");
+      x.session_id===verifiedFilm.result.sessionId),
+      "the film Gateway history must contain the exact verified film session");
+    assert.equal(scopedHistory.body.result.data.some(x=>
+      x.session_id===continued.params.sessionId),false,
+      "the earlier Personal session must not appear in the film library");
     assert.deepEqual(errors,[],"graphical owner approval must produce no browser runtime errors");
     // Normal Logout still revokes the newly paired browser.
     // Logout revokes session authorization and existing WS subscriptions.
