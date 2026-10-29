@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 42,
+  "provisionalEngineeringEarned": 44,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -69,9 +69,9 @@
       "id": "controls",
       "title": "Owner-backed control panels",
       "budget": 15,
-      "provisionalEarned": 4,
+      "provisionalEarned": 6,
       "evidenceStatus": "source-and-ci",
-      "remaining": "OS-authenticated workspace status and local+persisted Gateway activity are functional. Trusted TTY launcher now selects OS-owned named workspaces while atomically rotating browser pairing/cookies and revoking previous streams. Browser-supplied system/workspace switching, full native owner login/grants, agent controls, approvals and fleet operations remain unimplemented."
+      "remaining": "A real paired browser OS workspace chooser now reads the host-owned bounded catalog and submits a time-limited exact owner-approval request. Only the trusted terminal can approve/deny, switching rotates host scope and re-pair, with real canonical film run and isolated history proved. Persistent native owner identity/consent records, signed Mac app, multi-system selection, full agent fleet control, tasks, approvals and automations remain unimplemented."
     },
     {
       "id": "film",
@@ -209,7 +209,22 @@
       "revocation": "rotate one-time pairing code, HttpOnly cookie, runtime lease; close old browser WS; revalidate before run event forwarding",
       "limits": "single registered host OS, explicit local TTY command, manual fresh browser re-pair, not signed Mac native UI or production owner login",
       "stage": "verified source+disposable CI; not on private user machine"
+    },
+    "graphicalHostApprovedWorkspace": {
+      "sourceRevision": "072afb8dfb428b57fce7c8c0d126f029d887a7df",
+      "sourcePath": "apps/web/local-app/boot.js",
+      "hostBoundaryPath": "apps/gateway/src/local-app-session.ts",
+      "ownerTtyPath": "scripts/mc2/start-connected.ts",
+      "browserCompositionProof": "scripts/mc2/ci-authenticated-browser-proof.mjs",
+      "ciDashboard": 40960567285,
+      "ciBrowser": 40960567514,
+      "ciCanonicalGateway": 40960567259,
+      "ciProgress": 40960567232,
+      "functionality": "bounded real OS named workspace catalog, browser proposal, exact terminal :approve/:deny/:pending, re-pair revocation, true film Gateway execution, workspace-isolated canonical history",
+      "privacy": "exact origin/HttpOnly cookie, no raw roots, browser cannot invoke generic workspace.list, no bearer or one-time code in page, old DOM cleared",
+      "limitations": "one trusted host registered OS, owner terminal approval per request, no durable owner identity or signed desktop release",
+      "stage": "source+disposable-CI-verified-not-user-Mac-accepted"
     }
   },
-  "nextUnverifiedChange": "G06.1 remains partial: owner TTY can rotate selected workspace for one registered OS, but authenticated native graphical OS/workspace picker, owner consent and persistent grant lifecycle, multi-OS selection and production Mac delivery are still missing."
+  "nextUnverifiedChange": "G06.1 native production owner sign-in and approval audit/grants, multi-system lifecycle and signing remain unfinished. Real browser chooser + terminal approval is source-verified in disposable CI, not a production graphical native trust dialog."
 }

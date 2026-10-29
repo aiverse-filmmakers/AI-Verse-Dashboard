@@ -37,3 +37,8 @@ Exact code `4c269f411ee0990e8a784f6542c1f2c13da3283e`. Dashboard CI 40886502087,
 ## Next owner gates
 
 A production native host needs reviewed graphical workspace selection, explicit owner confirmation and grant approval, persistence/recovery, audit, app packaging/signing and private Mac acceptance. Preserve the host-only authority and explicit method allowlist until the UI has an owner-authenticated approval path.
+
+
+## Graphical workspace request + trusted terminal approval
+
+The Personal browser now has a functional **Workspaces** panel. It reads only the bounded real OS workspace list after the host opts in, submits a request that cannot switch anything, and displays pending, denied or expired status. The trusted host supports `:pending`, `:approve <id>`, `:deny <id>`, and existing `:use`, rotating cookie/one-time code and revoking browser UI on approval. Exact-origin, time-bound, request-count-limited and OS-root/manifest-pinned. Verified on a real canonical Gateway: after re-pairing in `film`, a new run completes and its session list excludes prior Personal history. [Development tasks 520–548](DEVELOPMENT-TASKS-520-548-2026-10-29.md), [new owner runbook](PERSONAL-WORKSPACE-OWNER-APPROVAL-2026-10-29.md). Source `072afb8dfb428b57fce7c8c0d126f029d887a7df` passed Dashboard CI 40960567285, Chromium 40960567514, real Gateway 40960567259. Desktop native login, durable approval receipts and signing remain pending.
