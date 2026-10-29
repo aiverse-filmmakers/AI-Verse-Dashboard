@@ -92,6 +92,43 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     assert.equal(await page.evaluate(()=>localStorage.length),0);
     assert.equal(await page.evaluate(()=>sessionStorage.length),0);
 
+    // The Personal diagnostics panel must query the *real* authenticated
+    // canonical Gateway status. Canvas remains genuinely unavailable in
+    // this browser fixture since no approved Data owner was installed.
+    await page.getByRole("button",{name:"Workspace status"}).click();
+    const panel=page.locator(".personal-diagnostics");
+    await panel.waitFor({state:"visible"});
+    await page.waitForFunction(()=>{
+      const sources=[...document.querySelectorAll(".personal-diagnostics-source")];
+      return sources.length===2&&sources.every(s=>
+        s.getAttribute("data-state")!=="loading");
+    },null,{timeout:20000});
+    assert.equal(await panel.locator('[data-state="available"]').count(),1,
+      "Gateway status must be proven live from canonical preflight");
+    assert.equal(await panel.locator('[data-state="unavailable"]').count(),1,
+      "Canvas must not look available without an installed owner");
+    assert.match(await panel.textContent(),/Canonical Gateway reachable/);
+    assert.match(await panel.textContent(),/Canvas Data owner unavailable/);
+    assert.ok(trackedRequests.some(req=>req.frame?.method==="aiverse.gateway.status"),
+      "diagnostics must ask real Gateway for authenticated status");
+    assert.ok(trackedRequests.some(req=>req.frame?.method==="aiverse.canvas.list"),
+      "diagnostics must ask the real Canvas Data owner, not fabricate metrics");
+    assert.ok(trackedRequests.filter(req=>
+      req.frame?.method==="aiverse.gateway.status" ||
+      req.frame?.method==="aiverse.canvas.list").every(req=>
+      req.frame.workspaceId==="operator" && req.frame.systemId===systemId &&
+      req.headers.authorization===undefined),
+      "diagnostics must stay in authenticated cookie scope without bearers");
+    await page.getByRole("button",{name:"Refresh workspace status"}).click();
+    await page.waitForFunction(()=>{
+      const sources=[...document.querySelectorAll(".personal-diagnostics-source")];
+      return sources.length===2&&sources.every(s=>
+        s.getAttribute("data-state")!=="loading");
+    },null,{timeout:20000});
+    assert.equal(await panel.locator('[data-state="available"]').count(),1);
+    assert.equal(await panel.locator('[data-state="unavailable"]').count(),1);
+    await page.getByRole("button",{name:"Workspace status"}).click();
+    assert.equal(await panel.isVisible(),false);
     const marker="browser-canonical-proof-"+Date.now();
     const first=page.locator(".live-chat-pane").first();
     await first.locator(".live-chat-input").fill(marker);
@@ -242,6 +279,9 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       canonical_history_reopened_after_browser_reload:true,
       scoped_two_chat_panes:true,
       cookie_logout_revoked:true,
+      workspace_diagnostics_real_gateway_success:true,
+      unavailable_canvas_owner_never_fabricated:true,
+      diagnostics_cookie_scope_and_refresh:true,
       member_provider_used:false,
       member_mac_verified:false,
     };
