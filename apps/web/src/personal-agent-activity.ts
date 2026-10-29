@@ -47,6 +47,10 @@ export function inspectActivity(value:unknown,scope:Required<ClientScope>):Activ
   return {sessionCount:v.sessionCount as number,sessions,events,
     observedAt:v.observedAt as string};
 }
+export type ActivityFilter="all"|"tool-call"|"error-event";
+export function filterActivityEvents(view:ActivityView,filter:ActivityFilter):ActivityEvent[]{
+  return filter==="all" ?view.events.slice():view.events.filter(event=>event.kind===filter);
+}
 function el<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,text?:string){
   const n=document.createElement(tag);n.className=cls;
   if(text!==undefined)n.textContent=text;
@@ -65,6 +69,8 @@ export class PersonalAgentActivity{
   private readonly title:HTMLElement;
   private readonly reload:HTMLButtonElement;
   private readonly content:HTMLElement;
+  private view?:ActivityView;
+  private filter:ActivityFilter="all";
   constructor(private readonly host:HTMLElement,private readonly client:DashboardClient){
     const scope=client.getScope();
     if(!scope.systemId||!scope.workspaceId)throw Error("ACTIVITY_SCOPE_REQUIRED");
@@ -93,10 +99,50 @@ export class PersonalAgentActivity{
     if(!scope.systemId||!scope.workspaceId)throw Error("ACTIVITY_SCOPE_REQUIRED");
     this.selected.systemId=scope.systemId;this.selected.workspaceId=scope.workspaceId;
     this.client.retarget(scope);
+    this.view=undefined;this.filter="all";
     this.epoch++;
     this.title.textContent="Local activity · "+scope.workspaceId;
     this.content.replaceChildren(el("p","personal-agent-activity-state","Selection changed. Refresh required."));
     if(this.open)void this.refresh();
+  }
+  private renderView(view:ActivityView):void{
+    const header=el("p","personal-agent-activity-state",
+      view.sessionCount+" local session"+(view.sessionCount===1?"":"s")
+      +" in this workspace · not persisted history");
+    const columns=el("div","personal-agent-activity-columns");
+    const sessions=el("div","personal-agent-activity-list");
+    const events=el("div","personal-agent-activity-list");
+    sessions.append(el("strong","","Recent sessions (up to 12)"));
+    events.append(el("strong","","Recent activity (up to 12)"));
+    if(!view.sessions.length)sessions.append(el("p","","No current local sessions."));
+    for(const row of view.sessions){
+      sessions.append(el("p","personal-agent-activity-entry",
+        row.status+" · "+row.entryCount+" entries · "+row.updatedAt));
+    }
+    const controls=el("div","personal-agent-activity-filters");
+    const options:[ActivityFilter,string][]=[
+      ["all","All events"],["tool-call","Tool calls"],["error-event","Errors"],
+    ];
+    for(const [value,label] of options){
+      const button=el("button","personal-agent-activity-filter",label);
+      button.type="button";
+      button.setAttribute("aria-pressed",String(this.filter===value));
+      button.addEventListener("click",()=>{
+        if(this.destroyed||!this.open||!this.view)return;
+        this.filter=value;this.renderView(this.view);
+      });
+      controls.append(button);
+    }
+    events.append(controls);
+    const selected=filterActivityEvents(view,this.filter);
+    if(!selected.length)events.append(el("p","personal-agent-activity-state",
+      "No matching events in the latest 12 local records."));
+    for(const row of selected){
+      events.append(el("p","personal-agent-activity-entry",
+        row.kind+" · "+row.role+" · "+row.createdAt));
+    }
+    columns.append(sessions,events);
+    this.content.replaceChildren(header,columns);
   }
   async refresh():Promise<void>{
     if(this.destroyed||!this.open)return;
@@ -108,27 +154,8 @@ export class PersonalAgentActivity{
       if(this.destroyed||!this.open||request!==this.epoch
         ||selected.systemId!==this.selected.systemId
         ||selected.workspaceId!==this.selected.workspaceId)return;
-      const view=inspectActivity(response.result,selected);
-      const header=el("p","personal-agent-activity-state",
-        view.sessionCount+" local session"+(view.sessionCount===1?"":"s")
-        +" in this workspace · not persisted history");
-      const columns=el("div","personal-agent-activity-columns");
-      const sessions=el("div","personal-agent-activity-list");
-      const events=el("div","personal-agent-activity-list");
-      sessions.append(el("strong","","Recent sessions (up to 12)"));
-      events.append(el("strong","","Recent activity (up to 12)"));
-      if(!view.sessions.length)sessions.append(el("p","","No current local sessions."));
-      for(const row of view.sessions){
-        sessions.append(el("p","personal-agent-activity-entry",
-          row.status+" · "+row.entryCount+" entries · "+row.updatedAt));
-      }
-      if(!view.events.length)events.append(el("p","","No recent local activity."));
-      for(const row of view.events){
-        events.append(el("p","personal-agent-activity-entry",
-          row.kind+" · "+row.role+" · "+row.createdAt));
-      }
-      columns.append(sessions,events);
-      this.content.replaceChildren(header,columns);
+      this.view=inspectActivity(response.result,selected);
+      this.renderView(this.view);
     }catch(error){
       if(this.destroyed||!this.open||request!==this.epoch)return;
       this.content.replaceChildren(el("p","personal-agent-activity-state",
@@ -139,6 +166,7 @@ export class PersonalAgentActivity{
   }
   destroy():void{
     this.destroyed=true;this.open=false;this.epoch++;
+    this.view=undefined;
     this.host.replaceChildren();
   }
 }

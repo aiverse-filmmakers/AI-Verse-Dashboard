@@ -164,3 +164,7 @@
 .personal-agent-activity-state,.personal-agent-activity-entry{font-size:12px;color:#56677a;margin:5px 0;overflow-wrap:anywhere}
 .personal-agent-activity-entry{padding:7px;border:1px solid #e8edf3;border-radius:7px;background:#fbfcfd}
 @media(max-width:700px){.personal-agent-activity-columns{grid-template-columns:1fr}.live-chat-toolbar{flex-wrap:wrap}}
+
+.personal-agent-activity-filters{display:flex;gap:5px;flex-wrap:wrap}
+.personal-agent-activity-filter{font-size:11px!important;padding:4px 7px!important}
+.personal-agent-activity-filter[aria-pressed="true"]{background:#e8eff8!important;border-color:#91a9c9!important;color:#294764!important}

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectActivity} from "../apps/web/src/personal-agent-activity.js";
+import {inspectActivity,filterActivityEvents} from "../apps/web/src/personal-agent-activity.js";
 const scope={systemId:"system-a",workspaceId:"operator"};
 const time="2026-10-29T08:00:00.000Z";
 const good=()=>({source:"dashboard-local-sessions",systemId:"system-a",
@@ -36,4 +36,11 @@ test("does not invent local sessions when empty",()=>{
 test("rejects inconsistent count or forged event timestamp",()=>{
  assert.throws(()=>inspectActivity({...good(),sessionCount:0},scope),/ACTIVITY_INVALID_SOURCE/);
  assert.throws(()=>inspectActivity({...good(),events:[{kind:"message",role:"user",createdAt:"not-a-date"}]},scope),/ACTIVITY_INVALID_SOURCE/);
+});
+
+test("local event filters remain data-only and do not manufacture hidden entries",()=>{
+ const view=inspectActivity(good(),scope);
+ assert.equal(filterActivityEvents(view,"all").length,1);
+ assert.deepEqual(filterActivityEvents(view,"tool-call"),view.events);
+ assert.deepEqual(filterActivityEvents(view,"error-event"),[]);
 });
