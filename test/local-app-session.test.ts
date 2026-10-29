@@ -277,7 +277,8 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     });
     const closed=new Promise<void>(resolve=>ws.once("close",()=>resolve()));
     assert.throws(()=>session.rotateWorkspaceFromHost("../escape"),/LOCAL_APP_SCOPE_INVALID/);
-    assert.throws(()=>session.rotateWorkspaceFromHost("missing"),/ADAPTER_/);
+    assert.throws(()=>session.rotateWorkspaceFromHost("missing"),
+      (error:unknown)=>(error as {code?:string})?.code==="ADAPTER_UNKNOWN_WORKSPACE");
     assert.equal((await scope(oldCookie)).status,200,
       "invalid owner selection must not revoke the current browser");
     assert.equal((await rpc(server.port,{
