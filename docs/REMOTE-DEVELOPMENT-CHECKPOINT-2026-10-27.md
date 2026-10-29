@@ -983,3 +983,46 @@ tool dispatch are unshipped. Tasks through **#412** committed.
 Next numbered task: **#413**. The 200 small task slices were
 4 implementation/integration slices and 196 individually named
 test cases, not 200 major feature milestones.
+
+
+## Resume from Task 439 (after Tasks 413–438), 29 October 2026
+
+The operator asked for a substantial continuous work session.
+Implemented an actually functional first-party **Personal
+Workspace status** panel (not static preview) and a narrow
+native paired-cookie OS registry read. Source:
+`apps/web/src/personal-diagnostics.ts`,
+`apps/web/src/personal-chat-ui.ts`,
+`apps/web/src/personal-chat.css`,
+`apps/gateway/src/local-app-session.ts`.
+Tests: `test/personal-diagnostics.test.ts` (36 cases),
+`test/local-app-session.test.ts` and
+`scripts/mc2/ci-authenticated-browser-proof.mjs`.
+Bounded real public system.get, Gateway preflight, Data Canvas
+list and Gateway recent sessions. Honest partial failures,
+source/workspace checks, async retarget epoch fencing and manual
+refresh. No fake healthy status, raw roots, private transcripts
+or privileged bearer in browser.
+
+Verified source commit
+`0f276bae960f98b0082bad4a7e1fe7685009e6b4`:
+[Dashboard 40832818420](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40832818420)
+Linux, macOS, Windows GREEN.
+[Real Gateway + actual host-paired Chromium
+40832818224](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40832818224)
+GREEN. Later scorecard/ledger commits require their own
+exact-head checks.
+
+**Progress:** GB **~38/100 provisional**, FA **15/100
+formally accepted**, 10 chapters / 40 milestones:
+4 verified, 8 implemented draft, 2 in progress
+(G03.4 Canvas and G06.1 Control Center), 26 planned.
+User-local Mac/private account/release state still unscored.
+Task ledger `docs/DEVELOPMENT-TASKS-413-438-2026-10-29.md`
+has 26 individually named source/test slices.
+**NEXT Task 439.** Don't redo owner diagnostics, native host
+Canvas coordinator or Data grouping. Preferred next independent
+milestone work: native owner-approved system/workspace selection,
+a real owner-backed agents/control screen, or provider model
+dispatch with proper host approvals; never silently broaden
+local cookie scopes.
