@@ -25,7 +25,7 @@ function scopedResponse(value:unknown,workspaceId:string,source:string):
     throw Error("DIAGNOSTICS_SCOPE_MISMATCH");
   return obj;
 }
-function inspectGateway(value:unknown,workspaceId:string):Observation{
+export function inspectGateway(value:unknown,workspaceId:string):Observation{
   const v=scopedResponse(value,workspaceId,"canonical-gateway");
   const c=v.capabilities;
   if(!c||typeof c!=="object"||Array.isArray(c))
@@ -37,10 +37,12 @@ function inspectGateway(value:unknown,workspaceId:string):Observation{
     details:(canRun?"Run creation and retrieval available":"Run controls not confirmed")
       +" · "+(continuity?"Conversation history supported":"Conversation history not confirmed")
       +" · "+(available.providerSelection===true
-        ?"Provider selection supported":"Provider selection not available"),
+        ?"Provider selection supported":"Provider selection not available")
+      +" · "+((v.runtimeSource as {inferenceVerified?:unknown}|undefined)?.inferenceVerified===true
+        ?"Inference verified by owner":"Inference not verified by status"),
   };
 }
-function inspectCanvas(value:unknown,workspaceId:string):Observation{
+export function inspectCanvas(value:unknown,workspaceId:string):Observation{
   const v=scopedResponse(value,workspaceId,"canonical-data");
   if(!Array.isArray(v.document)||v.document.length>25)
     throw Error("DIAGNOSTICS_INVALID_SOURCE");
@@ -55,7 +57,7 @@ function inspectCanvas(value:unknown,workspaceId:string):Observation{
         +" returned (up to 25; not a lifetime total)",
   };
 }
-function inspectHistory(value:unknown,workspaceId:string):Observation{
+export function inspectHistory(value:unknown,workspaceId:string):Observation{
   const v=scopedResponse(value,workspaceId,"canonical-gateway");
   if(!Array.isArray(v.data)||v.data.length>5
     ||typeof v.has_more!=="boolean")throw Error("DIAGNOSTICS_INVALID_SOURCE");
