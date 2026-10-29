@@ -7,6 +7,38 @@ const $=selector=>document.querySelector(selector);
 const pairPanel=$("#pair-panel"),connected=$("#connected");
 const status=$("#pair-status"),form=$("#pair-form"),code=$("#pair-code");
 let chatApp=null;
+let activeMonitor=null;
+let checking=false;
+function stopMonitor(){
+  if(activeMonitor!==null)clearInterval(activeMonitor);
+  activeMonitor=null;
+}
+function revokeBrowserView(){
+  stopMonitor();chatApp?.destroy();chatApp=null;
+  connected.hidden=true;pairPanel.hidden=false;
+  showError("Local host session ended or workspace changed. Enter the new one-time code.");
+}
+async function verifyHostSession(){
+  if(checking||!chatApp)return;
+  checking=true;
+  try{
+    const response=await fetch("/local-app/session",{
+      credentials:"same-origin",cache:"no-store",redirect:"error"
+    });
+    if(!response.ok){revokeBrowserView();return;}
+    const state=await asJson(response);
+    if(state.ok!==true||state.authentication!=="host-cookie"){
+      revokeBrowserView();return;
+    }
+  }catch{
+    // Fail closed. Do not continue displaying previously-authorized chats.
+    revokeBrowserView();
+  }finally{checking=false;}
+}
+document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden)void verifyHostSession();
+});
+window.addEventListener("focus",()=>{void verifyHostSession();});
 function showError(message){status.textContent=message;}
 async function asJson(response){
   try{return await response.json();}catch{return {ok:false,error:{code:"LOCAL_APP_BAD_RESPONSE"}};}
@@ -30,6 +62,7 @@ async function activate(){
   });
   pairPanel.hidden=true;
   connected.hidden=false;
+  stopMonitor();activeMonitor=setInterval(()=>{void verifyHostSession();},1500);
 }
 form.addEventListener("submit",async event=>{
   event.preventDefault();
@@ -56,7 +89,7 @@ form.addEventListener("submit",async event=>{
 });
 $("#logout").addEventListener("click",async()=>{
   // Immediately stop UI subscriptions even when host logout request fails.
-  chatApp?.destroy();chatApp=null;
+  stopMonitor();chatApp?.destroy();chatApp=null;
   connected.hidden=true;pairPanel.hidden=false;
   try{
     await fetch("/local-app/logout",{method:"POST",credentials:"same-origin",

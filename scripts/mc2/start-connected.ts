@@ -4,11 +4,12 @@
  * Does not install/configure Gateway, authorize providers, edit OS or persist keys.
  */
 import {readFileSync,statSync} from "node:fs";
+import {createInterface} from "node:readline";
 import {LocalApplicationSession} from "../../apps/gateway/src/local-app-session.js";
 import {homedir} from "node:os";
 import {join,resolve} from "node:path";
 import {SystemRegistry} from "../../packages/registry/src/index.js";
-import {DisposableCache} from "../../packages/os-read-adapter/src/index.js";
+import {DisposableCache,listWorkspaces} from "../../packages/os-read-adapter/src/index.js";
 import {CanonicalGatewayClient} from "../../packages/client/src/canonical-gateway-client.js";
 import {CanonicalGatewayBridge} from "../../apps/gateway/src/canonical-gateway-bridge.js";
 import {QueryRouter,SubscriptionHub,startGateway} from "../../apps/gateway/src/index.js";
@@ -77,7 +78,7 @@ if(uiEnabled){
     chat=load("dist/apps/web/personal-chat.bundle.js",1024*1024);
   }catch{fail("LOCAL_APP_ASSETS_UNAVAILABLE")}
   localApp=new LocalApplicationSession({systemId,workspaceId:"operator"},
-    {html,boot,css,chat});
+    {html,boot,css,chat},registry);
 }
 let server:Awaited<ReturnType<typeof startGateway>>;
 try{
@@ -101,7 +102,40 @@ if(localApp){
   process.stderr.write("\nAI-Verse Personal: "+localApp.origin+"/local-app/\n"+
     "One-time pairing code (expires in five minutes): "+
     localApp.pairingCode()+"\n"+
-    "Enter this code in the local browser page, never into ChatGPT.\n\n");
+    "Enter this code in the local browser page, never into ChatGPT.\n"+
+    "Host commands: :workspaces, :use <workspace-id>, :use operator, :help\n\n");
+  // Only the actual TTY-host controls scope. No browser workspace.list,
+  // remote URL, machine path, env key, or unverified arbitrary workspace ID.
+  const terminal=createInterface({input:process.stdin,output:process.stderr,
+    terminal:true,historySize:0});
+  void (async()=>{
+    for await(const raw of terminal){
+      const command=raw.trim();
+      if(command===":help"){
+        process.stderr.write("Commands: :workspaces, :use <id>, :use operator, :help\n");
+        continue;
+      }
+      if(command===":workspaces"){
+        try{
+          const rows=listWorkspaces(registry,systemId);
+          process.stderr.write("Approved OS workspaces: operator"+
+            rows.map(row=>", "+row.id).join("")+"\n");
+        }catch{process.stderr.write("WORKSPACE_CATALOG_UNAVAILABLE\n");}
+        continue;
+      }
+      if(command.startsWith(":use ")){
+        const workspaceId=command.slice(5).trim();
+        try{
+          localApp.rotateWorkspaceFromHost(workspaceId);
+          process.stderr.write("Selected workspace: "+workspaceId+
+            "\nOld browser session revoked. New one-time pairing code: "+
+            localApp.pairingCode()+"\nReload the browser and enter the new code.\n");
+        }catch{process.stderr.write("WORKSPACE_SWITCH_DENIED\n");}
+        continue;
+      }
+      if(command)process.stderr.write("Unknown host command. Enter :help\n");
+    }
+  })().catch(()=>{process.stderr.write("HOST_TERMINAL_UNAVAILABLE\n");});
 }
 const close=async()=>{try{await server.close();}finally{process.exitCode=0}};
 for(const signal of ["SIGINT","SIGTERM"] as const){

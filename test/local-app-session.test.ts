@@ -251,6 +251,101 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.equal((await ask("operator.activity","operator")).status,403);
     assert.equal((await ask("operator.activity","film","another-system")).status,403);
   });
+  it("trusted host changes real OS workspace, revokes browser cookies and sockets, and requires fresh pairing",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>server.close());
+    const base="http://127.0.0.1:"+server.port;
+    const firstCode=session.pairingCode();
+    const login=async(code:string)=>fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),body:json({code}),
+    });
+    const first=await login(firstCode);
+    assert.equal(first.status,200);
+    const oldCookie=(first.headers.get("set-cookie")??"").split(";")[0];
+    const scope=async(cookie:string)=>fetch(base+"/local-app/session",{
+      headers:{cookie}});
+    assert.equal((await scope(oldCookie)).status,200);
+    const ws=new WebSocket("ws://127.0.0.1:"+server.port+
+      "/ws?systemId="+systemId,[DASHBOARD_WS_PROTOCOL],{
+      headers:{origin:base,cookie:oldCookie},
+    });
+    await new Promise<void>((resolve,reject)=>{
+      ws.once("open",resolve);ws.once("error",reject);
+    });
+    const closed=new Promise<void>(resolve=>ws.once("close",()=>resolve()));
+    assert.throws(()=>session.rotateWorkspaceFromHost("../escape"),/LOCAL_APP_SCOPE_INVALID/);
+    assert.throws(()=>session.rotateWorkspaceFromHost("missing"),/ADAPTER_/);
+    assert.equal((await scope(oldCookie)).status,200,
+      "invalid owner selection must not revoke the current browser");
+    assert.equal((await rpc(server.port,{
+      type:"req",v:"1.0",id:"browser-cannot-switch",method:"workspace.list",
+      systemId,workspaceId:"operator",
+    },{cookie:oldCookie,origin:base})).status,403);
+    const fakeSwitch=await fetch(base+"/local-app/switch",{
+      method:"POST",headers:secureHeaders(server.port,undefined,oldCookie),
+      body:json({workspaceId:"film"}),
+    });
+    assert.equal(fakeSwitch.status,404);
+    session.rotateWorkspaceFromHost("film");
+    await closed;
+    assert.equal(ws.readyState,WebSocket.CLOSED);
+    const freshCode=session.pairingCode();
+    assert.notEqual(freshCode,firstCode);
+    assert.equal((await scope(oldCookie)).status,401);
+    assert.equal((await login(firstCode)).status,403,
+      "used operator pairing code cannot authenticate the film workspace");
+    assert.equal((await rpc(server.port,{type:"req",v:"1.0",id:"stale-cookie",
+      method:"workspace.get",systemId,workspaceId:"film"},
+      {cookie:oldCookie,origin:base})).status,401);
+    const second=await login(freshCode);
+    assert.equal(second.status,200);
+    const next=(await second.json()) as {scope:{systemId:string;workspaceId:string}};
+    assert.deepEqual(next.scope,{systemId,workspaceId:"film"});
+    const newCookie=(second.headers.get("set-cookie")??"").split(";")[0];
+    assert.notEqual(newCookie,oldCookie);
+    const film=await rpc(server.port,{type:"req",v:"1.0",id:"film-only",
+      method:"workspace.get",systemId,workspaceId:"film"},
+      {cookie:newCookie,origin:base});
+    assert.equal((await film.json() as {ok:boolean}).ok,true);
+    assert.equal((await rpc(server.port,{type:"req",v:"1.0",id:"blocked-operator",
+      method:"system.get",systemId,workspaceId:"operator"},
+      {cookie:newCookie,origin:base})).status,403);
+    assert.equal((await scope(oldCookie)).status,401);
+    // Switching back requires a third pairing; no cookie spans workspaces.
+    session.rotateWorkspaceFromHost("operator");
+    assert.equal((await scope(newCookie)).status,401);
+    const third=await login(session.pairingCode());
+    assert.equal(third.status,200);
+    assert.equal(((await third.json()) as {scope:{workspaceId:string}}).scope.workspaceId,"operator");
+  });
+  it("old owner-root grants cannot survive registry rebind or identity changes",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>server.close());
+    const base="http://127.0.0.1:"+server.port;
+    const p=await fetch(base+"/local-app/pair",{method:"POST",
+      headers:secureHeaders(server.port),body:json({code:session.pairingCode()})});
+    assert.equal(p.status,200);
+    const cookie=(p.headers.get("set-cookie")??"").split(";")[0];
+    reg.rebind(systemId,root);
+    assert.equal((await fetch(base+"/local-app/session",{headers:{cookie}})).status,401);
+    assert.throws(()=>session.rotateWorkspaceFromHost("film"),/LOCAL_APP_OS_BINDING_STALE/);
+    assert.throws(()=>session.pairingCode(),/LOCAL_APP_OS_BINDING_STALE/);
+    const denied=await rpc(server.port,{type:"req",v:"1.0",id:"stale-owner",
+      method:"workspace.get",systemId,workspaceId:"operator"},
+      {cookie,origin:base});
+    assert.equal(denied.status,401);
+  });
+  it("unbound host cannot rotate scope without an explicit OS owner",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const legacy=new LocalApplicationSession({systemId,workspaceId:"operator"});
+    assert.throws(()=>legacy.rotateWorkspaceFromHost("film"),/LOCAL_APP_HOST_AUTHORITY_REQUIRED/);
+  });
   it("locks pairing after five incorrect attempts without accepting the correct code",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
     const session=new LocalApplicationSession({systemId,workspaceId:"operator"});

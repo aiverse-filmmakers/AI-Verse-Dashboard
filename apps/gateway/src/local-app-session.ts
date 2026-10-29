@@ -10,6 +10,8 @@
 import {randomBytes,timingSafeEqual} from "node:crypto";
 import type {IncomingMessage,ServerResponse} from "node:http";
 import type {WebSocket} from "ws";
+import type {SystemRegistry} from "../../../packages/registry/src/registry.js";
+import {getWorkspace} from "../../../packages/os-read-adapter/src/workspace.js";
 
 const COOKIE="aiverse_local_session";
 const MAX_PAIR_ATTEMPTS=5;
@@ -60,18 +62,57 @@ export interface LocalApplicationScope{
 }
 export class LocalApplicationSession {
   private port=0;
-  private readonly pairing=randomBytes(32).toString("base64url");
-  private readonly born=Date.now();
-  private readonly sessionToken=randomBytes(32).toString("base64url");
+  private pairing=randomBytes(32).toString("base64url");
+  private born=Date.now();
+  private sessionToken=randomBytes(32).toString("base64url");
+  private readonly ownerRoot?:string;
+  private readonly ownerGeneration?:number;
   private sessionsUntil=0;
   private attempts=0;
   private used=false;
   private readonly sockets=new Set<WebSocket>();
   private expiryTimer?:ReturnType<typeof setTimeout>;
-  constructor(private readonly scope:LocalApplicationScope,
-    private readonly assets?:LocalApplicationAssets){
+  constructor(private scope:LocalApplicationScope,
+    private readonly assets?:LocalApplicationAssets,
+    private readonly ownerRegistry?:SystemRegistry){
     if(!ID.test(scope.systemId)||!WS.test(scope.workspaceId))
       throw Error("LOCAL_APP_SCOPE_INVALID");
+    if(ownerRegistry){
+      // Only a trusted host can inject the registry. Capture exactly the
+      // approved identity/generation; browser requests can never choose it.
+      this.ownerRoot=ownerRegistry.resolveRoot(scope.systemId);
+      this.ownerGeneration=ownerRegistry.bindingGeneration(scope.systemId);
+      if(scope.workspaceId!=="operator")
+        getWorkspace(ownerRegistry,scope.systemId,scope.workspaceId);
+    }
+  }
+  private ownerStillApproved():boolean{
+    if(!this.ownerRegistry)return true; // legacy host mode cannot switch.
+    try{
+      return this.ownerRegistry.resolveRoot(this.scope.systemId)===this.ownerRoot
+        && this.ownerRegistry.bindingGeneration(this.scope.systemId)===this.ownerGeneration;
+    }catch{return false;}
+  }
+  /**
+   * TRUSTED HOST ONLY. There is no browser RPC/HTTP route for this operation.
+   * The launcher selects a workspace from the OS owner, then all existing
+   * cookies/sockets are revoked and both one-time secrets are rotated.
+   */
+  rotateWorkspaceFromHost(workspaceId:string):void{
+    if(!this.ownerRegistry)throw Error("LOCAL_APP_HOST_AUTHORITY_REQUIRED");
+    if(!WS.test(workspaceId))throw Error("LOCAL_APP_SCOPE_INVALID");
+    if(!this.ownerStillApproved())throw Error("LOCAL_APP_OS_BINDING_STALE");
+    if(workspaceId!=="operator")
+      getWorkspace(this.ownerRegistry,this.scope.systemId,workspaceId);
+    // Validate everything before touching the old browser session. Explicit
+    // re-pairing is required even if the host reselects the same workspace.
+    this.revoke();
+    this.scope={systemId:this.scope.systemId,workspaceId};
+    this.pairing=randomBytes(32).toString("base64url");
+    this.sessionToken=randomBytes(32).toString("base64url");
+    this.born=Date.now();
+    this.attempts=0;
+    this.used=false;
   }
   setBoundPort(port:number):void{
     if(this.port!==0||!Number.isInteger(port)||port<=0||port>65535)
@@ -84,7 +125,10 @@ export class LocalApplicationSession {
     this.sockets.add(ws);
     ws.once("close",()=>this.sockets.delete(ws));
   }
-  private active():boolean{return this.port!==0&&Date.now()<this.sessionsUntil;}
+  private active():boolean{
+    if(!this.ownerStillApproved()){this.revoke();return false;}
+    return this.port!==0&&Date.now()<this.sessionsUntil;
+  }
   private revoke():void{
     this.sessionsUntil=0;
     if(this.expiryTimer)clearTimeout(this.expiryTimer);
@@ -95,6 +139,7 @@ export class LocalApplicationSession {
   close():void{this.revoke();}
   /** Reveal only to an approved local launcher/native host, never HTTP. */
   pairingCode():string{
+    if(!this.ownerStillApproved())throw Error("LOCAL_APP_OS_BINDING_STALE");
     if(this.used||this.attempts>=MAX_PAIR_ATTEMPTS||Date.now()-this.born>PAIR_TTL)
       throw Error("LOCAL_APP_PAIRING_EXPIRED");
     return this.pairing;
@@ -116,12 +161,13 @@ export class LocalApplicationSession {
     return this.originIsExact(req)&&this.isSession(req);
   }
   isAllowedSocketSystem(systemId:string):boolean{
-    return systemId===this.scope.systemId;
+    return this.ownerStillApproved()&&systemId===this.scope.systemId;
   }
   isAllowedFrame(value:unknown):boolean{
     if(!value||typeof value!=="object"||Array.isArray(value))return false;
     const frame=value as {systemId?:unknown;workspaceId?:unknown;method?:unknown};
-    return typeof frame.method==="string"
+    return this.ownerStillApproved()
+      && typeof frame.method==="string"
       && PAIRED_BROWSER_METHODS.has(frame.method)
       && frame.systemId===this.scope.systemId
       && frame.workspaceId===this.scope.workspaceId;
@@ -171,6 +217,9 @@ export class LocalApplicationSession {
     if(url.pathname==="/local-app/pair"&&req.method==="POST"){
       if(!this.originIsExact(req)||req.headers["content-type"]!=="application/json"){
         fail(res,403,"LOCAL_APP_ORIGIN_DENIED");return true;
+      }
+      if(!this.ownerStillApproved()){
+        this.revoke();fail(res,403,"LOCAL_APP_OS_BINDING_STALE");return true;
       }
       if(this.used||this.attempts>=MAX_PAIR_ATTEMPTS||Date.now()-this.born>PAIR_TTL){
         fail(res,403,"LOCAL_APP_PAIRING_EXPIRED");return true;

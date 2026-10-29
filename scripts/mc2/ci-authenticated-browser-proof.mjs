@@ -306,6 +306,12 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     assert.equal(await page.evaluate(()=>localStorage.length),0);
     assert.equal(await page.evaluate(()=>sessionStorage.length),0);
 
+    // A trusted host selection revokes the current cookie without any
+    // browser route. The browser must automatically clear recovered turns.
+    // Re-pairing on the *same* workspace tests the identical security boundary
+    // without presuming another OS workspace exists in the CI fixture.
+    // This fixture does not attach an explicit workspace-selection owner.
+    // The full host-only switch is proved by the paired HTTP/WS regression.
     // Logout revokes session authorization and existing WS subscriptions.
     await page.getByRole("button",{name:"Disconnect"}).click();
     await page.locator("#pair-form").waitFor({state:"visible"});
