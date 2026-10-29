@@ -380,6 +380,130 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     const legacy=new LocalApplicationSession({systemId,workspaceId:"operator"});
     assert.throws(()=>legacy.rotateWorkspaceFromHost("film"),/LOCAL_APP_HOST_AUTHORITY_REQUIRED/);
   });
+  it("owner-reviewed graphical workspace proposal requires terminal approval, then re-pair",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const requests:Array<{id:string;workspaceId:string}>=[];
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    session.setWorkspaceRequestListener(item=>requests.push(item));
+    const srv=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>srv.close());
+    const base="http://127.0.0.1:"+srv.port;
+    const logged=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(srv.port),
+      body:json({code:session.pairingCode()}),
+    });
+    assert.equal(logged.status,200);
+    const oldCookie=(logged.headers.get("set-cookie")??"").split(";")[0];
+    const catalog=await fetch(base+"/local-app/workspaces",{headers:{cookie:oldCookie}});
+    assert.equal(catalog.status,200);
+    const data=await catalog.json() as {ok:boolean;selected:string;
+      workspaces:Array<{id:string;name:string;status:string}>};
+    assert.equal(data.ok,true);assert.equal(data.selected,"operator");
+    assert.deepEqual(data.workspaces.map(item=>item.id),["operator","film"]);
+    assert.equal(data.workspaces[1].name,"Film");
+    assert.doesNotMatch(JSON.stringify(data),/WORKSPACE.yaml|dash-local-session-|rootReal|rootIdentity/);
+    const propose=(workspaceId:string,headers:Record<string,string>=
+      secureHeaders(srv.port,undefined,oldCookie))=>
+      fetch(base+"/local-app/workspace-request",{method:"POST",headers,
+        body:json({workspaceId})});
+    assert.equal((await propose("film",{"content-type":"application/json",cookie:oldCookie})).status,403);
+    assert.equal((await propose("../film")).status,400);
+    assert.equal((await propose("missing")).status,404);
+    assert.equal((await propose("operator")).status,400);
+    assert.equal((await propose("film")).status,200);
+    assert.equal(requests.length,1);
+    assert.equal(requests[0].workspaceId,"film");
+    const id=requests[0].id;
+    assert.match(id,/^[0-9a-f]{16}$/);
+    assert.equal((await propose("film")).status,409,
+      "pending request cannot be replaced without host resolution");
+    const pending=await fetch(base+"/local-app/workspace-request",{headers:{cookie:oldCookie}});
+    assert.deepEqual(await pending.json(),{ok:true,state:"pending",id});
+    assert.throws(()=>session.approveWorkspaceRequest("forged"),/LOCAL_APP_REQUEST_INVALID/);
+    assert.equal((await fetch(base+"/local-app/session",{headers:{cookie:oldCookie}})).status,200);
+    session.denyWorkspaceRequest(id);
+    const rejected=await fetch(base+"/local-app/workspace-request",{headers:{cookie:oldCookie}});
+    assert.equal(((await rejected.json()) as {state:string}).state,"denied");
+    assert.throws(()=>session.approveWorkspaceRequest(id),/LOCAL_APP_REQUEST_INVALID/);
+    assert.equal((await propose("film")).status,200);
+    assert.equal(requests.length,2);
+    assert.notEqual(requests[1].id,id);
+    const selected=session.approveWorkspaceRequest(requests[1].id);
+    assert.equal(selected,"film");
+    assert.equal((await fetch(base+"/local-app/session",{headers:{cookie:oldCookie}})).status,401);
+    assert.equal((await propose("operator")).status,403,
+      "old cookie must not be able to queue a new request");
+    assert.throws(()=>session.approveWorkspaceRequest(requests[1].id),/LOCAL_APP_REQUEST_INVALID/);
+    const secondCode=session.pairingCode();
+    const pairedFilm=await fetch(base+"/local-app/pair",{method:"POST",
+      headers:secureHeaders(srv.port),body:json({code:secondCode})});
+    assert.equal(pairedFilm.status,200);
+    const filmCookie=(pairedFilm.headers.get("set-cookie")??"").split(";")[0];
+    assert.notEqual(filmCookie,oldCookie);
+    assert.equal(((await pairedFilm.json()) as {scope:{workspaceId:string}}).scope.workspaceId,"film");
+    assert.equal((await rpc(srv.port,{type:"req",v:"1.0",id:"browser-not-global",
+      method:"workspace.list",systemId,workspaceId:"film"},
+      {origin:base,cookie:filmCookie})).status,403);
+    const own=await rpc(srv.port,{type:"req",v:"1.0",id:"browser-scoped",
+      method:"workspace.get",systemId,workspaceId:"film"},
+      {origin:base,cookie:filmCookie});
+    assert.equal((await own.json() as {ok:boolean}).ok,true);
+    const newList=await fetch(base+"/local-app/workspaces",{headers:{cookie:filmCookie}});
+    assert.equal(((await newList.json()) as {selected:string}).selected,"film");
+  });
+  it("only an opted-in host can advertise OS catalog or receive browser proposals",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const srv=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>srv.close());
+    const base="http://127.0.0.1:"+srv.port;
+    assert.equal((await fetch(base+"/local-app/workspaces")).status,401);
+    const login=await fetch(base+"/local-app/pair",{method:"POST",
+      headers:secureHeaders(srv.port),body:json({code:session.pairingCode()})});
+    assert.equal(login.status,200);
+    const cookie=(login.headers.get("set-cookie")??"").split(";")[0];
+    assert.equal((await fetch(base+"/local-app/workspaces",{headers:{cookie}})).status,403);
+    assert.equal((await fetch(base+"/local-app/workspace-request",{method:"POST",
+      headers:secureHeaders(srv.port,undefined,cookie),body:json({workspaceId:"film"})})).status,403);
+    assert.throws(()=>session.approveWorkspaceRequest("no-request"),/LOCAL_APP_REQUEST_INVALID/);
+  });
+  it("workspace proposals are bounded, reject extra input keys, and cannot approve changed OS manifests",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const requests:Array<{id:string;workspaceId:string}>=[];
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    session.setWorkspaceRequestListener(x=>requests.push(x));
+    const srv=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>srv.close());
+    const base="http://127.0.0.1:"+srv.port;
+    const paired=await fetch(base+"/local-app/pair",{method:"POST",
+      headers:secureHeaders(srv.port),body:json({code:session.pairingCode()})});
+    const cookie=(paired.headers.get("set-cookie")??"").split(";")[0];
+    const send=(payload:unknown)=>fetch(base+"/local-app/workspace-request",{
+      method:"POST",headers:secureHeaders(srv.port,undefined,cookie),
+      body:json(payload),
+    });
+    assert.equal((await send({workspaceId:"film",root:"/tmp/private"})).status,400);
+    assert.equal((await send({workspaceId:"film",extra:"x"})).status,400);
+    assert.equal((await send({workspaceId:"FILM"})).status,400);
+    assert.equal((await send({workspaceId:"film"})).status,200);
+    writeFileSync(join(root,"workspaces","film","WORKSPACE.yaml"),
+      'schema_version: "2.0"\nid: "other"\nname: "Impersonation"\nstatus: "active"\n');
+    assert.throws(()=>session.approveWorkspaceRequest(requests[0].id));
+    assert.equal((await fetch(base+"/local-app/session",{headers:{cookie}})).status,200,
+      "rejecting a changed requested workspace must retain current operator scope");
+    session.denyWorkspaceRequest(requests[0].id);
+    writeFileSync(join(root,"workspaces","film","WORKSPACE.yaml"),
+      'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "active"\n');
+    for(let i=1;i<5;i++){
+      assert.equal((await send({workspaceId:"film"})).status,200);
+      session.denyWorkspaceRequest(requests[i].id);
+    }
+    assert.equal(requests.length,5);
+    assert.equal((await send({workspaceId:"film"})).status,429);
+  });
   it("locks pairing after five incorrect attempts without accepting the correct code",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
     const session=new LocalApplicationSession({systemId,workspaceId:"operator"});
