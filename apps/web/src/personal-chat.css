@@ -46,6 +46,9 @@
 .live-chat-history-item{display:flex;align-items:center;justify-content:space-between;gap:12px;
   padding:8px 10px;background:#f7f9fb;border:1px solid #edf0f4;border-radius:10px}
 .live-chat-history-item span{min-width:0;flex:1;overflow-wrap:anywhere;font-size:12px}
+.live-chat-history-more{align-self:flex-start;border:1px solid #cad5e2;background:#fff;color:#29425e;border-radius:8px;padding:7px 12px;font:inherit;font-size:12px;cursor:pointer}
+.live-chat-history-more:disabled{opacity:.55;cursor:wait}
+.live-chat-history-more:focus-visible{outline:2px solid #377ac4;outline-offset:2px}
 .live-chat-history-item button{flex:none;font-size:11px;padding:5px 9px}
 
 
