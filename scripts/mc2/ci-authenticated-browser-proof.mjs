@@ -348,6 +348,13 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     await page.getByText(/Waiting for terminal approval/).waitFor();
     assert.equal(workspaceRequests.length,1);
     assert.equal(workspaceRequests[0].workspaceId,"film");
+    await selector.getByRole("button",{name:"Close"}).click();
+    assert.equal(await selector.isVisible(),false);
+    await page.getByRole("button",{name:"Workspaces",exact:true}).click();
+    await selector.waitFor({state:"visible"});
+    await page.getByText(/Waiting for approval in your trusted terminal/).waitFor();
+    assert.equal(workspaceRequests.length,1,
+      "opening and closing the chooser must not issue a second owner request");
     assert.ok(await page.locator(".live-chat-pane").count()>0,
       "unapproved workspace requests must never clear or rebind the active chat");
     const fakeSwitch=await page.evaluate(async()=>{
