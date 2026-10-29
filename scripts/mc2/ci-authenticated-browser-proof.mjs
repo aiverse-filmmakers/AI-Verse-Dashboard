@@ -35,7 +35,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
   assert.equal(process.env.AIVERSE_GATEWAY_TOKEN,undefined,
     "never run the browser composition proof with a private member bearer");
   const assets=await localAssets();
-  const app=new LocalApplicationSession({systemId,workspaceId:"operator"},assets);
+  const app=new LocalApplicationSession({systemId,workspaceId:"operator"},assets,registry);
   let server,browser,context;
   try{
     const localRouter=new QueryRouter(registry,new DisposableCache());
@@ -310,8 +310,31 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     // browser route. The browser must automatically clear recovered turns.
     // Re-pairing on the *same* workspace tests the identical security boundary
     // without presuming another OS workspace exists in the CI fixture.
-    // This fixture does not attach an explicit workspace-selection owner.
-    // The full host-only switch is proved by the paired HTTP/WS regression.
+    // The trusted test host rotates and revokes session secrets in memory.
+    // No browser method or credential ever authorizes this scope operation.
+    app.rotateWorkspaceFromHost("operator");
+    await page.locator("#pair-form").waitFor({state:"visible",timeout:12000});
+    assert.equal(await page.locator(".live-chat-pane").count(),0,
+      "recovered prior transcript must disappear after host-side revocation");
+    const stale=await page.evaluate(async()=>{
+      const response=await fetch("/local-app/session",{credentials:"same-origin"});
+      return response.status;
+    });
+    assert.equal(stale,401);
+    const nextCode=app.pairingCode();
+    assert.notEqual(nextCode,pairingCode);
+    assert.equal((await page.content()).includes(nextCode),false);
+    await page.locator("#pair-code").fill(nextCode);
+    await page.getByRole("button",{name:"Connect this browser"}).click();
+    await page.locator(".live-chat-pane").first().waitFor();
+    const rePaired=(await context.cookies(origin)).find(c=>c.name==="aiverse_local_session");
+    assert.ok(rePaired?.httpOnly&&rePaired.value!==cookie.value,
+      "fresh host selection rotates the browser cookie");
+    assert.equal(await page.locator(".live-chat-message").count(),0,
+      "new browser pair must not resurrect the prior in-memory transcript");
+    assert.equal(await page.evaluate(()=>localStorage.length),0);
+    assert.equal(await page.evaluate(()=>sessionStorage.length),0);
+    // Normal Logout still revokes the newly paired browser.
     // Logout revokes session authorization and existing WS subscriptions.
     await page.getByRole("button",{name:"Disconnect"}).click();
     await page.locator("#pair-form").waitFor({state:"visible"});
@@ -333,6 +356,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       canonical_history_reopened_after_browser_reload:true,
       scoped_two_chat_panes:true,
       cookie_logout_revoked:true,
+      owner_tty_host_rotate_revokes_browser_and_clears_private_turns:true,
       workspace_diagnostics_real_gateway_success:true,
       unavailable_canvas_owner_never_fabricated:true,
       diagnostics_cookie_scope_and_refresh:true,
