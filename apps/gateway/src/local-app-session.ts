@@ -112,7 +112,10 @@ export class LocalApplicationSession {
     const frame=value as {systemId?:unknown;workspaceId?:unknown;method?:unknown};
     return typeof frame.method==="string"&&(
       frame.method.startsWith("aiverse.gateway.") ||
-      frame.method.startsWith("aiverse.canvas."))
+      frame.method.startsWith("aiverse.canvas.") ||
+      // Read-only public registry projection for the ONE host-paired system.
+      // Broad system.list and privileged mutations remain forbidden.
+      frame.method==="system.get")
       && frame.systemId===this.scope.systemId
       && frame.workspaceId===this.scope.workspaceId;
   }
