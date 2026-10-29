@@ -167,6 +167,16 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     const response=(await allowed.json()) as {error?:{code:string}};
     assert.equal(response.error?.code,"GATEWAY_NOT_CONFIGURED",
       "valid cookie has limited access; it cannot create an unconfigured canonical Gateway");
+    const missingActivity=await rpc(server.port,{
+      type:"req",v:"1.0",id:"local-activity-unavailable",method:"operator.activity",
+      systemId,workspaceId:"operator",
+    },{cookie,origin:base});
+    assert.equal(missingActivity.status,200);
+    const activityUnavailable=await missingActivity.json() as {
+      ok:boolean;error?:{code:string}};
+    assert.equal(activityUnavailable.ok,false);
+    assert.equal(activityUnavailable.error?.code,"SESSIONS_UNAVAILABLE",
+      "missing local session owner must not be turned into a fabricated empty activity list");
     const wurl="ws://127.0.0.1:"+server.port+"/ws?systemId="+systemId;
     await expectWsStatus(wurl,401,{origin:"https://attacker.example",cookie});
     await expectWsStatus("ws://127.0.0.1:"+server.port+"/ws?systemId=other-system",
