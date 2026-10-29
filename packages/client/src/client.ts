@@ -86,6 +86,11 @@ export class DashboardClient {
     return this.query("aiverse.gateway.status",{noCache:true});
   }
 
+  async gatewayModels():Promise<{result:unknown;systemId?:string;observedAt:string}>{
+    if(!this.scope.workspaceId)throw new Error("Select a workspace first");
+    return this.query("aiverse.gateway.models",{noCache:true});
+  }
+
   async createGatewayRun(args:{
     messages:Array<{role:"system"|"user"|"assistant"|"tool";content:string|null}>;
     idempotencyKey:string;
