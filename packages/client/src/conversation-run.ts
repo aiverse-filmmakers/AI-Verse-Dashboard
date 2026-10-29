@@ -334,7 +334,8 @@ export class PersonalChatRunController {
       this.confirmCanonicalOutput(run);
       const nextPhase=phase(run.status);
       this.show({phase:nextPhase,canonicalStatus:run.status,sessionId:run.sessionId,
-        output:run.output??"",errorCode:undefined,contextLimited:this.contextLimited});
+        output:nextPhase==="completed"?run.output??"":"",
+        errorCode:undefined,contextLimited:this.contextLimited});
       if(nextPhase==="running" || nextPhase==="submitting" || nextPhase==="interrupted")
         this.subscribe(epoch,scope,selection,runId);
     }catch(error){
