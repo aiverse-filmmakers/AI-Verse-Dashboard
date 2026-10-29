@@ -3,6 +3,7 @@ import {DashboardClient,DashboardChatEventFeed,PersonalChatRunController,
 import {CanvasWorkspace} from "./canvas-workspace.js";
 import {PersonalDiagnostics} from "./personal-diagnostics.js";
 import {PersonalAgentActivity} from "./personal-agent-activity.js";
+import {PersonalModelStatus} from "./personal-model-status.js";
 
 /**
  * Real Personal Chat UI for a trusted local/desktop Dashboard session.
@@ -69,6 +70,7 @@ export class PersonalChatApplication {
   private readonly canvas:CanvasWorkspace;
   private readonly diagnostics:PersonalDiagnostics;
   private readonly activity:PersonalAgentActivity;
+  private readonly models:PersonalModelStatus;
   private historyEpoch=0;
   private historyNextOffset:number|null=null;
   private historyLoading=false;
@@ -97,9 +99,13 @@ export class PersonalChatApplication {
     const activityToggle=button("Agent activity",()=>{
       this.activity.toggle();
     },"live-chat-activity-toggle");
-    bar.append(title,previous,diagnosticsToggle,activityToggle,create);
+    const modelToggle=button("AI models",()=>{
+      this.models.toggle();
+    },"live-chat-model-toggle");
+    bar.append(title,previous,diagnosticsToggle,activityToggle,modelToggle,create);
     const diagnosticsHost=el("section","live-chat-diagnostics-host");
     const activityHost=el("section","live-chat-activity-host");
+    const modelHost=el("section","live-chat-model-host");
     this.historyPanel=el("section","live-chat-history");
     this.historyPanel.hidden=true;
     this.historyPanel.setAttribute("aria-label","Previous canonical conversations");
@@ -108,12 +114,16 @@ export class PersonalChatApplication {
     const canvasHost=el("aside","live-chat-canvas-host");
     canvasHost.setAttribute("aria-label","Personal Canvas and document library");
     body.append(this.panesHost,canvasHost);
-    container.append(bar,diagnosticsHost,activityHost,this.historyPanel,body);
+    container.append(bar,diagnosticsHost,activityHost,modelHost,this.historyPanel,body);
     this.diagnostics=new PersonalDiagnostics(diagnosticsHost,
       new DashboardClient(session.dashboardOrigin,this.selected,
         session.authentication==="host-cookie"
           ?{mode:"host-cookie"}:this.requireBearer(session)));
     this.activity=new PersonalAgentActivity(activityHost,
+      new DashboardClient(session.dashboardOrigin,this.selected,
+        session.authentication==="host-cookie"
+          ?{mode:"host-cookie"}:this.requireBearer(session)));
+    this.models=new PersonalModelStatus(modelHost,
       new DashboardClient(session.dashboardOrigin,this.selected,
         session.authentication==="host-cookie"
           ?{mode:"host-cookie"}:this.requireBearer(session)));
@@ -132,6 +142,7 @@ export class PersonalChatApplication {
     this.canvas.retarget(this.selected);
     this.diagnostics.retarget(this.selected);
     this.activity.retarget(this.selected);
+    this.models.retarget(this.selected);
     this.historyEpoch++;
     this.historyNextOffset=null;this.historyLoading=false;this.historySeen.clear();
     this.historyPanel.hidden=true;this.historyPanel.replaceChildren();
@@ -500,6 +511,7 @@ export class PersonalChatApplication {
     this.canvas.destroy();
     this.diagnostics.destroy();
     this.activity.destroy();
+    this.models.destroy();
     for(const pane of this.panes.values())pane.run.close();
     this.panes.clear();
     this.parent.replaceChildren();
