@@ -285,8 +285,9 @@ export class PersonalChatApplication {
     const open=button("Split chat",()=>{this.openPane();},"live-chat-split");
     const clear=button("New chat",()=>this.newConversation(paneId),"");
     const retry=button("Retry request",()=>{void this.retry(paneId);},"live-chat-retry");
+    const reconnect=button("Reconnect run",()=>{void this.reconnectRun(paneId);},"live-chat-reconnect");
     const close=button("Close chat",()=>this.closePane(paneId),"");
-    actions.append(open,clear,retry,close);heading.append(name,actions);
+    actions.append(open,clear,retry,reconnect,close);heading.append(name,actions);
     const scope=el("div","live-chat-scope","Workspace: "+this.selected.workspaceId);
     const log=el("div","live-chat-log");
     log.setAttribute("role","log");log.setAttribute("aria-live","polite");
@@ -408,6 +409,9 @@ export class PersonalChatApplication {
     const retry=pane.node.querySelector(".live-chat-retry") as HTMLButtonElement;
     if(retry)retry.disabled=pane.busy || pane.run.snapshot().phase!=="interrupted"
       || Boolean(pane.run.snapshot().runId);
+    const reconnect=pane.node.querySelector(".live-chat-reconnect") as HTMLButtonElement;
+    if(reconnect)reconnect.disabled=pane.busy || pane.run.snapshot().phase!=="interrupted"
+      || !pane.run.snapshot().runId;
     const split=pane.node.querySelector(".live-pane-actions .live-chat-split") as HTMLButtonElement;
     if(split)split.disabled=this.panes.size>=MAX_PANES;
   }
@@ -438,6 +442,21 @@ export class PersonalChatApplication {
     try{await pane.run.retrySubmission();}
     catch(err){pane.busy=false;pane.status.textContent="Retry unavailable · "+errorCode(err);
       this.render(pane);}
+  }
+  /** Reconnect a known interrupted run. Never sends the user message again. */
+  async reconnectRun(paneId:string):Promise<void>{
+    const pane=this.panes.get(paneId);
+    if(!pane||this.destroyed||pane.busy)return;
+    const view=pane.run.snapshot();
+    if(view.phase!=="interrupted"||!view.runId)return;
+    const generation=pane.generation;
+    pane.busy=true;this.render(pane);
+    try{await pane.run.reconnect();}
+    catch(err){
+      if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation)return;
+      pane.busy=false;pane.status.textContent="Reconnect unavailable · "+errorCode(err);
+      this.render(pane);
+    }
   }
   async recover(paneId:string,runId:string):Promise<void>{
     const pane=this.panes.get(paneId);
