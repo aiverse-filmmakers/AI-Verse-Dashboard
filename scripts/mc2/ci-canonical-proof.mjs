@@ -102,6 +102,11 @@ let primaryError;
 try {
   await mkdir(osRoot);
   for(const dir of ["operator","workspaces","system"])await mkdir(join(osRoot,dir));
+  // A second real disposable OS workspace for owner-approved browser selection.
+  // It must never be used as a fabricated Gateway provider runtime.
+  await mkdir(join(osRoot,"workspaces","film"));
+  await writeFile(join(osRoot,"workspaces","film","WORKSPACE.yaml"),
+    'schema_version: "2.0"\nid: "film"\nname: "Film Workspace"\nstatus: "active"\n');
   await writeFile(join(osRoot,"AI-VERSE.yaml"),'schema_version: "2.0"\narchitecture: unified-workspace\n');
   await writeFile(join(osRoot,"AGENTS.md"),"# disposable system\n");
   await writeFile(hostFile,JSON.stringify({

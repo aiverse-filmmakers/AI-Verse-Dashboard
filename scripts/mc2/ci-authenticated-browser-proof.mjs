@@ -36,6 +36,8 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     "never run the browser composition proof with a private member bearer");
   const assets=await localAssets();
   const app=new LocalApplicationSession({systemId,workspaceId:"operator"},assets,registry);
+  const workspaceRequests=[];
+  app.setWorkspaceRequestListener(item=>workspaceRequests.push(item));
   let server,browser,context;
   try{
     const localRouter=new QueryRouter(registry,new DisposableCache());
@@ -334,6 +336,60 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       "new browser pair must not resurrect the prior in-memory transcript");
     assert.equal(await page.evaluate(()=>localStorage.length),0);
     assert.equal(await page.evaluate(()=>sessionStorage.length),0);
+    // Real graphical proposal -> owner denial -> request -> explicit owner
+    // approval. Selection uses a genuine OS WORKSPACE.yaml, never a preview.
+    await page.getByRole("button",{name:"Workspaces",exact:true}).click();
+    const selector=page.locator("#workspace-chooser");
+    await selector.waitFor({state:"visible"});
+    const film=selector.locator("#workspace-options");
+    await film.locator('option[value="film"]').waitFor();
+    await film.selectOption("film");
+    await selector.getByRole("button",{name:"Request access"}).click();
+    await page.getByText(/Waiting for terminal approval/).waitFor();
+    assert.equal(workspaceRequests.length,1);
+    assert.equal(workspaceRequests[0].workspaceId,"film");
+    assert.ok(await page.locator(".live-chat-pane").count()>0,
+      "unapproved workspace requests must never clear or rebind the active chat");
+    const fakeSwitch=await page.evaluate(async()=>{
+      const state=await (await fetch("/local-app/session")).json();
+      const result=await fetch("/rpc",{
+        method:"POST",credentials:"same-origin",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({type:"req",v:"1.0",id:"forbidden-picker",
+          method:"workspace.list",systemId:state.scope.systemId,workspaceId:"operator"})
+      });return result.status;
+    });
+    assert.equal(fakeSwitch,403,"picker must not unlock global workspace.list RPC");
+    app.denyWorkspaceRequest(workspaceRequests[0].id);
+    await page.getByText("Owner denied the workspace request.").waitFor({timeout:9000});
+    assert.equal(await page.locator(".live-chat-pane").count(),1,
+      "owner denial must preserve the previously authorized Personal chat");
+    await selector.getByRole("button",{name:"Request access"}).click();
+    await page.getByText(/Waiting for terminal approval/).waitFor();
+    assert.equal(workspaceRequests.length,2);
+    assert.notEqual(workspaceRequests[0].id,workspaceRequests[1].id);
+    assert.equal(app.approveWorkspaceRequest(workspaceRequests[1].id),"film");
+    await page.locator("#pair-form").waitFor({state:"visible",timeout:12000});
+    assert.equal(await page.locator(".live-chat-pane").count(),0);
+    const ownerCode=app.pairingCode();
+    assert.equal((await page.content()).includes(ownerCode),false,
+      "trusted host approval code must never appear in browser HTML");
+    await page.locator("#pair-code").fill(ownerCode);
+    await page.getByRole("button",{name:"Connect this browser"}).click();
+    await page.locator(".live-chat-pane").first().waitFor();
+    assert.equal(await page.locator("#local-scope").textContent(),"film");
+    assert.equal(await page.locator(".live-chat-message").count(),0);
+    const filmCall=await page.evaluate(async()=>{
+      const state=await (await fetch("/local-app/session")).json();
+      const response=await fetch("/rpc",{method:"POST",credentials:"same-origin",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({type:"req",v:"1.0",id:"film-manifest",
+          method:"workspace.get",...state.scope})});
+      return {status:response.status,body:await response.json()};
+    });
+    assert.equal(filmCall.status,200);
+    assert.equal(filmCall.body?.result?.workspace?.id,"film");
+    assert.deepEqual(errors,[],"graphical owner approval must produce no browser runtime errors");
     // Normal Logout still revokes the newly paired browser.
     // Logout revokes session authorization and existing WS subscriptions.
     await page.getByRole("button",{name:"Disconnect"}).click();
@@ -357,6 +413,8 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       scoped_two_chat_panes:true,
       cookie_logout_revoked:true,
       owner_tty_host_rotate_revokes_browser_and_clears_private_turns:true,
+      graphical_owner_approved_workspace_repair_verified:true,
+      browser_catalog_owner_rejection_and_request_denial_verified:true,
       workspace_diagnostics_real_gateway_success:true,
       unavailable_canvas_owner_never_fabricated:true,
       diagnostics_cookie_scope_and_refresh:true,
