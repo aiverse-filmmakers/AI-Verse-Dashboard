@@ -89,6 +89,24 @@ export function inspectSystem(value:unknown,systemId:string):Observation{
     details:s.label.slice(0,80)+" · "+s.osType.slice(0,60)+
       " · "+s.osVersion.slice(0,40)};
 }
+export function inspectWorkspace(value:unknown,workspaceId:string):Observation{
+  if(!value||typeof value!=="object"||Array.isArray(value))
+    throw Error("DIAGNOSTICS_INVALID_SOURCE");
+  const v=value as Record<string,unknown>;
+  if(!v.workspace||typeof v.workspace!=="object"||Array.isArray(v.workspace))
+    throw Error("DIAGNOSTICS_INVALID_SOURCE");
+  const workspace=v.workspace as Record<string,unknown>;
+  if(workspace.id!==workspaceId)throw Error("DIAGNOSTICS_SCOPE_MISMATCH");
+  if(!(workspace.name===null||typeof workspace.name==="string")
+    ||!(workspace.status===null||typeof workspace.status==="string"))
+    throw Error("DIAGNOSTICS_INVALID_SOURCE");
+  const name=typeof workspace.name==="string"&&workspace.name.trim()
+    ?workspace.name.slice(0,80):"Unnamed workspace";
+  const state=typeof workspace.status==="string"&&workspace.status.trim()
+    ?workspace.status.slice(0,40):"Status unspecified";
+  return {state:"available",label:"Selected workspace manifest found",
+    details:name+" · "+state};
+}
 export class PersonalDiagnostics{
   private readonly scope:Required<ClientScope>;
   private epoch=0;
@@ -96,11 +114,12 @@ export class PersonalDiagnostics{
   private destroyed=false;
   private readonly gateway:HTMLElement;
   private readonly system:HTMLElement;
+  private readonly workspace:HTMLElement;
   private readonly canvas:HTMLElement;
   private readonly history:HTMLElement;
   private readonly heading:HTMLElement;
   private readonly reload:HTMLButtonElement;
-  private current:{system:Observation;gateway:Observation;canvas:Observation;history:Observation};
+  private current:{system:Observation;workspace:Observation;gateway:Observation;canvas:Observation;history:Observation};
   constructor(private readonly host:HTMLElement,
     private readonly client:DashboardClient){
     const scope=client.getScope();
@@ -114,6 +133,7 @@ export class PersonalDiagnostics{
     this.reload.addEventListener("click",()=>{void this.refresh();});
     this.gateway=node("div","personal-diagnostics-source");
     this.system=node("div","personal-diagnostics-source");
+    this.workspace=node("div","personal-diagnostics-source");
     this.canvas=node("div","personal-diagnostics-source");
     this.history=node("div","personal-diagnostics-source");
     host.classList.add("personal-diagnostics");
@@ -121,9 +141,10 @@ export class PersonalDiagnostics{
     host.hidden=true;
     const head=node("div","personal-diagnostics-header");
     head.append(this.heading,this.reload);
-    host.replaceChildren(head,this.system,this.gateway,this.canvas,this.history);
+    host.replaceChildren(head,this.system,this.workspace,this.gateway,this.canvas,this.history);
     this.current={
       system:{state:"idle",label:"OS system registry",details:"Not checked"},
+      workspace:{state:"idle",label:"Selected workspace manifest",details:"Not checked"},
       gateway:{state:"idle",label:"Canonical Gateway",details:"Not checked"},
       canvas:{state:"idle",label:"Canvas Data owner",details:"Not checked"},
       history:{state:"idle",label:"Conversation library",details:"Not checked"},
@@ -145,6 +166,7 @@ export class PersonalDiagnostics{
     this.heading.textContent="Workspace · "+next.workspaceId;
     this.current={
       system:{state:"idle",label:"OS system registry",details:"Not checked"},
+      workspace:{state:"idle",label:"Selected workspace manifest",details:"Not checked"},
       gateway:{state:"idle",label:"Canonical Gateway",details:"Not checked"},
       canvas:{state:"idle",label:"Canvas Data owner",details:"Not checked"},
       history:{state:"idle",label:"Conversation library",details:"Not checked"},
@@ -152,8 +174,8 @@ export class PersonalDiagnostics{
     this.render();
     if(this.open)void this.refresh();
   }
-  snapshot():Readonly<{system:Observation;gateway:Observation;canvas:Observation;history:Observation}>{
-    return {system:{...this.current.system},gateway:{...this.current.gateway},
+  snapshot():Readonly<{system:Observation;workspace:Observation;gateway:Observation;canvas:Observation;history:Observation}>{
+    return {system:{...this.current.system},workspace:{...this.current.workspace},gateway:{...this.current.gateway},
       canvas:{...this.current.canvas},history:{...this.current.history}};
   }
   private renderEntry(host:HTMLElement,observation:Observation){
@@ -168,6 +190,7 @@ export class PersonalDiagnostics{
   }
   private render(){
     this.renderEntry(this.system,this.current.system);
+    this.renderEntry(this.workspace,this.current.workspace);
     this.renderEntry(this.gateway,this.current.gateway);
     this.renderEntry(this.canvas,this.current.canvas);
     this.renderEntry(this.history,this.current.history);
@@ -178,6 +201,7 @@ export class PersonalDiagnostics{
       systemId=this.scope.systemId;
     this.current={
       system:{state:"loading",label:"Registered OS",details:"Checking current scope…"},
+      workspace:{state:"loading",label:"Selected workspace manifest",details:"Checking current scope…"},
       gateway:{state:"loading",label:"Canonical Gateway",details:"Checking current scope…"},
       canvas:{state:"loading",label:"Canvas Data owner",details:"Checking current scope…"},
       history:{state:"loading",label:"Conversation library",details:"Checking current scope…"},
@@ -187,13 +211,14 @@ export class PersonalDiagnostics{
       this.client.gatewayStatus(),this.client.canvasList(25),
       this.client.listGatewaySessions(5,0),
       this.client.query("system.get",{noCache:true}),
+      this.client.query("workspace.get",{noCache:true}),
     ]);
     if(this.destroyed||!this.open||epoch!==this.epoch
       ||workspaceId!==this.scope.workspaceId
       ||systemId!==this.scope.systemId)return;
     const observed=()=>new Date().toISOString();
     const gateway=results[0],canvas=results[1],history=results[2],
-      system=results[3];
+      system=results[3],workspace=results[4];
     try{
       this.current.gateway=gateway.status==="fulfilled"
         ?{...inspectGateway(gateway.value.result,workspaceId),
@@ -232,6 +257,16 @@ export class PersonalDiagnostics{
           details:safeCode(system.reason)};
     }catch(error){
       this.current.system={state:"unavailable",label:"OS response rejected",
+        details:safeCode(error)};
+    }
+    try{
+      this.current.workspace=workspace.status==="fulfilled"
+        ?{...inspectWorkspace(workspace.value.result,workspaceId),
+          observedAt:workspace.value.observedAt||observed()}
+        :{state:"unavailable",label:"Workspace manifest unavailable",
+          details:safeCode(workspace.reason)};
+    }catch(error){
+      this.current.workspace={state:"unavailable",label:"Workspace response rejected",
         details:safeCode(error)};
     }
     this.reload.disabled=false;this.render();

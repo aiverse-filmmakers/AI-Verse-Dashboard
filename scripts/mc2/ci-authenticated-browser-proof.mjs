@@ -100,17 +100,21 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     await panel.waitFor({state:"visible"});
     await page.waitForFunction(()=>{
       const sources=[...document.querySelectorAll(".personal-diagnostics-source")];
-      return sources.length===4&&sources.every(s=>
+      return sources.length===5&&sources.every(s=>
         s.getAttribute("data-state")!=="loading");
     },null,{timeout:20000});
-    assert.equal(await panel.locator('[data-state="available"]').count(),3,
-      "Gateway status must be proven live from canonical preflight");
-    assert.equal(await panel.locator('[data-state="unavailable"]').count(),1,
+    assert.ok(await panel.locator('[data-state="available"]').count()>=3,
+      "Gateway, history and registered OS must be live");
+    const canvasCard=panel.locator(".personal-diagnostics-source").filter({hasText:"Canvas Data owner"});
+    assert.equal(await canvasCard.getAttribute("data-state"),"unavailable",
       "Canvas must not look available without an installed owner");
     assert.match(await panel.textContent(),/Canonical Gateway reachable/);
     assert.match(await panel.textContent(),/Canvas Data owner unavailable/);
     assert.match(await panel.textContent(),/Conversation library reachable/);
     assert.match(await panel.textContent(),/Registered OS authorized/);
+    assert.match(await panel.textContent(),/Selected workspace manifest|Workspace manifest unavailable/);
+    assert.ok(trackedRequests.some(req=>req.frame?.method==="workspace.get"),
+      "paired UI must query the selected canonical OS workspace manifest");
     assert.ok(trackedRequests.some(req=>req.frame?.method==="system.get"),
       "paired native UI must query exactly its own public OS registry entry");
 
@@ -125,18 +129,19 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       req.frame?.method==="aiverse.gateway.status" ||
       req.frame?.method==="aiverse.canvas.list" ||
       req.frame?.method==="aiverse.gateway.session.list" ||
-      req.frame?.method==="system.get").every(req=>
+      req.frame?.method==="system.get" ||
+      req.frame?.method==="workspace.get").every(req=>
       req.frame.workspaceId==="operator" && req.frame.systemId===systemId &&
       req.headers.authorization===undefined),
       "diagnostics must stay in authenticated cookie scope without bearers");
     await page.getByRole("button",{name:"Refresh workspace status"}).click();
     await page.waitForFunction(()=>{
       const sources=[...document.querySelectorAll(".personal-diagnostics-source")];
-      return sources.length===4&&sources.every(s=>
+      return sources.length===5&&sources.every(s=>
         s.getAttribute("data-state")!=="loading");
     },null,{timeout:20000});
-    assert.equal(await panel.locator('[data-state="available"]').count(),3);
-    assert.equal(await panel.locator('[data-state="unavailable"]').count(),1);
+    assert.ok(await panel.locator('[data-state="available"]').count()>=3);
+    assert.equal(await canvasCard.getAttribute("data-state"),"unavailable");
     await page.getByRole("button",{name:"Workspace status",exact:true}).click();
     assert.equal(await panel.isVisible(),false);
     const marker="browser-canonical-proof-"+Date.now();
@@ -293,6 +298,8 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       unavailable_canvas_owner_never_fabricated:true,
       diagnostics_cookie_scope_and_refresh:true,
       public_registered_os_projection:true,
+      paired_workspace_manifest_checked:true,
+      future_browser_rpc_methods_default_denied:true,
       member_provider_used:false,
       member_mac_verified:false,
     };

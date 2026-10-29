@@ -17,6 +17,17 @@ const PAIR_TTL=5*60*1000;
 const SESSION_TTL=8*60*60*1000;
 const ID=/^[a-z0-9][a-z0-9-]{0,63}$/;
 const WS=/^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/;
+// New canonical methods never inherit a browser permission by prefix.
+// Changes to this list require an owner and threat-boundary review.
+const PAIRED_BROWSER_METHODS=new Set([
+  "system.get", "workspace.get",
+  "aiverse.gateway.status", "aiverse.gateway.run.create",
+  "aiverse.gateway.run.get", "aiverse.gateway.session.list",
+  "aiverse.gateway.session.runs",
+  "aiverse.canvas.list", "aiverse.canvas.get", "aiverse.canvas.history",
+  "aiverse.canvas.create", "aiverse.canvas.rename", "aiverse.canvas.edit",
+  "aiverse.canvas.duplicate", "aiverse.canvas.revert", "aiverse.canvas.delete",
+]);
 
 function equal(a:string,b:string):boolean{
   const left=Buffer.from(a),right=Buffer.from(b);
@@ -110,12 +121,8 @@ export class LocalApplicationSession {
   isAllowedFrame(value:unknown):boolean{
     if(!value||typeof value!=="object"||Array.isArray(value))return false;
     const frame=value as {systemId?:unknown;workspaceId?:unknown;method?:unknown};
-    return typeof frame.method==="string"&&(
-      frame.method.startsWith("aiverse.gateway.") ||
-      frame.method.startsWith("aiverse.canvas.") ||
-      // Read-only public registry projection for the ONE host-paired system.
-      // Broad system.list and privileged mutations remain forbidden.
-      frame.method==="system.get")
+    return typeof frame.method==="string"
+      && PAIRED_BROWSER_METHODS.has(frame.method)
       && frame.systemId===this.scope.systemId
       && frame.workspaceId===this.scope.workspaceId;
   }

@@ -186,6 +186,37 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     const expired=await rpc(server.port,makeFrame(systemId),{cookie,origin:base});
     assert.equal(expired.status,401);
   });
+  it("admits only the current workspace manifest and rejects future wildcard methods",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const pairing=new LocalApplicationSession({systemId,workspaceId:"film"});
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:pairing});
+    closers.push(()=>server.close());
+    const base="http://127.0.0.1:"+server.port;
+    const paired=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:pairing.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    const cookie=(paired.headers.get("set-cookie")??"").split(";")[0];
+    const ask=(method:string,workspaceId:string,sys=systemId)=>rpc(server.port,{
+      type:"req",v:"1.0",id:"workspace-manifest-security",method,
+      systemId:sys,workspaceId,
+    },{cookie,origin:base});
+    const own=await ask("workspace.get","film");
+    assert.equal(own.status,200);
+    const body=await own.json() as {ok:boolean;result?:{workspace?:Record<string,unknown>}};
+    assert.equal(body.ok,true);
+    assert.deepEqual(body.result?.workspace,{id:"film",name:"Film",status:"active"});
+    assert.equal("root" in (body.result?.workspace??{}),false);
+    assert.equal((await ask("workspace.get","operator")).status,403);
+    assert.equal((await ask("workspace.get","film","other-system")).status,403);
+    assert.equal((await ask("workspace.list","film")).status,403);
+    assert.equal((await ask("system.info","film")).status,403);
+    assert.equal((await ask("aiverse.gateway.future.privileged","film")).status,403);
+    assert.equal((await ask("aiverse.canvas.future.privileged","film")).status,403);
+    assert.equal((await ask("source.preview","film")).status,403);
+  });
   it("locks pairing after five incorrect attempts without accepting the correct code",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
     const session=new LocalApplicationSession({systemId,workspaceId:"operator"});

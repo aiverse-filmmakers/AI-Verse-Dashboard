@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectGateway,inspectCanvas,inspectHistory,inspectSystem}
+import {inspectGateway,inspectCanvas,inspectHistory,inspectSystem,inspectWorkspace}
  from "../apps/web/src/personal-diagnostics.js";
 const gw=()=>({source:"canonical-gateway",workspaceId:"operator",
  capabilities:{runCreate:true,runGet:true,conversationLibrary:true,
@@ -164,4 +164,38 @@ test("public OS projection does not return unbounded labels",()=>{
 });
 test("public OS projection rejects empty source",()=>{
  assert.throws(()=>inspectSystem(null,"aiverse-01"),/DIAGNOSTICS_INVALID_SOURCE/);
+});
+
+const workspace=()=>({workspace:{id:"film",name:"Film workspace",status:"active",
+ root:"/private/owner-root",secrets:{token:"never-export"}}});
+test("selected workspace manifest renders genuine OS-owned name and state",()=>{
+ const found=inspectWorkspace(workspace(),"film");
+ assert.equal(found.state,"available");
+ assert.match(found.details,/Film workspace · active/);
+});
+test("selected workspace never renders private root or unrelated fields",()=>{
+ const found=inspectWorkspace(workspace(),"film");
+ assert.doesNotMatch(JSON.stringify(found),/private|never-export|token/);
+});
+test("selected workspace rejects a different manifest id",()=>{
+ assert.throws(()=>inspectWorkspace(workspace(),"operator"),/DIAGNOSTICS_SCOPE_MISMATCH/);
+});
+test("selected workspace rejects missing manifest payload",()=>{
+ assert.throws(()=>inspectWorkspace({workspaces:[]},"film"),/DIAGNOSTICS_INVALID_SOURCE/);
+});
+test("selected workspace rejects non-scalar manifest name or state",()=>{
+ assert.throws(()=>inspectWorkspace({workspace:{id:"film",name:{unsafe:1},status:"active"}},"film"),
+  /DIAGNOSTICS_INVALID_SOURCE/);
+ assert.throws(()=>inspectWorkspace({workspace:{id:"film",name:"Film",status:["active"]}},"film"),
+  /DIAGNOSTICS_INVALID_SOURCE/);
+});
+test("selected workspace handles missing optional values without fake health",()=>{
+ const actual=inspectWorkspace({workspace:{id:"film",name:null,status:null}},"film");
+ assert.match(actual.details,/Unnamed workspace · Status unspecified/);
+ assert.doesNotMatch(actual.details,/healthy/);
+});
+test("selected workspace bounds long metadata labels",()=>{
+ const result=inspectWorkspace({workspace:{id:"film",name:"N".repeat(2000),
+  status:"S".repeat(2000)}},"film");
+ assert.ok(result.details.length<130);
 });
