@@ -127,6 +127,40 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       type:"req",v:"1.0",id:"unsafe",method:"system.list",systemId,workspaceId:"operator",
     },{cookie,origin:base});
     assert.equal(otherMethod.status,403);
+    const osInfo=await rpc(server.port,{
+      type:"req",v:"1.0",id:"native-os-projection",method:"system.get",
+      systemId,workspaceId:"operator",
+    },{cookie,origin:base});
+    assert.equal(osInfo.status,200);
+    const osInfoBody=(await osInfo.json()) as {ok:boolean;result?:{
+      system?:Record<string,unknown>}};
+    assert.equal(osInfoBody.ok,true);
+    assert.equal(osInfoBody.result?.system?.systemId,systemId);
+    assert.equal(osInfoBody.result?.system?.authorized,true);
+    assert.equal(osInfoBody.result?.system?.label,"Test OS");
+    assert.equal("root" in (osInfoBody.result?.system??{}),false,
+      "public paired registry projection must never reveal OS filesystem root");
+    assert.equal("rootIdentity" in (osInfoBody.result?.system??{}),false);
+    const otherPublic=await rpc(server.port,{
+      type:"req",v:"1.0",id:"native-os-other-system",method:"system.get",
+      systemId:"another-system",workspaceId:"operator",
+    },{cookie,origin:base});
+    assert.equal(otherPublic.status,403);
+    const wrongWorkspacePublic=await rpc(server.port,{
+      type:"req",v:"1.0",id:"native-os-other-workspace",method:"system.get",
+      systemId,workspaceId:"film",
+    },{cookie,origin:base});
+    assert.equal(wrongWorkspacePublic.status,403);
+    const cannotQueryOtherSystem=await rpc(server.port,{
+      type:"req",v:"1.0",id:"native-os-system-list",method:"system.list",
+      systemId,workspaceId:"operator",
+    },{cookie,origin:base});
+    assert.equal(cannotQueryOtherSystem.status,403);
+    const cannotInspectWorkspace=await rpc(server.port,{
+      type:"req",v:"1.0",id:"native-workspace-direct",method:"workspace.list",
+      systemId,workspaceId:"operator",
+    },{cookie,origin:base});
+    assert.equal(cannotInspectWorkspace.status,403);
     const allowed=await rpc(server.port,makeFrame(systemId),{cookie,origin:base});
     assert.equal(allowed.status,200);
     const response=(await allowed.json()) as {error?:{code:string}};
