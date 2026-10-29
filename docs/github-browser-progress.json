@@ -39,7 +39,7 @@
       "budget": 15,
       "provisionalEarned": 8,
       "evidenceStatus": "source-and-ci",
-      "remaining": "real provider/model/attachment/commands controls"
+      "remaining": "Authenticated canonical conversation browsing now supports multi-page history with verified scoped Chromium flow. Still missing real provider/model controls, safe run-control authority, attachments, OS Skills/commands and private owner acceptance."
     },
     {
       "id": "canvas",
@@ -224,7 +224,17 @@
       "privacy": "exact origin/HttpOnly cookie, no raw roots, browser cannot invoke generic workspace.list, no bearer or one-time code in page, old DOM cleared",
       "limitations": "one trusted host registered OS, owner terminal approval per request, no durable owner identity or signed desktop release",
       "stage": "source+disposable-CI-verified-not-user-Mac-accepted"
+    },
+    "canonicalChatHistoryPagination": {
+      "sourceCommit": "4b6289f8f768052d7e455259532941fccf8434f1",
+      "dashboardCi": 40970666207,
+      "browserCi": 40970666312,
+      "realGatewayCi": 40970666397,
+      "progressCi": 40970666540,
+      "taskLedger": "docs/DEVELOPMENT-TASKS-549-554-2026-10-30.md",
+      "result": "47 canonical sessions through three bounded UI pages; stale-scope and duplicate guards; no browser-owned history",
+      "status": "source-and-CI-tested; draft; no category or formal acceptance points claimed"
     }
   },
-  "nextUnverifiedChange": "G06.1 native production owner sign-in and approval audit/grants, multi-system lifecycle and signing remain unfinished. Real browser chooser + terminal approval is source-verified in disposable CI, not a production graphical native trust dialog."
+  "nextUnverifiedChange": "Task 555: audit canonical Gateway/Connections/Token model discovery and owner-authorized selection; implement only supported capabilities. Follow with control safety, real attachments and OS Skills, without browser-issued authority."
 }
