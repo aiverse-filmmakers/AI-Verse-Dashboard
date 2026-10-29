@@ -183,8 +183,10 @@
         {
           "id": "G06.1",
           "title": "Systems, workspaces and Gateway health/diagnostics",
-          "state": "planned",
-          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+          "state": "in-progress",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/web/src/personal-diagnostics.ts",
+          "partialEvidence": "Paired native-host Personal Workspace status panel now reads real public OS system, Gateway preflight, Canonical Canvas owner and conversation library; entire fleet and full workspace lifecycle diagnostics are not complete."
         },
         {
           "id": "G06.2",
@@ -332,5 +334,5 @@
       ]
     }
   ],
-  "lastReconciliation": "2026-10-29: G03.4 in-progress (grouping saved/verified, remaining owner lifecycle, assets, model action dispatcher); 10 chapters and 40 milestones unchanged."
+  "lastReconciliation": "2026-10-29: G06.1 in-progress based on green exact registered OS, Gateway, Canvas and conversation diagnostics CI; 10 chapters and 40 milestones unchanged."
 }
