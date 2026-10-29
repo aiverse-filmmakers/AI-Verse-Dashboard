@@ -162,7 +162,9 @@ const server=createServer(async(req,res)=>{
       const runId="run-"+(++next);
       result={runId,sessionId:"session-"+next,systemId:"canonical-a",
         workspaceId:frame.workspaceId,status:"running",source:"canonical-gateway"};
-      runs.set(runId,{...result,output:"Authoritative answer "+next});
+      runs.set(runId,{...result,output:"Authoritative answer "+next,
+        dropFirstStream:frame.params?.messages?.some(m=>m.content==="Test dropped stream")===true,
+        subscriptions:0});
     }else if(frame.method==="aiverse.gateway.run.get"){
       const found=runs.get(frame.params?.runId);
       if(!found || found.workspaceId!==frame.workspaceId){
@@ -171,7 +173,8 @@ const server=createServer(async(req,res)=>{
           error:{code:"RUN_BINDING_MISMATCH",message:"Scope denied"},observedAt:new Date().toISOString(),
         }));return;
       }
-      result={...found,status:"completed"};
+      result={...found,status:found.dropFirstStream && found.subscriptions<2
+        ?"running":"completed"};
     }else{
       res.writeHead(400).end("Unknown method");return;
     }
@@ -217,7 +220,13 @@ server.on("upgrade",(req,socket,head)=>{
             payload:{runId:frame.runId,eventId:frame.runId+"-"+seq,kind,
               ...(text?{text}:{})}}));
         };
+        run.subscriptions=(run.subscriptions??0)+1;
         makeEvent("run.started",1);
+        if(run.dropFirstStream && run.subscriptions===1){
+          makeEvent("assistant.delta",2,"UNVERIFIED DRAFT");
+          ws.close(1011,"fixture stream interruption");
+          return;
+        }
         makeEvent("assistant.delta",2,"Draft stream");
         makeEvent("run.completed",3);
       }
@@ -271,6 +280,26 @@ test("MC2.5 actual browser interface sends canonical RPC, receives WS, and rende
     local:localStorage.length,session:sessionStorage.length,
   }));
   assert.deepEqual(browserStorage,{local:0,session:0},"real turns and tokens never enter preview localStorage");
+});
+test("Chat reconnect recovers a dropped WebSocket without creating a second canonical run",async t=>{
+  const {page,errors}=await pageFor(t);
+  const before=requests.length;
+  const pane=page.locator(".live-chat-pane").first();
+  const reconnect=pane.getByRole("button",{name:"Reconnect run"});
+  assert.equal(await reconnect.isDisabled(),true);
+  await pane.locator(".live-chat-input").fill("Test dropped stream");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pane.locator(".live-chat-status").getByText(/interrupted/).waitFor();
+  assert.equal(await reconnect.isEnabled(),true);
+  await reconnect.click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  assert.equal(await reconnect.isDisabled(),true);
+  assert.equal(await pane.locator(".live-chat-message.user").count(),1);
+  assert.doesNotMatch(await pane.locator(".live-chat-log").innerText(),/UNVERIFIED DRAFT/);
+  const rpc=requests.slice(before).filter(x=>x.method.startsWith("aiverse.gateway."));
+  assert.equal(rpc.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+  assert.equal(rpc.filter(x=>x.method==="aiverse.gateway.run.get").length,2);
+  assert.deepEqual(errors,[]);
 });
 test("Chat library pages through real scoped Gateway RPC without duplicates or browser storage",async t=>{
   const {page,errors}=await pageFor(t);
