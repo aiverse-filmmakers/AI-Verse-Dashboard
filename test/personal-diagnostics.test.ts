@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectGateway,inspectCanvas,inspectHistory}
+import {inspectGateway,inspectCanvas,inspectHistory,inspectSystem}
  from "../apps/web/src/personal-diagnostics.js";
 const gw=()=>({source:"canonical-gateway",workspaceId:"operator",
  capabilities:{runCreate:true,runGet:true,conversationLibrary:true,
@@ -123,4 +123,45 @@ test("history rejects more than requested recent sessions",()=>{
 test("history rejects malformed rows without an ID",()=>{
  const v={...history(),data:[{workspace_id:"operator"}]};
  assert.throws(()=>inspectHistory(v,"operator"),/DIAGNOSTICS_SCOPE_MISMATCH/);
+});
+
+const os=()=>({system:{systemId:"aiverse-01",label:"Editing OS",
+ osType:"ai-verse",osVersion:"2.1",authorized:true,
+ registeredAt:"2026-10-29T07:00:00Z",
+ root:"/private/should-not-leak"}});
+test("scoped public OS connection is a genuine registered-authorization source",()=>{
+ const result=inspectSystem(os(),"aiverse-01");
+ assert.equal(result.state,"available");
+ assert.match(result.details,/Editing OS/);
+ assert.match(result.details,/ai-verse/);
+});
+test("public OS projection does not expose filesystem roots",()=>{
+ const result=inspectSystem(os(),"aiverse-01");
+ assert.ok(!JSON.stringify(result).includes("/private"));
+});
+test("unauthorized OS registration cannot display green status",()=>{
+ const v=os();v.system.authorized=false;
+ assert.equal(inspectSystem(v,"aiverse-01").state,"unavailable");
+});
+test("public OS projection rejects different system ID",()=>{
+ assert.throws(()=>inspectSystem(os(),"another-system"),/DIAGNOSTICS_SCOPE_MISMATCH/);
+});
+test("public OS projection rejects missing authorization boolean",()=>{
+ const v={system:{...os().system,authorized:"true"}};
+ assert.throws(()=>inspectSystem(v,"aiverse-01"),/DIAGNOSTICS_SCOPE_MISMATCH/);
+});
+test("public OS projection rejects wrong response shape",()=>{
+ assert.throws(()=>inspectSystem({systems:[os().system]},"aiverse-01"),
+  /DIAGNOSTICS_INVALID_SOURCE/);
+});
+test("public OS projection rejects missing version",()=>{
+ const v={system:{...os().system,osVersion:undefined}};
+ assert.throws(()=>inspectSystem(v,"aiverse-01"),/DIAGNOSTICS_SCOPE_MISMATCH/);
+});
+test("public OS projection does not return unbounded labels",()=>{
+ const v=os();v.system.label="s".repeat(300);
+ assert.ok(inspectSystem(v,"aiverse-01").details.length<120);
+});
+test("public OS projection rejects empty source",()=>{
+ assert.throws(()=>inspectSystem(null,"aiverse-01"),/DIAGNOSTICS_INVALID_SOURCE/);
 });
