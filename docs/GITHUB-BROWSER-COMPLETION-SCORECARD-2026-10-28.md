@@ -13,7 +13,7 @@ The historic **90–93/100 formal-roadmap pre-local** ambition was an aspiration
 
 ## GB scope and the provisional baseline
 
-**Current provisional engineering estimate: ~37/100 GB points (~37%).**
+**Current provisional engineering estimate: ~38/100 GB points (~38%).**
 This is a **planning estimate**, NOT a full independent code audit or a formal accepted score. The verified minimum is the older MC0+MC1 15 points, but the Personal Chat, Canvas, Data and actor-grant source/CI since then substantively increase remote work completed. Rounded category partials below represent **estimated** readiness based on the checked 28 October branch, not claims of accepted gates. Do not report decimal precision. Revise category points against pinned source/CI with an explicit audit and record evidence before treating the score as verified.
 
 | Remote-capable current-scope workstream | Fixed GB budget | Provisional earned | Known evidence / main remaining work |
@@ -28,7 +28,7 @@ This is a **planning estimate**, NOT a full independent code audit or a formal a
 | Product UX, accessibility, responsive/focus and regression | 5 | **1** | First-party UI/Chromium tests exist; full reviewed accessibility and usability pass pending |
 | CI-built macOS desktop package, supervised Gateway and installer preparation | 5 | **0** | Local launcher is NOT signed/reviewed desktop package; create true installable CI artifact with owner boundaries |
 | Independent remote security, release evidence and handoff closure | 5 | **0** | Green component tests and handoffs do NOT equal independent whole-system security/release review |
-| **Total** | **100** | **37 (provisional)** | **63 estimated GB points remaining** |
+| **Total** | **100** | **38 (provisional)** | **62 estimated GB points remaining** |
 
 ### Progress rules
 
@@ -39,7 +39,7 @@ This is a **planning estimate**, NOT a full independent code audit or a formal a
 - Before every batch, check actual branch heads, owner repos, workstream evidence and what can honestly be done remotely. After each completed batch report **GB N/100 (estimate vs independently audited)**, **FA N/100 (accepted)**, **LR blockers**, and **batch slices X/Y**. A new chat MUST NOT revert to showing FA 15/100 as the only progress indicator.
 - Show a remaining-GB workstream breakdown and the **next increment that can change GB**, not just "more tasks."
 - If user expands scope (e.g., full Film 3D camera/lighting/edit suite), explicitly version this scorecard/rebaseline the denominator; do not silently dilute or falsely preserve percentages.
-- The 37/100 provisional estimate is **not an independently audited source-by-source inventory**. The next bounded task should replace the estimates with verified per-workstream subdeliverables and distinguish `green CI`, `draft`, `merged`, and `local-accepted` evidence. In the meantime say **"~37% provisional engineering estimate"**, not "37% verified finished."
+- The 38/100 provisional estimate is **not an independently audited source-by-source inventory**. The next bounded task should replace the estimates with verified per-workstream subdeliverables and distinguish `green CI`, `draft`, `merged`, and `local-accepted` evidence. In the meantime say **"~38% provisional engineering estimate"**, not "38% verified finished."
 
 ### Current authority/CI caveat
 
@@ -104,3 +104,32 @@ It does NOT close G03.4, register a real provider model tool,
 install on macOS or pass independent MC2.1 acceptance.
 Formal accepted FA remains **15/100**. Test/task count is
 never used as the score denominator.
+
+### Real first-party Personal diagnostics, 29 October 2026
+
+A new native-host-authenticated Personal **Workspace status** panel
+reads four genuine owner sources using the existing localhost
+`DashboardClient`: public registered `system.get`, canonical
+`aiverse.gateway.status`, scoped Data `aiverse.canvas.list`
+and bounded canonical Gateway conversation history. OS root/identity
+and private bearer credentials never enter browser responses.
+A missing Data owner is **unavailable**, not a fabricated healthy
+metric. Selection changes and reloads discard stale responses.
+
+Exact code `0f276bae960f98b0082bad4a7e1fe7685009e6b4`
+passed full [Dashboard Node22 CI 40832818420](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40832818420)
+and [real canonical Gateway + paired Chromium browser
+40832818224](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40832818224).
+The real browser checks all four sources, strict
+origin-bound HttpOnly session, denied cross-system read and
+no authorization bearer in browser RPC. The public `system.get`
+exception is restricted to the **exact paired system/workspace**;
+`system.list`, `workspace.list` and other systems remain denied.
+
+This evidence supports a **one-point provisional Control
+Center increment (0→1/15)**. Current GB estimate **~38/100
+provisional**, formal accepted FA **15/100 unchanged**.
+G06.1 is **in progress**, not fully achieved: complete
+fleet/system selection, workspace lifecycle, historical
+run diagnostics, Brain/Memory/Skills/Token/Connections and
+native installed owner sign-off remain outside this slice.
