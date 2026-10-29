@@ -8,7 +8,7 @@ test("keeps 10 known chapters and exactly 40 finite milestones",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p,{checkFiles:true});
  assert.equal(r.chapterCount,10);assert.equal(r.milestoneCount,40);
  assert.equal(r.completedMilestones,4);
- assert.equal(r.githubProvisional,39);
+ assert.equal(r.githubProvisional,40);
  assert.equal(r.formalAcceptance,15);
  assert.equal(r.localProductionAccepted,false);
 });
@@ -66,15 +66,15 @@ test("scope identity cannot mutate without published rebaseline",()=>{
 });
 test("Canvas, diagnostics and responsive chat milestones remain partial rather than accepted",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p);
- assert.equal(r.states["in-progress"],3);
+ assert.equal(r.states["in-progress"],4);
  assert.equal(r.states.verified,4);
  assert.equal(r.states.implemented,8);
- assert.equal(r.states.planned,25);
+ assert.equal(r.states.planned,24);
  assert.equal(r.formalAcceptance,15);
 });
 test("40 milestones do not turn into 40 accepted roadmap points",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p);
  assert.equal(r.formalAcceptance,15);
- assert.equal(r.githubProvisional,39);
+ assert.equal(r.githubProvisional,40);
  assert.equal(r.states.verified+r.states.implemented+r.states['in-progress']+r.states.planned+r.states.blocked,40);
 });

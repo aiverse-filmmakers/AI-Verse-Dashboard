@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 39,
+  "provisionalEngineeringEarned": 40,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -69,9 +69,9 @@
       "id": "controls",
       "title": "Owner-backed control panels",
       "budget": 15,
-      "provisionalEarned": 1,
+      "provisionalEarned": 2,
       "evidenceStatus": "source-and-ci",
-      "remaining": "Registered OS, Gateway, Canvas and scoped conversation diagnostics now real in paired Personal UI; remaining full systems/workspace navigation, agents, tasks, approvals, Brain, Memory, Skills, Token, Connections and security panels."
+      "remaining": "Five-source authenticated workspace diagnostics and redacted Dashboard-local in-memory agent session/event activity with manual refresh and kind filters are source/CI-backed; full persistent Gateway agent fleet, approvals, automations, workspace lifecycle, Brain/Memory/Skills/Token/Connections still missing."
     },
     {
       "id": "film",
@@ -175,7 +175,18 @@
       "browserCi": 40874360151,
       "realGatewayCi": 40874360134,
       "phase": "draft-authenticated-paired-workspace-manifest-and-exact-browser-rpc-allowlist"
+    },
+    "localAgentActivity": {
+      "implementationCommit": "39a080c24d7d449c0c9d586af50b38db0a131d6c",
+      "sourceCiCommit": "9e9930805800482a843cee4ea95ee83a73cc4193",
+      "dashboardCi": 40878839555,
+      "browserCi": 40878839278,
+      "realGatewayCi": 40878839529,
+      "progressCi": 40878839235,
+      "source": "Dashboard-owned in-memory SessionStore; not canonical persistent Gateway history",
+      "boundary": "paired host-only workspace, bounded 12 rows, no IDs/titles/prompts/paths, no cross-workspace records",
+      "stage": "tested draft source only; no native owner acceptance"
     }
   },
-  "nextUnverifiedChange": "G06.1 remains in progress: owner-authorized system/workspace lifecycle selection, real native operator session and broad owner operational panels remain. G08.2 now partially implemented with verified chat resizing, but wider responsive/accessibility sign-off remains."
+  "nextUnverifiedChange": "G06.2 partial: real Dashboard-local in-memory session/event monitor exists, but full canonical persistent bot/run fleet, approvals, task control, automations, native owner login, and installed permissions remain unimplemented. G06.1 multi-system/workspace lifecycle still incomplete."
 }

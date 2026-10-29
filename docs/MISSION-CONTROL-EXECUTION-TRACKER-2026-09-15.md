@@ -1530,3 +1530,12 @@ Task ledger: [454–461](DEVELOPMENT-TASKS-454-461-2026-10-29.md). Dashboard dra
 The finite plan remains 10 chapters/40 milestones, now 4 verified, 8 implemented-in-draft, 3 in-progress (G03.4, G06.1, G08.2), 25 planned. **GB ~39/100 provisional**, UX category +1 for verified functional resizing; **FA 15/100 formally accepted**, unchanged. Local Mac/account/release gates remain separate.
 
 **Next Task #462:** prefer owner-backed native workspace lifecycle and system selection (G06.1) or a scoped provider/asset capability (G05), subject to existing authority contracts; no broad cookie permission expansion, no mock panels and no duplicate databases.
+
+
+## Tasks 462–480: Scoped local Agent Activity, 29 October 2026
+
+[Task ledger](DEVELOPMENT-TASKS-462-480-2026-10-29.md) and [activity owner runbook](PERSONAL-AGENT-ACTIVITY-2026-10-29.md). Dashboard draft PR #42 adds a first-party, host-cookie authenticated **Agent activity** panel backed by the existing *Dashboard-local in-memory* SessionStore with exact OS/system/workspace scope, redacted status and event kinds, refresh, all/tool/error filters. It does not claim the persistent canonical Gateway agent fleet and is unavailable when the local owner is missing. A new `operator.activity` read-only query is explicitly allowlisted for the paired browser; other methods and other workspaces remain denied.
+
+Exact source `9e9930805800482a843cee4ea95ee83a73cc4193` passed [Dashboard Linux/macOS/Windows 40878839555](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40878839555), [Chromium 40878839278](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40878839278), [real canonical Gateway + paired browser 40878839529](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40878839529), and [progress integrity 40878839235](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40878839235). New documentation head must pass its own exact CI.
+
+**GB ~40/100 provisional** (+1 Control Center for source+CI real constrained feature), **FA 15/100 formally accepted**, unchanged. 10 chapters/40 milestones: 4 verified, 8 implemented in draft, **4 in progress** (G03.4, G06.1, G06.2, G08.2), 24 planned. Native owner Mac, provider sign-in and releases remain not accepted. **Resume Task 481**, prioritize canonical persistent agent activity and native owner system/workspace lifecycle, preserving approved OS/Gateway/Data authority.

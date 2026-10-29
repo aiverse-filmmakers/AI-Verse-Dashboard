@@ -191,8 +191,10 @@
         {
           "id": "G06.2",
           "title": "Bots, runs, approvals, tasks and background automations",
-          "state": "planned",
-          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+          "state": "in-progress",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/web/src/personal-agent-activity.ts",
+          "partialEvidence": "Read-only Dashboard-local SessionStore recent status and event kind, workspace-bound, redacted, verified via local HTTP and paired Chromium with real canonical Gateway. This is not persistent canonical Gateway agent fleet, approvals, task mutations, or automations."
         },
         {
           "id": "G06.3",
@@ -336,5 +338,5 @@
       ]
     }
   ],
-  "lastReconciliation": "2026-10-29: verified Dashboard owner workspace manifest, exact paired browser method allowlist and responsive chat pane resizing. G03.4, G06.1, G08.2 in-progress; 4 verified, 8 implemented draft, 25 planned. 39/100 GB provisional, FA 15/100 unchanged."
+  "lastReconciliation": "2026-10-29: G06.2 local agent activity partial, 4 verified, 8 implemented-in-draft, 4 in-progress (G03.4 G06.1 G06.2 G08.2), 24 planned; GB 40/100 provisional, FA 15/100 accepted."
 }
