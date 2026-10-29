@@ -124,3 +124,24 @@
   .live-chat-canvas-host,.live-chat-canvas-host:has(.canvas-collapsed){width:100%;max-width:none;min-width:0;border-left:0;border-top:1px solid #dce2e9}
   .live-chat-workspace .live-chat-panes{flex:none;min-height:400px}
   .canvas-board{height:340px}}
+
+
+/* Owner-backed Personal diagnostics. Never infer live status from a mock. */
+.aiverse-live-chat .personal-diagnostics[hidden]{display:none}
+.personal-diagnostics{padding:13px 17px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;background:#f7f9fc;border-bottom:1px solid #e0e6ee}
+.personal-diagnostics-header{grid-column:1/-1;display:flex;align-items:center;
+  justify-content:space-between;gap:12px}
+.personal-diagnostics-title{font-size:13px;overflow-wrap:anywhere;color:#30435b}
+.personal-diagnostics-refresh{font-size:12px}
+.personal-diagnostics-source{display:grid;align-content:start;gap:5px;
+  padding:12px;background:#fff;border:1px solid #e0e6ed;border-radius:10px;
+  min-height:88px;min-width:0}
+.personal-diagnostics-source[data-state=available]{border-left:3px solid #39806c}
+.personal-diagnostics-source[data-state=unavailable]{border-left:3px solid #a66f47}
+.personal-diagnostics-source[data-state=loading]{border-left:3px solid #7a95b2}
+.personal-diagnostics-name{font-size:12px;color:#344458}
+.personal-diagnostics-details{font-size:12px;color:#59687b;margin:0;overflow-wrap:anywhere}
+.personal-diagnostics-timestamp{font-size:10px;color:#718096}
+@media(max-width:600px){.personal-diagnostics{grid-template-columns:1fr;padding:10px}
+  .personal-diagnostics-source{min-height:0}}
