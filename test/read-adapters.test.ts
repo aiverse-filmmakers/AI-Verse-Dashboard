@@ -1,6 +1,6 @@
 import { describe, it, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -108,6 +108,36 @@ describe("read adapters Task 3: Markdown + SQLite + workspace + cache", () => {
       () => getWorkspace(reg, systemId, "missing"),
       (e: Error & { code: string }) => e.code === ADAPTER_ERRORS.UNKNOWN_WORKSPACE,
     );
+  });
+
+  it("refuses symlinked WORKSPACE.yaml even when it impersonates a valid id",()=>{
+    const {root,reg,systemId}=makeOs("symlink-manifest");roots.push(root);
+    const outside=mkdtempSync(join(tmpdir(),"outside-workspace-manifest-"));
+    roots.push(outside);
+    const dir=makeWorkspace(root,"safe");
+    writeFileSync(join(outside,"external.yaml"),
+      'id: "safe"\nname: "PRIVATE OUTSIDE PROJECT"\nstatus: "active"\n');
+    unlinkSync(join(dir,"WORKSPACE.yaml"));
+    symlinkSync(join(outside,"external.yaml"),join(dir,"WORKSPACE.yaml"));
+    assert.deepEqual(listWorkspaces(reg,systemId),[]);
+    assert.throws(()=>getWorkspace(reg,systemId,"safe"),
+      (e:Error&{code:string})=>e.code===ADAPTER_ERRORS.UNKNOWN_WORKSPACE);
+  });
+
+  it("does not advertise symlink directories or manifests with mismatched ids",()=>{
+    const {root,reg,systemId}=makeOs("symlink-workspace");roots.push(root);
+    makeWorkspace(root,"real");
+    const outside=mkdtempSync(join(tmpdir(),"outside-directory-"));
+    roots.push(outside);
+    writeFileSync(join(outside,"WORKSPACE.yaml"),
+      'id: "external"\nname: "PRIVATE OUTSIDE PROJECT"\nstatus: "active"\n');
+    symlinkSync(outside,join(root,"workspaces","external"),"dir");
+    const mis=makeWorkspace(root,"wrong-name");
+    writeFileSync(join(mis,"WORKSPACE.yaml"),
+      'id: "different-id"\nname: "Mislabelled"\nstatus: "active"\n');
+    assert.deepEqual(listWorkspaces(reg,systemId).map(w=>w.id),["real"]);
+    assert.throws(()=>getWorkspace(reg,systemId,"wrong-name"),
+      (e:Error&{code:string})=>e.code===ADAPTER_ERRORS.MANIFEST_MISMATCH);
   });
 
   it("sqlite opens read-only: table reads work, writes and DDL rejected", () => {
