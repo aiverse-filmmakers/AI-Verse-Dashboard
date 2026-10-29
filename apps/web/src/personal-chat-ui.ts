@@ -182,7 +182,7 @@ export class PersonalChatApplication {
         ||page.workspaceId!==scope.workspaceId||!Array.isArray(page.data)
         ||page.data.length>20||typeof page.has_more!=="boolean"
         ||(page.has_more
-          ?!Number.isSafeInteger(page.next_offset)||typeof page.next_offset!=="number"
+          ?typeof page.next_offset!=="number"||!Number.isSafeInteger(page.next_offset)
             ||page.next_offset<=offset||page.next_offset>10_000
           :page.next_offset!==null))throw Error("CHAT_HISTORY_INVALID");
       const rows=document.createDocumentFragment();
