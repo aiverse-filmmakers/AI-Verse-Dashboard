@@ -47,6 +47,47 @@ export function inspectActivity(value:unknown,scope:Required<ClientScope>):Activ
   return {sessionCount:v.sessionCount as number,sessions,events,
     observedAt:v.observedAt as string};
 }
+export type CanonicalSession={id:string;status:string;updatedAt:string};
+export type CanonicalRun={status:string;createdAt:string};
+const STATUS=new Set(["active","idle","working","waiting","blocked","completed",
+  "running","queued","failed","canceled","cancelled","paused","done","aborted"]);
+const runId=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+function safeStatus(value:unknown):string{
+  return typeof value==="string"&&STATUS.has(value)?value:"unknown";
+}
+export function inspectCanonicalSessions(value:unknown,workspaceId:string):
+ {sessions:CanonicalSession[];hasMore:boolean}{
+  if(!value||typeof value!=="object"||Array.isArray(value))return bad();
+  const v=value as Record<string,unknown>;
+  if(v.source!=="canonical-gateway"||v.workspaceId!==workspaceId)
+    throw Error("ACTIVITY_SCOPE_MISMATCH");
+  if(!Array.isArray(v.data)||v.data.length>3||typeof v.has_more!=="boolean")return bad();
+  const sessions=v.data.map(x=>{
+    if(!x||typeof x!=="object"||Array.isArray(x))return bad();
+    const item=x as Record<string,unknown>;
+    if(typeof item.session_id!=="string"||!runId.test(item.session_id)
+      ||item.workspace_id!==workspaceId)return bad();
+    return {id:item.session_id,status:safeStatus(item.status),
+      updatedAt:validDate(item.updated_at)?item.updated_at:"Date unavailable"};
+  });
+  return {sessions,hasMore:v.has_more};
+}
+export function inspectCanonicalRuns(value:unknown,workspaceId:string,sessionId:string):
+ CanonicalRun[]{
+  if(!value||typeof value!=="object"||Array.isArray(value))return bad();
+  const v=value as Record<string,unknown>;
+  if(v.source!=="canonical-gateway"||v.workspaceId!==workspaceId
+    ||v.sessionId!==sessionId)throw Error("ACTIVITY_SCOPE_MISMATCH");
+  if(!Array.isArray(v.data)||v.data.length>3||typeof v.has_more!=="boolean")return bad();
+  return v.data.map(x=>{
+    if(!x||typeof x!=="object"||Array.isArray(x))return bad();
+    const item=x as Record<string,unknown>;
+    if(item.session_id!==sessionId||typeof item.run_id!=="string"
+      ||!runId.test(item.run_id))throw Error("ACTIVITY_SCOPE_MISMATCH");
+    return {status:safeStatus(item.status),
+      createdAt:validDate(item.created_at)?item.created_at:"Date unavailable"};
+  });
+}
 export type ActivityFilter="all"|"tool-call"|"error-event";
 export function filterActivityEvents(view:ActivityView,filter:ActivityFilter):ActivityEvent[]{
   return filter==="all" ?view.events.slice():view.events.filter(event=>event.kind===filter);
@@ -69,6 +110,8 @@ export class PersonalAgentActivity{
   private readonly title:HTMLElement;
   private readonly reload:HTMLButtonElement;
   private readonly content:HTMLElement;
+  private readonly localHost:HTMLElement;
+  private readonly canonicalHost:HTMLElement;
   private view?:ActivityView;
   private filter:ActivityFilter="all";
   constructor(private readonly host:HTMLElement,private readonly client:DashboardClient){
@@ -83,6 +126,9 @@ export class PersonalAgentActivity{
     this.reload.type="button";
     this.reload.addEventListener("click",()=>{void this.refresh();});
     this.content=el("div","personal-agent-activity-content");
+    this.canonicalHost=el("div","personal-agent-activity-canonical");
+    this.localHost=el("div","personal-agent-activity-local");
+    this.content.append(this.canonicalHost,this.localHost);
     const head=el("div","personal-agent-activity-heading");
     head.append(this.title,this.reload);
     host.replaceChildren(head,this.content);
@@ -102,7 +148,8 @@ export class PersonalAgentActivity{
     this.view=undefined;this.filter="all";
     this.epoch++;
     this.title.textContent="Local activity · "+scope.workspaceId;
-    this.content.replaceChildren(el("p","personal-agent-activity-state","Selection changed. Refresh required."));
+    this.canonicalHost.replaceChildren(el("p","personal-agent-activity-state","Workspace changed. Refresh required."));
+    this.localHost.replaceChildren(el("p","personal-agent-activity-state","Workspace changed. Refresh required."));
     if(this.open)void this.refresh();
   }
   private renderView(view:ActivityView):void{
@@ -142,27 +189,83 @@ export class PersonalAgentActivity{
         row.kind+" · "+row.role+" · "+row.createdAt));
     }
     columns.append(sessions,events);
-    this.content.replaceChildren(header,columns);
+    this.localHost.replaceChildren(header,columns);
   }
   async refresh():Promise<void>{
     if(this.destroyed||!this.open)return;
     const request=++this.epoch,selected={...this.selected};
     this.reload.disabled=true;
-    this.content.replaceChildren(el("p","personal-agent-activity-state","Reading scoped local activity…"));
-    try{
-      const response=await this.client.query("operator.activity",{noCache:true});
-      if(this.destroyed||!this.open||request!==this.epoch
-        ||selected.systemId!==this.selected.systemId
-        ||selected.workspaceId!==this.selected.workspaceId)return;
-      this.view=inspectActivity(response.result,selected);
-      this.renderView(this.view);
-    }catch(error){
-      if(this.destroyed||!this.open||request!==this.epoch)return;
-      this.content.replaceChildren(el("p","personal-agent-activity-state",
-        "Local activity unavailable · "+errorCode(error)));
-    }finally{
-      if(!this.destroyed&&request===this.epoch)this.reload.disabled=false;
+    this.view=undefined;
+    this.localHost.replaceChildren(el("p","personal-agent-activity-state","Reading local activity…"));
+    this.canonicalHost.replaceChildren(el("p","personal-agent-activity-state","Reading Gateway history…"));
+    const fresh=()=>!this.destroyed&&this.open&&request===this.epoch
+      &&selected.systemId===this.selected.systemId
+      &&selected.workspaceId===this.selected.workspaceId;
+    // The two owners are independent. One missing source cannot mask the other.
+    const local=this.client.query("operator.activity",{noCache:true});
+    const canonical=(async()=>{
+      const response=await this.client.listGatewaySessions(3,0);
+      const page=inspectCanonicalSessions(response.result,selected.workspaceId);
+      const runs=await Promise.allSettled(page.sessions.slice(0,2)
+        .map(session=>this.client.listGatewaySessionRuns(session.id,3,0)));
+      return {page,runs};
+    })();
+    const [localResult,canonicalResult]=await Promise.allSettled([local,canonical]);
+    if(!fresh())return;
+    if(localResult.status==="fulfilled"){
+      try{
+        this.view=inspectActivity(localResult.value.result,selected);
+        this.renderView(this.view);
+      }catch(error){
+        this.localHost.replaceChildren(el("p","personal-agent-activity-state",
+          "Local activity response rejected · "+errorCode(error)));
+      }
+    }else{
+      this.localHost.replaceChildren(el("p","personal-agent-activity-state",
+        "Local activity unavailable · "+errorCode(localResult.reason)));
     }
+    if(canonicalResult.status==="fulfilled"){
+      try{
+        const {page,runs}=canonicalResult.value;
+        const holder=el("div","personal-agent-activity-list");
+        holder.append(el("strong","","Canonical Gateway history (read only)"));
+        holder.append(el("p","personal-agent-activity-state",
+          page.sessions.length+" recent persisted session"+
+          (page.sessions.length===1?"":"s")+" returned"+
+          (page.hasMore?" · older sessions available":"")));
+        for(const session of page.sessions){
+          holder.append(el("p","personal-agent-activity-entry",
+            "Session · "+session.status+" · "+session.updatedAt));
+        }
+        const recentRuns=el("div","personal-agent-activity-runs");
+        recentRuns.append(el("strong","","Recent run statuses (up to 6)"));
+        let runCount=0,unavailable=0;
+        runs.forEach((result,index)=>{
+          if(result.status!=="fulfilled"){unavailable++;return;}
+          try{
+            for(const run of inspectCanonicalRuns(result.value.result,selected.workspaceId,
+              page.sessions[index].id)){
+              recentRuns.append(el("p","personal-agent-activity-entry",
+                "Run · "+run.status+" · "+run.createdAt));
+              runCount++;
+            }
+          }catch{unavailable++;}
+        });
+        if(!runCount)recentRuns.append(el("p","personal-agent-activity-state",
+          "No recent run statuses returned."));
+        if(unavailable)recentRuns.append(el("p","personal-agent-activity-state",
+          unavailable+" session run histor"+(unavailable===1?"y":"ies")+" unavailable"));
+        holder.append(recentRuns);
+        this.canonicalHost.replaceChildren(holder);
+      }catch(error){
+        this.canonicalHost.replaceChildren(el("p","personal-agent-activity-state",
+          "Gateway history response rejected · "+errorCode(error)));
+      }
+    }else{
+      this.canonicalHost.replaceChildren(el("p","personal-agent-activity-state",
+        "Gateway history unavailable · "+errorCode(canonicalResult.reason)));
+    }
+    if(fresh())this.reload.disabled=false;
   }
   destroy():void{
     this.destroyed=true;this.open=false;this.epoch++;

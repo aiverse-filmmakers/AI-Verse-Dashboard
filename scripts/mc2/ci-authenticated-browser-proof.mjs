@@ -157,6 +157,9 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     const activityPanel=page.locator(".personal-agent-activity");
     await activityPanel.waitFor({state:"visible"});
     await page.getByText("Recent sessions (up to 12)").waitFor();
+    await activityPanel.getByText("Canonical Gateway history (read only)").waitFor();
+    assert.ok(trackedRequests.some(req=>req.frame?.method==="aiverse.gateway.session.list"
+      && req.frame.systemId===systemId&&req.frame.workspaceId==="operator"));
     assert.match(await activityPanel.textContent(),/1 local session/);
     assert.match(await activityPanel.textContent(),/tool-call · agent/);
     await activityPanel.getByRole("button",{name:"Errors"}).click();
@@ -331,6 +334,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       paired_workspace_manifest_checked:true,
       future_browser_rpc_methods_default_denied:true,
       scoped_real_local_agent_activity_visible:true,
+      independent_canonical_gateway_history_projection:true,
       member_provider_used:false,
       member_mac_verified:false,
     };

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectActivity,filterActivityEvents} from "../apps/web/src/personal-agent-activity.js";
+import {inspectActivity,filterActivityEvents,inspectCanonicalSessions,inspectCanonicalRuns}
+ from "../apps/web/src/personal-agent-activity.js";
 const scope={systemId:"system-a",workspaceId:"operator"};
 const time="2026-10-29T08:00:00.000Z";
 const good=()=>({source:"dashboard-local-sessions",systemId:"system-a",
@@ -43,4 +44,28 @@ test("local event filters remain data-only and do not manufacture hidden entries
  assert.equal(filterActivityEvents(view,"all").length,1);
  assert.deepEqual(filterActivityEvents(view,"tool-call"),view.events);
  assert.deepEqual(filterActivityEvents(view,"error-event"),[]);
+});
+
+test("canonical history projection validates workspace and redacts session titles",()=>{
+ const data={source:"canonical-gateway",workspaceId:"operator",has_more:true,
+   data:[{workspace_id:"operator",session_id:"secret-session-1",
+     title:"PRIVATE SCRIPT",status:"active",updated_at:time}]};
+ const result=inspectCanonicalSessions(data,"operator");
+ assert.equal(result.hasMore,true);
+ assert.equal(result.sessions[0].status,"active");
+ assert.doesNotMatch(JSON.stringify(result),/PRIVATE SCRIPT/);
+ assert.throws(()=>inspectCanonicalSessions({...data,workspaceId:"film"},"operator"),
+   /ACTIVITY_SCOPE_MISMATCH/);
+});
+test("canonical run projection excludes prompts and model outputs",()=>{
+ const data={source:"canonical-gateway",workspaceId:"operator",sessionId:"sess-a",
+  has_more:false,data:[{session_id:"sess-a",run_id:"run-1",status:"completed",
+    created_at:time,user_text:"PRIVATE REQUEST",output:"PRIVATE RESPONSE"}]};
+ const rows=inspectCanonicalRuns(data,"operator","sess-a");
+ assert.deepEqual(rows,[{status:"completed",createdAt:time}]);
+ assert.doesNotMatch(JSON.stringify(rows),/PRIVATE/);
+ assert.throws(()=>inspectCanonicalRuns(data,"operator","different"),
+   /ACTIVITY_SCOPE_MISMATCH/);
+ assert.throws(()=>inspectCanonicalRuns({...data,data:[{...data.data[0],session_id:"other"}]},"operator","sess-a"),
+   /ACTIVITY_SCOPE_MISMATCH/);
 });
