@@ -79,6 +79,53 @@ describe("Personal Chat canonical run controller",()=>{
    assert.deepEqual(calls.map(x=>x.method),
      ["aiverse.gateway.run.create","aiverse.gateway.run.get"]);
  });
+ it("reconnects a known interrupted run using GET and event replay, never creates another run",async()=>{
+   let state="running";
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.get")return run(state,{output:state==="completed"?"Verified full reply":undefined});
+     throw Error("Unexpected RPC");
+   });
+   const f=testFeed();
+   const chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("What is the camera move?","only-create-key");
+   f.watchers[0].handlers.event(event("assistant.delta",1,"Unverified partial"));
+   assert.equal(chat.snapshot().output,"Unverified partial");
+   f.watchers[0].handlers.interrupted("EVENT_STREAM_INTERRUPTED");
+   assert.equal(chat.snapshot().phase,"interrupted");
+   assert.equal(chat.snapshot().runId,"run-a");
+   const recovered=await chat.reconnect();
+   assert.equal(recovered.phase,"running");
+   assert.equal(recovered.output,"","old streamed partial must be erased before replay");
+   assert.equal(f.watchers.length,2,"fresh subscription to same run");
+   assert.equal(f.watchers[0].cancelled,true,"previous event listener is closed");
+   assert.deepEqual(calls.map(x=>x.method),[
+     "aiverse.gateway.run.create","aiverse.gateway.run.get"]);
+   f.watchers[0].handlers.event(event("assistant.delta",2,"FORGED LATE"));
+   f.watchers[1].handlers.event(event("assistant.delta",1,"Full replay"));
+   assert.equal(chat.snapshot().output,"Full replay");
+   state="completed";
+   f.watchers[1].handlers.event(event("run.completed",2));
+   await nextTick();
+   assert.equal(chat.snapshot().phase,"completed");
+   assert.equal(chat.snapshot().output,"Verified full reply");
+   assert.deepEqual(calls.map(x=>x.method),[
+     "aiverse.gateway.run.create","aiverse.gateway.run.get","aiverse.gateway.run.get"]);
+   await assert.rejects(chat.reconnect(),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_RECONNECT_UNAVAILABLE");
+ });
+ it("reconnect accepts an already-completed canonical run without resubscribing",async()=>{
+   const {client,calls}=clientWith(method=>method==="aiverse.gateway.run.create"
+     ?run("running"):run("completed",{output:"Canonical finished result"}));
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("Try it","stable-once");
+   f.watchers[0].handlers.interrupted("EVENT_STREAM_INTERRUPTED");
+   const next=await chat.reconnect();
+   assert.equal(next.phase,"completed");
+   assert.equal(next.output,"Canonical finished result");
+   assert.equal(f.watchers.length,1);
+   assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.create").length,1);
+ });
  it("recovers only via canonical run GET, preserving paused recovery-required state",async()=>{
    const {client,calls}=clientWith(method=>{
      assert.equal(method,"aiverse.gateway.run.get");
