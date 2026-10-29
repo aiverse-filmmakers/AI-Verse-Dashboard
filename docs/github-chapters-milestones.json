@@ -186,7 +186,7 @@
           "state": "in-progress",
           "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
           "evidenceRef": "apps/web/src/personal-diagnostics.ts",
-          "partialEvidence": "Paired native-host Personal Workspace status panel now reads real public OS system, Gateway preflight, Canonical Canvas owner and conversation library; entire fleet and full workspace lifecycle diagnostics are not complete."
+          "partialEvidence": "Five-source paired diagnostics; OS-owned TTY workspace catalogue and host-authorized operator↔named-workspace rotation with fresh one-time browser pairing and revocation of cookies/sockets; device/inode and root-binding generation revalidation, Chromium and real Gateway CI. Full native owner UI, durable consent/grants and multi-OS lifecycle not done."
         },
         {
           "id": "G06.2",
@@ -338,5 +338,5 @@
       ]
     }
   ],
-  "lastReconciliation": "2026-10-29: G06.2 partial real local and persisted Gateway activity, OS workspace manifest symlink hardening; GB ~41/100 provisional, FA 15/100. 4 verified/8 implemented/4 in-progress/24 planned, 10 chapters/40 milestones unchanged."
+  "lastReconciliation": "2026-10-29: G06.1 trusted TTY OS-owned workspace switching and root/manifest/stream revocation proven with disposable browser+Gateway CI; GB ~42/100 provisional, FA 15/100; 4 verified, 8 implemented draft, 4 in progress, 24 planned."
 }

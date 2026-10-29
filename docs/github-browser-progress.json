@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 41,
+  "provisionalEngineeringEarned": 42,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -69,9 +69,9 @@
       "id": "controls",
       "title": "Owner-backed control panels",
       "budget": 15,
-      "provisionalEarned": 3,
+      "provisionalEarned": 4,
       "evidenceStatus": "source-and-ci",
-      "remaining": "Five-source workspace diagnostics, workspace-bounded Dashboard-local session events and bounded persistent canonical Gateway session/run status are verified in real paired browser CI. Full agent fleet control, approvals, automations, native workspace lifecycle, Memory/Skills/Token/Connections and private owner acceptance remain missing."
+      "remaining": "OS-authenticated workspace status and local+persisted Gateway activity are functional. Trusted TTY launcher now selects OS-owned named workspaces while atomically rotating browser pairing/cookies and revoking previous streams. Browser-supplied system/workspace switching, full native owner login/grants, agent controls, approvals and fleet operations remain unimplemented."
     },
     {
       "id": "film",
@@ -197,7 +197,19 @@
       "source": "canonical Gateway persisted session/run history through existing authenticated owner binding",
       "details": "independent from local in-memory sessions, bounded 3 sessions/6 recent runs, status/timestamp only; text/outputs never rendered",
       "stage": "draft-verified-disposable-CI-not-owner-Mac"
+    },
+    "trustedHostWorkspaceRotation": {
+      "sourceCommit": "4c269f411ee0990e8a784f6542c1f2c13da3283e",
+      "nativeHostCi": 40886502087,
+      "browserQc": 40886502368,
+      "realCanonicalGatewayCi": 40886502198,
+      "progressIntegrityCi": 40886502307,
+      "entrypoint": "scripts/mc2/start-connected.ts",
+      "authorization": "trusted-tty-owner-only; canonical OS-owned workspace manifest and root binding-generation/device/inode checks",
+      "revocation": "rotate one-time pairing code, HttpOnly cookie, runtime lease; close old browser WS; revalidate before run event forwarding",
+      "limits": "single registered host OS, explicit local TTY command, manual fresh browser re-pair, not signed Mac native UI or production owner login",
+      "stage": "verified source+disposable CI; not on private user machine"
     }
   },
-  "nextUnverifiedChange": "G06.2 still partial despite read-only persisted Gateway session/run status: no production bot fleet lifecycle, approve/deny receipts, canonical agent task dispatch, safe native workspace switches or automations UI. G06.1 and native Mac owner acceptance also pending."
+  "nextUnverifiedChange": "G06.1 remains partial: owner TTY can rotate selected workspace for one registered OS, but authenticated native graphical OS/workspace picker, owner consent and persistent grant lifecycle, multi-OS selection and production Mac delivery are still missing."
 }
