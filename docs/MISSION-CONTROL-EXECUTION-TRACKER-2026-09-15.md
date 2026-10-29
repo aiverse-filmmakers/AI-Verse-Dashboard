@@ -1474,3 +1474,41 @@ tool dispatch are unshipped. Tasks through **#412** committed.
 Next numbered task: **#413**. The 200 small task slices were
 4 implementation/integration slices and 196 individually named
 test cases, not 200 major feature milestones.
+
+
+### Tasks 413–438: Real paired Personal system/Gateway/Canvas/history diagnostics (29 October 2026)
+
+**26 small implementation and verification slices** itemized in
+[Tasks 413–438](DEVELOPMENT-TASKS-413-438-2026-10-29.md).
+This batch implements an actual host-authenticated
+**Personal → Workspace status** panel using four independent
+owner-backed sources: public scoped SystemRegistry, canonical
+Gateway preflight, canonical Data-owned Canvas document list,
+and bounded Gateway session library. It reports unavailable
+owners honestly, never infers successful model inference from
+a status check, prevents stale workspace responses and renders
+no OS roots, credentials, document contents or private chats.
+
+Host cookie access was extended to only the **paired scope's
+read-only `system.get`**, not the global system/workspace list.
+Expanded native localhost security regressions prove own public
+registry record, deny wrong system/workspace and broad listing.
+`test/personal-diagnostics.test.ts`: 36 source/scope/count/shape
+probes. Real paired Chromium checks the four sources, manual
+refresh and strict origin-bound no-bearer HTTP.
+
+Exact verified code `0f276bae960f98b0082bad4a7e1fe7685009e6b4`:
+[Dashboard Linux/macOS/Windows 40832818420](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40832818420)
+GREEN and [real canonical Gateway + paired Chromium browser
+40832818224](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40832818224)
+GREEN. New documentation/progress ledger head may have a later
+CI run; check exact result before claiming full-head green.
+
+**GB engineering ~38/100 provisional** (+1 control-panel
+source/CI point), **formal FA 15/100 accepted** unchanged.
+10 fixed chapters, 40 milestones: **4 verified, 8 implemented
+in draft, 2 in-progress (G03.4 and G06.1), 26 planned**.
+The controls chapter remains far from complete: real native
+system switching, workspace lifecycle, agents/approvals,
+Brain/Memory/Skills/Automations, Token/Connections and owner Mac
+dogfood still pending. **Next Task 439.**
