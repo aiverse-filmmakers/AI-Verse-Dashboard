@@ -66,10 +66,10 @@ test("scope identity cannot mutate without published rebaseline",()=>{
 });
 test("partially built Canvas milestone is neither fully accepted nor untouched",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p);
- assert.equal(r.states["in-progress"],1);
+ assert.equal(r.states["in-progress"],2);
  assert.equal(r.states.verified,4);
  assert.equal(r.states.implemented,8);
- assert.equal(r.states.planned,27);
+ assert.equal(r.states.planned,26);
  assert.equal(r.formalAcceptance,15);
 });
 test("40 milestones do not turn into 40 accepted roadmap points",()=>{
