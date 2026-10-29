@@ -107,7 +107,7 @@ if(localApp){
     "One-time pairing code (expires in five minutes): "+
     localApp.pairingCode()+"\n"+
     "Enter this code in the local browser page, never into ChatGPT.\n"+
-    "Host commands: :workspaces, :use <workspace-id>, :use operator, :approve <id>, :deny <id>, :help\n\n");
+    "Host commands: :workspaces, :use <workspace-id>, :use operator, :pending, :approve <id>, :deny <id>, :help\n\n");
   // Only the actual TTY-host controls scope. No browser workspace.list,
   // remote URL, machine path, env key, or unverified arbitrary workspace ID.
   const terminal=createInterface({input:process.stdin,output:process.stderr,
@@ -116,7 +116,17 @@ if(localApp){
     for await(const raw of terminal){
       const command=raw.trim();
       if(command===":help"){
-        process.stderr.write("Commands: :workspaces, :use <id>, :use operator, :approve <id>, :deny <id>, :help\n");
+        process.stderr.write("Commands: :workspaces, :use <id>, :use operator, :pending, :approve <id>, :deny <id>, :help\n");
+        continue;
+      }
+      if(command===":pending"){
+        try{
+          const request=localApp.pendingWorkspaceRequestForHost();
+          process.stderr.write(request
+            ?"Workspace request "+request.id+" for "+request.workspaceId+
+              " ("+request.state+")\n"
+            :"No pending workspace request.\n");
+        }catch{process.stderr.write("WORKSPACE_REQUEST_UNAVAILABLE\n");}
         continue;
       }
       if(command.startsWith(":approve ")||command.startsWith(":deny ")){

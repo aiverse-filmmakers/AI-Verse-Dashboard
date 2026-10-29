@@ -414,6 +414,8 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.equal((await propose("film")).status,200);
     assert.equal(requests.length,1);
     assert.equal(requests[0].workspaceId,"film");
+    assert.deepEqual(session.pendingWorkspaceRequestForHost(),
+      {id:requests[0].id,workspaceId:"film",state:"pending"});
     const id=requests[0].id;
     assert.match(id,/^[0-9a-f]{16}$/);
     assert.equal((await propose("film")).status,409,
@@ -423,6 +425,7 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.throws(()=>session.approveWorkspaceRequest("forged"),/LOCAL_APP_REQUEST_INVALID/);
     assert.equal((await fetch(base+"/local-app/session",{headers:{cookie:oldCookie}})).status,200);
     session.denyWorkspaceRequest(id);
+    assert.equal(session.pendingWorkspaceRequestForHost()?.state,"denied");
     const rejected=await fetch(base+"/local-app/workspace-request",{headers:{cookie:oldCookie}});
     assert.equal(((await rejected.json()) as {state:string}).state,"denied");
     assert.throws(()=>session.approveWorkspaceRequest(id),/LOCAL_APP_REQUEST_INVALID/);
@@ -431,6 +434,7 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.notEqual(requests[1].id,id);
     const selected=session.approveWorkspaceRequest(requests[1].id);
     assert.equal(selected,"film");
+    assert.equal(session.pendingWorkspaceRequestForHost(),null);
     assert.equal((await fetch(base+"/local-app/session",{headers:{cookie:oldCookie}})).status,401);
     assert.equal((await propose("operator")).status,403,
       "old cookie must not be able to queue a new request");

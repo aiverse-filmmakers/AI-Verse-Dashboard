@@ -107,6 +107,17 @@ export class LocalApplicationSession {
     if(!this.ownerRegistry||this.requestListener)throw Error("LOCAL_APP_HOST_AUTHORITY_REQUIRED");
     this.requestListener=listener;
   }
+  /** Host-only discovery so an operator can review a missed request notice. */
+  pendingWorkspaceRequestForHost():{id:string;workspaceId:string;state:string}|null{
+    if(!this.ownerRegistry||!this.requestListener)
+      throw Error("LOCAL_APP_HOST_AUTHORITY_REQUIRED");
+    if(!this.ownerStillApproved())throw Error("LOCAL_APP_OS_BINDING_STALE");
+    const request=this.pendingRequest;
+    if(!request)return null;
+    return {id:request.id,workspaceId:request.workspaceId,
+      state:request.state==="pending"&&Date.now()-request.at>WORKSPACE_REQUEST_TTL
+        ?"expired":request.state};
+  }
   /** Must be invoked from the trusted terminal, never from HTTP or RPC. */
   approveWorkspaceRequest(id:string):string{
     const pending=this.pendingRequest;
