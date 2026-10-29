@@ -73,17 +73,34 @@ export function inspectHistory(value:unknown,workspaceId:string):Observation{
         +" returned"+(v.has_more?" · older sessions available":""),
   };
 }
+export function inspectSystem(value:unknown,systemId:string):Observation{
+  if(!value||typeof value!=="object"||Array.isArray(value))
+    throw Error("DIAGNOSTICS_INVALID_SOURCE");
+  const v=value as Record<string,unknown>;
+  if(!v.system||typeof v.system!=="object"||Array.isArray(v.system))
+    throw Error("DIAGNOSTICS_INVALID_SOURCE");
+  const s=v.system as Record<string,unknown>;
+  if(s.systemId!==systemId||typeof s.label!=="string"
+    ||typeof s.osType!=="string"||typeof s.osVersion!=="string"
+    ||typeof s.authorized!=="boolean")
+    throw Error("DIAGNOSTICS_SCOPE_MISMATCH");
+  return {state:s.authorized?"available":"unavailable",
+    label:s.authorized?"Registered OS authorized":"Registered OS not authorized",
+    details:s.label.slice(0,80)+" · "+s.osType.slice(0,60)+
+      " · "+s.osVersion.slice(0,40)};
+}
 export class PersonalDiagnostics{
   private readonly scope:Required<ClientScope>;
   private epoch=0;
   private open=false;
   private destroyed=false;
   private readonly gateway:HTMLElement;
+  private readonly system:HTMLElement;
   private readonly canvas:HTMLElement;
   private readonly history:HTMLElement;
   private readonly heading:HTMLElement;
   private readonly reload:HTMLButtonElement;
-  private current:{gateway:Observation;canvas:Observation;history:Observation};
+  private current:{system:Observation;gateway:Observation;canvas:Observation;history:Observation};
   constructor(private readonly host:HTMLElement,
     private readonly client:DashboardClient){
     const scope=client.getScope();
@@ -96,6 +113,7 @@ export class PersonalDiagnostics{
     this.reload.type="button";this.reload.setAttribute("aria-label","Refresh workspace status");
     this.reload.addEventListener("click",()=>{void this.refresh();});
     this.gateway=node("div","personal-diagnostics-source");
+    this.system=node("div","personal-diagnostics-source");
     this.canvas=node("div","personal-diagnostics-source");
     this.history=node("div","personal-diagnostics-source");
     host.classList.add("personal-diagnostics");
@@ -103,8 +121,9 @@ export class PersonalDiagnostics{
     host.hidden=true;
     const head=node("div","personal-diagnostics-header");
     head.append(this.heading,this.reload);
-    host.replaceChildren(head,this.gateway,this.canvas,this.history);
+    host.replaceChildren(head,this.system,this.gateway,this.canvas,this.history);
     this.current={
+      system:{state:"idle",label:"OS system registry",details:"Not checked"},
       gateway:{state:"idle",label:"Canonical Gateway",details:"Not checked"},
       canvas:{state:"idle",label:"Canvas Data owner",details:"Not checked"},
       history:{state:"idle",label:"Conversation library",details:"Not checked"},
@@ -125,6 +144,7 @@ export class PersonalDiagnostics{
     this.scope.workspaceId=next.workspaceId;this.client.retarget(next);
     this.heading.textContent="Workspace · "+next.workspaceId;
     this.current={
+      system:{state:"idle",label:"OS system registry",details:"Not checked"},
       gateway:{state:"idle",label:"Canonical Gateway",details:"Not checked"},
       canvas:{state:"idle",label:"Canvas Data owner",details:"Not checked"},
       history:{state:"idle",label:"Conversation library",details:"Not checked"},
@@ -132,9 +152,9 @@ export class PersonalDiagnostics{
     this.render();
     if(this.open)void this.refresh();
   }
-  snapshot():Readonly<{gateway:Observation;canvas:Observation;history:Observation}>{
-    return {gateway:{...this.current.gateway},canvas:{...this.current.canvas},
-      history:{...this.current.history}};
+  snapshot():Readonly<{system:Observation;gateway:Observation;canvas:Observation;history:Observation}>{
+    return {system:{...this.current.system},gateway:{...this.current.gateway},
+      canvas:{...this.current.canvas},history:{...this.current.history}};
   }
   private renderEntry(host:HTMLElement,observation:Observation){
     host.dataset.state=observation.state;
@@ -147,6 +167,7 @@ export class PersonalDiagnostics{
     );
   }
   private render(){
+    this.renderEntry(this.system,this.current.system);
     this.renderEntry(this.gateway,this.current.gateway);
     this.renderEntry(this.canvas,this.current.canvas);
     this.renderEntry(this.history,this.current.history);
@@ -156,6 +177,7 @@ export class PersonalDiagnostics{
     const epoch=++this.epoch,workspaceId=this.scope.workspaceId,
       systemId=this.scope.systemId;
     this.current={
+      system:{state:"loading",label:"Registered OS",details:"Checking current scope…"},
       gateway:{state:"loading",label:"Canonical Gateway",details:"Checking current scope…"},
       canvas:{state:"loading",label:"Canvas Data owner",details:"Checking current scope…"},
       history:{state:"loading",label:"Conversation library",details:"Checking current scope…"},
@@ -164,12 +186,14 @@ export class PersonalDiagnostics{
     const results=await Promise.allSettled([
       this.client.gatewayStatus(),this.client.canvasList(25),
       this.client.listGatewaySessions(5,0),
+      this.client.query("system.get",{noCache:true}),
     ]);
     if(this.destroyed||!this.open||epoch!==this.epoch
       ||workspaceId!==this.scope.workspaceId
       ||systemId!==this.scope.systemId)return;
     const observed=()=>new Date().toISOString();
-    const gateway=results[0],canvas=results[1],history=results[2];
+    const gateway=results[0],canvas=results[1],history=results[2],
+      system=results[3];
     try{
       this.current.gateway=gateway.status==="fulfilled"
         ?{...inspectGateway(gateway.value.result,workspaceId),
@@ -198,6 +222,16 @@ export class PersonalDiagnostics{
           details:safeCode(history.reason)};
     }catch(error){
       this.current.history={state:"unavailable",label:"History response rejected",
+        details:safeCode(error)};
+    }
+    try{
+      this.current.system=system.status==="fulfilled"
+        ?{...inspectSystem(system.value.result,systemId),
+          observedAt:system.value.observedAt||observed()}
+        :{state:"unavailable",label:"Registered OS unavailable",
+          details:safeCode(system.reason)};
+    }catch(error){
+      this.current.system={state:"unavailable",label:"OS response rejected",
         details:safeCode(error)};
     }
     this.reload.disabled=false;this.render();
