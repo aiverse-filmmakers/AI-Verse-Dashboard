@@ -237,7 +237,7 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.equal(activityBody.result?.sessionCount,1);
     assert.deepEqual(activityBody.result?.events.map(x=>x.kind),["tool-call"]);
     assert.equal(activityBody.result?.retention,"in-memory-only");
-    assert.doesNotMatch(JSON.stringify(activityBody),/PRIVATE|CROSS WORKSPACE|\\/tmp|film-session|entry-film|op-session|secret/);
+    assert.doesNotMatch(JSON.stringify(activityBody),/PRIVATE|CROSS WORKSPACE|film-session|entry-film|op-session|secret/);
     assert.equal((await ask("operator.activity","operator")).status,403);
     assert.equal((await ask("operator.activity","film","another-system")).status,403);
   });

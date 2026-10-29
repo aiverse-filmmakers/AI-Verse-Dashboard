@@ -43,7 +43,7 @@ export function inspectActivity(value:unknown,scope:Required<ClientScope>):Activ
       ||!validDate(x.createdAt))return bad();
     return {kind:x.kind,role:x.role,createdAt:x.createdAt};
   });
-  if(sessions.length>v.sessionCount)return bad();
+  if(sessions.length>Number(v.sessionCount))return bad();
   return {sessionCount:v.sessionCount as number,sessions,events,
     observedAt:v.observedAt as string};
 }
