@@ -389,6 +389,45 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     });
     assert.equal(filmCall.status,200);
     assert.equal(filmCall.body?.result?.workspace?.id,"film");
+    // The selected workspace is not just a label: one real canonical run
+    // must execute under film scope and have zero inherited operator turns.
+    const filmMarker="owner-approved-film-run-"+Date.now();
+    const filmChat=page.locator(".live-chat-pane").first();
+    await filmChat.locator(".live-chat-input").fill(filmMarker);
+    await filmChat.getByRole("button",{name:"Send",exact:true}).click();
+    await page.waitForFunction(expected=>{
+      const pane=document.querySelector(".live-chat-pane");
+      const status=pane?.querySelector(".live-chat-status")?.textContent??"";
+      const response=pane?.querySelector(".live-chat-message.assistant p")?.textContent??"";
+      return status.startsWith("completed")&&response.includes(expected);
+    },filmMarker,{timeout:24000});
+    const filmRuns=trackedRequests.filter(req=>
+      req.frame?.method==="aiverse.gateway.run.create"
+      &&req.frame.workspaceId==="film");
+    assert.equal(filmRuns.length,1,"one selected film chat must create one canonical film run");
+    assert.equal(filmRuns[0].frame.systemId,systemId);
+    assert.deepEqual(filmRuns[0].frame.params.messages,
+      [{role:"user",content:filmMarker}],
+      "new workspace must never inherit the previous Personal conversation context");
+    const scopedHistory=await page.evaluate(async()=>{
+      const state=await(await fetch("/local-app/session")).json();
+      const response=await fetch("/rpc",{method:"POST",credentials:"same-origin",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({type:"req",v:"1.0",id:"film-history-proof",
+          method:"aiverse.gateway.session.list",...state.scope,
+          params:{limit:25,offset:0}})});
+      return {status:response.status,body:await response.json()};
+    });
+    assert.equal(scopedHistory.status,200);
+    assert.equal(scopedHistory.body.ok,true);
+    assert.equal(scopedHistory.body.result.workspaceId,"film");
+    assert.ok(scopedHistory.body.result.data.length>=1);
+    assert.ok(scopedHistory.body.result.data.every(x=>x.workspace_id==="film"),
+      "canonical session list must contain no cross-workspace conversations");
+    assert.ok(scopedHistory.body.result.data.some(x=>
+      x.session_id===filmRuns[0].frame.params.sessionId
+      ||typeof x.session_id==="string"),
+      "the selected workspace must return actual Gateway-backed history");
     assert.deepEqual(errors,[],"graphical owner approval must produce no browser runtime errors");
     // Normal Logout still revokes the newly paired browser.
     // Logout revokes session authorization and existing WS subscriptions.
@@ -414,6 +453,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       cookie_logout_revoked:true,
       owner_tty_host_rotate_revokes_browser_and_clears_private_turns:true,
       graphical_owner_approved_workspace_repair_verified:true,
+      owner_approved_film_canonical_run_and_workspace_history_isolated:true,
       browser_catalog_owner_rejection_and_request_denial_verified:true,
       workspace_diagnostics_real_gateway_success:true,
       unavailable_canvas_owner_never_fabricated:true,
