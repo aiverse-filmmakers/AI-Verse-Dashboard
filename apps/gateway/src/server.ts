@@ -12,6 +12,7 @@ import {
   hasWebSocketAuthorization,
 } from "./auth.js";
 import { SubscriptionHub } from "./subscriptions.js";
+import { CanonicalGatewayBridge } from "./canonical-gateway-bridge.js";
 
 /**
  * Localhost HTTP + WebSocket server (Task 4).
@@ -54,7 +55,9 @@ export interface GatewayServer {
 export async function startGateway(
   router: QueryRouter,
   hub: SubscriptionHub,
-  opts?: { port?: number; host?: string; authToken?: string },
+  opts?: { port?: number; host?: string; authToken?: string;
+    /** Trusted native host may inject a pre-approved canonical Gateway mapping. */
+    canonicalBridge?:CanonicalGatewayBridge },
 ): Promise<GatewayServer> {
   const host = "127.0.0.1";
   const authToken = createGatewayAuthToken(opts?.authToken);
@@ -62,7 +65,7 @@ export async function startGateway(
     throw new Error("gateway binds loopback only; remote access must use a tunnel");
   }
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    void handleHttp(req, res, router, authToken);
+    void handleHttp(req, res, router, authToken,opts?.canonicalBridge);
   });
   const wss = new WebSocketServer({
     noServer: true,
@@ -137,6 +140,7 @@ async function handleHttp(
   res: ServerResponse,
   router: QueryRouter,
   authToken: string,
+  canonicalBridge?:CanonicalGatewayBridge,
 ): Promise<void> {
   try {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
@@ -166,7 +170,10 @@ async function handleHttp(
         return;
       }
       const frame = JSON.parse(await readBody(req)) as unknown;
-      const out = router.handle(frame);
+      // Only an explicitly installed host bridge can service canonical
+      // Gateway methods. Browser input never constructs a native binding.
+      const out = canonicalBridge && CanonicalGatewayBridge.recognizes(frame)
+        ? await canonicalBridge.handle(frame) : router.handle(frame);
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(out));
       return;
