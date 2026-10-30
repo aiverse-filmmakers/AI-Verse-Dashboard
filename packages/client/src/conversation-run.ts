@@ -567,6 +567,7 @@ export class PersonalChatRunController {
    */
   async loadOlderSessionRuns():Promise<{
     turns:Array<{role:"user"|"assistant";content:string}>;hasOlder:boolean;
+    limitedByView:boolean;
   }>{
     const cursor=this.historicalOlder;
     if(!cursor || !this.view.sessionId || cursor.sessionId!==this.view.sessionId)
@@ -575,7 +576,7 @@ export class PersonalChatRunController {
     const epoch=this.epoch,selection=this.client.selectionVersion();
     const response=await this.client.listGatewaySessionRuns(cursor.sessionId,25,cursor.offset);
     if(!this.valid(epoch,scope,selection)||this.historicalOlder!==cursor)
-      return {turns:[],hasOlder:false};
+      return {turns:[],hasOlder:false,limitedByView:false};
     const page=response.result as Record<string,unknown>;
     if(!page||page.source!=="canonical-gateway"||page.workspaceId!==scope.workspaceId
       ||page.sessionId!==cursor.sessionId||!Array.isArray(page.data)
@@ -613,7 +614,7 @@ export class PersonalChatRunController {
     const hasOlder=page.has_more&&cursor.total<200;
     this.historicalOlder=hasOlder?{...cursor,
       offset:page.next_offset as number}:undefined;
-    return {turns,hasOlder};
+    return {turns,hasOlder,limitedByView:page.has_more&&!hasOlder};
   }
   /** Recovery is by explicit canonical run ID, not a manufactured session list. */
   async recover(runId:string):Promise<ChatRunView>{
