@@ -182,3 +182,8 @@
 .personal-model-name{font-size:13px;font-weight:650}
 .personal-model-state{font-size:12px;color:#647386;overflow-wrap:anywhere}
 @media(max-width:750px){.live-chat-toolbar{flex-wrap:wrap}.live-chat-toolbar button{font-size:12px}}
+
+/* Older canonical transcript pages, not browser-local persisted history. */
+.live-chat-older-messages{align-self:center;font-size:12px!important;padding:7px 11px!important;
+  border-color:#cbd6e5!important;color:#32516e!important;max-width:95%}
+.live-chat-older-messages:focus-visible{outline:2px solid #377ac4;outline-offset:2px}
