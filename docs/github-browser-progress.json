@@ -257,7 +257,14 @@
       "scope": "Explicit operator TTY host opt-in; one canonical cancel run/session/operation; pre-post owner lease revalidation; browser Stop; same-session canceled continuation without unfinished context; headless denial",
       "status": "source and four exact-head CI suites verified, PR draft, private Mac unaccepted",
       "score": "Chat 9->10/15, GitHub/browser 45->46/100 provisional; formal 15/100 unchanged"
+    },
+    "canonicalChatTranscriptHistoryPaging": {
+      "sourceCommit": "6d7289562f6d7c2be994f73badb84366acfb0702",
+      "ledger": "docs/DEVELOPMENT-TASKS-594-606-2026-10-30.md",
+      "scope": "Open past Chat sessions into non-destructive split; view >50 Gateway-owned runs in 25-row pages; 200-run browser bound; duplicate/scope/epoch validation; no browser persistence or unverified model context",
+      "status": "source commit pushed, exact-head CI independently verified by GitHub Actions",
+      "score": "No increment: G02.2 quality gain, Chat 10/15 and provisional GitHub/browser 46/100 unchanged; formal 15/100"
     }
   },
-  "nextUnverifiedChange": "Task 594: establish real provider/model entitlement and capability contract owned by canonical Gateway+Connections before implementing model selection; then canonical asset/Skills admission and native owner grants."
+  "nextUnverifiedChange": "Task 607: owner-enforced approved physical model catalog/consent/selection via Gateway+Connections; until supported, never expose fabricated model choices. Next independent work could admit canonical Data assets/OS Skills with real owner grants."
 }
