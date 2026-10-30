@@ -708,7 +708,9 @@ export class PersonalChatApplication {
       "",
     ];
     for(const turn of pane.turns){
-      lines.push((turn.role==="user"?"You":turn.role==="assistant"?"AI-Verse":"Status")+":");
+      // UI-only status notices are not canonical conversation turns.
+      if(turn.role==="status" || !turn.text)continue;
+      lines.push((turn.role==="user"?"You":"AI-Verse")+":");
       lines.push(turn.text,"");
     }
     const payload=lines.join("\n");
