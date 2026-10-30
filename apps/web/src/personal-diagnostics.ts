@@ -106,7 +106,8 @@ export function inspectSystems(value:unknown,systemId:string,workspaceId:string)
     throw Error("DIAGNOSTICS_INVALID_SOURCE");
   return {state:"available",label:"Registered OS systems",
     details:String(v.registered)+" registered · "+v.authorized+
-      " authorized · "+String(v.workspaces)+" selected-OS workspaces · selected system verified"};
+      " authorized · "+String(v.workspaces)+" selected-OS workspace"+
+      (v.workspaces===1?"":"s")+" · selected system verified"};
 }
 export function inspectWorkspace(value:unknown,workspaceId:string):Observation{
   if(!value||typeof value!=="object"||Array.isArray(value))
