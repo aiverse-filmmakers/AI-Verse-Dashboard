@@ -827,14 +827,28 @@ export class PersonalChatApplication {
   async recover(paneId:string,runId:string):Promise<void>{
     const pane=this.panes.get(paneId);
     if(!pane||this.destroyed||pane.busy)return;
+    // A manual run lookup must never splice another session's reply into an
+    // existing transcript. Open a fresh pane first, or use Reconnect run.
+    if(pane.turns.length||pane.run.snapshot().runId){
+      pane.status.textContent="Recover run requires an empty chat. Split chat or choose New chat.";
+      return;
+    }
     const generation=++pane.generation;
+    pane.findQuery="";pane.findInput.value="";pane.findCursor=0;pane.findOpen=false;
     pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
     pane.turns.push({role:"assistant",text:""});
     pane.activeTurn=pane.turns.length-1;
     pane.busy=true;this.render(pane);
-    try{await pane.run.recover(runId);}
-    catch(err){
+    try{
+      const recovered=await pane.run.recover(runId);
+      if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation)return;
+      if(recovered.phase==="interrupted"||recovered.phase==="failed"){
+        pane.turns=[];pane.activeTurn=-1;
+        pane.busy=false;this.render(pane);
+      }
+    }catch(err){
       if(this.panes.get(paneId)!==pane||generation!==pane.generation)return;
+      pane.turns=[];pane.activeTurn=-1;
       pane.busy=false;pane.status.textContent="Recovery failed · "+errorCode(err);
       this.render(pane);
     }
