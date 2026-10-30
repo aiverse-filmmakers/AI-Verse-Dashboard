@@ -812,6 +812,32 @@ test("MC2.5 paired chat panes resize by keyboard and pointer without losing thei
   assert.ok((await width())<610,"desktop width cannot overflow the mobile viewport");
   assert.deepEqual(errors,[]);
 });
+test("Recover run refuses to mix an existing conversation, then reads same run in empty pane",async t=>{
+  const {page,errors}=await pageFor(t),before=requests.length;
+  const pane=page.locator(".live-chat-pane").first();
+  await pane.locator(".live-chat-input").fill("Original independent transcript");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  const status=await pane.locator(".live-chat-status").innerText();
+  const runId=status.match(/run-\d+/)?.[0];
+  assert.ok(runId);
+  const original=await pane.locator(".live-chat-message").allTextContents();
+  await pane.locator(".live-chat-run-id").fill(runId);
+  await pane.getByRole("button",{name:"Recover run"}).click();
+  await pane.locator(".live-chat-status").getByText(/requires an empty chat/).waitFor();
+  assert.deepEqual(await pane.locator(".live-chat-message").allTextContents(),original);
+  assert.equal(requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.get").length,1,
+    "blocked manual recovery cannot probe the Gateway");
+  await pane.getByRole("button",{name:"New chat"}).click();
+  await pane.locator(".live-chat-run-id").fill(runId);
+  await pane.getByRole("button",{name:"Recover run"}).click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  assert.equal(await pane.locator(".live-chat-message.user").count(),0,
+    "recovering a run ID cannot fabricate the older user turn");
+  assert.equal(requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+  assert.equal(requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.get").length,2);
+  assert.deepEqual(errors,[]);
+});
 test("MC2.5 retarget invalidates panes and denies cross-workspace recovery",async t=>{
   const {page,errors}=await pageFor(t);
   await page.locator(".live-chat-input").fill("Operator message");
