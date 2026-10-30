@@ -17,6 +17,13 @@
 .live-pane-heading{display:flex;align-items:center;justify-content:space-between;padding:12px;gap:8px;border-bottom:1px solid #eef0f3}
 .live-pane-actions{display:flex;gap:5px;flex-wrap:wrap}
 .live-pane-actions button{font-size:12px;padding:5px 7px}
+.live-pane-run-actions{display:flex;gap:5px;flex-wrap:wrap;padding:7px 11px;
+  align-items:center;border-bottom:1px solid #edf0f4;background:#fbfcfe}
+.live-pane-run-actions button{font-size:11px;padding:4px 7px}
+.live-pane-run-actions .live-chat-stop:not(:disabled){border-color:#a6becb;color:#234b65}
+.live-pane-run-actions .live-chat-pause:not(:disabled),
+.live-pane-run-actions .live-chat-resume:not(:disabled){border-color:#8faac4;background:#edf4fb;color:#254d77}
+.live-pane-run-actions button:focus-visible{outline:2px solid #587fac;outline-offset:2px}
 .live-chat-scope{font-size:11px;color:#697583;padding:8px 12px;border-bottom:1px solid #f1f3f5}
 .live-chat-log{flex:1;min-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:16px 14px}
 .live-chat-empty{color:#7b8795;margin:auto;text-align:center;max-width:220px;font-size:13px}
