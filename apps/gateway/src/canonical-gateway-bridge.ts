@@ -26,6 +26,7 @@ export interface ApprovedCanonicalGateway {
 }
 const methods = new Set([
   "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.create", "aiverse.gateway.run.get",
+  "aiverse.gateway.run.diagnostics",
   "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
   "aiverse.gateway.run.cancel", "aiverse.gateway.run.pause", "aiverse.gateway.run.resume",
 ]);
@@ -39,6 +40,7 @@ const input = z.object({
   sessionId: identifier.optional(),
 }).strict();
 const getInput = z.object({runId:identifier}).strict();
+const diagInput=z.object({runId:identifier,sessionId:identifier}).strict();
 const cancelInput=z.object({runId:identifier,sessionId:identifier,
   operationId:identifier}).strict();
 // Pause and Resume also require the exact canonical session and a unique
@@ -58,6 +60,7 @@ const SAFE_CODES = new Set([
   "HTTP_401", "HTTP_403", "HTTP_404", "HTTP_409", "HTTP_429", "HTTP_503",
   "SESSION_NOT_FOUND", "INVALID_HISTORY_QUERY", "INVALID_HISTORY_SCOPE",
   "HISTORY_BINDING_MISMATCH", "HISTORY_INDEX_TOO_LARGE",
+  "DIAGNOSTICS_INVALID",
   "RUN_CONTROL_NOT_AUTHORIZED", "RUN_NOT_CANCELABLE",
   "RUN_NOT_PAUSABLE", "RUN_NOT_RESUMABLE",
 ]);
@@ -104,6 +107,61 @@ function boundedRun(run:GatewayRun):Record<string,unknown> {
     ...(typeof output==="string" ? {output:output.slice(0,65_536)} : {}),
     ...safeRunReceipt(run),
     source:"canonical-gateway",
+  };
+}
+/** Narrow read-only G06.1 Control Center projection. Canonical advanced
+ * diagnostics may contain private scope/principal, source refs, deep retrieval
+ * request traces or context fingerprints. None can cross /rpc. */
+function safeDiagnostics(raw:Record<string,unknown>,run:GatewayRun):Record<string,unknown>{
+  const invalid=():never=>{throw new GatewayTransportError("DIAGNOSTICS_INVALID");};
+  const record=(v:unknown):Record<string,unknown>|null=>
+    v&&typeof v==="object"&&!Array.isArray(v)?v as Record<string,unknown>:null;
+  const scope=record(raw.scope),safety=record(raw.safety);
+  if(raw.schema_version!=="1.0"||raw.kind!=="gateway_advanced_diagnostics"
+    ||raw.run_id!==run.run_id||raw.session_id!==run.session_id
+    ||raw.status!==run.status||!scope
+    ||scope.system_id!==run.system_id||scope.workspace_id!==run.workspace_id
+    ||scope.principal!==run.principal||!safety
+    ||safety.raw_message_content_included!==false
+    ||safety.prompts_included!==false
+    ||safety.chain_of_thought_included!==false)invalid();
+  const count=(v:unknown):number|undefined=>{
+    if(v===undefined||v===null)return undefined;
+    if(typeof v!=="number"||!Number.isSafeInteger(v)||v<0||v>1_000_000_000_000)
+      invalid();
+    return v;
+  };
+  const numbers=(v:Record<string,unknown>,fields:readonly string[])=>{
+    const out:Record<string,number>={};
+    for(const name of fields){const n=count(v[name]);if(n!==undefined)out[name]=n;}
+    return out;
+  };
+  const yes=(obj:Record<string,unknown>,field:string)=>{
+    if(typeof obj[field]!=="boolean")invalid();return obj[field] as boolean;
+  };
+  const context=raw.context===null?null:record(raw.context);
+  const retrieval=raw.retrieval===null?null:record(raw.retrieval);
+  const archive=record(raw.archive),folds=record(raw.folds);
+  if(!archive||!folds||(raw.context!==null&&!context)
+    ||(raw.retrieval!==null&&!retrieval)
+    ||archive.raw_content_included!==false
+    ||archive.chain_of_thought_included!==false)invalid();
+  const state=context?.status;
+  if(state!==undefined&&state!==null&&(typeof state!=="string"
+    ||!/^[a-z][a-z0-9_-]{0,47}$/.test(state)))invalid();
+  return {
+    source:"canonical-gateway",workspaceId:run.workspace_id,
+    runId:run.run_id,sessionId:run.session_id,status:run.status,
+    context:context?{...(state?{status:state}:{}),
+      ...numbers(context,["window_tokens","estimated_tokens_before","estimated_tokens_after"]),
+      configured:yes(context,"configured"),foldScheduled:yes(context,"fold_scheduled"),
+      emergencyTailShrink:yes(context,"emergency_tail_shrink")}:null,
+    retrieval:retrieval?numbers(retrieval,[
+      "source_reads","gateway_source_range_reads","legacy_reads"]):null,
+    archive:numbers(archive,["retrieval_depth"]),
+    folds:{...numbers(folds,["valid_cards","invalid_cards","max_level"]),
+      pendingFoldWork:yes(folds,"pending_fold_work")},
+    safety:{rawContentIncluded:false,promptsIncluded:false,chainOfThoughtIncluded:false},
   };
 }
 export class CanonicalGatewayBridge {
@@ -333,6 +391,21 @@ export class CanonicalGatewayBridge {
             },
           });
           return respond(true,boundedRun(result));
+        }
+        if(frame.method==="aiverse.gateway.run.diagnostics"){
+          const parsed=diagInput.safeParse(frame.params);
+          if(!parsed.success)throw new GatewayTransportError("INVALID_ENVELOPE");
+          const {runId,sessionId}=parsed.data;
+          const run=await client.getRun(runId,signal);
+          if(run.session_id!==sessionId)
+            throw new GatewayTransportError("SESSION_BINDING_MISMATCH");
+          const diagnostics=await client.getRunDiagnostics(runId,signal);
+          if(this.registry.resolveRoot(system)!==configured.root
+            ||this.registry.bindingGeneration(system)!==configured.generation)
+            throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
+          if(workspace!=="operator")getWorkspace(this.registry,system,workspace);
+          if(signal?.aborted)throw new GatewayTransportError("ABORTED");
+          return respond(true,safeDiagnostics(diagnostics,run));
         }
         if(frame.method==="aiverse.gateway.run.get"){
           const parse=getInput.safeParse(frame.params);
