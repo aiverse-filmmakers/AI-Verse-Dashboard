@@ -184,8 +184,13 @@ const server=createServer(async(req,res)=>{
     }else if(frame.method==="aiverse.gateway.run.create"){
       const runId="run-"+(++next);
       result={runId,sessionId:frame.params?.sessionId??"session-"+next,systemId:"canonical-a",
-        workspaceId:frame.workspaceId,status:"running",source:"canonical-gateway"};
+        workspaceId:frame.workspaceId,status:"running",source:"canonical-gateway",
+        usage:{inputTokens:0,outputTokens:0,actions:0},
+        createdAt:"2026-10-30T11:00:00.000Z",runtimeKind:"deterministic"};
       runs.set(runId,{...result,output:"Authoritative answer "+next,
+        usage:{inputTokens:123,outputTokens:48,actions:2},
+        completedAt:"2026-10-30T11:00:06.000Z",
+        privateBearer:"do-not-show",reportedCost:99.99,
         dropFirstStream:frame.params?.messages?.some(m=>m.content==="Test dropped stream")===true,
         slowStream:frame.params?.messages?.some(m=>
           ["Test stop active run","Test pause and resume same run"].includes(m.content))===true,
@@ -480,6 +485,36 @@ test("Check run tracks externally paused and completed canonical state without c
   assert.equal(calls.filter(r=>r.method==="aiverse.gateway.run.get").length,2);
   assert.equal(calls.filter(r=>r.method==="aiverse.gateway.run.pause").length,0);
   assert.equal(calls.filter(r=>r.method==="aiverse.gateway.run.resume").length,0);
+  assert.deepEqual(errors,[]);
+});
+test("per-pane Run details shows only actual Gateway usage and never treats it as billed cost",async t=>{
+  const {page,errors}=await pageFor(t);
+  const pane=page.locator(".live-chat-pane").first();
+  const details=pane.getByRole("button",{name:"Run details"});
+  assert.equal(await details.isDisabled(),true);
+  await pane.locator(".live-chat-input").fill("Get canonical execution evidence");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  assert.equal(await details.isEnabled(),true);
+  assert.equal(await details.getAttribute("aria-expanded"),"false");
+  await details.click();
+  const receipt=pane.locator(".live-chat-receipt");
+  assert.equal(await receipt.isVisible(),true);
+  assert.equal(await details.getAttribute("aria-expanded"),"true");
+  assert.match(await receipt.innerText(),/Canonical Gateway, authenticated owner read/);
+  assert.match(await receipt.innerText(),/Input tokens \(Gateway\)\s*123/);
+  assert.match(await receipt.innerText(),/Output tokens \(Gateway\)\s*48/);
+  assert.match(await receipt.innerText(),/Actions \(Gateway\)\s*2/);
+  assert.match(await receipt.innerText(),/deterministic/);
+  assert.match(await receipt.innerText(),/not Token-verified billing/);
+  assert.doesNotMatch(await receipt.innerText(),/do-not-show|privateBearer|reportedCost|99\.99/);
+  await details.click();
+  assert.equal(await receipt.isVisible(),false);
+  await pane.getByRole("button",{name:"New chat"}).click();
+  assert.equal(await details.isDisabled(),true);
+  assert.equal(await receipt.isVisible(),false);
+  await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"film"}));
+  assert.equal(await details.isDisabled(),true);
   assert.deepEqual(errors,[]);
 });
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
