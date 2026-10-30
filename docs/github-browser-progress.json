@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 46,
+  "provisionalEngineeringEarned": 47,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -37,9 +37,9 @@
       "id": "chat",
       "title": "Personal chat and canonical Gateway",
       "budget": 15,
-      "provisionalEarned": 10,
+      "provisionalEarned": 11,
       "evidenceStatus": "source-and-ci",
-      "remaining": "Real owner-scoped virtual-model status, interrupted-run reconnection, and TTY-host opt-in Stop with canonical cancellation/continuation have cross-platform, Chromium and pinned Gateway CI. Still pending: owner-authorized physical model choice, attachment/asset owner, Skills/commands, native owner identities, consent and private Mac acceptance."
+      "remaining": "Canonical physical provider/model choice remains blocked on owner-issued per-provider per-workspace catalog and enforced admission. Host-gated Pause/Resume/Stop, active-run status refresh, history, checkpoint SSE replay, exact-session controls are source tested including real pinned canonical Gateway deterministic persisted run. Still missing owner-backed attachments, Skills, private Mac session/consent and acceptance."
     },
     {
       "id": "canvas",
@@ -264,7 +264,18 @@
       "scope": "Open past Chat sessions into non-destructive split; view >50 Gateway-owned runs in 25-row pages; 200-run browser bound; duplicate/scope/epoch validation; no browser persistence or unverified model context",
       "status": "source commit pushed, exact-head CI independently verified by GitHub Actions",
       "score": "No increment: G02.2 quality gain, Chat 10/15 and provisional GitHub/browser 46/100 unchanged; formal 15/100"
+    },
+    "canonicalRunPauseResume": {
+      "sourceCommit": "bc9a171ad691e6f5cab3551f897b15deb7c5f4dd",
+      "dashboardCi": 41035390400,
+      "browserCi": 41035390419,
+      "canonicalGatewayCi": 41035390399,
+      "progressCi": 41035390437,
+      "ledger": "docs/DEVELOPMENT-TASKS-607-627-2026-10-30.md",
+      "scope": "Separate interactive owner-granted persistent canonical Pause/Resume, exact session/OS rebind pre-POST gate, SSE replay fence for repeated resumes, Stop paused run, read-only Check run status; real pinned Gateway Store paused->resumed->completed",
+      "status": "Functional source verified across four CI suites, draft PR; private Mac and physical providers unaccepted",
+      "score": "Chat 10→11/15 and GitHub/browser 46→47/100 provisional; formal 15/100 unchanged"
     }
   },
-  "nextUnverifiedChange": "Task 607: owner-enforced approved physical model catalog/consent/selection via Gateway+Connections; until supported, never expose fabricated model choices. Next independent work could admit canonical Data assets/OS Skills with real owner grants."
+  "nextUnverifiedChange": "Task 628: canonical Gateway+Connections owner-approved physical model catalog/run authorization and revocation; then native asset/Skills integration and production owner acceptance."
 }
