@@ -243,3 +243,10 @@ The next achievable work within the **fixed existing milestone plan** was G06.1,
 G06.1 also now reads an owner-generated `system.registry.summary` for **registered system counts, authorized system counts and selected-OS workspace count**. It uses the real SystemRegistry and local OS manifest, with strict per-system/workspace validation. The sensitive full `system.list` and `workspace.list` routes remain forbidden to the paired browser. A two-OS local pairing regression test verifies accurate counts, no disclosure of the second system's name or root, and live count changes after unregister.
 
 See [Tasks 649–660](DEVELOPMENT-TASKS-649-660-2026-10-30.md) and [Tasks 661–669](DEVELOPMENT-TASKS-661-669-2026-10-30.md). G06.1 stays **IN PROGRESS** pending full multi-system Control Center lifecycle and private-owner acceptance. This is not a Chat feature and earns **no Chat 12/15**. Overall provisional GitHub/browser remains **47/100**; Chat/Gateway **11/15**; formal accepted **15/100**. No merge or native owner deploy.
+
+
+## G06.2 Tasks 670–674: Owner approval-required observation, 30 October 2026
+
+[Development ledger](DEVELOPMENT-TASKS-670-674-2026-10-30.md). The Agent Activity panel now preserves genuine canonical Gateway run-history statuses including `awaiting_approval`, `paused_recovery_required`, `paused_no_progress`, `resuming`, `budget_limited` and `parked`. Waiting approval is clearly displayed as **read-only**. Local in-memory activity adds an **Approvals** filter over actual `approval` event kinds, showing only trusted status, role and time, never action body, private prompt, credential or approval token. No decision POST, permission escalation or synthetic approval receipt is implemented.
+
+This advances existing **G06.2 in progress** but does not complete tasks, bots, audited approval decisions or background automations. Four CI suites passed on functional source `29428c3000bdb58ed19b2453309121ae138c632d`. **Provisional Chat 11/15, overall GitHub/browser 47/100, formal accepted 15/100**, unchanged. No deployment/merge or native owner Mac acceptance.
