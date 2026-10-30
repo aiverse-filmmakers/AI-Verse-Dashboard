@@ -711,6 +711,27 @@ test("G06.1 stale diagnostics never repaint the Workspace Status panel after OS 
   assert.equal(await panel.getByRole("textbox",{name:"Diagnostic session ID"}).inputValue(),"");
   assert.deepEqual(errors,[]);
 });
+test("G06.1 changing an inspection ID while Gateway responds revokes the old result",async t=>{
+  const {page,errors}=await pageFor(t);
+  const pane=page.locator(".live-chat-pane").first();
+  await pane.locator(".live-chat-input").fill("Test slow diagnostics");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  const run=[...runs.values()].at(-1);
+  await page.getByRole("button",{name:"Workspace status"}).click();
+  const panel=page.locator(".personal-diagnostics");
+  await panel.getByRole("textbox",{name:"Diagnostic run ID"}).fill(run.runId);
+  await panel.getByRole("textbox",{name:"Diagnostic session ID"}).fill(run.sessionId);
+  await panel.getByRole("button",{name:"Inspect run"}).click();
+  await panel.locator(".personal-diagnostics-run-result").getByText(/Inspecting canonical run/).waitFor();
+  await panel.getByRole("textbox",{name:"Diagnostic session ID"}).fill("different-session");
+  await page.waitForTimeout(450);
+  const message=await panel.locator(".personal-diagnostics-run-result").innerText();
+  assert.match(message,/Run\/session changed/);
+  assert.doesNotMatch(message,/Source reads|Canonical run diagnostics/);
+  assert.equal(await panel.getByRole("button",{name:"Inspect run"}).isEnabled(),true);
+  assert.deepEqual(errors,[]);
+});
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
   const {page,errors}=await pageFor(t);
   const before=requests.length;
