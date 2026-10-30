@@ -68,7 +68,7 @@
           "state": "in-progress",
           "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
           "evidenceRef": "apps/web/src/personal-model-status.ts",
-          "partialEvidence": "Owner-scoped actual virtual model inventory, exact run/session streaming and reconnect, host-privileged Stop and independently host-privileged canonical Pause/Resume, SSE multi-cycle replay fence, persisted checkpoint and read-only Check run. Source bc9a171ad691e6f5cab3551f897b15deb7c5f4dd passed four CI suites including pinned actual Gateway Store pause->resume->complete. Physical provider selection, signed consent, owner Mac acceptance and attachments/Skills remain unimplemented."
+          "partialEvidence": "Owner-scoped actual virtual model inventory, exact run/session streaming and reconnect, host-privileged Stop and independently host-privileged canonical Pause/Resume, SSE multi-cycle replay fence, persisted checkpoint and read-only Check run. Source bc9a171ad691e6f5cab3551f897b15deb7c5f4dd passed four CI suites including pinned actual Gateway Store pause->resume->complete. Physical provider selection is NOT implemented. Signed provider consent, owner Mac acceptance, canonical attachments and OS Skills are also NOT implemented."
         },
         {
           "id": "G02.4",
