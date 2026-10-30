@@ -1,0 +1,39 @@
+{
+  "recorded_at_utc": "2026-10-26T16:30:13Z",
+  "dashboard_revision": "bf519379ea141d77e182e75ef51872f16750a905",
+  "node_version": "v24.7.0",
+  "proof_process_exit_code": 0,
+  "focused_mc1_tests": { "passed": 9, "failed": 0 },
+  "result": {
+    "success": true,
+    "evidence": "real pinned AI-Verse OS host and supported read-only subprocess runtime HTTP dispatch",
+    "os_source_sha": "d490db4c02e7b72c5cc8eae07080eccfa4dc3989",
+    "host_adapter": "ai-verse-os:host",
+    "runtime_kind": "json-subprocess",
+    "gateway_merge": "9c42bdc21073020c3d7194446b0f2ae929eb25a2",
+    "mission_control_pin": "570b74195b0837131ae015a06fe466472f12001a",
+    "system_id": "ci-synthetic",
+    "workspace_id": "operator",
+    "marker_present": true,
+    "dispatch_model": "local/aiverse",
+    "compatibility_alias": false,
+    "executed_platform": "darwin",
+    "member_release": false,
+    "owner_machine_proved": false,
+    "real_model_or_owner_runtime_proved": false
+  },
+  "environment": {
+    "inherited_variable_allowlist": ["PATH", "HOME", "TMPDIR"],
+    "owner_gateway_token_supplied": false,
+    "private_os_copied": false,
+    "public_template_only": true,
+    "local_loopback_only": true
+  },
+  "acceptance": {
+    "MC1_4": "BLOCKED",
+    "G4_1": "UNACCEPTED",
+    "G4_2": "UNACCEPTED",
+    "dashboard_points": 11,
+    "gateway_slices": "8/10"
+  }
+}
