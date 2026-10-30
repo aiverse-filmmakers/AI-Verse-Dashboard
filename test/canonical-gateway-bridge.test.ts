@@ -28,6 +28,8 @@ async function listen(server:Server):Promise<number>{
  return address.port;
 }
 function gatewayFixture(options:{slowEvents?:boolean;onRunGet?:()=>void;
+  onDiagnosticsGet?:()=>void;
+  diagnosticsOverride?:Record<string,unknown>;
   initialStatus?:string}={}){
  const received:{method:string;path:string;auth:string;key:string;body:unknown}[]=[];
  let storedRunStatus=options.initialStatus??"running";
@@ -83,6 +85,7 @@ function gatewayFixture(options:{slowEvents?:boolean;onRunGet?:()=>void;
    }
    if(req.method==="POST"&&req.url==="/v1/runs")return send(202,run);
    if(req.method==="GET"&&req.url==="/v1/runs/run-a/diagnostics"){
+     options.onDiagnosticsGet?.();
      return send(200,{
        schema_version:"1.0",kind:"gateway_advanced_diagnostics",
        run_id:"run-a",session_id:"session-a",status:storedRunStatus,
@@ -100,6 +103,7 @@ function gatewayFixture(options:{slowEvents?:boolean;onRunGet?:()=>void;
          catalog_fingerprint:"never-expose-catalog"},
        safety:{raw_message_content_included:false,prompts_included:false,
          chain_of_thought_included:false},
+       ...(options.diagnosticsOverride??{}),
      });
    }
    if(req.method==="GET"&&req.url==="/v1/runs/run-a"){
@@ -343,6 +347,59 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
    assert.equal(foreign.data.ok,false);
    assert.equal((foreign.data.error as {code:string}).code,"RUN_BINDING_MISMATCH");
    assert.ok(upstream.received.length>=before);
+ });
+ it("G06.1 denies forged diagnostics identity, private flags and forged workspace after GET",async()=>{
+   const variants=[
+     {schema_version:"9.0"},
+     {run_id:"run-foreign"},
+     {session_id:"session-foreign"},
+     {scope:{system_id:"canonical-a",workspace_id:"film",principal:"different-principal"}},
+     {scope:{system_id:"canonical-a",workspace_id:"other",principal:"local-operator-secret"}},
+     {safety:{raw_message_content_included:true,prompts_included:false,
+       chain_of_thought_included:false}},
+     {archive:{retrieval_depth:1,raw_content_included:true,
+       chain_of_thought_included:false}},
+     {folds:{valid_cards:-5,invalid_cards:0,max_level:1,pending_fold_work:false}},
+   ];
+   for(const diagnosticsOverride of variants){
+     const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+     const upstream=gatewayFixture({diagnosticsOverride}),port=await listen(upstream.server);
+     closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+     const bridge=new CanonicalGatewayBridge(reg,[{
+       dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",
+       origin:"http://127.0.0.1:"+port,resolveBearer:()=>"actual-host-gateway-token",
+     }]);
+     const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),
+       new SubscriptionHub(),{port:0,canonicalBridge:bridge});
+     closing.push(()=>dash.close());
+     const reply=await rpc(dash.port,dash.authToken,
+       frame("aiverse.gateway.run.diagnostics",a.systemId,"film",{
+         runId:"run-a",sessionId:"session-a",
+       }));
+     assert.equal(reply.data.ok,false,JSON.stringify(diagnosticsOverride));
+     assert.equal((reply.data.error as {code:string}).code,"DIAGNOSTICS_INVALID");
+     assert.doesNotMatch(JSON.stringify(reply.data),/private_prompt|never-expose|different-principal/);
+   }
+ });
+ it("G06.1 diagnostics fail after OS rebind in upstream GET, before any projection",async()=>{
+   const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+   const upstream=gatewayFixture({onDiagnosticsGet:()=>reg.rebind(a.systemId,a.root)});
+   const port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",
+     origin:"http://127.0.0.1:"+port,resolveBearer:()=>"actual-host-gateway-token",
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),
+     new SubscriptionHub(),{port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   const reply=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.diagnostics",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-a",
+     }));
+   assert.equal(reply.data.ok,false);
+   assert.equal((reply.data.error as {code:string}).code,"GATEWAY_MAPPING_STALE");
+   assert.equal(upstream.received.filter(x=>x.method==="POST").length,0);
  });
  it("Pause/Resume are denied by default even when Stop is host-enabled",async()=>{
    const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
