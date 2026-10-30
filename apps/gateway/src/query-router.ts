@@ -27,7 +27,7 @@ import type { PurposeMutationBridge } from "./purpose-mutation-bridge.js";
 export const GATEWAY_VERSION = "gateway-0.1.0-alpha.0";
 export const GATEWAY_PHASE = "phase-2-live" as const;
 const SUPPORTED_QUERIES = [
-  "system.list", "system.get", "system.info", "workspace.list", "workspace.get", "operator.activity",
+  "system.list", "system.registry.summary", "system.get", "system.info", "workspace.list", "workspace.get", "operator.activity",
   "workspace.health", "workspace.inbox.list", "purpose.get", "task.list", "agent.list",
   "agent.sessions", "run.list", "run.get", "run.logs", "source.preview",
 ] as const;
@@ -110,6 +110,22 @@ export class QueryRouter {
       case "protocol.capabilities":
         return { phase: GATEWAY_PHASE, methods: [...SUPPORTED_QUERIES, ...SUPPORTED_PURPOSE_CONTROLS], maxParamsBytes: 65536 };
       case "system.list": return { systems: this.registry.listPublic() };
+      case "system.registry.summary": {
+        const systemId=req.systemId as string,workspaceId=req.workspaceId as string;
+        if(!systemId||!workspaceId)throw Object.assign(Error("Scope required"),{
+          code:"SYSTEM_REQUIRED"});
+        // resolveRoot revalidates the trusted registered OS identity; an
+        // unauthorized or changed root cannot advertise a healthy summary.
+        this.registry.resolveRoot(systemId);
+        if(workspaceId!=="operator")getWorkspace(this.registry,systemId,workspaceId);
+        const rows=this.registry.listPublic();
+        const selected=rows.find(entry=>entry.systemId===systemId);
+        if(!selected||!selected.authorized)throw Object.assign(
+          Error("Selected OS is not authorized"),{code:"SYSTEM_NOT_REGISTERED"});
+        return {source:"dashboard-os-registry",systemId,workspaceId,
+          registered:rows.length,authorized:rows.filter(x=>x.authorized).length,
+          selectedAuthorized:true};
+      }
       case "system.get":
       case "system.info": {
         const rec = this.registry.get(req.systemId as string);
