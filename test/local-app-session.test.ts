@@ -142,6 +142,18 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.equal("root" in (osInfoBody.result?.system??{}),false,
       "public paired registry projection must never reveal OS filesystem root");
     assert.equal("rootIdentity" in (osInfoBody.result?.system??{}),false);
+    const summary=await rpc(server.port,{
+      type:"req",v:"1.0",id:"registry-summary",method:"system.registry.summary",
+      systemId,workspaceId:"operator",
+    },{cookie,origin:base});
+    assert.equal(summary.status,200);
+    const summaryBody=await summary.json() as {ok:boolean;result:Record<string,unknown>};
+    assert.equal(summaryBody.ok,true);
+    assert.deepEqual(summaryBody.result,{
+      source:"dashboard-os-registry",systemId,workspaceId:"operator",
+      registered:1,authorized:1,selectedAuthorized:true,
+    });
+    assert.doesNotMatch(JSON.stringify(summaryBody),/Test OS|root|password|secret/);
     const otherPublic=await rpc(server.port,{
       type:"req",v:"1.0",id:"native-os-other-system",method:"system.get",
       systemId:"another-system",workspaceId:"operator",
@@ -358,6 +370,10 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       workspaceId:"film"}),false);
     assert.equal(session.isAllowedFrame({method:"system.get",systemId,
       workspaceId:"operator"}),true);
+    assert.equal(session.isAllowedFrame({method:"system.registry.summary",systemId,
+      workspaceId:"operator"}),true);
+    assert.equal(session.isAllowedFrame({method:"system.list",systemId,
+      workspaceId:"operator"}),false);
     assert.equal(session.isAllowedFrame({method:"aiverse.gateway.models",systemId,
       workspaceId:"operator"}),true);
     assert.equal(session.isAllowedFrame({method:"aiverse.gateway.run.cancel",systemId,
