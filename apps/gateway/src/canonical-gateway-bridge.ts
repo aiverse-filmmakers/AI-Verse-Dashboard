@@ -83,7 +83,7 @@ function safeRunReceipt(run:GatewayRun):Record<string,unknown>{
   }
   const timestamp=(value:unknown)=>typeof value==="string"
     &&value.length>=20&&value.length<=35
-    &&/^\\d{4}-\\d{2}-\\d{2}T/.test(value)
+    &&/^\d{4}-\d{2}-\d{2}T/.test(value)
     &&Number.isFinite(Date.parse(value))?value:undefined;
   const runtime=extra.runtime;
   const kind=runtime&&typeof runtime==="object"&&!Array.isArray(runtime)
