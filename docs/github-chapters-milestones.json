@@ -68,7 +68,7 @@
           "state": "in-progress",
           "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
           "evidenceRef": "apps/web/src/personal-model-status.ts",
-          "partialEvidence": "Canonical virtual model status plus host-TTY-opt-in Stop, scoped run/session/operation and stale OS lease checks, same-session canceled continuation and interrupted replay. Exact functional source f8571dd32630c69a0534ac3d0a2d0684739eafbc passed 4 CI jobs. Physical provider/model choice, owner grants, attachments and Skills are NOT implemented or accepted."
+          "partialEvidence": "Owner-scoped actual virtual model inventory, exact run/session streaming and reconnect, host-privileged Stop and independently host-privileged canonical Pause/Resume, SSE multi-cycle replay fence, persisted checkpoint and read-only Check run. Source bc9a171ad691e6f5cab3551f897b15deb7c5f4dd passed four CI suites including pinned actual Gateway Store pause->resume->complete. Physical provider selection, signed consent, owner Mac acceptance and attachments/Skills remain unimplemented."
         },
         {
           "id": "G02.4",
@@ -341,5 +341,5 @@
       ]
     }
   ],
-  "lastReconciliation": "2026-10-30: G02.2 transcript history and non-destructive split navigation strengthened; G02.2 remains implemented in draft; G02.3 still in progress without approved physical provider choice. Chat 10/15, GB 46/100 provisional, FA 15/100 formally accepted. 10 chapters, 40 milestones unchanged."
+  "lastReconciliation": "2026-10-30: G02.3 checkpoint control + remote status increment verified on functional source; milestone remains IN PROGRESS pending actual owner-approved physical model switching. Chat 11/15, GitHub/browser 47/100 provisional; formal 15/100 accepted unchanged. Fixed 10 chapters/40 milestones: 4 verified, 8 draft-implemented, 5 in-progress, 23 planned."
 }
