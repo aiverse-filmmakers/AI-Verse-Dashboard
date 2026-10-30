@@ -1,5 +1,11 @@
 # Mission Control -> AI-Verse Dashboard Execution Tracker
 
+## Formal acceptance reconciliation, 30 October 2026
+
+**Current original MC roadmap accepted: 17/100** (MC0+MC1 previously accepted 15, plus MC2.1 original design-only 2). [MC2.1 PR #43](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/43) passed 3-platform CI 40711556090, received operator-delegated AI-assisted Code Review 5718854282 and merged at `297f99b9380c9905fbe6c359668f504142c2ee89`. [Main's acceptance tracker update PR #45](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/45) is merged. **MC2.2 is next formal implementation gate** (possible 20/100). Personal-first scope reweighting is still pending; remote GB 47/100 and Chat 11/15 remain provisional; no private Mac acceptance.
+
+Historical checkpoint paragraphs below that say 15/100 or "next MC2.1" retain their dates and must not override this current verified score. No implementation in draft #42 is accepted by the design-only merge. Reviews must use the canonical [Code Review workflow](REVIEW-ACCEPTANCE-WORKFLOW-2026-10-30.md) with exact-head evidence and no false independent signoff.
+
 ## Personal-first amendment — 27 October 2026 (review draft)
 
 The operator has requested Personal-first delivery with always-present agent chat, app awareness/control, shared chat tools and later specialist Filmmaking. See the [living plan](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md) for the explicit scope and ordering amendment. The following original requirements/accounting remain historical baseline until reconciliation is reviewed; do not interpret the full-shell assumption or fixed future order as approval of the amended design. MC0/MC1 remain accepted at 15 baseline points. New scope has not been estimated or accepted.
