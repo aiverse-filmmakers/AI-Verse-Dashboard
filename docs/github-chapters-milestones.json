@@ -59,7 +59,8 @@
           "title": "Multi-turn persistence, restart and conversation continuity",
           "state": "implemented",
           "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
-          "evidenceRef": "scripts/mc2/ci-canonical-proof.mjs"
+          "evidenceRef": "scripts/mc2/ci-canonical-proof.mjs",
+          "partialEvidence": "Real Gateway session and run history, authenticated resume/continuation, 20-session pages and 25-run transcript pages beyond the first 50 (up to 200 displayed), strict duplicate and workspace-change fences, split preservation, minimized-pane restoration and Chromium 78-run scenario. Older history is display-only, not model context. Source-ledger docs/DEVELOPMENT-TASKS-594-606-2026-10-30.md. Implemented in draft only; no private owner Mac acceptance."
         },
         {
           "id": "G02.3",
@@ -340,5 +341,5 @@
       ]
     }
   ],
-  "lastReconciliation": "2026-10-30: source-backed G02.3 incremental host-gated Stop and same-session continuation; G02.3 remains in progress. Chat 10/15, GB 46/100 provisional, FA 15/100 accepted. Fixed 10 chapters/40 milestones: 4 verified, 8 implemented, 5 in progress, 23 planned."
+  "lastReconciliation": "2026-10-30: G02.2 transcript history and non-destructive split navigation strengthened; G02.2 remains implemented in draft; G02.3 still in progress without approved physical provider choice. Chat 10/15, GB 46/100 provisional, FA 15/100 formally accepted. 10 chapters, 40 milestones unchanged."
 }
