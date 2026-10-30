@@ -427,7 +427,6 @@ export class PersonalChatRunController {
     if(!runId||!sessionId||!SAFE_ID.test(runId))fail("CHAT_REFRESH_UNAVAILABLE");
     const scope=requiredScope(this.client.getScope());
     const epoch=this.epoch,selection=this.client.selectionVersion();
-    const before=this.view.phase;
     try{
       const response=await this.client.getGatewayRun(runId);
       if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
