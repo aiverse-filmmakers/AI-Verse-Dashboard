@@ -109,7 +109,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     const panel=page.locator(".personal-diagnostics");
     await panel.waitFor({state:"visible"});
     await page.waitForFunction(()=>{
-      const sources=[...document.querySelectorAll(".personal-diagnostics-source")];
+      const sources=[...document.querySelectorAll(".personal-diagnostics-source:not(.personal-diagnostics-run-result)")];
       return sources.length===5&&sources.every(s=>
         s.getAttribute("data-state")!=="loading");
     },null,{timeout:20000});
