@@ -115,15 +115,7 @@ async function checkInstalledLocalLaunch(origin,gatewayHome,bearer){
   ]);
   assert.notEqual(exit,0,"headless owner-control opt-in must not start Dashboard");
   assert.match(blockedOutput,/RUN_CANCEL_REQUIRES_INTERACTIVE_OWNER/);
-  assert.doesNotMatch(blockedOutput,new RegExp(bearer.replace(/[.*+?^${}()|[\\]\\]/g,"\\  }finally{
-    child.kill("SIGTERM");
-    await Promise.race([
-      new Promise(resolve=>child.once("close",resolve)),
-      pause(3000).then(()=>{child.kill("SIGKILL")})
-    ]);
-  }
-}
-let primaryError;")),
+  assert.equal(blockedOutput.includes(bearer),false,
     "blocked local launcher cannot expose owner token");
 }
 let primaryError;
