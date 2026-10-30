@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectGateway,inspectCanvas,inspectHistory,inspectSystem,inspectWorkspace}
+import {inspectGateway,inspectCanvas,inspectHistory,inspectSystem,inspectWorkspace,
+  inspectRunDiagnostics}
  from "../apps/web/src/personal-diagnostics.js";
 const gw=()=>({source:"canonical-gateway",workspaceId:"operator",
  capabilities:{runCreate:true,runGet:true,conversationLibrary:true,
@@ -198,4 +199,50 @@ test("selected workspace bounds long metadata labels",()=>{
  const result=inspectWorkspace({workspace:{id:"film",name:"N".repeat(2000),
   status:"S".repeat(2000)}},"film");
  assert.ok(result.details.length<130);
+});
+
+
+const runDiagnostics=()=>({
+ source:"canonical-gateway",workspaceId:"operator",
+ runId:"run-1",sessionId:"session-1",status:"completed",
+ context:{status:"ready",window_tokens:20000,configured:true},
+ retrieval:{source_reads:5,gateway_source_range_reads:3},
+ archive:{retrieval_depth:2},
+ folds:{valid_cards:4,invalid_cards:1,pendingFoldWork:false},
+ safety:{rawContentIncluded:false,promptsIncluded:false,chainOfThoughtIncluded:false},
+ extra:{prompt:"secret",deep_retrieval:{token:"never-show"}},
+});
+test("G06.1 canonical run diagnostics present only finite counts and no raw payloads",()=>{
+ const v=inspectRunDiagnostics(runDiagnostics(),"operator","run-1","session-1");
+ assert.equal(v.state,"available");
+ assert.match(v.details,/Source reads: 5/);
+ assert.match(v.details,/Gateway source-range reads: 3/);
+ assert.match(v.details,/Validated folds: 4/);
+ assert.match(v.details,/Raw prompts and traces excluded/);
+ assert.doesNotMatch(JSON.stringify(v),/secret|never-show|prompt:/);
+});
+test("G06.1 rejects foreign workspace, run, session and fake owner source",()=>{
+ for(const item of [
+   {...runDiagnostics(),workspaceId:"another"},
+   {...runDiagnostics(),runId:"other"},
+   {...runDiagnostics(),sessionId:"wrong"},
+   {...runDiagnostics(),source:"preview"}]){
+   assert.throws(()=>inspectRunDiagnostics(item,"operator","run-1","session-1"),
+     /DIAGNOSTICS_SCOPE_MISMATCH/);
+ }
+});
+test("G06.1 diagnostics reject invalid safety flags, forged object shapes or private counters",()=>{
+ for(const item of [
+   {...runDiagnostics(),safety:{...runDiagnostics().safety,promptsIncluded:true}},
+   {...runDiagnostics(),safety:null},
+   {...runDiagnostics(),folds:[]},
+   {...runDiagnostics(),archive:null},
+   {...runDiagnostics(),retrieval:{source_reads:Infinity}},
+   {...runDiagnostics(),retrieval:{source_reads:-1}},
+   {...runDiagnostics(),retrieval:{source_reads:"7"}},
+   {...runDiagnostics(),folds:{valid_cards:1,invalid_cards:0,pendingFoldWork:"yes"}},
+ ]){
+   assert.throws(()=>inspectRunDiagnostics(item,"operator","run-1","session-1"),
+     /DIAGNOSTICS_INVALID_SOURCE/);
+ }
 });
