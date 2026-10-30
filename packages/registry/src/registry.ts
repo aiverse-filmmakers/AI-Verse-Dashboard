@@ -117,6 +117,15 @@ export class SystemRegistry {
   // Host-only generation; changing an approved binding, even to the same path,
   // invalidates every previously established Gateway credential lease.
   private readonly bindingGenerations = new Map<string, number>();
+  // Registry-wide monotonic serial prevents stale lease reuse when a system
+  // ID is unregistered then re-registered at the identical canonical root.
+  private bindingSerial = 0;
+  private bumpBindingGeneration(systemId:string):void{
+    const next=this.bindingSerial+1;
+    if(!Number.isSafeInteger(next))throw new Error("Registry lease generation exhausted");
+    this.bindingSerial=next;
+    this.bindingGenerations.set(systemId,next);
+  }
 
   private assertNoOverlap(root: string, ownSystemId?: string): void {
     const existingId = this.byRoot.get(root);
@@ -197,7 +206,7 @@ export class SystemRegistry {
     };
     this.byId.set(systemId, record);
     this.byRoot.set(root, systemId);
-    this.bindingGenerations.set(systemId, 1);
+    this.bumpBindingGeneration(systemId);
     return cloneRecord(record);
   }
 
@@ -230,7 +239,7 @@ export class SystemRegistry {
     record.lastValidatedAt = new Date().toISOString();
 
     this.byRoot.set(root, systemId);
-    this.bindingGenerations.set(systemId, (this.bindingGenerations.get(systemId) ?? 0) + 1);
+    this.bumpBindingGeneration(systemId);
     return cloneRecord(record);
   }
 
