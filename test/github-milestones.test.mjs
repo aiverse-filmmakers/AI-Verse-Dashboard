@@ -64,12 +64,12 @@ test("scope identity cannot mutate without published rebaseline",()=>{
  const [c,p]=fixture();c.scope="full-filmmaking-3d-suite";
  assert.throws(()=>validateMilestoneLedger(c,p),/INVALID_MILESTONE_LEDGER/);
 });
-test("Canvas, diagnostics, models and responsive chat remain partial rather than accepted",()=>{
+test("Canvas-to-Chat source references and model selection remain partial and not formally accepted",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p);
- assert.equal(r.states["in-progress"],5);
+ assert.equal(r.states["in-progress"],6);
  assert.equal(r.states.verified,4);
  assert.equal(r.states.implemented,8);
- assert.equal(r.states.planned,23);
+ assert.equal(r.states.planned,22);
  assert.equal(r.formalAcceptance,15);
 });
 test("40 milestones do not turn into 40 accepted roadmap points",()=>{
@@ -79,6 +79,14 @@ test("40 milestones do not turn into 40 accepted roadmap points",()=>{
  assert.equal(r.states.verified+r.states.implemented+r.states['in-progress']+r.states.planned+r.states.blocked,40);
 });
 
+test("real canonical Canvas reference does not pretend binary attachments or Skills are complete",()=>{
+ const [c,p]=fixture(),r=validateMilestoneLedger(c,p,{checkFiles:true});
+ const g=c.chapters.find(x=>x.id==="chat").milestones.find(x=>x.id==="G02.4");
+ assert.equal(g.state,"in-progress");
+ assert.match(g.partialEvidence,/binary attachments.*NOT implemented/i);
+ assert.equal(r.formalAcceptance,15);
+ assert.equal(r.githubProvisional,47);
+});
 test("real model inventory does not mark physical model selection as complete",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p,{checkFiles:true});
  const model=c.chapters[1].milestones[2];
