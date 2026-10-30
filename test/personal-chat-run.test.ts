@@ -101,6 +101,29 @@ describe("Personal Chat canonical run controller",()=>{
    f.watchers[0].handlers.event(event("assistant.delta",2,"FORGED LATE"));
    assert.equal(chat.snapshot().output,"");
  });
+ it("stopped responses can continue in the exact session without unverified history",async()=>{
+   let creates=0;
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running",{
+       runId:++creates===1?"run-a":"run-b",
+     });
+     if(method==="aiverse.gateway.run.cancel")return run("canceled");
+     throw Error("unrecognized Gateway method "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("Original prompt","first-key");
+   f.watchers[0].handlers.event(event("assistant.delta",1,"NEVER REUSE DRAFT"));
+   await chat.stop("stop-key");
+   assert.equal(chat.snapshot().phase,"canceled");
+   const next=await chat.send("Continue the discussion","second-key");
+   assert.equal(next.runId,"run-b");
+   assert.equal(next.sessionId,"session-a");
+   assert.equal(next.contextLimited,true);
+   const second=calls.filter(c=>c.method==="aiverse.gateway.run.create")[1];
+   assert.equal(second.params?.sessionId,"session-a");
+   assert.deepEqual(second.params?.messages,[{role:"user",content:"Continue the discussion"}]);
+   assert.doesNotMatch(JSON.stringify(second.params),/NEVER REUSE DRAFT|Original prompt/);
+ });
  it("Stop uncertainty preserves canonical run identity for GET-only recovery",async()=>{
    let failControl=true;
    const {client,calls}=clientWith(method=>{
