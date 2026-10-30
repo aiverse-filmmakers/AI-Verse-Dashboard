@@ -8,7 +8,7 @@ test("keeps 10 known chapters and exactly 40 finite milestones",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p,{checkFiles:true});
  assert.equal(r.chapterCount,10);assert.equal(r.milestoneCount,40);
  assert.equal(r.completedMilestones,4);
- assert.equal(r.githubProvisional,44);
+ assert.equal(r.githubProvisional,45);
  assert.equal(r.formalAcceptance,15);
  assert.equal(r.localProductionAccepted,false);
 });
@@ -64,17 +64,26 @@ test("scope identity cannot mutate without published rebaseline",()=>{
  const [c,p]=fixture();c.scope="full-filmmaking-3d-suite";
  assert.throws(()=>validateMilestoneLedger(c,p),/INVALID_MILESTONE_LEDGER/);
 });
-test("Canvas, diagnostics and responsive chat milestones remain partial rather than accepted",()=>{
+test("Canvas, diagnostics, models and responsive chat remain partial rather than accepted",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p);
- assert.equal(r.states["in-progress"],4);
+ assert.equal(r.states["in-progress"],5);
  assert.equal(r.states.verified,4);
  assert.equal(r.states.implemented,8);
- assert.equal(r.states.planned,24);
+ assert.equal(r.states.planned,23);
  assert.equal(r.formalAcceptance,15);
 });
 test("40 milestones do not turn into 40 accepted roadmap points",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p);
  assert.equal(r.formalAcceptance,15);
- assert.equal(r.githubProvisional,44);
+ assert.equal(r.githubProvisional,45);
  assert.equal(r.states.verified+r.states.implemented+r.states['in-progress']+r.states.planned+r.states.blocked,40);
+});
+
+test("real model inventory does not mark physical model selection as complete",()=>{
+ const [c,p]=fixture(),r=validateMilestoneLedger(c,p,{checkFiles:true});
+ const model=c.chapters[1].milestones[2];
+ assert.equal(model.id,"G02.3");
+ assert.equal(model.state,"in-progress");
+ assert.match(model.partialEvidence,/NOT implemented|NOT implemented|not complete|not implemented/i);
+ assert.equal(r.formalAcceptance,15);
 });
