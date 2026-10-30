@@ -373,7 +373,9 @@ export class PersonalChatRunController {
       interrupted:code=>{
         if(this.valid(epoch,scope,selection) && this.view.runId===runId
           && !TERMINAL.has(this.view.phase)){
+          const dispose=this.unsubscribe;
           this.unsubscribe=undefined;
+          dispose?.();
           this.show({phase:"interrupted",errorCode:code});
         }
       },
