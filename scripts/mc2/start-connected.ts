@@ -51,15 +51,18 @@ let readiness;
 try{readiness=await transport.preflight();}
 catch{fail("CANONICAL_GATEWAY_PREFLIGHT_FAILED")}
 finally{transport.invalidate()}
-const bridge=new CanonicalGatewayBridge(registry,[{
-  dashboardSystemId:systemId,canonicalSystemId:owned.id,origin:address,
-  resolveBearer,
-}]);
-
-// Explicit opt-in only. Never enable an app session silently in CI or pipes.
+// The operator must opt in to paired UI and *separately* to run Stop.
+// Plain connected-host sessions and headless automation cannot enable it.
 const uiEnabled=env.AIVERSE_DASHBOARD_PERSONAL_UI==="1";
+const cancelEnabled=env.AIVERSE_DASHBOARD_ALLOW_RUN_CANCEL==="1";
 if(uiEnabled && (!process.stdin.isTTY || !process.stderr.isTTY))
   fail("LOCAL_APP_INTERACTIVE_TTY_REQUIRED");
+if(cancelEnabled && (!uiEnabled || !process.stdin.isTTY || !process.stderr.isTTY))
+  fail("RUN_CANCEL_REQUIRES_INTERACTIVE_OWNER");
+const bridge=new CanonicalGatewayBridge(registry,[{
+  dashboardSystemId:systemId,canonicalSystemId:owned.id,origin:address,
+  resolveBearer,allowRunCancel:cancelEnabled,
+}]);
 let localApp:LocalApplicationSession|undefined;
 if(uiEnabled){
   let html:string,boot:string,css:string,chat:string;
@@ -95,7 +98,7 @@ const report={
   gatewayModel:"aiverse",gatewayRuntimeKind:readiness.runtime,
   authentication:uiEnabled?"host-cookie-pairing":"local-host-bearer-required",privateBearerExported:false,
   providerLoginPerformed:false,connectionStorageWritten:false,
-  personalUIEnabled:uiEnabled,
+  personalUIEnabled:uiEnabled,runCancelSupported:cancelEnabled,
 };
 // Auth token is deliberately never printed or persisted. The future native
 // app host must hold the Dashboard bearer and supply authorized UI sessions.
@@ -107,6 +110,8 @@ if(localApp){
     "One-time pairing code (expires in five minutes): "+
     localApp.pairingCode()+"\n"+
     "Enter this code in the local browser page, never into ChatGPT.\n"+
+    (cancelEnabled?"Run Stop is enabled by explicit host opt-in.\n":
+      "Run Stop is disabled. To opt in, set AIVERSE_DASHBOARD_ALLOW_RUN_CANCEL=1 before launch.\n")+
     "Host commands: :workspaces, :use <workspace-id>, :use operator, :pending, :approve <id>, :deny <id>, :help\n\n");
   // Only the actual TTY-host controls scope. No browser workspace.list,
   // remote URL, machine path, env key, or unverified arbitrary workspace ID.
