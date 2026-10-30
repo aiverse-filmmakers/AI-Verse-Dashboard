@@ -77,6 +77,7 @@ export class PersonalChatApplication {
   private readonly models:PersonalModelStatus;
   private runControlEpoch=0;
   private runCancelSupported=false;
+  private runPauseResumeSupported=false;
   private historyEpoch=0;
   private historyNextOffset:number|null=null;
   private historyLoading=false;
@@ -148,6 +149,7 @@ export class PersonalChatApplication {
     this.historyClient.retarget(this.selected);
     this.runControlEpoch++;
     this.runCancelSupported=false;
+    this.runPauseResumeSupported=false;
     void this.refreshRunControls();
     this.canvas.retarget(this.selected);
     this.diagnostics.retarget(this.selected);
@@ -174,6 +176,7 @@ export class PersonalChatApplication {
   private async refreshRunControls():Promise<void>{
     const epoch=++this.runControlEpoch,scope={...this.selected};
     this.runCancelSupported=false;
+    this.runPauseResumeSupported=false;
     for(const pane of this.panes.values())this.render(pane);
     try{
       const response=await this.historyClient.gatewayStatus();
@@ -181,11 +184,15 @@ export class PersonalChatApplication {
         ||scope.systemId!==this.selected.systemId
         ||scope.workspaceId!==this.selected.workspaceId)return;
       const value=response.result as Record<string,unknown>;
-      this.runCancelSupported=value?.source==="canonical-gateway"
-        &&value.workspaceId===scope.workspaceId
-        &&value.runCancelSupported===true;
+      const authenticated=value?.source==="canonical-gateway"
+        &&value.workspaceId===scope.workspaceId;
+      this.runCancelSupported=authenticated&&value.runCancelSupported===true;
+      this.runPauseResumeSupported=authenticated
+        &&value.runPauseResumeSupported===true;
     }catch{
-      if(!this.destroyed&&epoch===this.runControlEpoch)this.runCancelSupported=false;
+      if(!this.destroyed&&epoch===this.runControlEpoch){
+        this.runCancelSupported=false;this.runPauseResumeSupported=false;
+      }
     }
     finally{
       if(!this.destroyed&&epoch===this.runControlEpoch)
@@ -382,8 +389,12 @@ export class PersonalChatApplication {
     const reconnect=button("Reconnect run",()=>{void this.reconnectRun(paneId);},"live-chat-reconnect");
     const stop=button("Stop run",()=>{void this.stopRun(paneId);},"live-chat-stop");
     stop.title="Requires the trusted host to authorize run cancellation";
+    const pause=button("Pause run",()=>{void this.checkpointRun(paneId,"pause");},"live-chat-pause");
+    pause.title="Requires the trusted host to authorize checkpoint pause";
+    const resume=button("Resume run",()=>{void this.checkpointRun(paneId,"resume");},"live-chat-resume");
+    resume.title="Requires the trusted host to authorize checkpoint resume";
     const close=button("Close chat",()=>this.closePane(paneId),"");
-    actions.append(open,clear,retry,reconnect,stop,close);heading.append(name,actions);
+    actions.append(open,clear,retry,reconnect,pause,resume,stop,close);heading.append(name,actions);
     const scope=el("div","live-chat-scope","Workspace: "+this.selected.workspaceId);
     const log=el("div","live-chat-log");
     log.setAttribute("role","log");log.setAttribute("aria-live","polite");
@@ -526,6 +537,13 @@ export class PersonalChatApplication {
     // A running run is busy for Send, but that is precisely when Stop is useful.
     if(stop)stop.disabled=!this.runCancelSupported
       ||pane.run.snapshot().phase!=="running" || !pane.run.snapshot().runId;
+    const pause=pane.node.querySelector(".live-chat-pause") as HTMLButtonElement;
+    if(pause)pause.disabled=!this.runPauseResumeSupported
+      ||pane.run.snapshot().phase!=="running" || !pane.run.snapshot().runId;
+    const resume=pane.node.querySelector(".live-chat-resume") as HTMLButtonElement;
+    if(resume)resume.disabled=!this.runPauseResumeSupported
+      ||!["paused","recovery-required"].includes(pane.run.snapshot().phase)
+      ||!pane.run.snapshot().runId;
     const split=pane.node.querySelector(".live-pane-actions .live-chat-split") as HTMLButtonElement;
     if(split)split.disabled=this.panes.size>=MAX_PANES;
   }
@@ -574,6 +592,20 @@ export class PersonalChatApplication {
     }
   }
   /** This dispatches a canonical Gateway cancellation, not UI-only hiding. */
+  /** Owner-gated checkpoint control: neither action creates a new run. */
+  async checkpointRun(paneId:string,action:"pause"|"resume"):Promise<void>{
+    const pane=this.panes.get(paneId);
+    const expected=action==="pause"?["running"]:["paused","recovery-required"];
+    if(!pane||this.destroyed||!this.runPauseResumeSupported
+      ||!expected.includes(pane.run.snapshot().phase))return;
+    try{await pane.run.checkpoint(action,id());}
+    catch(err){
+      if(this.panes.get(paneId)!==pane||this.destroyed)return;
+      pane.status.textContent=(action==="pause"?"Pause":"Resume")+
+        " unavailable · "+errorCode(err);
+      this.render(pane);
+    }
+  }
   async stopRun(paneId:string):Promise<void>{
     const pane=this.panes.get(paneId);
     if(!pane||this.destroyed||!this.runCancelSupported
