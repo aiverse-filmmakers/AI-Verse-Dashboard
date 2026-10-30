@@ -1,5 +1,11 @@
 # AI-Verse Dashboard Canonical Mission Control Adoption Plan
 
+## Review and acceptance amendment (operator-approved, 30 October 2026)
+
+From this point forward, every scoped source milestone must follow **implementation → exact-head automated CI/security/browser/real-owner tests as relevant → Code Review skill assessment with recorded AI-assisted provenance → recorded acceptance against its actual criteria → merge of independently eligible code → owner-local/production validation where required**.
+
+See [the review and acceptance workflow and current 40-milestone catch-up audit](REVIEW-ACCEPTANCE-WORKFLOW-2026-10-30.md). That document is an additional governance gate for the existing plan, not a replacement for the System owner, an amendment of existing weights or retroactive acceptance of drafts. Do not advance a formal MC or G## milestone by CI alone; do not treat AI-assisted self-review as independent human signoff or a privileged production grant. Prior MC0/MC1 accepted total stays 15/100 until a new gate actually closes. MC2.1 is being reviewed separately in [focused PR #43](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/43), not as bulk approval of implementation PR #42.
+
 **Date:** 2026-09-15  
 **Status:** CANONICAL IMPLEMENTATION PLAN  
 **System authority:** `AI-Verse-System/docs/DASHBOARD-CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md`  
