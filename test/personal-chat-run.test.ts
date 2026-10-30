@@ -162,6 +162,92 @@ describe("Personal Chat canonical run controller",()=>{
    ]);
    assert.equal(f.watchers[0].cancelled,true);
  });
+ it("Pause and Resume checkpoint the same canonical run without any new create",async()=>{
+   let status="running";
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run(status);
+     if(method==="aiverse.gateway.run.pause"){status="paused";return run(status);}
+     if(method==="aiverse.gateway.run.resume"){status="resuming";return run(status);}
+     if(method==="aiverse.gateway.run.get")return run(status,{output:undefined});
+     throw Error("Unexpected Gateway method "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("Run an extended task","first-create");
+   assert.equal(f.watchers.length,1);
+   f.watchers[0].handlers.event(event("assistant.delta",1,"UNVERIFIED BEFORE PAUSE"));
+   const paused=await chat.checkpoint("pause","pause-1");
+   assert.equal(paused.phase,"paused");
+   assert.equal(paused.output,"","a pause cannot promote speculative stream text");
+   assert.equal(paused.runId,"run-a");
+   assert.equal(paused.sessionId,"session-a");
+   assert.equal(f.watchers[0].cancelled,true);
+   await assert.rejects(chat.send("wrong new run","blocked-new"),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_PREVIOUS_RUN_UNRESOLVED");
+   await assert.rejects(chat.checkpoint("pause","repeat"),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_PAUSE_UNAVAILABLE");
+   const resumed=await chat.checkpoint("resume","resume-1");
+   assert.equal(resumed.phase,"running");
+   assert.equal(resumed.runId,"run-a");
+   assert.equal(f.watchers.length,2);
+   f.watchers[0].handlers.event(event("assistant.delta",2,"OBSOLETE WATCHER"));
+   assert.equal(chat.snapshot().output,"");
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+   assert.deepEqual(calls.slice(1).map(x=>x.method),[
+     "aiverse.gateway.run.pause","aiverse.gateway.run.resume"]);
+   assert.deepEqual(calls[1].params,{runId:"run-a",sessionId:"session-a",operationId:"pause-1"});
+   assert.deepEqual(calls[2].params,{runId:"run-a",sessionId:"session-a",operationId:"resume-1"});
+ });
+ it("checkpoint refusal racing with completed run reconciles existing canonical output",async()=>{
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.pause")
+       throw Object.assign(Error("already completed"),{code:"RUN_NOT_PAUSABLE"});
+     if(method==="aiverse.gateway.run.get")return run("completed",{output:"Real canonical final"});
+     throw Error("Unexpected RPC "+method);
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   await chat.send("First","once");
+   const done=await chat.checkpoint("pause","pause-late");
+   assert.equal(done.phase,"completed");
+   assert.equal(done.output,"Real canonical final");
+   assert.deepEqual(calls.map(x=>x.method),[
+     "aiverse.gateway.run.create","aiverse.gateway.run.pause","aiverse.gateway.run.get"]);
+ });
+ it("unknown Pause/Resume network outcome never repeats a control POST",async()=>{
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.pause")throw Object.assign(Error("wire lost"),{
+       code:"TRANSPORT_UNAVAILABLE"});
+     if(method==="aiverse.gateway.run.get")return run("paused");
+     throw Error("unexpected operation "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("test","once");
+   const uncertain=await chat.checkpoint("pause","pause-uncertain");
+   assert.equal(uncertain.phase,"interrupted");
+   assert.equal(uncertain.runId,"run-a");
+   const reconciled=await chat.reconnect();
+   assert.equal(reconciled.phase,"paused");
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.pause").length,1);
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+ });
+ it("late Pause response after A-B-A workspace retarget cannot repaint obsolete run",async()=>{
+   let release:(value:unknown)=>void=()=>{};
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.pause")return new Promise(resolve=>release=resolve);
+     throw Error("unexpected method "+method);
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   await chat.send("first","key-1");
+   const pending=chat.checkpoint("pause","pause-old");
+   chat.retarget({systemId:"aiverse-01",workspaceId:"other"});
+   chat.retarget(SCOPE);
+   release(run("paused"));await pending;
+   assert.equal(chat.snapshot().phase,"idle");
+   assert.equal(chat.snapshot().runId,undefined);
+   assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.pause").length,1);
+ });
  it("Stop uncertainty preserves canonical run identity for GET-only recovery",async()=>{
    let failControl=true;
    const {client,calls}=clientWith(method=>{
