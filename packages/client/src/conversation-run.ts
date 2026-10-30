@@ -419,6 +419,47 @@ export class PersonalChatRunController {
     return this.snapshot();
   }
 
+  /** Read the current canonical status without modifying the run or
+   * duplicating inference. Also reconciles controls issued by another client.
+   */
+  async refreshStatus():Promise<ChatRunView>{
+    const runId=this.view.runId,sessionId=this.view.sessionId;
+    if(!runId||!sessionId||!SAFE_ID.test(runId))fail("CHAT_REFRESH_UNAVAILABLE");
+    const scope=requiredScope(this.client.getScope());
+    const epoch=this.epoch,selection=this.client.selectionVersion();
+    const before=this.view.phase;
+    try{
+      const response=await this.client.getGatewayRun(runId);
+      if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
+      const run=asRun(response.result,scope,runId);
+      if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
+      const state=phase(run.status);
+      // A delayed GET must not downgrade a locally verified terminal result.
+      if(TERMINAL.has(this.view.phase)&&!TERMINAL.has(state))return this.snapshot();
+      this.confirmCanonicalOutput(run);
+      if(state==="running"&&this.view.phase==="running"){
+        this.show({canonicalStatus:run.status,errorCode:undefined});
+        return this.snapshot(); // Keep the existing live subscription and deltas.
+      }
+      this.streamEpoch++;
+      this.unsubscribe?.();this.unsubscribe=undefined;
+      if(state==="running"){
+        // Remote resume may have an unknown number of earlier resume events.
+        // Wait for the canonical final reply rather than project old deltas.
+        this.resumeMarkersRequired=Number.MAX_SAFE_INTEGER;
+      }
+      this.show({phase:state,canonicalStatus:run.status,
+        sessionId:run.sessionId,output:state==="completed"?run.output??"":"",
+        errorCode:undefined,contextLimited:this.contextLimited});
+      if(state==="running")this.subscribe(epoch,scope,selection,runId);
+    }catch(error){
+      if(this.valid(epoch,scope,selection)&&this.view.runId===runId)
+        this.show({errorCode:typeof (error as {code?:unknown})?.code==="string"
+          ?(error as {code:string}).code:"CHAT_REFRESH_FAILED"});
+    }
+    return this.snapshot();
+  }
+
   /** Pause or resume the *same* owner-authorized canonical run.
    * A paused run is not a canceled run; no new run.create can replace it.
    * Every control response remains tied to this scope and OS selection epoch.
