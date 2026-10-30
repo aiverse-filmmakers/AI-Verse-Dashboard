@@ -5,7 +5,7 @@ import {
   PROTOCOL_ERRORS, PURPOSE_CONTROL_METHODS, QUERY_METHODS, WORKSPACE_ID_PATTERN,
   assertQueryOnly, eventSchema, isCommandMethod, isPurposeControlMethod, isQueryMethod,
   handshakeResultSchema, negotiateHandshake, panelIdSchema, parseFrame, presentationSchema, requestSchema,
-  requiresSystem, requiresWorkspace, responseSchema, scopeKey, workspaceScopeKey,
+  requiresSystem, requiresWorkspace, responseSchema, scopeKey, workspaceScopeKey, jsonBytes,
 } from "../packages/protocol/src/index.js";
 
 describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () => {
@@ -28,11 +28,48 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
     for (const params of [{ root: "/tmp/os" }, { filter: { rootPath: "/x" } }, { items: [{ databasePath: "/y" }] }]) { const r = requestSchema.safeParse({ type: "req", v: "1.0", id: "g", method: "task.list", systemId: "aiverse-01", workspaceId: "ws-1", params }); assert.equal(r.success, false); if (!r.success) assert.match(r.error.issues[0].message, new RegExp(PROTOCOL_ERRORS.RAW_ROOT_FORBIDDEN)); }
     assert.equal(requestSchema.safeParse({ type: "req", v: "1.0", id: "h", method: "task.list", systemId: "aiverse-01", workspaceId: "ws-1", params: { blob: "x".repeat(MAX_PARAMS_BYTES + 1) } }).success, false);
   });
+  it("counts UTF-8 payloads in both browser and Node without Buffer",()=>{
+    assert.equal(jsonBytes({value:"😀"}),Buffer.byteLength(JSON.stringify({value:"😀"}),"utf8"));
+    assert.equal(jsonBytes({value:"⚡"}),Buffer.byteLength(JSON.stringify({value:"⚡"}),"utf8"));
+    const req={type:"req",v:"1.0",id:"unicode",method:"aiverse.gateway.run.create",
+      systemId:"aiverse-01",workspaceId:"operator",
+      params:{messages:[{role:"user",content:"test 中文 😀"}],idempotencyKey:"stable-1"}};
+    assert.equal(requestSchema.safeParse(req).success,true);
+  });
   it("keeps general commands blocked while admitting only Purpose controls in the router", () => {
     assert.equal(isCommandMethod("chat.send"), true); assert.equal(isQueryMethod("purpose.get"), true); assert.equal(isPurposeControlMethod("purpose.change.apply"), true);
     assert.deepEqual([...PURPOSE_CONTROL_METHODS], ["purpose.change.propose", "purpose.change.confirm", "purpose.change.apply"]);
     assert.throws(() => assertQueryOnly("chat.send"), /blocked/); assert.throws(() => assertQueryOnly("purpose.change.apply"), /blocked/); assert.doesNotThrow(() => assertQueryOnly("purpose.get"));
-    assert.equal(COMMAND_METHODS.length, 15); assert.equal(QUERY_METHODS.length, 24); assert.equal(ALL_METHODS.length, 41);
+    assert.equal(COMMAND_METHODS.length, 25); assert.equal(QUERY_METHODS.length, 35); assert.equal(ALL_METHODS.length, 62);
+    assert.equal(isCommandMethod("aiverse.canvas.duplicate"),true);
+    assert.equal(isCommandMethod("aiverse.gateway.run.create"),true);
+    assert.equal(isCommandMethod("aiverse.gateway.run.cancel"),true);
+    for(const name of ["aiverse.gateway.run.pause","aiverse.gateway.run.resume"]){
+      assert.equal(isCommandMethod(name),true);
+      assert.equal(isQueryMethod(name),false);
+      assert.throws(()=>assertQueryOnly(name),/blocked/);
+    }
+    assert.equal(isQueryMethod("aiverse.gateway.run.cancel"),false);
+    assert.throws(()=>assertQueryOnly("aiverse.gateway.run.cancel"),/blocked/);
+    assert.equal(isQueryMethod("aiverse.gateway.status"),true);
+    assert.equal(isQueryMethod("aiverse.gateway.models"),true);
+    assert.equal(isCommandMethod("aiverse.gateway.models"),false);
+    assert.equal(isQueryMethod("aiverse.gateway.run.get"),true);
+    assert.equal(isQueryMethod("aiverse.gateway.run.diagnostics"),true);
+    assert.equal(isCommandMethod("aiverse.gateway.run.diagnostics"),false);
+    assert.doesNotThrow(()=>assertQueryOnly("aiverse.gateway.run.diagnostics"));
+    assert.equal(isQueryMethod("operator.activity"),true);
+    assert.equal(isQueryMethod("system.registry.summary"),true);
+    assert.equal(isCommandMethod("system.registry.summary"),false);
+    assert.equal(requiresSystem("system.registry.summary"),true);
+    assert.equal(requiresWorkspace("system.registry.summary"),true);
+    assert.equal(requiresSystem("operator.activity"),true);
+    assert.equal(requiresWorkspace("operator.activity"),true);
+    for(const method of ["aiverse.gateway.status","aiverse.gateway.models","aiverse.gateway.run.create","aiverse.gateway.run.cancel",
+      "aiverse.gateway.run.pause","aiverse.gateway.run.resume","aiverse.gateway.run.get",
+      "aiverse.gateway.run.diagnostics"]) {
+      assert.equal(requiresSystem(method),true);assert.equal(requiresWorkspace(method),true);
+    }
   });
   it("responses and events round-trip with systemId provenance", () => {
     const res = responseSchema.parse({ type: "res", v: "1.0", id: "i", ok: true, systemId: "aiverse-01", result: { tasks: [] }, observedAt: new Date().toISOString() }); assert.equal(res.ok, true);

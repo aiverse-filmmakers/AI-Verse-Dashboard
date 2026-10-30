@@ -1,0 +1,38 @@
+name: GitHub vs Formal Progress Ledger
+on:
+  push:
+    branches:
+      - codex/dashboard-source-checkpoint
+  pull_request:
+    paths:
+      - docs/github-browser-progress.json
+      - docs/github-chapters-milestones.json
+      - scripts/verify-github-browser-progress.mjs
+      - scripts/verify-github-milestones.mjs
+      - test/github-browser-progress.test.mjs
+      - test/github-milestones.test.mjs
+      - .github/workflows/github-browser-progress.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  progress-integrity:
+    name: Progress evidence / Node 22 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate remote and formal progress schema
+        run: node --test test/github-browser-progress.test.mjs test/github-milestones.test.mjs
+      - name: Print independently bounded completion indicators
+        run: |
+          node scripts/verify-github-browser-progress.mjs
+          node scripts/verify-github-milestones.mjs

@@ -85,6 +85,14 @@ describe("gateway Task 4: query path + subscriptions, no cross-system fallback",
 
     const sys = await rpc(PORTS.t1, gw.authToken, { type: "req", v: "1.0", id: "1", method: "system.list" });
     assert.equal(sys.ok, true);
+    const systemDetail=await rpc(gw.port,gw.authToken,{
+      type:"req",v:"1.0",id:"private-check",method:"system.get",systemId,
+    });
+    assert.equal(systemDetail.ok,true);
+    const publicSystem=(systemDetail.result as {system:Record<string,unknown>}).system;
+    for(const secret of ["root","rootIdentity","identityDrifted","architecture","bindingGeneration"]){
+      assert.equal(Object.hasOwn(publicSystem,secret),false,"private OS field leaked: "+secret);
+    }
 
     const preview = await rpc(PORTS.t1, gw.authToken, {
       type: "req", v: "1.0", id: "2", method: "source.preview",

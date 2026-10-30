@@ -1,0 +1,60 @@
+name: Publish Dashboard design preview
+
+on:
+  push:
+    branches:
+      - codex/dashboard-source-checkpoint
+    paths:
+      - apps/web/preview/**
+      - .github/workflows/dashboard-preview-pages.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dashboard-design-preview-pages
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Package static preview only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pushed source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Ensure static preview is present
+        run: |
+          test -f apps/web/preview/index.html
+          test -f apps/web/preview/style.css
+          test -f apps/web/preview/app.js
+          test -f apps/web/preview/inspiration/index.html
+          if find apps/web/preview -type l | grep -q .; then
+            echo "Unexpected symlink in preview directory" >&2
+            exit 1
+          fi
+
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload only static design files
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: apps/web/preview
+
+  deploy:
+    name: Publish static design preview
+    runs-on: ubuntu-latest
+    needs: package
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -2,11 +2,15 @@ import { SYSTEM_ID_PATTERN, WORKSPACE_ID_PATTERN } from "./ids.js";
 
 /** Dashboard protocol method registry. Queries are read-only. */
 export const QUERY_METHODS = [
-  "system.list", "system.get", "system.info", "workspace.list", "workspace.get",
+  "system.list", "system.registry.summary", "system.get", "system.info", "workspace.list", "workspace.get", "operator.activity",
   "workspace.health", "workspace.inbox.list", "purpose.get", "initiative.list",
   "initiative.get", "task.list", "task.get", "task.children", "run.list", "run.get",
   "run.logs", "cron.list", "cron.history", "agent.list", "agent.sessions",
   "usage.summary", "graph.query", "graph.node", "source.preview",
+  "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.get",
+  "aiverse.gateway.run.diagnostics",
+  "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
+  "aiverse.canvas.list", "aiverse.canvas.get", "aiverse.canvas.history",
 ] as const;
 
 export const PURPOSE_CONTROL_METHODS = [
@@ -19,6 +23,10 @@ export const COMMAND_METHODS = [
   "chat.send", "chat.abort", "task.start", "task.cancel", "task.retry", "cron.create",
   "cron.pause", "cron.resume", "cron.runNow", "approval.resolve", "initiative.activate",
   "inbox.resolve", ...PURPOSE_CONTROL_METHODS,
+  "aiverse.gateway.run.create", "aiverse.gateway.run.cancel",
+  "aiverse.gateway.run.pause", "aiverse.gateway.run.resume",
+  "aiverse.canvas.create", "aiverse.canvas.rename",
+  "aiverse.canvas.edit", "aiverse.canvas.duplicate", "aiverse.canvas.revert", "aiverse.canvas.delete",
 ] as const;
 
 export const PROTOCOL_METHODS = ["protocol.handshake", "protocol.capabilities"] as const;
@@ -32,10 +40,16 @@ export type DashboardMethod = (typeof ALL_METHODS)[number];
 
 const SYSTEM_OPTIONAL = new Set<string>(["protocol.handshake", "protocol.capabilities", "system.list"]);
 const WORKSPACE_SCOPED = new Set<string>([
-  "workspace.get", "workspace.health", "workspace.inbox.list", "purpose.get",
+  "workspace.get", "system.registry.summary", "operator.activity", "workspace.health", "workspace.inbox.list", "purpose.get",
   "initiative.list", "initiative.get", "task.list", "task.get", "task.children",
   "run.list", "run.get", "run.logs", "cron.list", "cron.history", "agent.list",
   "agent.sessions", "usage.summary", "graph.query", "graph.node", "source.preview",
+  "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.get",
+  "aiverse.gateway.run.diagnostics", "aiverse.gateway.run.create", "aiverse.gateway.run.cancel",
+  "aiverse.gateway.run.pause", "aiverse.gateway.run.resume",
+  "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
+  "aiverse.canvas.list", "aiverse.canvas.get", "aiverse.canvas.history", "aiverse.canvas.create",
+  "aiverse.canvas.rename", "aiverse.canvas.edit", "aiverse.canvas.duplicate", "aiverse.canvas.revert", "aiverse.canvas.delete",
   "chat.send", "chat.abort", "task.start", "task.cancel", "task.retry", "cron.create",
   "cron.pause", "cron.resume", "cron.runNow", "approval.resolve", "initiative.activate",
   "inbox.resolve", ...PURPOSE_CONTROL_METHODS,

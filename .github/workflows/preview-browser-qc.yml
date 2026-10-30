@@ -1,0 +1,49 @@
+name: Dashboard browser interaction QC
+
+on:
+  push:
+    branches:
+      - codex/dashboard-source-checkpoint
+    paths:
+      - apps/web/preview/**
+      - apps/web/src/personal-chat-ui.ts
+      - apps/web/src/canvas-workspace.ts
+      - apps/web/src/personal-chat.css
+      - apps/web/local-app/**
+      - apps/gateway/src/local-app-session.ts
+      - test/local-app-launch.browser.mjs
+      - test/live-personal-chat-ui.browser.mjs
+      - test/preview-browser-interaction.browser.mjs
+      - .github/workflows/preview-browser-qc.yml
+  pull_request:
+    paths:
+      - apps/web/preview/**
+      - test/preview-browser-interaction.browser.mjs
+      - .github/workflows/preview-browser-qc.yml
+
+permissions:
+  contents: read
+
+jobs:
+  browser-qc:
+    name: Chromium / real preview interactions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install repository dependencies
+        run: npm ci
+      - name: Install bounded browser test tooling without changing repository lockfile
+        run: npm install --no-save --package-lock=false playwright@1.58.2 esbuild@0.25.12
+      - name: Provision headless Chromium and system libraries
+        run: npx playwright install --with-deps chromium
+      - name: Build and bundle authenticated runtime UI modules
+        run: |
+          npm run build
+          npm run mc2:bundle
+      - name: Test static preview independently from real host chat UI
+        run: node --test test/preview-browser-interaction.browser.mjs test/live-personal-chat-ui.browser.mjs test/local-app-launch.browser.mjs

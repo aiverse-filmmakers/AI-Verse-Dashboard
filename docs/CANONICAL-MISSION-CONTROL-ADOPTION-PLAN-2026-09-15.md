@@ -1,5 +1,11 @@
 # AI-Verse Dashboard implementation plan
 
+## Operator-approved review and acceptance amendment, 30 October 2026
+
+Every roadmap slice and milestone now follows **implementation → exact-head tests and security/negative CI → separate reviewer assessment → evidence-backed milestone acceptance → merge the eligible, bounded PR → local/production owner validation when required**. A merged remotely testable component is not automatically cleared for owner Mac installation, real provider access or paid inference. A draft PR and green CI do not themselves count as independent review, formal MC points or release approval.
+
+The authoritative [review workflow and 40-milestone catch-up audit](REVIEW-ACCEPTANCE-WORKFLOW-2026-10-30.md) defines reviewer independence, source/CI evidence, approval/merge logs, dependency holds and how to split large stacked PRs. Review [focused MC2.1 design PR #43](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/43) first; do not merge implementation [PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42) as a bulk substitute for per-milestone review. Preserve 10 chapters, 40 milestones and all existing acceptance criteria and scoring denominators. No automatic points are awarded by this process amendment. As of adoption, MC formally accepted **15/100**, provisional GitHub/browser **47/100**, provisional Chat/Gateway **11/15**.
+
 Updated 27 October 2026 — **Personal-first scope amendment, review draft**.
 
 - **Outcome:** a useful Personal OS with persistent agent chat and a shared creative canvas. Filmmaking becomes a specialist surface using that same foundation.
@@ -7,6 +13,23 @@ Updated 27 October 2026 — **Personal-first scope amendment, review draft**.
 - **Status:** this amendment records the operator's new direction. It is not merged, implemented or accepted engineering work. The original Mission Control adoption baseline remains available in Git.
 - **Accounting:** **15/100 accepted baseline points** (MC0 + MC1). The added requirements and revised order are not covered by a claim of “85 points remaining.” Remaining scope must be reconciled before its total is reported as a completion percentage.
 - **Method:** Plan Maker's proportional five-section structure. This is the existing living plan, not a parallel roadmap. [Tracker](MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md) and [PRD](PRD-MISSION-CONTROL-AIVERSE-DASHBOARD-2026-09-15.md) retain accepted history; their future gates require the explicit reconciliation below.
+
+## Standing operator decision: GitHub-first to the 90–93% pre-local target (27 October 2026)
+
+**This is the default workflow for every subsequent browser-agent/new-chat continuation.** The operator's browser agent can edit GitHub and run CI, but **cannot access the operator's Mac, local filesystem, running private services or credentials**. The operator explicitly wants to **do as much implementation as possible in GitHub before any further local testing**. Do not stop at a mock-up, request repeated Mac tests for each slice, or redirect ordinary engineering work to local Codex.
+
+**Target:** aim to take the *existing 100-point roadmap* to approximately **90–93/100 worth of implementation/readiness through GitHub and its disposable CI runners**, including real code, integrated owner interfaces, automated runtime tests, a macOS build/installer and a simple launcher. **100% means the fully accepted product, including required local-owner checks.** The 90–93% figure is a **planning ambition / possible GitHub-first ceiling under the historical weights, not a guaranteed score, current completion, formal acceptance or a reason to waive gates**. The Personal-first amendments are not yet re-estimated, and owner-interface gaps can change what is possible without the Mac.
+
+**Default execution strategy:**
+1. Continue the canonical MC task order, using the source and tests already in the existing repositories. Work on GitHub branches/PRs, keep the tracker and this plan updated, and use GitHub Actions to build/test real Dashboard → Gateway → OS and supported component operations against **disposable installations**. For third-party accounts, use authorized contract fixtures until real consent/testing; never call a simulation a production account proof.
+2. Complete the functional Personal-first Dashboard, actual runtime and data integration, workspace/conversation/notes/canvas persistence, owner-backed Memory/Skills/Token/Connections/agents/automations when verified interfaces permit, permissions/negative tests, recovery, UX polish, packaging and macOS CI. Do not invent missing canonical owner APIs or replace an owner's storage with Dashboard-local copies.
+3. **Defer user-dependent Mac work to a consolidated later checkpoint**, ideally once a downloadable, CI-tested release candidate and launcher exist. Do not require the operator to start a local Codex chat or leave it running for normal Dashboard use. Prepare the exact Mac verification steps, but do not claim they were performed remotely.
+4. Keep secrets, provider OAuth/approval, private data, real owner installation verification, local usability/DMG acceptance and final owner dogfood/sign-off protected and explicitly pending where necessary. GitHub Pages is only the disconnected public design preview; GitHub Actions can test running backends and real deterministic executions, but cannot supply the operator's private runtime/account identity or an always-on service.
+5. **Do not stall all engineering on one local-only acceptance gate.** Keep the gate unaccepted and pick the next safely decoupled code, test, design or packaging task, documenting dependencies in the *same* canonical tracker. Do not silently mark a blocked phase complete, bypass approval, reshuffle formal points or create a parallel plan merely to progress.
+
+**Historical accounting:** MC0+MC1 = **15/100 accepted** at this source checkpoint; additional draft code/CI does not automatically award points. Under the historical weight allocation, the specifically identified A/H user-dependent final checkpoints are **MC2.6 provider authorization (1 point), MC5.4 usability (2), MC6.4 clean-machine DMG (3), MC7.3 owner dogfood sign-off (1)**, totalling **7 points** with human involvement. MC1's already completed local proof is historical. The *human action portions* may be smaller than these entire weighted tasks; other private-owner security qualification may also need local evidence. This is why 90–93% is a target range, not an exact executable ceiling.
+
+**New-chat bootstrap:** read this standing decision, [execution tracker](MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md), [remote development checkpoint](REMOTE-DEVELOPMENT-CHECKPOINT-2026-10-27.md), latest GitHub PR/branch and CI before making changes. Resume from the real next engineering task, not from MC0 or from the public mock-up; update all three records when a gate materially changes.
 
 ## 1. Problem and boundary
 
@@ -199,3 +222,55 @@ The provider experience must remain easy even without OAuth: familiar provider e
 This draft is the detailed Dashboard plan. System carries a linked summary rather than another editable implementation plan. Baseline acceptance stays at 15 points while new scope/order and future gates require reconciliation. No merge is implied. AUTH-1 is local code/test evidence only: its source files are deliberately not included in this documentation PR; publish/review code separately before depending on it. The design preview is also not shipped here.
 
 System main inspected at `21bf92a3ca5bf767cbffaab9a7f7701f8943d783` now records Token stop-check complete and Connections V1 qualification complete. Reuse the [Connections Dashboard consumption handoff](https://github.com/aiverse-filmmakers/AI-Verse-Connections/blob/d326e39f4f07fb163250d671b8960a1fc00e8e03/docs/DASHBOARD-CONSUMPTION-HANDOFF-2026-10-27.md) when designing the trusted host adapter. These closeouts do not establish an existing browser/Gateway Connections execution route or authorize the new provider integrations.
+
+
+## Published source checkpoint — 27 October 2026
+
+The prototype, full inspiration gallery and AUTH-1 source/tests are now published in [Dashboard PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42), branch `codex/dashboard-source-checkpoint`, initially at `e152acf474290acf856f2d86852dad99d7b59dfe`. That branch contains the plan and code together; it is stacked on plan PR #41. Earlier “local only” statements describe the previous checkpoint and are superseded for source availability, not feature acceptance. The [remote handoff](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/blob/codex/dashboard-source-checkpoint/docs/REMOTE-DEVELOPMENT-CHECKPOINT-2026-10-27.md) has run instructions, known gaps and next work. No sign-in or AI runtime is wired into the preview yet. Operator requires meaningful local Dashboard work/checkpoints to be synced to GitHub for browser continuation; inspect remote changes before updating branches and never publish secrets or browser state. This does not authorize automatic merges/releases.
+
+## Stage 1 essentials and return to MC2.1, 27 October 2026
+
+**Operator instruction:** First expose the 11 essential experiences in the Personal-first Dashboard, then return to the existing accepted implementation sequence. This is a small **reconciliation of the existing living plan**, not a new MC/C0 phase or an independent roadmap.
+
+### Stage 1 UI checkpoint (not backend acceptance)
+
+On branch `codex/dashboard-source-checkpoint` / draft PR #42, the static design preview now includes an **Essentials** start page with 11 visible destinations. Existing Personal chat/canvas/workspace controls are reused. The current workspace's original browser-local chat now has create, reopen, rename and archive operations with preserved message history; export/restore is available for preview data and the optional chat shell. Provider setup has an explicit secure-host-unavailable state; Usage/Health show unknown/not checked rather than manufactured metrics; connection setup never asks for secrets in the public preview. All edits are source work pending latest-head CI and browser verification; no actual provider, live run, private Memory/Skills or canonical OS API was connected by this stage.
+
+**Stage 1 is considered complete only as UI design once browser QC passes for:** first-use access to all 11, true local conversation lifecycle, scoped notes/canvas/workspaces, backup/restore validation and non-fabricated offline/unknown states. The feature examples elsewhere remain clearly separate and never count as connected components. No accepted roadmap points are earned for a visible prototype.
+
+### Continue at MC2.1, not MC0/MC1
+
+- **MC0:** COMPLETE (5 points), preserve evidence.
+- **MC1:** COMPLETE within the recorded standalone local-Qwen proof (10 points), preserve evidence.
+- **MC2.1:** next PENDING gate (2 points). Source-reviewed Gateway HTTP/SSE transport exists in the draft, but owner-backed Personal context, conversation recovery, controlled UI actions and supported provider capability/status need an amended contract and an accepted review.
+- **MC2.2 onward:** unaccepted. Start typed canonical Gateway client only after the MC2.1 owner/host boundary has been checked and reviewed. Do not silently promote sample UI or AUTH-1 PKCE to a verified sign-in.
+- **Plan amendment:** lift the smallest already-developed Personal visual shell forward as non-accepted presentation evidence without inheriting the old MC3 full-Mission-Control-shell dependency; keep MC3 reference/features inventory and MC5 polish where applicable. Do not rescore the old 100-point programme until the pending amended PRD/tracker gates are reconciled explicitly.
+
+**Immediately next narrow integration slice:** MC2.1 reviewed owner/transport contract, followed by MC2.2 typed host-only Gateway status/models/createRun/events/controls with stable authenticated identity, no provider keys in browser, and refusal of unsupported session/asset/workspace routes. Then MC2.3–MC2.5 connect one real Chat and Stop path. Provider account login remains AUTH-2/3 under the trusted host and Connections/credential owner review.
+
+## MC2.1 review-ready and MC2.2 transport checkpoint, 27 October 2026
+
+The [source review](MC2.1-SOURCE-REVIEW-2026-10-27.md) checks real Gateway, Dashboard registry, OS, Memory, Skills, Data, Token and Connections owner boundaries. MC2.1's design is ready for the normal review gate, but **not yet accepted or merged**. Its two points are not awarded. MC2.2 source work may continue independently only inside that recorded safe contract; production controls and provider login remain blocked until host owner/credential resolution.
+
+The first MC2.2 host-only module is `packages/client/src/canonical-gateway-client.ts`. It is deliberately not re-exported to the browser and does not modify the existing `DashboardClient.query()`, local /rpc server, OS storage or other repos. Synthetic authenticated run/event/control tests, wrong-binding/remote-origin refusals, idempotency, replay overflow, redacted failures and split CRLF frames are in `test/canonical-gateway-client.test.ts`. This is reusable code, not working Personal AI chat. The next bounded work is a real authenticated local host binding and async /rpc facade once credential owner mapping is verified; no invented APIs, no points for code presence alone.
+
+The original 15 accepted points remain intact. Stage 1 UI interactions previously passed 19/19 Chromium tests and Pages deployment at `056ce661` passed; live private services were not tested. Any further status claims must use the latest commit's CI evidence.
+
+## MC2.2–MC2.5 real Gateway and desktop-session handoff, 27 October 2026
+
+The current draft PR #42 now includes the pinned actual canonical Gateway composition workflow (deterministic run through authenticated Dashboard HTTP/WS, runtime marker and idempotent replay), a tested local host-only startup command, first-class `aiverse` source evidence, root-rebind lease generations and A→B→A result/event isolation tests. These reduce uncertainty without duplicating Gateway, Core, Connections, Token, sessions or workspace stores. Consult the tracker for CI-run acceptance evidence.
+
+**Continue in the original order, not a new plan:**
+1. **MC2.2** qualify `mc2:local` on the selected real local installation and integrate its trusted Dashboard authorization with a native application session. Host credentials stay outside static GitHub Pages; do not print, paste or persist provider secrets. The actual process may require the operator to be at their Mac, which ChatGPT's GitHub integration cannot access.
+2. **MC2.3** admit `aiverse` as a first-class runtime source using the observed Gateway lifecycle, virtual model `aiverse`, real run evidence and explicit absent physical-provider claims. Do not silently re-label `local/aiverse` or accept an example model picker as proof.
+3. **MC2.4** accept A→B→A HTTP/WS stale-result rejection and same-root rebind-fence tests; re-check selected real owner authorization and immutable session/run workspace scope during member qualification.
+4. **MC2.5** connect the existing Personal main chat to the secure local/native host RPC and run-event stream; bind exact conversation/run/session IDs; restore canonical statuses after disconnect and restart. Do not route browser/localStorage sample history as canonical. Enable Stop/approval **only** after canonical Gateway scope/authorization and owner-rebind race characterization. The static preview remains explicit about being disconnected until a trusted local session genuinely exists.
+5. **AUTH-2/3, MC2.6** provider login is owner-controlled and may require interactive account authorization; do not invent consent, credentials or setup success. A deterministic local runtime proof proves transport, not model intelligence or account access.
+
+No new speculative endpoints or parallel credential stores. If the real owner runtime isn't accessible, work on negative/security integration tests and prepare the existing acceptance packet instead of fabricating a connected UI. The programme still has 15 historically accepted points, and PR #42 remains a draft pending normal acceptance.
+
+### Source checkpoint, 28 October 2026: canonical chat restart confidence
+
+The real Personal Chat now has verified authenticated Gateway execution, streaming, canonical session reuse, bounded confirmed prior turns and read-only Gateway-owned conversation discovery. Both Gateway and Dashboard services were fully stopped and restarted as **separate OS child processes** in disposable CI; session history persisted on the same Gateway-owned disk, an old browser cookie was rejected and fresh pairing restored the original session for new canonical follow-ups. [Successful real Gateway workflow](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40697808818). See the [execution tracker](MISSION-CONTROL-EXECUTION-TRACKER-2026-09-15.md) for tests, boundaries and exact source pins; current implementation is on Dashboard draft PR #42 and Gateway draft PR #80, not a merged release.
+
+This evidence removes the previously open *disposable hard-restart* uncertainty. It does **not** close native Mac installation, live provider authorization, real-owner acceptance, Stop/approval authority or original MC2/MC4 formal gates; historic acceptance is still **15/100**. Resume work on the Personal-first persistent Workspace/Canvas owner contract and the smallest functional document/action UI before adding more cosmetic chat features. Keep the standing GitHub-first 90–93% preparation target and consolidate Mac checks later.

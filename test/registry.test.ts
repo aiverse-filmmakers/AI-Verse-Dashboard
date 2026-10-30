@@ -118,6 +118,18 @@ describe("registry Task 2: compatible-OS validation + systemId map + selection",
     assert.equal(pub.systemId, rec.systemId);
   });
 
+  it("increments a private binding generation after explicit rebind to the same root", () => {
+    const reg=new SystemRegistry(),root=track(makeOsRoot());
+    const rec=reg.register(root);
+    const first=reg.bindingGeneration(rec.systemId);
+    reg.rebind(rec.systemId,root);
+    assert.equal(reg.bindingGeneration(rec.systemId),first+1);
+    assert.equal(Object.hasOwn(reg.get(rec.systemId)??{},"bindingGeneration"),false);
+    assert.equal(JSON.stringify(reg.listPublic()).includes("bindingGeneration"),false);
+    reg.unregister(rec.systemId);
+    assert.throws(()=>reg.bindingGeneration(rec.systemId));
+  });
+
   it("per-window selection is independent; unknown systems rejected", () => {
     const reg = new SystemRegistry();
     const a = reg.register(track(makeOsRoot()));

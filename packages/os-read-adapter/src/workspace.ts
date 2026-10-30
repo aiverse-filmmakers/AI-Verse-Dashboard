@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { SystemRegistry } from "../../registry/src/registry.js";
 import {
@@ -30,8 +30,10 @@ function readSummary(dir: string, fallbackId: string): WorkspaceSummary | null {
   if (!existsSync(manifest)) return null;
   let text: string;
   try {
-    const st = statSync(manifest);
-    if (!st.isFile() || st.size > 32 * 1024) return null;
+    // The manifest itself is an authority boundary: never follow a symlink
+    // to a private file outside the selected workspace's owner directory.
+    const st = lstatSync(manifest);
+    if (!st.isFile() || st.isSymbolicLink() || st.size > 32 * 1024) return null;
     text = readFileSync(manifest, "utf8");
   } catch {
     return null;
@@ -59,12 +61,16 @@ export function listWorkspaces(registry: SystemRegistry, systemId: string): Work
     if (name.startsWith(".") || name.startsWith("_")) continue;
     const dir = join(base, name);
     try {
-      if (!statSync(dir).isDirectory()) continue;
+      // Do not enumerate symlinked workspaces, including aliases that point
+      // outside the registered OS root or to another workspace.
+      if (!lstatSync(dir).isDirectory()) continue;
     } catch {
       continue;
     }
     const summary = readSummary(dir, name);
-    if (summary) out.push(summary);
+    // A manifest with a different id cannot be advertised as a selectable
+    // workspace only to fail (or resolve a different owner) at read time.
+    if (summary && summary.id === name) out.push(summary);
   }
   out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return out;

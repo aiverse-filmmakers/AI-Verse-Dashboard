@@ -1,0 +1,60 @@
+import assert from "node:assert/strict";
+import {test} from "node:test";
+import {readFileSync} from "node:fs";
+import {validateGithubBrowserProgress} from "../scripts/verify-github-browser-progress.mjs";
+const file=new URL("../docs/github-browser-progress.json",import.meta.url);
+const base=()=>JSON.parse(readFileSync(file,"utf8"));
+test("GitHub score, formal roadmap and local release are separate",()=>{
+ const r=validateGithubBrowserProgress(base());
+ assert.deepEqual(r.remote,{earned:47,total:100,provisional:true});
+ assert.deepEqual(r.formal,{earned:17,total:100});
+ assert.equal(r.local.numericalScore,null);
+ assert.ok(r.local.blockers>=5);
+});
+test("cannot silently inflate GitHub completed points",()=>{
+ const d=base();d.categories[3].provisionalEarned=9;
+ assert.throws(()=>validateGithubBrowserProgress(d),/GITHUB_COMPLETION_TOTAL_MISMATCH/);
+});
+test("cannot hide a workstream by changing the denominator",()=>{
+ const d=base();d.categories.splice(0,1);
+ assert.throws(()=>validateGithubBrowserProgress(d),/INVALID_PROGRESS_LEDGER/);
+});
+test("cannot claim formally audited when source-only work is unevidenced",()=>{
+ const d=base();d.sourceAuditComplete=true;
+ assert.throws(()=>validateGithubBrowserProgress(d),/AUDITED_SCORE_NEEDS_SOURCE_CI/);
+});
+test("cannot claim owner-private Mac production readiness from GitHub evidence",()=>{
+ const d=base();d.localProduction.numericalScore=90;
+ assert.throws(()=>validateGithubBrowserProgress(d),/DO_NOT_INVENT_LOCAL_READINESS_PERCENT/);
+});
+test("cannot over-credit any individual engineering workstream",()=>{
+ const d=base();d.categories[6].provisionalEarned=6;
+ assert.throws(()=>validateGithubBrowserProgress(d),/INVALID_CATEGORY_EVIDENCE/);
+});
+
+test("Chat provisional model discovery increment is backed by a verified source identity",()=>{
+ const p=base();
+ const chat=p.categories.find(x=>x.id==="chat");
+ assert.equal(chat.provisionalEarned,11);
+ assert.equal(p.evidence.canonicalRunPauseResume.sourceCommit,
+  "bc9a171ad691e6f5cab3551f897b15deb7c5f4dd");
+ assert.equal(p.evidence.canonicalRunCancelAndContinuation.sourceCommit,
+  "f8571dd32630c69a0534ac3d0a2d0684739eafbc");
+ assert.equal(chat.evidenceStatus,"source-and-ci");
+ assert.equal(p.evidence.canonicalModelInventoryReconnect.sourceCommit,
+  "e94b2fbb7c4d7494525c55e8711a43cc6d167956");
+ assert.equal(p.formalRoadmap.accepted,17);
+ assert.equal(p.evidence.mc2_1DesignAcceptance.formalBefore,15);
+ assert.equal(p.evidence.mc2_1DesignAcceptance.formalAfter,17);
+ assert.equal(p.evidence.mc2_1DesignAcceptance.mergedCommit,
+  "297f99b9380c9905fbe6c359668f504142c2ee89");
+});
+
+test("formal MC2.1 design acceptance cannot be silently rolled back or inflated",()=>{
+ const p=base();
+ const receipt=p.evidence.mc2_1DesignAcceptance;
+ assert.equal(receipt.scope.includes("Original MC2.1"),true);
+ assert.equal(receipt.formalAfter-receipt.formalBefore,2);
+ assert.equal(p.formalRoadmap.accepted,receipt.formalAfter);
+ assert.equal(p.formalRoadmap.nextPotentialAccepted,20);
+});

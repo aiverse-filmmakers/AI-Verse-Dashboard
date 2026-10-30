@@ -235,3 +235,33 @@ duplicate accepted whole-system audits.
 source/PRD review are prepared. Normal PR acceptance remains pending; current
 accepted progress is15/100. On accepted MC2.1, add its existing2 points to17/100
 and continue MC2.2. This design does not accept MC2.2–MC2.6 or a finished UI.
+
+## 27 October continuation: Stage 1 UI consumers and owner gaps
+
+The operator selected **11 first visible features**. The static Essentials/Conversations/Recovery views in PR #42 are not owner-backed proof. Use the **existing canonical Gateway** transport as the first real integration rather than building another run engine or silently connecting the browser directly to Core storage.
+
+| Stage 1 feature | Existing preview | Real authority and missing integration |
+| --- | --- | --- |
+| Personal shell | Chat + workspace + canvas browser layout | Dashboard presentation; authenticated local host for scoped context |
+| Contextual chat | Canvas chips, team tags, selected app | Gateway authenticated run envelope; bounded target context, revision and cancellation policy not yet admitted |
+| AI connection | Setup detail and disabled Connect | Trusted provider auth/exchange, credential owner, actual runtime model capability status, logout/reconnect |
+| Conversations | Per-workspace local create/open/rename/archive and messages | Gateway-owned session/run lifecycle; canonical conversation-list, rename/archive/recovery endpoint **not established** |
+| Workspaces | Manual create/switch in localStorage | OS canonical workspace create/list/reuse and permission checks; **not** provided by reviewed Gateway |
+| Files and notes | Canvas notes, images, filename-only chat attachments | Canonical Data/file and asset ownership, authenticated file byte ingress/egress and scoped note actions **unconfirmed** |
+| Memory and Skills | Searchable example views | Their existing Core owners' approved read/invoke APIs, scoped to caller |
+| Agent control of app | Preview proposal approval | Typed allowlisted edit commands with identity, document revision, idempotency, approval and undo receipt |
+| Live activity and Stop | Example run timeline | Gateway run/event/control routes **exist**; authenticated host adapter, selected run identity, reconnect and stop race proof pending |
+| Usage and health | Unknown/not checked empty states | Token owner status/usage read projections; Gateway diagnostics and owner checks; no invented zeros |
+| Save/recovery | Browser local reload, backup/restore and undo | Canonical storage, authenticated session recovery, restart/replay and conflict-resolution contracts **unconfirmed** |
+
+### MC2.1 minimal host facade to accept before coding MC2.2
+
+1. **Trusted host binding:** resolve canonical system/workspace identity from authenticated host state, not browser request or prompt text. Keep OAuth/verifiers/Gateway bearer secret. `operator` is the legitimate general chat scope where supported, not a substitute for tenant authorization.
+2. **Only verified canonical Gateway methods:** authenticated `GET /status`, `GET /v1/models`, `POST /v1/runs`, `GET /v1/runs/:id`, run event SSE, explicit control and approval routes in the existing transport contract. Treat `aiverse` as the virtual Gateway model; do not represent physical model-family selection as working without a verified capability route.
+3. **Events and Stop:** treat stopped/completed/interrupted/reconnecting as distinct. Bind every control to the exact run/system/workspace/session and current epoch. Prove replay/races and permission denials; a UI button click alone never proves a stop.
+4. **Owner-specific pending APIs:** no guessed session list, archive, workspace inventory, file asset owner, generic Skills/Memory endpoint or app-action API. For every missing path, identify the current owner contract and write a narrow host adapter only once authorized. Browser storage stays explicit preview state until replaced.
+5. **Connections:** consume the already qualified `ConnectionsService` local read-only methods from an authenticated host. `status()`, `doctor()` and `listConnections()` supply bounded evidence. Verified/authorized/admitted/approved are different states. No direct browser secret collection, credential handles, fake HTTP routes or auto-grant.
+6. **Token:** consume the existing `@ai-verse/token/dashboard`/bounded owner projections, preserving `ACTUAL`, `CALCULATED`, `UNKNOWN`. Missing usage is unknown, not zero. Telemetry labels are not permission.
+7. **Scope changes and UI actions:** navigation must not change chat's authority silently. Selected canvas IDs are hints and must be checked against authenticated workspace/document revision. Typed reversible edit operations share the same validation as manual actions; destructive/external work needs owner approval and replay-safe receipts.
+
+**MC2.1 acceptance evidence required:** a reviewed concrete host/boundary matrix with source pins for the Gateway, OS, Memory, Skills, Data, Token and Connections relevant methods; verified request/response samples for supported Gateway endpoints; explicit unsupported-route list; a negative security-test design for cross-workspace events and Stop controls; and a resolved credential owner for AUTH-2. Stage 1 browser tests do not qualify this gate. Preserve MC0/MC1 and the 15-point accepted baseline.

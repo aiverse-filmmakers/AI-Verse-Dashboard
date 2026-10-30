@@ -1,0 +1,325 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-28",
+  "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
+  "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
+  "totalBudget": 100,
+  "provisionalEngineeringEarned": 47,
+  "sourceAuditComplete": false,
+  "formalRoadmap": {
+    "accepted": 17,
+    "total": 100,
+    "nextGate": "MC2.2 actual Gateway client implementation acceptance; Personal-first amendment separately unaccepted",
+    "nextPotentialAccepted": 20
+  },
+  "localProduction": {
+    "numericalScore": null,
+    "reason": "unmeasured private owner installation, consent, signing and acceptance",
+    "blockingGates": [
+      "real native Mac human session and approved grants",
+      "interactive provider/account consent",
+      "owner Data provisioning and backup policy",
+      "real Mac desktop install and clean-machine verification",
+      "human destructive-action approvals",
+      "owner dogfood and release signoff"
+    ]
+  },
+  "categories": [
+    {
+      "id": "foundation",
+      "title": "Architecture and runtime baseline",
+      "budget": 15,
+      "provisionalEarned": 15,
+      "evidenceStatus": "formally-accepted",
+      "remaining": "preserve accepted ownership and MC1 proof"
+    },
+    {
+      "id": "chat",
+      "title": "Personal chat and canonical Gateway",
+      "budget": 15,
+      "provisionalEarned": 11,
+      "evidenceStatus": "source-and-ci",
+      "remaining": "Canonical physical provider/model choice remains blocked on owner-issued per-provider per-workspace catalog and enforced admission. Host-gated Pause/Resume/Stop, active-run status refresh, history, checkpoint SSE replay, exact-session controls are source tested including real pinned canonical Gateway deterministic persisted run. Still missing owner-backed attachments, Skills, private Mac session/consent and acceptance."
+    },
+    {
+      "id": "canvas",
+      "title": "Workspace persistent Canvas and typed actions",
+      "budget": 15,
+      "provisionalEarned": 10,
+      "evidenceStatus": "source-and-ci",
+      "remaining": "Native host-only tool coordinator and selected note/group actions passed real Gateway/OS/Data CI; remaining real installed model tool dispatch, workspace lifecycle, persisted creative assets and private owner approval."
+    },
+    {
+      "id": "os-authority",
+      "title": "Native OS actor identity grants and approvals",
+      "budget": 10,
+      "provisionalEarned": 2,
+      "evidenceStatus": "draft-with-provisional-gaps",
+      "remaining": "installed owner human session, audited grant lifecycle, approval receipts; stacked OS PR #111 work is not accepted"
+    },
+    {
+      "id": "providers",
+      "title": "Connected providers and creative jobs",
+      "budget": 10,
+      "provisionalEarned": 1,
+      "evidenceStatus": "source-only",
+      "remaining": "actual connections, generation job, asset storage and placement"
+    },
+    {
+      "id": "controls",
+      "title": "Owner-backed control panels",
+      "budget": 15,
+      "provisionalEarned": 6,
+      "evidenceStatus": "source-and-ci",
+      "remaining": "A real paired browser OS workspace chooser now reads the host-owned bounded catalog and submits a time-limited exact owner-approval request. Only the trusted terminal can approve/deny, switching rotates host scope and re-pair, with real canonical film run and isolated history proved. Persistent native owner identity/consent records, signed Mac app, multi-system selection, full agent fleet control, tasks, approvals and automations remain unimplemented."
+    },
+    {
+      "id": "film",
+      "title": "One first real filmmaking feature",
+      "budget": 5,
+      "provisionalEarned": 0,
+      "evidenceStatus": "planned",
+      "remaining": "first specialist film tool (not entire film suite)"
+    },
+    {
+      "id": "ux",
+      "title": "Accessibility responsive usability",
+      "budget": 5,
+      "provisionalEarned": 2,
+      "evidenceStatus": "source-and-ci",
+      "remaining": "Functional desktop chat pane keyboard and pointer resizing, width continuity and mobile stacked fallback proven in Chromium; still needs broader responsive/accessibility review."
+    },
+    {
+      "id": "desktop",
+      "title": "GitHub CI-produced Mac desktop package",
+      "budget": 5,
+      "provisionalEarned": 0,
+      "evidenceStatus": "planned",
+      "remaining": "real package and supervised Gateway install path"
+    },
+    {
+      "id": "audit",
+      "title": "Independent remote security and source closure",
+      "budget": 5,
+      "provisionalEarned": 0,
+      "evidenceStatus": "planned",
+      "remaining": "third-party security, lifecycle and release gate audit"
+    }
+  ],
+  "evidence": {
+    "dashboardCodeCommit": "f0f5e1e42cc6ef13bd18a66f40481b38fd1ed309",
+    "dashboardVerifiedRuns": [
+      40763120455,
+      40763120327,
+      40763120328
+    ],
+    "osGrantReaderVerifiedCommit": "a9b6eaf785c6782fe09f2b99a624d1abb8f520b3",
+    "osReaderVerifiedRun": 40762850957,
+    "pendingDraftOSLifecyclePR": 111,
+    "pendingDashboardPR": 42,
+    "pendingDataPR": 22,
+    "canvasContext": {
+      "implementationCommit": "fb85aa4c6af92416b8f2e6c21d19632a5c4a62ca",
+      "realComponentWorkflow": 40775792089,
+      "browserWorkflow": 40775791985,
+      "pendingMacMatrix": [
+        "Dashboard CI",
+        "progress-integrity"
+      ]
+    },
+    "canvasGroups": {
+      "dataSourceCommit": "35ebd098fbd809d75ba3727c1c3ead61f2f2f8d3",
+      "dataNativeCiRun": 40781700269,
+      "dataNativeCiPlatforms": [
+        "linux",
+        "macos",
+        "windows"
+      ],
+      "dashboardComposedCiRun": 40781907477,
+      "sourceBranches": [
+        "codex/canvas-canonical-groups-v1",
+        "codex/dashboard-source-checkpoint"
+      ],
+      "dataPullRequest": 23,
+      "productStatus": "draft-source-ci-verified-not-installed"
+    },
+    "canvasNativeTool": {
+      "implementationCommit": "b2e5920cd2998c929eba3345379b7a45761fbc54",
+      "dashboardCi": 40788246223,
+      "browserCi": 40788246028,
+      "progressCi": 40788246082,
+      "realGatewayOsDataCi": 40788246113,
+      "registeredUnitCases": 205,
+      "phase": "draft-source-and-disposable-ci-only-not-a-production-model-dispatcher"
+    },
+    "personalDiagnostics": {
+      "sourceCommit": "0f276bae960f98b0082bad4a7e1fe7685009e6b4",
+      "dashboardCi": 40832818420,
+      "realGatewayAndPairedBrowserCi": 40832818224,
+      "uiModule": "apps/web/src/personal-diagnostics.ts",
+      "browserProof": "scripts/mc2/ci-authenticated-browser-proof.mjs",
+      "stage": "draft-real-local-paired-browser-ci-not-installed-owner-Mac"
+    },
+    "chatPaneResize": {
+      "sourceCommit": "0e915209fe2d151c2d9306ab156d05522460d4bf",
+      "dashboardCi": 40874888256,
+      "browserCi": 40874888550,
+      "realGatewayOsDataCi": 40874888319,
+      "feature": "real pointer and keyboard resizing for host-authenticated conversation panes, mobile full-width fallback",
+      "stage": "draft-source-and-disposable-ci-verified-not-owner-mac"
+    },
+    "workspaceManifest": {
+      "sourceCommit": "aea7544ffe4f2af909df7c75fcdefc117308348b",
+      "hardenedRestartProofCommit": "5c371568dd380440343844bc281766eccb07d124",
+      "dashboardCi": 40874360197,
+      "browserCi": 40874360151,
+      "realGatewayCi": 40874360134,
+      "phase": "draft-authenticated-paired-workspace-manifest-and-exact-browser-rpc-allowlist"
+    },
+    "localAgentActivity": {
+      "implementationCommit": "39a080c24d7d449c0c9d586af50b38db0a131d6c",
+      "sourceCiCommit": "9e9930805800482a843cee4ea95ee83a73cc4193",
+      "dashboardCi": 40878839555,
+      "browserCi": 40878839278,
+      "realGatewayCi": 40878839529,
+      "progressCi": 40878839235,
+      "source": "Dashboard-owned in-memory SessionStore; not canonical persistent Gateway history",
+      "boundary": "paired host-only workspace, bounded 12 rows, no IDs/titles/prompts/paths, no cross-workspace records",
+      "stage": "tested draft source only; no native owner acceptance"
+    },
+    "canonicalGatewayActivity": {
+      "sourceCommit": "93397cad32e709b27115ef853fc2d8de3cd4cb6c",
+      "hardeningCommit": "7fb93973766964a3c8cf98a73a5af47cb24607e2",
+      "dashboardCi": 40880147089,
+      "browserCi": 40880147102,
+      "gatewayCompositionCi": 40880147101,
+      "progressCi": 40880147139,
+      "source": "canonical Gateway persisted session/run history through existing authenticated owner binding",
+      "details": "independent from local in-memory sessions, bounded 3 sessions/6 recent runs, status/timestamp only; text/outputs never rendered",
+      "stage": "draft-verified-disposable-CI-not-owner-Mac"
+    },
+    "trustedHostWorkspaceRotation": {
+      "sourceCommit": "4c269f411ee0990e8a784f6542c1f2c13da3283e",
+      "nativeHostCi": 40886502087,
+      "browserQc": 40886502368,
+      "realCanonicalGatewayCi": 40886502198,
+      "progressIntegrityCi": 40886502307,
+      "entrypoint": "scripts/mc2/start-connected.ts",
+      "authorization": "trusted-tty-owner-only; canonical OS-owned workspace manifest and root binding-generation/device/inode checks",
+      "revocation": "rotate one-time pairing code, HttpOnly cookie, runtime lease; close old browser WS; revalidate before run event forwarding",
+      "limits": "single registered host OS, explicit local TTY command, manual fresh browser re-pair, not signed Mac native UI or production owner login",
+      "stage": "verified source+disposable CI; not on private user machine"
+    },
+    "graphicalHostApprovedWorkspace": {
+      "sourceRevision": "072afb8dfb428b57fce7c8c0d126f029d887a7df",
+      "sourcePath": "apps/web/local-app/boot.js",
+      "hostBoundaryPath": "apps/gateway/src/local-app-session.ts",
+      "ownerTtyPath": "scripts/mc2/start-connected.ts",
+      "browserCompositionProof": "scripts/mc2/ci-authenticated-browser-proof.mjs",
+      "ciDashboard": 40960567285,
+      "ciBrowser": 40960567514,
+      "ciCanonicalGateway": 40960567259,
+      "ciProgress": 40960567232,
+      "functionality": "bounded real OS named workspace catalog, browser proposal, exact terminal :approve/:deny/:pending, re-pair revocation, true film Gateway execution, workspace-isolated canonical history",
+      "privacy": "exact origin/HttpOnly cookie, no raw roots, browser cannot invoke generic workspace.list, no bearer or one-time code in page, old DOM cleared",
+      "limitations": "one trusted host registered OS, owner terminal approval per request, no durable owner identity or signed desktop release",
+      "stage": "source+disposable-CI-verified-not-user-Mac-accepted"
+    },
+    "canonicalChatHistoryPagination": {
+      "sourceCommit": "4b6289f8f768052d7e455259532941fccf8434f1",
+      "dashboardCi": 40970666207,
+      "browserCi": 40970666312,
+      "realGatewayCi": 40970666397,
+      "progressCi": 40970666540,
+      "taskLedger": "docs/DEVELOPMENT-TASKS-549-554-2026-10-30.md",
+      "result": "47 canonical sessions through three bounded UI pages; stale-scope and duplicate guards; no browser-owned history",
+      "status": "source-and-CI-tested; draft; no category or formal acceptance points claimed"
+    },
+    "canonicalModelInventoryReconnect": {
+      "sourceCommit": "e94b2fbb7c4d7494525c55e8711a43cc6d167956",
+      "dashboardCi": 40977323923,
+      "browserCi": 40977323908,
+      "canonicalGatewayCi": 40977323926,
+      "progressCi": 40977323901,
+      "ledger": "docs/DEVELOPMENT-TASKS-555-573-2026-10-30.md",
+      "scope": "Host-read-only actual virtual Gateway model + first-party bounded model view; safe same-run reconnect without duplicate create and stale stream contamination",
+      "categoryIncrement": "chat 8->9 provisional, partly progressed G02.3; no formal acceptance",
+      "limitations": "No physical provider/model selection, no signed owner login or provider consent, no run control, no Skills/attachment integration",
+      "status": "functional source CI verified; PR draft; not private owner Mac"
+    },
+    "canonicalRunCancelAndContinuation": {
+      "sourceCommit": "f8571dd32630c69a0534ac3d0a2d0684739eafbc",
+      "dashboardCi": 41023718870,
+      "browserCi": 41023718799,
+      "canonicalGatewayCi": 41023718875,
+      "progressCi": 41023718779,
+      "ledger": "docs/DEVELOPMENT-TASKS-574-593-2026-10-30.md",
+      "scope": "Explicit operator TTY host opt-in; one canonical cancel run/session/operation; pre-post owner lease revalidation; browser Stop; same-session canceled continuation without unfinished context; headless denial",
+      "status": "source and four exact-head CI suites verified, PR draft, private Mac unaccepted",
+      "score": "Chat 9->10/15, GitHub/browser 45->46/100 provisional; formal 15/100 unchanged"
+    },
+    "canonicalChatTranscriptHistoryPaging": {
+      "sourceCommit": "6d7289562f6d7c2be994f73badb84366acfb0702",
+      "ledger": "docs/DEVELOPMENT-TASKS-594-606-2026-10-30.md",
+      "scope": "Open past Chat sessions into non-destructive split; view >50 Gateway-owned runs in 25-row pages; 200-run browser bound; duplicate/scope/epoch validation; no browser persistence or unverified model context",
+      "status": "source commit pushed, exact-head CI independently verified by GitHub Actions",
+      "score": "No increment: G02.2 quality gain, Chat 10/15 and provisional GitHub/browser 46/100 unchanged; formal 15/100"
+    },
+    "canonicalRunPauseResume": {
+      "sourceCommit": "bc9a171ad691e6f5cab3551f897b15deb7c5f4dd",
+      "dashboardCi": 41035390400,
+      "browserCi": 41035390419,
+      "canonicalGatewayCi": 41035390399,
+      "progressCi": 41035390437,
+      "ledger": "docs/DEVELOPMENT-TASKS-607-627-2026-10-30.md",
+      "scope": "Separate interactive owner-granted persistent canonical Pause/Resume, exact session/OS rebind pre-POST gate, SSE replay fence for repeated resumes, Stop paused run, read-only Check run status; real pinned Gateway Store paused->resumed->completed",
+      "status": "Functional source verified across four CI suites, draft PR; private Mac and physical providers unaccepted",
+      "score": "Chat 10→11/15 and GitHub/browser 46→47/100 provisional; formal 15/100 unchanged"
+    },
+    "canonicalChatRunReceiptsTranscriptFindAndCanvasNote": {
+      "sourceCommit": "e3a161ec4e38c932be53a95d89366afcfa2aa8f8",
+      "ledger": "docs/DEVELOPMENT-TASKS-628-647-2026-10-30.md",
+      "status": "functional source verified on all four CI suites; subsequent docs/test commits independently checked",
+      "scope": "Authenticated safe canonical Gateway run receipts without unverifiable Token cost; per-pane loaded-history find/TXT export; manual recovery cannot mix sessions; explicit Canvas selected saved note re-read from Data before copying to Chat composer, no automatic Gateway send.",
+      "limitations": "G02.4 only IN PROGRESS: binary attachments, Data asset/MIME admission, OS Skills, provider selection, native owner Mac acceptance NOT implemented.",
+      "score": "No increase: Chat 11/15, GitHub/browser 47/100 provisional, formal 15/100 unchanged; owner-admitted attachment/skill contract still missing."
+    },
+    "task648AssetContract": {
+      "document": "docs/G02-4-CANONICAL-ASSET-ADMISSION-CONTRACT-2026-10-30.md",
+      "state": "owner-contract defined; upstream data binary asset API and Gateway modality dispatch not implemented",
+      "scoring": "No score change. Chat 11/15, GitHub/browser 47/100 provisional, formal 15/100."
+    },
+    "g06_1OwnerDiagnostics": {
+      "scope": "Existing G06.1 Control Center: OS registry summary (no full system list) and actual owner-scoped Gateway per-run advanced diagnostics, safe projections only",
+      "sourceFiles": [
+        "apps/web/src/personal-diagnostics.ts",
+        "apps/gateway/src/canonical-gateway-bridge.ts",
+        "apps/gateway/src/query-router.ts",
+        "packages/client/src/canonical-gateway-client.ts"
+      ],
+      "ledgers": [
+        "docs/DEVELOPMENT-TASKS-649-660-2026-10-30.md",
+        "docs/DEVELOPMENT-TASKS-661-669-2026-10-30.md"
+      ],
+      "state": "implemented in draft with positive/negative CI; G06.1 remains in-progress until whole milestone and private owner acceptance",
+      "scoring": "No increase: Chat 11/15, GitHub/browser 47/100 provisional, formal accepted 15/100 unchanged"
+    },
+    "g06_2ApprovalReadOnly": {
+      "ledger": "docs/DEVELOPMENT-TASKS-670-674-2026-10-30.md",
+      "scope": "Actual canonical Gateway awaiting_approval/recovery statuses displayed, local owner-observed approval event filter, no action authority or approval POST",
+      "state": "source-tested in draft; G06.2 still in-progress, no owner acceptance",
+      "scoring": "Chat 11/15, overall GitHub/browser 47/100 provisional, formal 15/100 unchanged"
+    },
+    "mc2_1DesignAcceptance": {
+      "sourcePr": 43,
+      "sourceHead": "e402febc7304cdda3942019db999d2d61342cdcf",
+      "mergedCommit": "297f99b9380c9905fbe6c359668f504142c2ee89",
+      "verifiedCi": 40711556090,
+      "aiAssistedReviewId": 5718854282,
+      "scope": "Original MC2.1 Gateway design contract only, 2 historical points; not implementation, provider admission or local Mac release",
+      "formalBefore": 15,
+      "formalAfter": 17
+    }
+  },
+  "nextUnverifiedChange": "Task 675: owner-backed G06.2 audited approval receipts or next already planned owner-contract-backed milestone; no executable approval commands without explicit OS grant/revocation and native owner acceptance. G02.3 physical models and G02.4 binary assets remain blocked."
+}

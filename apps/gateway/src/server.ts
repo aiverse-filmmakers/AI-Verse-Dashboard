@@ -12,6 +12,9 @@ import {
   hasWebSocketAuthorization,
 } from "./auth.js";
 import { SubscriptionHub } from "./subscriptions.js";
+import { CanonicalGatewayBridge } from "./canonical-gateway-bridge.js";
+import { CanvasOwnerBridge } from "./canvas-owner-bridge.js";
+import { LocalApplicationSession } from "./local-app-session.js";
 
 /**
  * Localhost HTTP + WebSocket server (Task 4).
@@ -54,7 +57,7 @@ export interface GatewayServer {
 export async function startGateway(
   router: QueryRouter,
   hub: SubscriptionHub,
-  opts?: { port?: number; host?: string; authToken?: string },
+  opts?: { port?: number; host?: string; authToken?: string; canonicalBridge?: CanonicalGatewayBridge; canvasBridge?: CanvasOwnerBridge; localApp?: LocalApplicationSession },
 ): Promise<GatewayServer> {
   const host = "127.0.0.1";
   const authToken = createGatewayAuthToken(opts?.authToken);
@@ -62,7 +65,7 @@ export async function startGateway(
     throw new Error("gateway binds loopback only; remote access must use a tunnel");
   }
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    void handleHttp(req, res, router, authToken);
+    void handleHttp(req, res, router, authToken, opts?.canonicalBridge, opts?.localApp,opts?.canvasBridge);
   });
   const wss = new WebSocketServer({
     noServer: true,
@@ -72,7 +75,9 @@ export async function startGateway(
   });
 
   server.on("upgrade", (req, socket, head) => {
-    if (!hasWebSocketAuthorization(req.headers, authToken)) {
+    const bearerAuthorized=hasWebSocketAuthorization(req.headers, authToken);
+    const cookieAuthorized=opts?.localApp?.isAuthorizedBrowser(req)===true;
+    if (!bearerAuthorized && !cookieAuthorized) {
       socket.write("HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Bearer\r\nConnection: close\r\n\r\n");
       socket.destroy();
       return;
@@ -96,8 +101,15 @@ export async function startGateway(
       socket.destroy();
       return;
     }
+    if(cookieAuthorized && !bearerAuthorized && !opts?.localApp?.isAllowedSocketSystem(systemId)) {
+      socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+      socket.destroy();
+      return;
+    }
     wss.handleUpgrade(req, socket, head, (ws) => {
-      void handleSocket(ws, systemId, router, hub);
+      if(cookieAuthorized && !bearerAuthorized)opts?.localApp?.trackBrowserSocket(ws);
+      void handleSocket(ws, systemId, router, hub, opts?.canonicalBridge,
+        cookieAuthorized && !bearerAuthorized ? opts?.localApp : undefined);
     });
   });
 
@@ -108,10 +120,12 @@ export async function startGateway(
       resolve(typeof addr === "object" && addr !== null ? addr.port : requested);
     });
   });
+  opts?.localApp?.setBoundPort(actual);
   return {
     port: actual,
     authToken,
     async close() {
+      opts?.localApp?.close();
       wss.close();
       await new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
@@ -137,10 +151,16 @@ async function handleHttp(
   res: ServerResponse,
   router: QueryRouter,
   authToken: string,
+  canonicalBridge?: CanonicalGatewayBridge,
+  localApp?: LocalApplicationSession,
+  canvasBridge?: CanvasOwnerBridge,
 ): Promise<void> {
   try {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
-    if (!hasBearerAuthorization(req.headers, authToken)) {
+    if(localApp && await localApp.handle(req,res))return;
+    const bearerAuthorized=hasBearerAuthorization(req.headers, authToken);
+    const cookieAuthorized=localApp?.isAuthorizedBrowser(req)===true;
+    if (!bearerAuthorized && !cookieAuthorized) {
       res.writeHead(401, {
         "content-type": "application/json",
         "www-authenticate": "Bearer",
@@ -166,6 +186,60 @@ async function handleHttp(
         return;
       }
       const frame = JSON.parse(await readBody(req)) as unknown;
+      if(cookieAuthorized && !bearerAuthorized && !localApp?.isAllowedFrame(frame)) {
+        res.writeHead(403,{"content-type":"application/json","cache-control":"no-store"});
+        res.end(JSON.stringify({ok:false,error:{code:"LOCAL_APP_SCOPE_DENIED",message:"Scoped local app session required"}}));
+        return;
+      }
+      if(CanvasOwnerBridge.recognizes(frame)){
+        if(!canvasBridge){
+          const tagged=frame && typeof frame==="object"&&!Array.isArray(frame)
+            ?frame as Record<string,unknown>:{};
+          res.writeHead(200,{"content-type":"application/json","cache-control":"no-store"});
+          res.end(JSON.stringify({type:"res",v:"1.0",
+            id:typeof tagged.id==="string"&&tagged.id.length<=128?tagged.id:"unparseable",
+            ok:false,error:{code:"CANVAS_OWNER_UNAVAILABLE",
+              message:"Canonical Canvas Data owner not configured"},
+            observedAt:new Date().toISOString()}));
+          return;
+        }
+        const abort=new AbortController();
+        const stop=()=>abort.abort();
+        res.on("close",stop);
+        try{
+          const out=await canvasBridge.handle(frame,abort.signal);
+          if(!res.writableEnded&&!res.destroyed){
+            res.writeHead(200,{"content-type":"application/json","cache-control":"no-store"});
+            res.end(JSON.stringify(out));
+          }
+        }finally{res.off("close",stop);}
+        return;
+      }
+      // Canonical operations are authenticated, deliberately opt-in and
+      // host-injected. Existing synchronous QueryRouter remains unchanged.
+      if (CanonicalGatewayBridge.recognizes(frame)) {
+        if (!canonicalBridge) {
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({
+            type:"res",v:"1.0",id:typeof (frame as {id?:unknown}).id==="string"
+              ?(frame as {id:string}).id.slice(0,128):"unparseable",
+            ok:false,error:{code:"GATEWAY_NOT_CONFIGURED",message:"Canonical Gateway not configured"},
+            observedAt:new Date().toISOString(),
+          }));
+          return;
+        }
+        const abort=new AbortController();
+        const stop=()=>abort.abort();
+        res.on("close",stop);
+        try {
+          const out=await canonicalBridge.handle(frame,abort.signal);
+          if (!res.writableEnded && !res.destroyed) {
+            res.writeHead(200, { "content-type": "application/json" });
+            res.end(JSON.stringify(out));
+          }
+        } finally {res.off("close",stop);}
+        return;
+      }
       const out = router.handle(frame);
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(out));
@@ -184,7 +258,12 @@ function handleSocket(
   boundSystem: string,
   router: QueryRouter,
   hub: SubscriptionHub,
+  canonicalBridge?: CanonicalGatewayBridge,
+  localApp?: LocalApplicationSession,
 ): void {
+  let canonicalCancel: (()=>void)|undefined;
+  let canonicalEpoch=0;
+  let selectedWorkspaceScope:string|undefined;
   let activeSubId: string | undefined;
   const socketSubIds = new Set<string>();
   ws.on("message", (data) => {
@@ -196,6 +275,73 @@ function handleSocket(
       return;
     }
     const tagged = (frame as { type?: string }).type;
+    // Cookie-authorized browser sockets are limited to scoped canonical run
+    // subscriptions. They never gain the general read/command WS surface.
+    if(localApp && (tagged!=="gateway-run-subscribe" && tagged!=="gateway-run-unsubscribe"
+      || (tagged==="gateway-run-subscribe"
+        && (!frame || typeof frame!=="object" || Array.isArray(frame)
+          || !localApp.isAllowedFrame({...frame,method:"aiverse.gateway.run.get",
+            systemId:boundSystem}))))){
+      ws.send(JSON.stringify({type:"res",v:"1.0",id:"local-app-socket",ok:false,
+        systemId:boundSystem,error:{code:"LOCAL_APP_SCOPE_DENIED",message:"Scoped chat events only"},
+        observedAt:new Date().toISOString()}));
+      return;
+    }
+    // Canonical event stream uses the existing authenticated, system-bound
+    // WebSocket. Payloads carry IDs only: no upstream URL, bearer or roots.
+    if (tagged === "gateway-run-subscribe") {
+      const fields = frame && typeof frame === "object" && !Array.isArray(frame)
+        ? Object.keys(frame as Record<string,unknown>) : [];
+      const request = frame as {workspaceId?:unknown;runId?:unknown};
+      canonicalEpoch++;
+      canonicalCancel?.();
+      canonicalCancel=undefined;
+      const invalid = !canonicalBridge
+        || (localApp!==undefined && !localApp.isAllowedBrowserStream(
+          typeof request.workspaceId==="string"?request.workspaceId:""))
+        || fields.length !== 3
+        || fields.some(key=>!["type","workspaceId","runId"].includes(key))
+        || typeof request.workspaceId !== "string"
+        || !/^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/.test(request.workspaceId)
+        || typeof request.runId !== "string"
+        || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(request.runId);
+      if (invalid) {
+        ws.send(JSON.stringify({type:"res",v:"1.0",id:"gateway-run-subscribe",
+          ok:false,systemId:boundSystem,
+          error:{code:canonicalBridge?"INVALID_SUBSCRIPTION":"GATEWAY_NOT_CONFIGURED",
+            message:"Gateway stream unavailable"},
+          observedAt:new Date().toISOString()}));
+        return;
+      }
+      // A socket has one active workspace at a time. Don't leave a legacy
+      // workspace subscription alive after selecting a canonical run scope.
+      if (activeSubId !== undefined) {
+        hub.unsubscribe(activeSubId);
+        socketSubIds.delete(activeSubId);
+        activeSubId=undefined;
+      }
+      selectedWorkspaceScope=request.workspaceId as string;
+      const epoch=canonicalEpoch;
+      canonicalCancel=canonicalBridge.openEventStream(boundSystem,request.workspaceId as string,
+        request.runId as string,
+        event=>{if(epoch===canonicalEpoch && ws.readyState===1
+          && (!localApp||localApp.isAllowedBrowserStream(request.workspaceId as string)))
+          ws.send(JSON.stringify(event));},
+        code=>{if(epoch===canonicalEpoch && ws.readyState===1
+          && (!localApp||localApp.isAllowedBrowserStream(request.workspaceId as string)))
+          ws.send(JSON.stringify({
+          type:"res",v:"1.0",id:"gateway-run-subscribe",ok:false,systemId:boundSystem,
+          error:{code,message:"Canonical Gateway "+code},observedAt:new Date().toISOString(),
+        }));});
+      return;
+    }
+    if (tagged === "gateway-run-unsubscribe") {
+      canonicalEpoch++;canonicalCancel?.();canonicalCancel=undefined;
+      ws.send(JSON.stringify({type:"res",v:"1.0",id:"gateway-run-unsubscribe",
+        ok:true,systemId:boundSystem,result:{unsubscribed:true},
+        observedAt:new Date().toISOString()}));
+      return;
+    }
     // Subscribe control frame: Dashboard-local, bound to this socket's system.
     if (tagged === "subscribe") {
       const parsed = subscriptionRequestSchema.safeParse(frame);
@@ -231,6 +377,10 @@ function handleSocket(
         return;
       }
 
+      if(selectedWorkspaceScope!==nextWorkspace){
+        canonicalEpoch++;canonicalCancel?.();canonicalCancel=undefined;
+      }
+      selectedWorkspaceScope=nextWorkspace;
       if (activeSubId !== undefined) {
         hub.unsubscribe(activeSubId);
         socketSubIds.delete(activeSubId);
@@ -274,6 +424,7 @@ function handleSocket(
     ws.send(JSON.stringify(out));
   });
   ws.on("close", () => {
+    canonicalEpoch++;canonicalCancel?.();canonicalCancel=undefined;
     for (const subId of socketSubIds) hub.unsubscribe(subId);
     socketSubIds.clear();
     activeSubId = undefined;

@@ -1,5 +1,11 @@
 # Mission Control -> AI-Verse Dashboard Execution Tracker
 
+## Formal acceptance reconciliation, 30 October 2026
+
+**Current original MC roadmap accepted: 17/100** (MC0+MC1 previously accepted 15, plus MC2.1 original design-only 2). [MC2.1 PR #43](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/43) passed 3-platform CI 40711556090, received operator-delegated AI-assisted Code Review 5718854282 and merged at `297f99b9380c9905fbe6c359668f504142c2ee89`. [Main's acceptance tracker update PR #45](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/45) is merged. **MC2.2 is next formal implementation gate** (possible 20/100). Personal-first scope reweighting is still pending; remote GB 47/100 and Chat 11/15 remain provisional; no private Mac acceptance.
+
+Historical checkpoint paragraphs below that say 15/100 or "next MC2.1" retain their dates and must not override this current verified score. No implementation in draft #42 is accepted by the design-only merge. Reviews must use the canonical [Code Review workflow](REVIEW-ACCEPTANCE-WORKFLOW-2026-10-30.md) with exact-head evidence and no false independent signoff.
+
 ## Personal-first amendment — 27 October 2026 (review draft)
 
 The operator has requested Personal-first delivery with always-present agent chat, app awareness/control, shared chat tools and later specialist Filmmaking. See the [living plan](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md) for the explicit scope and ordering amendment. The following original requirements/accounting remain historical baseline until reconciliation is reviewed; do not interpret the full-shell assumption or fixed future order as approval of the amended design. MC0/MC1 remain accepted at 15 baseline points. New scope has not been estimated or accepted.
@@ -9,6 +15,12 @@ The operator has requested Personal-first delivery with always-present agent cha
 **Status:** CANONICAL EXECUTION TRACKER  
 **PRD:** `docs/PRD-MISSION-CONTROL-AIVERSE-DASHBOARD-2026-09-15.md`  
 **Canonical plan:** `docs/CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md`
+
+## Standing execution preference: browser agent / GitHub-first (operator decision, 27 October 2026)
+
+The operator wants the browser agent to **continue the real implementation through GitHub and disposable GitHub Actions runners for as long as practical, aiming for roughly 90–93% of the existing 100-point roadmap before asking to test locally**. This includes a working downloadable app, secure local launcher and extensive real-component/negative CI tests, not just UI mock-ups. The browser agent **does not access the Mac**. Preserve the already-accepted MC0/MC1 work and continue building safely even when a single member-local acceptance gate is deferred. See the [canonical plan's standing decision](CANONICAL-MISSION-CONTROL-ADOPTION-PLAN-2026-09-15.md#standing-operator-decision-github-first-to-the-9093-pre-local-target-27-october-2026) for the full workflow and boundaries.
+
+**100% includes local owner acceptance.** The 90–93% is an *aspirational pre-local preparation target*, not currently earned points or permission to skip acceptance, account consent, real-Mac testing or security checks. Historical A/H weighted tasks still involving human acceptance: MC2.6 (1), MC5.4 (2), MC6.4 (3), MC7.3 (1), total 7 points; member/private-Core conditions may cause other gates. Current formal accepted score **15/100** until independently documented gate closure. The revised Personal scope still requires weight reconciliation. New chats must inspect the actual branch/PR/CI and this tracker, avoid repeating completed slices, and keep deferred local steps recorded without blocking independently testable GitHub work.
 
 ## Pre-dogfood whole-system audit override
 
@@ -210,7 +222,7 @@ Sanitized evidence, exact refs, execution-path amendment, initial failures and r
 # MC2 - First-class AI-Verse adapter - 15 points
 
 ### MC2.1 - Adapter contract design - 2 points - A
-Status: PENDING
+Status: REVIEW READY / PENDING PR ACCEPTANCE (no points awarded)
 
 Deliver:
 - exact Dashboard <-> AI-Verse Gateway client contract;
@@ -228,7 +240,7 @@ Local continuation prepared, 26 October 2026:
 - This is proposed design work pending normal PR acceptance, not an implemented client or accepted MC2.1. Progress remains15/100. After acceptance, its existing2 points bring progress to17/100 and MC2.2 is next.
 
 ### MC2.2 - AI-Verse Gateway client package - 3 points - A
-Status: PENDING
+Status: IN PROGRESS / SLICE 1 SOURCE + CI, NOT INTEGRATED (no points awarded)
 
 Deliver:
 - typed client for models/chat/runs/events/cancel/pause/resume/approval;
@@ -611,3 +623,948 @@ blocked. This resolves the routing prerequisite, not the real OS/runtime portion
 of MC1.4. Continue with our bounded owner-runtime qualification and its audit
 record; do not wait for Builderz or count the deterministic host as real-runtime
 acceptance. Dashboard progress is unchanged until fixed MC1.4 acceptance is met.
+
+### 27 October Stage 1 UI checkpoint, no points awarded
+
+Operator requested that the eleven essential experiences be **visible first**, then resume the canonical MC sequence. Draft PR #42 now contains a consolidated Essentials page, browser-local main conversation create/reopen/rename/archive, preview backup/restore, honest provider setup and unknown usage/health states, plus added browser regressions. This is not production runtime acceptance. Latest-head CI/browser/deployment are separate verification gates and must be read before reporting a pass.
+
+**Current execution position remains MC2.1 PENDING**. MC0 and MC1 are complete (15 accepted baseline points). The Personal-first plan amendment must reconcile the MC3/MC5 shell-order change, missing owner contracts, revised future weights and MC2.1 acceptance. Do not start work from MC0 again or award points for visible examples. Next accepted gate after MC2.1 is MC2.2.
+
+### MC2.2 live-host bridge slice, 27 October 2026
+
+Source checkpoint in draft Dashboard PR #42: the host-only transport now has an explicit opt-in `CanonicalGatewayBridge` for authenticated Dashboard-local `/rpc` requests `aiverse.gateway.status`, `aiverse.gateway.run.create`, and `aiverse.gateway.run.get`. A separate authenticated WebSocket command `gateway-run-subscribe` projects allowlisted canonical run events with the selected Dashboard system/workspace and local stream sequence. `gateway-run-unsubscribe` cancels that subscription, including on connection close/retarget. The browser-safe `DashboardClient` methods send only IDs and messages to the Dashboard host and bypass live-operation caches. Existing read models, local /rpc calls, and general chat preview remain unchanged.
+
+The bridge exists only when an authenticated trusted process injects an **already approved** canonical system ID, loopback Gateway origin and host-held bearer resolver after validating the registered OS root. No browser can add a credential or Gateway URL through these interfaces. Real run **controls/approvals remain intentionally disabled** pending the documented owner-driven workspace-rebind race proof. Live credential setup and actual provider/runtime integration remain pending.
+
+New tests cover actual localhost Dashboard HTTP/WS connections talking to a synthetic localhost canonical Gateway-shaped fixture: authentication, wrong origin, system and workspace rejection, idempotency request forwarding, response redaction, malformed method payloads and run-event projection. These are verified contract fixtures, not a qualified real private/Core provider run. MC2.2 remains IN PROGRESS until actual owner/credential binding and real runtime integration pass; do not award its 3 points solely from source/CI.
+
+### MC2 progression checkpoint: real pinned Gateway and safe local startup, 27 October 2026
+
+The **real** `AI-Verse-Gateway@ceb8849ec062f0d3997ceb0207e42c25aedd20c6` now passes the disposable composition workflow `MC2 Canonical Gateway Composition`. It exercises a canonical installed Gateway process and deterministic runtime (not a stubbed HTTP handler), a Dashboard authenticated host bridge, `aiverse` model preflight, run completion with an echoed unique marker, run idempotency replay and the authenticated Dashboard WebSocket event stream. The test also invokes the new `mc2:local` launcher against the disposable canonical installation, verifies its safe readiness report and default-denied unauthenticated host route, then disposes of both services and all test files. **No owner Mac/system/provider credentials were used.**
+
+Safety repairs discovered and made during qualification:
+- `system.get` now uses the explicit public registry projection, excluding internal realpath/root identity.
+- The OS registry has a host-only binding generation; explicit same-root rebind invalidates a previously approved Gateway mapping.
+- Authenticated workspace selection cancels outstanding canonical event subscriptions; late A→B→A HTTP results are rejected even when they resolve after a new A selection.
+- Upstream credential-bearing fetches disallow redirects and live Gateway status/run requests bypass Dashboard projection cache.
+- New negative tests cover cross-system response denial, stale same-root lease and delayed WS events after workspace retarget.
+
+`npm run mc2:local` is an opt-in, **local host-only backend launcher**, not a published browser/chat app. It reads the already-existing owner Gateway config from `AIVERSE_GATEWAY_HOME` (default `~/.aiverse/gateway`), requires the already-approved `AIVERSE_GATEWAY_TOKEN` in the local process environment, validates the canonical `system_id` via authenticated Gateway `/status` and `/v1/models`, registers the declared compatible OS root, then binds the Dashboard host to `127.0.0.1:3100` (or `AIVERSE_DASHBOARD_PORT`). The launcher **never** prints or persists either bearer. It does not approve Connections or grant a model/tool permission.
+
+**Original acceptance gates remain separate:** MC2.1 contract review is ready but PR #42 is unmerged; MC2.2 is implemented through the host backend and verified against a real disposable Gateway but does not yet include a user-qualified local OS/provider session or the control/approval facade; MC2.3 first-class `aiverse` runtime identity has real source/preflight proof without disguising it as a vendor model; MC2.4 workspace and stale-epoch guards are implemented and under normal regression acceptance; MC2.5 real personal app chat and run-control UI still need the secure native/local-app session and the owner-controlled Stop race proof. No additional points have been awarded without gate acceptance. Preserve the historical MC0+MC1 baseline of 15/100 and do not restart earlier slices.
+
+### MC2.5 Personal Chat run-controller slice (GitHub-first, 27 October 2026)
+
+Scoped implementation in draft PR #42, **not formal phase acceptance**: `packages/client/src/conversation-run.ts` now defines a browser-safe, source-backed Personal chat controller and authenticated Dashboard-local WebSocket event feed. The controller calls the existing typed `DashboardClient` for canonical `aiverse.gateway.run.create` / `.run.get`, binds exact Gateway run and session identifiers, reconciles terminal events through canonical GET, and never treats provisional streamed text as a confirmed final response. It can recover a known canonical run by ID, transparently represents paused-recovery-required states, and retries uncertain submissions only with the original idempotency key.
+
+Isolation guards check selected Dashboard system/workspace plus the monotonic client selection epoch (including A→B→A). Retargeting cancels stale event streams; wrong-scope event envelopes are rejected; interrupted streams and terminal-reconciliation failures remain visibly interrupted. Local WebSocket transport restricts the target to a loopback Dashboard host and uses the existing Dashboard WS authentication protocol, not the upstream canonical Gateway bearer. No new session database or provider credential owner was created. Automated tests in `test/personal-chat-run.test.ts` exercise canonical send/stream/final output, explicit run recovery, uncertain idempotent retry, stale HTTP/WS scope, fake terminal rejection and invalid socket frames. CI must pass on the current head before marking this source slice verified.
+
+**Next MC2.5 slice:** mount this source controller into the actual trusted Personal application session and its multi-pane chat presentation, retaining the static GitHub Pages preview as explicitly disconnected. Do not claim complete user-visible live chat, owner-qualified provider inference, or Stop/approval authority from this controller alone. Keep MC2.1 review and MC2.2/MC2.5 acceptance pending under the original gates, with historical accepted programme score unchanged at 15/100.
+
+### MC2.5 real Personal Chat screen and independent split panes (GitHub-first, 27 October 2026)
+
+**Source in draft PR #42, not formal acceptance:** the actual client/runtime UI is implemented separately from the browser mock at `apps/web/src/personal-chat-ui.ts` and styled by `apps/web/src/personal-chat.css`. A trusted host can invoke `mountAuthenticatedPersonalChat(root,{dashboardOrigin,dashboardBearer,selected})`; host-provided system/workspace scope and the memory-held Dashboard session never come from static Pages, model text or browser localStorage. This is a real client over `DashboardClient`, the existing authenticated Dashboard WebSocket protocol, and `PersonalChatRunController`. It supports three independent resizable chat panes with identical Send/New Chat/Recover Run/Same-Key Retry controls, explicit workspace retarget, protected terminal statuses, and scope-cancelled updates. The last pane minimizes rather than disappearing. Text is inserted as DOM text, not trusted HTML. Closing a view is not misrepresented as canceling the canonical Gateway run.
+
+**Verification:** `test/live-personal-chat-ui.browser.mjs` operates Chromium against a disposable authenticated Dashboard-shaped RPC/WS service, verifying actual Send/stream/canonical terminal GET, split panes, conversation reset, recover-with-wrong-workspace rejection, and no localStorage credential/transcript persistence. The existing GitHub Pages static preview is unchanged; it must never auto-mount the private runtime client. The separate browser QC workflow builds and bundles this UI for Chromium (the underlying TypeScript client uses npm module imports), alongside the existing public-preview regression suite. Inspect the **latest commit's** CI results before claiming this slice verified.
+
+**Not yet complete:** native/Tauri host session bootstrap and the actual launchable Personal application shell are later gates. No production browser session, owner Mac login, provider inference, canonical run-list/history API or Stop/approval was invented. Canonical Gateway owns run/session truth; the UI holds transient display text only. For full conversational continuity, owner-qualified canonical session reuse and restart restoration require further integration. Keep MC2.5 and the historical 15/100 accounting unaccepted pending the prescribed product/owner gates.
+
+### MC2 secure local browser-session boundary (GitHub-first, 27 October 2026)
+
+**Implemented but not yet an operator-launched UI:** draft PR #42 now contains opt-in `LocalApplicationSession` (`apps/gateway/src/local-app-session.ts`) and its integration with Dashboard's loopback HTTP + WebSocket host. A trusted caller can mint a single-use 5-minute pairing secret, bounded to five failed attempts, and redeem it only from the exact first-party `127.0.0.1:<port>` origin to obtain an 8-hour `HttpOnly; SameSite=Strict` local cookie. The browser receives **no Dashboard bearer and no canonical Gateway/provider credentials**. A cookie-auth RPC is scoped to the already-selected system and workspace and to canonical Gateway methods; cookie-auth WebSocket access refuses another system and wrong/missing origins. Existing explicit bearer clients remain supported. Logout revokes the in-memory cookie session. These routes are **off by default** and are not yet exposed by the ordinary `mc2:local` launcher.
+
+`DashboardClient`, `DashboardChatEventFeed`, and the new live Personal UI support `{mode:"host-cookie"}` as an alternative to a bearer. Negative tests cover unpaired/remote-origin/weak-scope requests, one-use redemption/replay, five-failure lockout, cookie-only WS refusal, logout, and absence of browser bearer. No private credentials or persistent session store have been committed.
+
+**Next bounded work:** a trusted launcher/native host must opt in, securely deliver the pairing invitation to the operator, serve a same-origin signed/packaged production chat bundle and call `mountAuthenticatedPersonalChat` only after successful cookie-scoped readiness. The current GitHub Pages preview must remain disconnected. Do not claim a running Mac app or complete MC2.5 until the whole host-to-UI bootstrap is tested and accepted. Historical accepted score remains **15/100**; check exact latest-head CI before claiming test acceptance.
+
+### MC2.5 trusted localhost Personal application launcher (27 October 2026, GitHub-first)
+
+**One bounded source/CI slice on draft Dashboard PR #42, not formal MC2.5 acceptance:** `npm run mc2:local-app` now builds TypeScript, bundles the browser-safe Personal UI using pinned `esbuild@0.25.12`, and starts the already-approved canonical Gateway-backed Dashboard host with `AIVERSE_DASHBOARD_PERSONAL_UI=1`. The original `mc2:local` mode remains unchanged and does **not** serve the app. The opt-in launcher requires an actual interactive private terminal and refuses background/non-TTY execution. It prints an ephemeral pairing code **only to that private terminal** (not readiness JSON, URL, source, telemetry or public preview) and makes the first-party app available at `http://127.0.0.1:<port>/local-app/`. The operator will need an already-approved local Gateway configuration and existing Gateway token in the trusted process environment when eventually using this launcher; no live member machine was accessed here.
+
+The local host serves only four explicit same-origin assets (`index.html`, `boot.js`, combined `chat.css`, and session-gated `chat.js`) with no-store, nosniff, cross-origin policy, frame protection and restrictive CSP. The user enters the one-use code in the local browser, receives an HttpOnly SameSite=Strict host cookie, then the page fetches the authorized system/workspace scope and mounts the **real split-pane PersonalChatApplication** over the existing Dashboard HTTP/WS → canonical Gateway bridge. Until pairing, the private chat bundle is denied. Cookie-authenticated WS frames are limited to that system/workspace's canonical run subscriptions. Logout and session expiry revoke the cookie and close cookie-authenticated event sockets. Nothing is connected to public GitHub Pages.
+
+**Verification / outstanding:** existing localhost session negative tests include cross-origin pairing refusal, scope denial, replay lockout and logout socket revocation; `test/local-app-launch.browser.mjs` uses actual compiled Dashboard host + packaged browser app for Chromium pairing, multi-pane mount, honest missing-Gateway response, private transcript/storage isolation and logout. The browser QC workflow uses the **same** `npm run mc2:bundle` as the local launcher. Inspect exact latest GitHub Action results before claiming all gates green. No real provider consent, macOS installer, production owner-machine proof, persistent canonical session listing or Stop/approval is claimed. Next independently testable task: trusted app boot into a real pinned disposable Gateway execution from the browser, then consolidate native installer acceptance without pressing the operator for Mac testing at every stage.
+
+The standing GitHub-first **90–93% pre-local target** remains; formal accepted score is still **15/100** until existing gates are reviewed.
+
+### MC2.5 actual first-party Chromium → authenticated Dashboard → pinned real Gateway end-to-end proof (28 October 2026)
+
+**Verified GitHub-first integration slice in draft PR #42, not owner acceptance:** `scripts/mc2/ci-authenticated-browser-proof.mjs` now runs inside `scripts/mc2/ci-canonical-proof.mjs` using the **real pinned canonical AI-Verse Gateway revision `ceb8849ec062f0d3997ceb0207e42c25aedd20c6`**, a disposable registered AI-Verse OS, and Gateway's deterministic fixture host. The same test launches the real Dashboard bridge with its opt-in `LocalApplicationSession` and serves the actual packaged first-party Personal chat UI to Chromium. This is **not a mock Gateway**, not a live private model/provider, and not an operator-Mac test.
+
+Chromium navigates the real localhost app, confirms the private bundle cannot load before pairing, enters the server-side one-use pairing code, receives an HttpOnly SameSite=Strict cookie, submits a unique marker from the actual Personal Chat composer and checks that **the canonical Gateway run.create request carried the marker**. It observes real Gateway `assistant.delta` and `run.completed` events via the authenticated Dashboard WebSocket, then verifies the displayed final answer contains the marker **after authenticated canonical run.get reconciliation**. It opens a second split chat pane, submits a distinct marker, verifies independent canonical completion and message isolation, logs out, and confirms privileged assets become inaccessible again. Negative checks ensure no bearer in browser RPC requests, no local/session storage leakage, and no browser errors. The existing bearer-only integration and browser preview regressions remain independently tested.
+
+**Evidence:** [MC2 Canonical Gateway Composition run 40674169451](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40674169451) succeeded on source commit `48971495bfb3b6e8cde3eeae5c9775c56dc106b2`. CI flags include `actual_pinned_gateway_browser_run`, `local_pairing_http_only`, `canonical_assistant_delta_to_chromium`, `canonical_terminal_get_verified`, `scoped_two_chat_panes` and `cookie_logout_revoked` all `true`. The runner was pinned to `ubuntu-24.04` because Playwright 1.58.2 cannot provision Chromium on newly chosen `ubuntu-latest` (26.04).
+
+**Remaining gates:** real member Gateway/provider authorization and private OS installation have **not** been verified; a local/native macOS app, installer, persistent canonical chat history and owner dogfood acceptance remain pending. Do not re-run the same integration implementation in a new chat or claim MC2/MC5 fully accepted from CI alone. Continue the standing **90–93% GitHub-first pre-local target**; historical formal accepted progress is **15/100** until explicit plan gates close.
+
+### MC2.5 canonical multi-turn continuity and bounded recovery (28 October 2026)
+
+**Verified on real pinned disposable Gateway, not owner-accepted:** Personal Chat panes now reuse the **canonical `sessionId`** from a completed run on their next turn. They also send a bounded, ordered transcript of previous **canonical-GET-confirmed** user/assistant pairs (at most six pairs, 18 KB of context) with the new user prompt. This matters because the pinned Gateway supports an existing session ID but does **not automatically inject all prior raw turns** into a new run. Stream deltas, incomplete/rejected runs and fake preview messages are **never** promoted to prompt history. A second run with a changed session binding is rejected, an interrupted run must be recovered rather than silently superseded, and uncertain create retries reuse their exact original request and idempotency key. Workspace A→B→A, New Chat, and closing a pane discard the pane's confirmed history and session authority; different split panes do not share it.
+
+**Partial recovery is explicit:** `Recover run` obtains the canonical output and session from a user-supplied run ID, but the read-only run projection does **not include previous user turns**. The interface flags `Earlier conversation context unavailable or trimmed`; it may reuse the canonical session ID on a follow-up, but it **does not fabricate** missing transcript. When history exceeds the bounded window, older complete pairs are dropped and the limitation is shown. Full cross-restart transcript browsing remains a distinct owner-backed Gateway history API task, **not** implemented by client-localStorage workarounds.
+
+**Evidence:** [Real Gateway + Chromium workflow run 40692644124](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40692644124) passed on source commit `9e72c010aaa87bd1b1c4ac648744f791ce31919d`. Pinned real Gateway with disposable deterministic runtime, first-party pairing screen, canonical streamed/final responses, then a Chromium follow-up verified both the same `sessionId` and the exact earlier confirmed messages inside the next run request. CI output: `canonical_followup_same_session_and_confirmed_history=true`; 165 unit/integration tests passed, 0 failures. `test/personal-chat-continuity.test.ts` adds regression coverage for three turns, idempotent retry, session reassignment denial, interrupted unverified deltas, partial run recovery, context bounds and scope reset. Exact head CI status may include a later documentation-only commit; do not misreport any pending job.
+
+The historical formally accepted programme score remains **15/100** until the roadmap's acceptance gates close; GitHub-first **90–93% pre-local** remains an aspirational readiness target. Next independently valuable work: owner-backed canonical run/session listing and transcript recovery, without inventing a separate conversation database or requiring Mac use before the consolidated local acceptance checkpoint.
+
+### MC2.5 canonical conversation library and post-browser-reload restoration (28 October 2026)
+
+**One source/CI slice in two draft PRs, not formal acceptance.** The pinned canonical Gateway lacked any session/run-list endpoint, so the owner-bound read interface was added **inside the Gateway repository**, not faked by a Dashboard localStorage or duplicate conversation database: [Gateway draft PR #80](https://github.com/aiverse-filmmakers/AI-Verse-Gateway/pull/80), commit `9748dd0d5473b65ad95ef92df62fe0a13575e378`. Authenticated `GET /v1/sessions` and `GET /v1/sessions/:id/runs` read canonical session/run files, enforce bearer principal, canonical system and explicit workspace scope, cap page sizes and index scans, and project only bounded session metadata, last actual user text and completed canonical output. System/tool prompts, internal traces and upstream bearer never enter the library projection. Gateway CI passed with access denial, pagination and redaction tests.
+
+**Dashboard integration:** in [Dashboard draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42), two read-only `aiverse.gateway.session.*` RPC methods were added through existing local authenticated host bridges. The client verifies owner-bound projections; the real Personal app now has a **Previous chats** panel that lists Gateway-owned sessions and opens a selected session in a chat pane. `PersonalChatRunController.openSession()` loads at most 50 recent canonical run summaries, reconstructs only their confirmed user/assistant turns, retains the verified session identity for next-message continuation, and marks incomplete, truncated or unresolved context rather than inventing missing history. It never writes a browser chat database or stores conversation content in local/session storage.
+
+**Evidence:** commit `d7e98c58355d3eada10af259a62aa0cca9c58ae6` passed [real pinned Gateway + Chromium workflow 40694831583](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40694831583), [Dashboard CI 40694831668](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40694831668), and [browser UI QC 40694831451](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40694831451). Real deterministic Gateway test flags include `canonical_history_reopened_after_browser_reload=true`: Chromium reloads the first-party app with a live localhost host, discovers prior canonical chats, restores two earlier confirmed exchanges and proves a new follow-up uses the **same canonical session**. Browser local/session storage remains empty.
+
+**Remaining limits:** this validates a **browser reload**, not a full canonical Gateway/host process teardown and restart or owner Mac dogfood. Gateway PR #80 and Dashboard PR #42 are still draft; deployment must install the new pinned Gateway history contract, not the old main revision. Canonical history is bounded and may omit older/truncated turns, always visibly marked. Keep 15/100 historically accepted roadmap points until actual plan gates close; next acceptance activity should explicitly test process restarts and source installation, not repeat this passing browser test.
+
+### MC2.5 hard process-restart recovery proven with real pinned Gateway and fresh browser authorization (28 October 2026)
+
+**GitHub-first source/CI verified; not formal owner acceptance.** This closes the previously outstanding **disposable full-process restart** proof. [Dashboard draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42) adds `scripts/mc2/ci-restart-child.mjs` and `scripts/mc2/ci-process-restart-proof.mjs`, connected to the existing canonical real-Gateway composition workflow. The child processes each run the **real** installed canonical Gateway (reviewed history pin `9748dd0d5473b65ad95ef92df62fe0a13575e378`, [Gateway draft PR #80](https://github.com/aiverse-filmmakers/AI-Verse-Gateway/pull/80)) or real authenticated Dashboard host. They use generated disposable OS state and generated ephemeral CI bearer only. The parent and child communicate readiness and pairing code over private IPC, never GitHub logs, URLs or browser storage.
+
+**Verified journey:** existing canonical runs are completed and written to Gateway-owned disk. Both original servers are stopped. Independent child processes start on pinned loopback ports, and Chromium securely pairs, discovers the original session via Gateway's owner-scoped history endpoint, restores original canonical turns and sends an actual follow-up into the same session. Then BOTH child processes cleanly exit, their listeners are demonstrably unavailable, and entirely new Gateway and Dashboard child processes start on the same ports with the SAME Gateway-owned disk state. The prior HttpOnly browser cookie fails (HTTP 401), the private chat bundle is denied until a NEW single-use code is paired, and Chromium then restores the original and newly completed turns and successfully sends a second follow-up into the unchanged canonical session. The original run is verified through authenticated Gateway `GET /v1/runs/:id` after the hard restart. Neither localStorage nor sessionStorage stores messages or credentials.
+
+**Evidence:** all three [source-commit `ee9fb268040606fa9c34464f25ed201647a3021f`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/ee9fb268040606fa9c34464f25ed201647a3021f) workflows succeeded: [real Gateway composition 40697808818](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40697808818), [browser UI QC 40697808812](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40697808812), and [cross-platform Dashboard CI 40697808854](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40697808854). Test evidence includes `gateway_relaunched_in_independent_os_process`, `dashboard_relaunched_in_independent_os_process`, `canonical_disk_history_survived_two_host_cycles`, `old_browser_cookie_rejected_after_host_restart`, `fresh_pairing_required_after_host_restart` and `resumed_session_followups_after_full_restart` all `true`.
+
+**Boundaries:** this was not run against the member's Mac, private owner OS/provider or production login. The new Gateway history contract and Dashboard application remain draft/not merged. No provider, remote approval, installed macOS app or real owner machine was tested; the acceptance programme remains historically **15/100** pending recorded gate review, with GitHub-first 90–93% as target rather than progress. **Recommended next independent implementation:** canonical owner-backed persistent Workspace + Canvas document/action contract and functional Personal interface, starting with source verification rather than building another duplicate chat mechanism.
+
+### Personal Canvas foundation: Data-owned durable document model (28 October 2026)
+
+**Task 9 first owner-backed slice, not a Dashboard Canvas UI or accepted roadmap points.** After auditing live OS, Apps, Data, System and Gateway ownership, the canonical location for structured Canvas document records is the **Data** owner's existing scope-bound SQLite database, **not** browser localStorage, Dashboard files, a duplicate app store or the currently empty Apps runtime. OS retains system/workspace topology; Gateway retains sessions and run state. The first implementation is [Data draft PR #22](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/22), branch `codex/canvas-document-owner-v1`, recorded contract `docs/CANVAS-DOCUMENT-OWNER-V1.md` in that PR.
+
+New `@ai-verse/data/canvas` exports `CanvasDocuments` over **an already-open trusted scoped Data database**, supporting standalone Personal or a named workspace. It creates a compatible `creative-canvas` Data schema and persists versioned Canvas documents containing text notes and connections; it supports create/list/get/rename, bounded add/move/edit/remove note, add/remove connection and soft-delete. Every mutation uses canonical Data record storage and provenance/idempotency/version checks, with declared limits and no direct browser endpoint. Test fixture opens a *real* scoped SQLite database, creates a Canvas, adds notes and a connection, closes and reopens the same database, confirms durable nodes/edges and version, then modifies and deletes. It also checks Personal/workspace isolation, create idempotency, stale-version conflict and invalid operations. **No Mac, member data, credentials or live provider are involved.** [Data CI run 40700847141](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40700847141) passed all six Node 22/24 × Linux/macOS/Windows matrix jobs at commit `68f642cee430dc22381033f1338398b635993972`, with [Release Smoke 40700847140](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40700847140) and [Five-Component Release Acceptance 40700847181](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40700847181) also green. This is Data source/CI readiness, not private Mac/product acceptance.
+
+**Boundary:** this establishes the canonical document owner and testable persistence only. **No Canvas window is connected to Dashboard**, no authenticated host action route has been admitted, no automatic OS workspace creation, files/assets, multi-user collaboration, undo or AI agent action parity. The caller remains responsible for OS/trusted-host actor admission. Uncertain non-create edit retries are version-conflict-aware, not automatically replayed; require canonical refetch/reconcile. See [Canvas Data owner contract](https://github.com/aiverse-filmmakers/AI-Verse-Data/blob/codex/canvas-document-owner-v1/docs/CANVAS-DOCUMENT-OWNER-V1.md).
+
+**Next task 10:** inspect the existing OS authorization/action spine and Data's scoped runtime adapters, then implement a **narrow authorized read/write host facade** for real Canvas documents that never takes arbitrary roots/tokens/principals from browser frames. Follow with real Canvas library UI, note drag/edit/links and app-aware agent operations in distinct bounded tasks. Existing 15/100 historical accepted score unchanged; GitHub-first 90–93% ambition unchanged. Do not repeat the persistence implementation in another chat.
+
+### MC2/P01–P04 Canvas owner bridge and real Data composition (28 October 2026)
+
+**Task 10 source/CI verified; pending formal acceptance and real OS policy admission.** [Dashboard draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42) now exposes six strictly bounded `aiverse.canvas.{list,get,create,rename,edit,delete}` commands through `CanvasOwnerBridge` and the existing authenticated localhost `/rpc` host. This transport is **opt-in**: without a trusted host-injected `ApprovedCanvasOwner`, all Canvas operations fail closed as `CANVAS_OWNER_UNAVAILABLE`. Even with a configured owner, each request validates system root identity/generation, manifest workspace (Personal uses `operator` scope), strict typed params, user-supplied version and idempotency, and invokes a mandatory separate owner/host authorization callback; no raw path, principal, token, actor or permission flag is accepted from the browser. Only bounded public Canvas document fields project back to the app. The existing browser pairing cookie remains bound to its selected system/operator workspace; neither the public GitHub Pages preview nor ordinary Dashboard startup enables Data writes.
+
+**Real owner evidence:** [Gateway composition workflow 40709020351](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40709020351) passes against pinned Data [PR #22](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/22) source `68f642cee430dc22381033f1338398b635993972` plus the pinned real canonical Gateway and Chromium. `scripts/mc2/ci-canvas-data-owner-proof.mjs` opens Data's **actual scoped SQLite owner**, sends authenticated Dashboard Canvas RPC, creates a Personal document, idempotently retries, adds a note, rejects stale version, denies a delete through explicit authority, verifies workspace isolation, fully stops/restarts the Dashboard server and reloads the same persistent document. All flags `real_scoped_data_sqlite`, `personal_canvas_persisted_across_host_restart`, `two_workspace_scope_isolated`, `stale_version_rejected`, `idempotent_create` and `explicit_write_authorization_enforced` were true; `private_owner_mac_verified` false. Host negative and input-validation tests in `test/canvas-owner-bridge.test.ts` passed across Linux/macOS/Windows at [source run 40708643287](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40708643287). [Browser QC 40709020266](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40709020266) also passed. **Exact final current-head 3-workflow state must still be checked** after documentation changes.
+
+**Honest limitations:** real Data source was linked in **disposable CI** via a trusted fixture permission evaluator, not admitted for unattended production OS authorization. The packaged `start-connected` launcher still does not inject a Data owner; normal browser UI has no active Canvas backend until an OS-approved Data actor/permission adapter is configured. The Canvas library/editor is not mounted; Canvas duplication/undo and agent action parity remain separate tasks. Do not treat the test fixture's `authorize` callback as live OS policy. [Full security boundary and next gates](CANVAS-HOST-OWNER-INTEGRATION-2026-10-28.md).
+
+**Progress accounting:** retain 15/100 formal accepted. The next historical increment is **MC2.1 design contract's +2 → 17/100** after review/PR acceptance. The Personal-first plan amendment still needs acceptance reconciliation. Work on independent GitHub-first owner/data/UI slices need not wait for owner Mac; do not pre-award points for draft PRs.
+
+### MC2.1 review gating and Canvas OS final-edge permission composition (28 October 2026)
+
+**Review state:** [MC2.1 focused design-only PR #43](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/43) passed [Dashboard CI 40711556090](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40711556090) and is mergeable, but still has **no recorded independent reviewer approval**. An attempt to request a review from `pkbannutz` was rejected by GitHub HTTP 422 because the account is not a repository collaborator; the request made no permission change. Do **not** merge, impersonate reviewer, self-approve or award MC2.1 until the required review is actually recorded. Total formal acceptance remains **15/100**; a correctly approved MC2.1 would add **2 points** to **17/100**, with Personal-first scope amendment/estimation also separately pending.
+
+**Independent implementation slice:** [Dashboard draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42) added `apps/gateway/src/canvas-os-policy.ts`, `withCanvasOsPolicy()`. This is an **opt-in trusted-host wrapper** around the previously tested `CanvasOwnerBridge`, **not** a default route or a new owner database. It requires a host-injected OS permission evaluator and separately verified operator admission; it constructs scope-bound, fingerprinted OS `read_local`, `modify_canonical_state` and `delete_data` requests, verifies actual `ai-verse-os/action-permission-v1` source/fingerprint/scope/class, defaults any `deny` or `approval_required` to rejection, and repeats the operator+OS+Data-owner permission checks immediately before the owner effect. The normal launcher **does not** install this Data owner or OS adapter yet.
+
+**Exact real evidence:** [Source commit `e2ee162097a5d19b1edf771c25ee5a1cea5c9767`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/e2ee162097a5d19b1edf771c25ee5a1cea5c9767) passed [real Gateway + Data + pinned OS composition 40714138321](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40714138321), [cross-platform Dashboard CI 40714138602](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40714138602), and [Chromium browser QC 40714138199](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40714138199). The disposable integration now imports the exact real OS evaluator from `AI-Verse-OS@0dc744057199970a34a60c11dff192e407ad64ed`, pinned Data Canvas `68f642cee430dc22381033f1338398b635993972` and real Gateway `9748dd0d5473b65ad95ef92df62fe0a13575e378`. It validates the same canonical SQLite Canvas across host restart, workspace isolation, idempotency and version conflicts, and **new OS floor checks**: paused workspace denied, delete requiring confirmation denied, separate operator grant revocation denied, and OS policy rechecked at the effect edge. All these flags were true; `private_owner_mac_verified` remained false.
+
+**Next steps:** obtain an eligible independent reviewer for focused design PR #43, then record exact acceptance and 17/100 only after approval/merge. In parallel continue owner-authorized Data lifecycle registration (no arbitrary host filesystem paths), then the real user-visible Canvas library and edit UI. Do not turn the simulated CI operator grant into production authority or expose the OS evaluator to the browser; real installed OS policy/actor provenance and owner approval remain separate admission gates.
+
+### Task 12: native Canvas owner lifecycle attachment (28 October 2026)
+
+**Implemented in Dashboard draft PR #42 without duplicating the Data owner.**
+New `apps/gateway/src/canvas-data-owner.ts` exports
+`createAdmittedCanvasDataOwner()`, an opt-in bridge that takes the actual
+installed native Data modules, a pinned registered Dashboard OS system,
+an OS permission evaluator, and an *independent host actor admission* callback.
+It uses the existing `CanvasOwnerBridge` validation and
+`withCanvasOsPolicy()` checks, rechecks the registry root/lease/generation,
+obtains a live human actor grant before each operation, then delegates every
+document operation directly to `CanvasDocuments`. It opens only an already
+provisioned scoped SQLite database (`open-existing`) and closes it after
+each operation. No browser-supplied roots, actor IDs or auth receipts are
+accepted; no new document store or privilege parser was implemented.
+
+**CI migration:** `scripts/mc2/ci-canvas-data-owner-proof.mjs` now imports
+the same production-shaped native attachment factory instead of its old
+duplicate inline Data dispatcher. It explicitly initializes disposable
+Data scopes before Dashboard starts, exercises real OS policy and native
+Data over localhost RPC, and adds revocable Data actor grant and missing
+workspace database denial. Implementation commit
+[`a966c46`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/a966c46379155e01595cab2c9beee7326edd7c07)
+passed all three GitHub workflows: [CI 40719388514](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40719388514),
+[browser QC 40719388527](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40719388527)
+and [real owner composition 40719388603](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40719388603).
+Check the latest documentation commit's workflow status separately.
+
+**Scope still open:** actual member OS actor-admission provenance,
+Data installation/provisioning, and an authenticated private deployment that
+installs this adapter are not certified. Default Dashboard launcher keeps
+Canvas unavailable. Functional Canvas library/editing UI, agent action parity,
+safe delete confirmation and private Mac owner acceptance remain distinct
+tasks. The MC2.1 independent design review and plan amendment remain open.
+Accepted roadmap still **15/100**, next gated acceptance **17/100**.
+
+### Task 13: real first-party Canvas library/editor (28 October 2026)
+
+**Implemented, draft, not owner-accepted:** Dashboard PR #42 now mounts
+`CanvasWorkspace` from `apps/web/src/canvas-workspace.ts` inside
+the existing authenticated Personal Chat app, keeping chat panes visible.
+The first-party view starts with a visually empty unsaved Scratch Canvas;
+adding a note deliberately creates the real Data document only on that
+user action. The host-backed library lists and opens workspace-specific
+canonical documents, and supports create, rename, duplicate, explicit
+soft-delete request, note add/edit/remove/drag and connection add/remove.
+Every saved mutation goes via pre-existing typed `DashboardClient.canvas*`
+RPC to `CanvasOwnerBridge` then owner-authorized `CanvasDocuments`.
+The UI verifies canonical Data provenance and scope on projection and uses
+expected version + new idempotency keys per mutation, with explicit
+permission and version-conflict feedback and root/workspace epoch fencing.
+
+**Proven integration levels:** browser interaction fixture validates
+actual first-party Chromium UI, canonical-shaped HTTP RPC method payloads,
+saved note move ID/coordinates, Scratch reload/reopen, duplicate contents,
+destructive denial and scope isolation; **not a duplicate Data database**.
+Separate pinned Data SQLite + real OS permission composition remains in
+the previous Task 12 workflow. [Source validation commit
+`06f97bf`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/06f97bf4826bcb9c7daec99e06ca2ecc1e8a4aab)
+passed [browser QC run 40722781395](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40722781395).
+Inspect the latest source commit's remaining CI workflows before claiming
+all green; the latest docs-only commit does not change the implementation.
+
+**Not yet complete:** the normal private launcher still has no admitted
+OS actor/Data owner. Deletion is default-denied where OS requires an
+approval receipt. Sequential duplicate is not atomic and reports partial
+failure rather than concealing it. Undo, asset persistence, agent parity,
+real native provider/login and final owner Mac acceptance are separate
+gates. DO NOT award historical roadmap points yet: MC2.1 independent review
+and Personal-first plan amendment remain outstanding. Formal total is
+15/100; next design milestone, if approved, adds 2 to reach 17/100.
+
+### Task 14: verified agent-to-Canvas action boundary (28 October 2026)
+
+**GitHub-first owner source + real Data CI, no production agent installed.** Dashboard
+[PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+introduces `CanvasAgentActions`, a **host-only** dispatcher for currently
+running agent actions. It reuses the exact Canvas action schema, protected
+canonical owner, bounded document projection, OS evaluator and Data owner
+as the first-party UI, but does not expose any new model/browser HTTP route.
+An independent Gateway run verifier supplies workspace, agent actor and
+revocable lease epoch, with fresh verification before admission and effect.
+OS grants are split so the default human `operatorAdmitted` can never
+implicitly admit `agentAdmitted`. Data writes bear real `bot` provenance
+only for the verified agent actor; model-supplied actor, workspace, root,
+credential/approval flags and idempotency overrides are rejected. Agents may
+read/create/rename/edit notes and edges; agent delete remains categorically
+blocked, even if an external OS policy loosens its default floor, because
+there is no reviewed approval-receipt contract.
+
+**Evidence:** [source commit `0536bfa`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/0536bfad0c70e294f91b887f893bcde00bb58e9d)
+passed [cross-platform CI 40725634383](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40725634383),
+[real OS + Data + Gateway composition 40725634303](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40725634303),
+and [browser QC 40725634501](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40725634501).
+The Data test directly reads updated record provenance from the real
+canonical scoped SQLite. The test's Gateway run-verifier is a disposable
+trusted fixture and **not** member-provider or production run authorization.
+Check documentation-head CI separately.
+
+**Outstanding acceptance gates:** attach actual native Gateway run/actor
+verifier, true agent tool-host invocation, member OS permissions and
+pre-provisioned Data owner to a private installation. Approval receipts,
+undo/atomic clone, UI agent receipts and stop/recovery safety remain future
+slices. No Mac test or live provider performed. No original Data/OS/Gateway
+repo changed and no launch/merge. The formal baseline remains **15/100**;
+MC2.1 design approval still required for **17/100**. Continue GitHub-first
+toward the *aspirational* 90–93% pre-local target without inflating the
+current roadmap score.
+
+
+### Task 15: canonical GatewayStore-backed agent run verification (28 October 2026)
+
+**Implemented and source-verified in Dashboard draft PR #42.** Task 14
+introduced a host-only Canvas agent dispatcher with injectable verified-run
+contract; this Task 15 **replaces the fake run assertion in its real
+integration proof**, not the Data owner or authentication system. A new
+`apps/gateway/src/canvas-gateway-run-verifier.ts` uses the *actual pinned*
+canonical AI-Verse-Gateway `GatewayStore.getRun/getSession` data: running
+run, authenticated principal, canonical system/workspace binding, active
+session matching `active_run_id`, valid deadline, no pending approval,
+active workspace manifest and unchanged registered OS root. The verifier
+re-reads both real Gateway records after awaiting separately admitted
+actor/grant lookup. A native OS/host grant must provide an exact bot ID
+and revocable grant epoch; no model, chat transcript or human Gateway
+bearer can mint an agent actor. There is still **no** new HTTP route,
+second run store or hard-coded production authority.
+
+**Evidence:** implementation [`7ee30ba`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/7ee30ba2554d4731de1b96002419fe46cfb0480a)
+passed all three workflows:
+[Dashboard cross-platform CI 40727330201](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40727330201),
+[real pinned Gateway/Data/OS composition 40727330245](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40727330245),
+[browser QC 40727330183](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40727330183).
+New `test/canvas-gateway-run-verifier.test.ts` denies revoked actor grants,
+completed/paused runs, session rebind, wrong principal/system, stale
+deadlines, awaiting approvals and paused workspaces. The disposable
+integration test now loads pinned Gateway `9748dd0`, creates a real
+persisted Gateway run/session and verifies a bot Canvas write against
+pinned Data `68f642c` and pinned OS `0dc7440`, then verifies
+Gateway cancellation blocks further writes and canonical Data provenance
+records `updatedBy.kind=bot`. Only the **OS actor grant callback** is
+disposable fixture authority, as the existing installed OS does not expose
+an admitted production Canvas bot grant.
+
+**Remaining gates, not fabricated:** approved operator/agent OS grant
+source, trusted installed Data provisioning, real out-of-process Gateway
+run verifier/broker or native in-process owner capability, model tool-call
+integration, true atomic run cancellation/write boundary, human approval
+receipts, durable undo and atomic Canvas duplication, Mac owner sign-off.
+Normal launcher still denies Canvas absent an approved owner. No merge.
+Formal accepted **15/100**, pending MC2.1 review and personal-first
+amendment. Next acceptance **17/100** if approved; pre-local 90–93%
+is a future target rather than current score. **Next Task 16:** qualify
+Data-owned atomic clone and undo/version reversal against the existing
+canonical record owner; add only a demonstrated missing contract and tests,
+without building Dashboard document storage or bypassing OS approvals.
+
+### Tasks 16–18: atomic Canvas duplication delivery (28 October 2026)
+
+**Bounded 3-task implementation, not a release or accepted-roadmap gate.**
+Data PR #22 and Dashboard PR #42 remain drafts and unmerged.
+
+- **Task 16: Data owner contract + honest Undo qualification.**
+  Native `CanvasDocuments.duplicate()` performs a single SQLite transaction
+  containing source version validation, full graph copy and Data-owned
+  idempotency; cloned record is version 1. No partial document writes,
+  even when an operation fails. New tests cover graph integrity,
+  same-request replay after source advances, source version conflict,
+  changed-request idempotency conflict and single-record cardinality.
+  The tested Data source pin is `5caa5d08151f85e503e8ceace494458736b76886`.
+  **Undo not yet available:** Data history retains provenance metadata,
+  not full trusted before-state. Do not invent a browser undo stack as
+  canonical history.
+- **Task 17: strict owner-authorized Dashboard/agent transport.**
+  `aiverse.canvas.duplicate` added once to the typed Dashboard command
+  registry, strict `CanvasOwnerBridge` schema and permission class,
+  `DashboardClient`, native Data attachment and the existing
+  host-only agent allowlist. Reject model/browser-injected raw board,
+  actor, filesystem root and malformed version/operation fields.
+  Updated pinned Data+OS+Gateway composition CI exercises the actual
+  method over authenticated Dashboard RPC, checks copied board,
+  one-record version and idempotent replay, and denies stale copy.
+- **Task 18: real first-party library copy UX.**
+  Removed all multi-step create+note+edge duplication from
+  `apps/web/src/canvas-workspace.ts`. A single authenticated
+  `DashboardClient.canvasDuplicate` now copies the selected version
+  atomically and displays the owner projection only upon success.
+  Chromium test fixture mirrors the canonical one-record operation,
+  asserts exactly one duplicate call with no interim note mutations
+  and refuses an externally advanced source version without creating
+  a partial Canvas library entry.
+
+**Validation evidence:** Data six-job OS/Node 22+24 CI, release smoke
+and five-component acceptance checks passed on the code pin. Dashboard
+current-head Chromium/browser QC, cross-platform `npm run check` and
+real pinned Gateway/Data/OS composition should all pass before these
+three tasks are counted as fully source-verified; see run IDs in Actions.
+Do not equate CI source verification with a connected private Mac app.
+
+**Deferred contract:** Data-owned authentic historical undo/revision
+archive, approvals for destructive undo/delete, real installed
+human/agent grants, production owner acceptance and actual Mac
+dogfood remain next. Next qualified Task 19 should focus narrowly on
+Data-owned revision/history design and approved actor/OS retention
+semantics, not UI-only undo or another document store.
+
+**Accepted roadmap remains 15/100.** No fabricated point gain.
+MC2.1 independent acceptance and the Personal-first amendment remain
+pending; next 2-point acceptance would make 17/100. GitHub-first 90–93%
+pre-local readiness is a goal, not verified current whole-project
+completion. 
+
+**Source verification evidence for Tasks 16-18 (28 Oct 2026):**
+Data atomic owner code `5caa5d0` passed
+[release smoke 40738377304](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40738377304),
+[six-platform Node CI 40738377314](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40738377314)
+and [five-component acceptance 40738377347](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40738377347).
+Dashboard atomic-duplicate code/test fix commit
+[`fe2879e`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/fe2879e1cd6417ad67bb751194855699818c3cd2)
+passed [real pinned Gateway/Data/OS composition 40739268703](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40739268703),
+[browser interaction QC 40739272200](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40739272200),
+and Linux/Windows jobs in [Dashboard CI 40739268280](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40739268280).
+The **macOS job** was queued at the last check and must be verified before
+claiming the newest entire matrix is green. A prior code commit
+`7189567` already passed the macOS build; the latest fix changed only
+a browser test's expected user-readable conflict message.
+
+
+### Tasks 19–24: verified versioned Canvas Undo (28 October 2026)
+
+Six *bounded* GitHub-first development slices, each building on the
+existing canonical Data, OS and Gateway owner contracts rather than
+creating parallel state. **Source implemented, PRs draft/unmerged,
+no owner Mac release acceptance.**
+
+| Task | Implemented canonical source | Gate |
+| --- | --- | --- |
+| **19** | Full version snapshots in the same scoped Data SQLite transaction; archived version's own actor preserved | Data owner CI |
+| **20** | Data `history()`/optimistic `revert()` create new versions from verified archived truth, with deterministic idempotency | Data owner CI |
+| **21** | Strict `aiverse.canvas.history` and `aiverse.canvas.revert` routed through original Dashboard typed protocol, OS policy, native Data owner | Dashboard / real composition |
+| **22** | Real authenticated Personal Canvas History panel, latest-step Undo and two-stage confirm restore, no browser canonical snapshots | Chromium QC |
+| **23** | Explicit Reload Canvas after conflicts; stale/revoked agent cannot write; agents can only read bounded historical snapshots, not revert | Chromium + real composition |
+| **24** | Cross-platform Data and Dashboard, real Gateway + OS + Data, browser regression, recovery and provenance tests; tracker/handoff updated | CI & docs |
+
+**Data owner** revision
+[`0948d42`](https://github.com/aiverse-filmmakers/AI-Verse-Data/commit/0948d424fb31d4561c5a5ba62c835ad40ee6ffd4):
+[Release Smoke 40741080025](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40741080025),
+[Six-platform CI 40741080717](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40741080717),
+[Five-component acceptance 40741080151](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40741080151)
+all passed.
+
+**Dashboard** code and regression
+[`4c527e1`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/4c527e17b0659150b40ad3a920943310c7238b2c)
+passed [Dashboard CI 40741376157](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376157)
+on Linux/Windows/macOS and [Chromium browser QC 40741376101](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376101).
+[Real pinned Gateway/OS/Data composition 40741376218](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40741376218)
+**passed** on the tested code revision after the final source run completed.
+(The later docs commits do not introduce runtime source changes.)
+
+**Safeguards:** No deleted document restoration, unbounded
+revision history, unsupported historical reconstruction before the
+journal was introduced, signed archive, agent-triggered destructive
+revert or production authorization claims. Data archival scans have
+a hard 5,000-record bound per scope. Agents are allowed to read
+authorized revisions but are denied `aiverse.canvas.revert`;
+a human must explicitly confirm a restore. Stale versions fail
+with `RECORD_VERSION_CONFLICT`; the UI offers a canonical reload.
+Running source CI is evidence only for source readiness.
+
+**Acceptance status remains 15/100.** The independent MC2.1
+review and Personal-first plan amendment are still pending; next
+proper roadmap advancement 17/100 if approved. The 90–93%
+GitHub/browser pre-local ambition is a target, not current
+measured project completion.
+
+**Next Task 25 qualification:** evaluate the owner Data history
+read bound, retention/pagination and revision integrity before
+expanding Canvas reliability further, plus separately qualify
+the missing independently admitted installed OS bot grant,
+local native Data provisioning and approved Gateway tool host.
+Avoid new browser-owned state or "Undo" shortcuts. Do not
+merge/enable member production paths without explicit approval.
+
+
+### Tasks 25–32: indexed Canvas history & safe pagination (28 October 2026)
+
+**Eight bounded GitHub-first source tasks, not eight extra roadmap
+acceptance points.** The existing source PRs remain **draft and
+unmerged**, with no local Mac or production owner grant assumed.
+
+| Task | Real implemented contract | Verification |
+| --- | --- | --- |
+| **25** | Existing Data SQLite _records partial JSON-expression index scoped to revisions; per-document lookup | Data owner tests |
+| **26** | Keyset `history(id,limit,beforeVersion?)`, descending, max 30 and no 5,000-global-scan failure | Data pagination tests |
+| **27** | Revert does exact indexed version lookup, preserves optimistic Data ownership and idempotency | Data deep restore test |
+| **28** | Corrupt/duplicate archival version fails closed; explicit no-prune retention until backup policy exists | Data integrity tests |
+| **29** | Strict Dashboard RPC `beforeVersion` and native Data owner forwarding; no model-selected actor/root | Protocol/owner tests |
+| **30** | Real authenticated Canvas `Load older versions`, 20 at a time; clears source history on document switch | Chromium |
+| **31** | Malformed cursor/agent impersonation denied and real Gateway+Data keyed paging integration | Security/MC2 |
+| **32** | Re-run Data release, cross-platform CI, Dashboard Chromium, real pinned Gateway/OS/Data, update tracker/handoff | GitHub Actions |
+
+**Evidence first verified source:** Data commit
+[`3e76b71`](https://github.com/aiverse-filmmakers/AI-Verse-Data/commit/3e76b71ed5afca269575f97cd62863ae31b84d3c)
+passed release smoke, five-component acceptance and all six
+Linux/macOS/Windows Node 22/24 CI jobs. A follow-on Data test
+commit `beec725e` adds duplicate-archive-version corruption
+coverage; check its exact workflows. Dashboard code
+[`40e5573`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/40e557362f71f035499f3875f87a41998b749010)
+passed cross-platform Dashboard CI, Chromium and real
+Gateway+OS+Data composition. A follow-on Dashboard code commit
+`c27034d` adds document-switch correctness and browser
+regression; its final CI status must be separately verified.
+No claims of an unverified newest head should be made.
+The tests use canonical pinned Data and OS owners; the
+browser session's fake transport is only for UI interaction QC.
+
+**Scope/retention limitation:** history is not signed audit
+storage; a previous SHA-256 consistency digest checks data
+integrity but is not proof against malicious Data modification.
+Automatic old-revision pruning is explicitly not implemented
+without owner-approved backup/retention rules. Older snapshots
+predating the archive cannot be invented. Pagination is
+keyset/version-based, not fabricated total historical counts.
+Production actor/grant, human approval receipts, model-to-native
+tool host, first-party installed app with admitted Data scope
+and private Mac testing remain gating dependencies.
+
+**Roadmap remains 15/100 formally accepted.** MC2.1
+independent design approval plus Personal-first amendment are
+pending; next 2-point approval would reach **17/100**. GitHub-first
+90–93% before local-owner acceptance is a *target*, not
+measured whole-system completion.
+
+**Next Task 33 qualification:** inspect actual OS grants and
+owner Data initialization/backup protocol for legitimate
+production installation. Implement only verified missing
+primitives in their rightful owner repo, without granting a
+browser the authority to provision SQLite, mint a bot identity
+or approve an AI action. If native authorization is not
+available, record an explicit blocker, not a fake feature.
+
+**Final source verification, Task 32:** Data code/test revision
+[`beec725e`](https://github.com/aiverse-filmmakers/AI-Verse-Data/commit/beec725e3eeaf17e61705854d172b291dd2afa54)
+passed [Release Smoke 40742775291](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40742775291),
+[six-platform CI 40742775603](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40742775603)
+and [Five-Component Release Acceptance 40742775695](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40742775695).
+Dashboard implementation/test revision
+[`c27034d`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/c27034de7559a2398a5215902be4d6d62d6521ea)
+passed [cross-platform Dashboard CI 40743057482](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743057482),
+[Chromium interaction QC 40743057446](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743057446)
+and [real pinned Gateway/OS/Data composition 40743058809](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40743058809).
+The later documentation commits do not change runtime code.
+
+
+### Tasks 33–42: owner-admission and lifecycle qualification (28 October 2026)
+
+**Ten bounded GitHub-first tasks, source code plus owner-contract qualification.
+No Mac install, operator or bot grant minting, production database creation,
+revised roadmap acceptance or PR merge.** The existing Dashboard
+[draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+and Data
+[draft PR #22](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/22)
+remain unmerged.
+
+| Task | Real scope and delivered result | Gate |
+| --- | --- | --- |
+| **33** | Actual OS `action-permission.mjs` stop-check: policy floor is **not** human identity or bot-grant source; Gateway store owns run truth | Source review |
+| **34** | Data owner exports trusted `inspectScopedDataDatabase` via its readonly `inspectMigration` contract, no file/schema creation | Data build |
+| **35** | Data tests no-create, correct existing bound scope/unchanged mtime, mismatched foreign binding, forged weakmap scope, symlink escape | Data CI |
+| **36** | New host-only Dashboard `createCanvasOwnerPreflight` pins real OS root generation and active workspace, maps safe Data readiness states | Dashboard build |
+| **37** | Host preflight tests missing/quarantined/foreign Data, unavailable migration, inactive workspace and root rebind; no public RPC | Dashboard CI |
+| **38** | Hardened `CanvasOwnerBridge`: paused workspace blocks human canonical read and mutation before owner effect | RPC tests |
+| **39** | Hardened `CanvasAgentActions`: paused workspace blocks admitted bot work; reactivation requires real active manifest | Agent tests |
+| **40** | Real pinned Data+Gateway composition qualifies missing scope, then host-only disposal fixture creates actual Data scope, then preflight reports ready | MC2 real Data proof |
+| **41** | Disposable real Data `backupTo` snapshot reopens with original binding and real document/history; no new backup system | MC2 backup smoke |
+| **42** | Full cross-platform/Chromium/integration CI and truthful owner runbook/tracker/new-chat checkpoint | GitHub Actions |
+
+**Data verified implementation**:
+[`d1a135a`](https://github.com/aiverse-filmmakers/AI-Verse-Data/commit/d1a135a490547890e7ba54d43cf77a71f67f67b1)
+passed [Data smoke 40745957846](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957846),
+[six cross-platform jobs 40745957240](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957240)
+and [five-component acceptance 40745957276](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40745957276).
+**Dashboard final source/CI** fully passed on implementation
+[`f92d46a`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/f92d46ad9cc11a1867ae11f54912044037bccf47)
+with all three workflows green:
+[Dashboard CI 40746877698](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746877698),
+[Chromium 40746877403](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746877403),
+[MC2 pinned Gateway+OS+Data 40746878006](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40746878006).
+Docs-only commits after code may have their own Actions runs.
+False test fixtures were corrected with real multiline OS manifests.
+Only the **disposable CI host** calls Data's existing `create-or-open`.
+
+**Production blocking dependencies:** admitted native operator/agent
+grant issuer and revocation, actual out-of-process Gateway tool/owner
+transport, approved human action receipts, canonical Data backup
+retention/restore policy, owner-selected provisioning, approved
+installer and private local Mac acceptance. A working preflight
+does not grant permission or initialize any real database.
+The OS action policy's `allow` for a local mutation is **not**
+an actor identity. Do not fabricate grants or add a backdoor
+"auto approve" fallback.
+
+**Formal accepted roadmap remains 15/100**, pending independent
+MC2.1 review and Personal-first amendment; next formal acceptance
+**17/100** if approved. GitHub-first 90–93% before Mac work is
+a future target, not measured total completion.
+
+**Next Task 43:** qualify OS-side independently issued,
+revocable actor-grant and human approval receipt contract in the
+actual OS owner repository, comparing all existing grant machinery.
+Do not fabricate production identities or bypass owner approvals.
+Continue with proof-driven development, not redundant scaffolding.
+
+
+### Tasks 43–62: native OS Canvas grants, independent actor admission (28 October 2026)
+
+**Twenty bounded source development slices, not twenty accepted roadmap points.**
+The existing Dashboard
+[draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+and Data [draft PR #22](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/22)
+remain unmerged. A new OS grant-reader
+[draft PR #110](https://github.com/aiverse-filmmakers/AI-Verse-OS/pull/110)
+is also unmerged. None are installed as private user grants.
+
+| # | Bounded source task/result | Gate |
+| --- | --- | --- |
+| **43** | Inspected the actual native OS action-permission and GatewayStore; identified missing actor issuer and approval receipts | Source stop-check |
+| **44** | Created isolated OS grant branch and draft PR #110, not a main-branch mutation | Draft review |
+| **45** | Implemented readonly OS owner-private file contract; no issue/write/install endpoint | OS tests |
+| **46** | Strict human grant scope, actor, method, principal and expiry verification | OS tests |
+| **47** | Strict bot grant bound to authenticated run + session + workspace + method | OS tests |
+| **48** | Fresh owner file read for immediate revoke, generation epoch change and bounded TTL | OS tests |
+| **49** | Fail closed on symlink, nonregular/oversized/foreign owner file, duplicates and unknown fields | OS tests |
+| **50** | Dedicated Linux/macOS/Windows Node 22 native OS grant matrix and draft PR CI | OS Actions |
+| **51** | Native OS grant reader checks real active workspace using existing OS action-permission evaluator | OS workspace tests |
+| **52** | Trusted Dashboard `createOsNativeCanvasGrantResolvers`, pinned root generation and no browser endpoint | Dashboard CI |
+| **53** | Separate native human session authenticator required; Dashboard cookie/name insufficient | Dashboard tests |
+| **54** | Separate Gateway bot session validator required; model-supplied run/session rejected | Dashboard tests |
+| **55** | OS grant-derived actor returned to actual Data owner, retaining all canonical Data controls | Real composition |
+| **56** | OS policy operator/agent admission uses same native grant, freshly checked per effect | Policy integration |
+| **57** | Genuine GatewayStore run verifier uses OS grant for baseline `get`, then exact method grant at write | MC2 proof |
+| **58** | Removing a human OS grant denies next authenticated Canvas RPC | Real CI proof |
+| **59** | Removing bot OS grant denies otherwise-running canonical Gateway agent | Real CI proof |
+| **60** | Method-specific bot restrictions: `edit` grant never automatically authorizes `duplicate` | Real CI proof |
+| **61** | Cross-platform, real Gateway+OS+Data and browser CI, isolated fixture corrections | GitHub Actions |
+| **62** | OS/Dashboard owner runbooks, full tracker and new-chat handoff with production blockers | Docs |
+
+**Pinned OS implementation SHA:** `a9b6eaf785c6782fe09f2b99a624d1abb8f520b3`
+in new OS [draft PR #110](https://github.com/aiverse-filmmakers/AI-Verse-OS/pull/110).
+It includes native active workspace denial and actual multiline test
+manifests. Verify [OS readonly grant CI run 40762850957](https://github.com/aiverse-filmmakers/AI-Verse-OS/actions/runs/40762850957)
+before marking it green.
+
+**Dashboard last code/pin SHA:** `201ae6770e735a38f993c9c4cc1b2ecb1449f7b3`.
+Exact [Dashboard CI 40762883313](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40762883313),
+[Chromium 40762883146](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40762883146),
+and [real canonical Gateway/OS/Data composition 40762883505](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40762883505)
+must pass before Tasks 43–62 can be called fully source-verified.
+The Dashboard CI uses the OS draft code pin; Data remains the
+previously tested native owner commit `d1a135a`. The CI host
+explicitly installs disposable owner-private grants, never
+browser/modeller-selected files.
+
+**Critical production gaps (NOT implemented):** independent local
+operator session authenticator, independently approved grant
+issuer/renewal/revocation audit lifecycle, cross-process Gateway
+cancellation/Data-write transaction fencing, signed tamper-proof
+audit if required, real Windows ACL owner validation, human
+approval receipt issuance/consumption for destructive actions,
+installed model-tool dispatch, owner's Data provisioning/backup
+policy, private Mac acceptance and merged owner reviews.
+A read-only verifier is not an issuer. The CI's human/bot
+authentication callbacks are **disposable test doubles**, with
+the bot callback additionally checking true canonical Gateway
+run/session state. Do not ship these callbacks as production authority.
+
+Formal accepted roadmap still **15/100**. MC2.1 independent
+acceptance plus Personal-first amendment pending; next approved
+gate **17/100**, not automatically incremented by code slices.
+GitHub-first 90–93% before local acceptance is a *target*,
+not measured current system completion.
+
+**Next Task 63:** qualify the OS **native human-session authenticator
+and explicit operator grant issuance/revocation lifecycle** before
+production attachment. If unavailable, keep all grants absent and
+deny, do not substitute a Dashboard bearer or default bot identity.
+
+
+**Tasks 43–62 implementation-head validation (28 Oct 2026):**
+Dashboard code SHA
+[`f0f5e1e`](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/commit/f0f5e1e42cc6ef13bd18a66f40481b38fd1ed309)
+passed [Dashboard three-platform CI 40763120455](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40763120455),
+[Chromium 40763120327](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40763120327)
+and [real pinned Gateway/OS/Data 40763120328](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40763120328).
+OS code SHA `a9b6eaf` on
+[OS PR #110](https://github.com/aiverse-filmmakers/AI-Verse-OS/pull/110)
+passed its native Canvas grant tests on Linux and Windows;
+[OS native grant CI 40762850957](https://github.com/aiverse-filmmakers/AI-Verse-OS/actions/runs/40762850957)
+macOS remained queued at the last check. Do not call OS's
+newest full matrix green until that job completes.
+The other latest-head core OS workflows mostly passed,
+with Four Repo Acceptance/Shared Member Skills still queued or running
+at the same check. No production grant authority accepted.
+
+
+## Progress measurement amendment, 28 October 2026: separate GitHub completion from accepted points
+
+The operator requested a **separate percentage for all engineering that the
+browser/GitHub agent can genuinely complete before private Mac/account action**.
+The authoritative new reporting instructions and fixed workstream ledger are in
+[GitHub/Browser Completion Scorecard](GITHUB-BROWSER-COMPLETION-SCORECARD-2026-10-28.md).
+
+**Always report two percentages side by side:** GB (GitHub/browser current-scope
+build completion) **~34/100 provisional engineering estimate** and FA (this
+tracker's formal gate acceptance) **15/100 accepted**. The GB estimate is not
+a ratified code inventory; do not present it as a verified score until the next
+per-workstream evidence audit. A third private Mac/release readiness field must
+show **specific pending owner-only gates, not a fabricated percentage**.
+
+**GB=100%** specifically means *all currently scoped remote-capable code,
+owner integrations, runnable UI, negative/positive CI, unsigned desktop
+package prep, audits and release handoffs are finished*. It does **not**
+mean private-owner credentials are connected, production OS grants are installed,
+macOS signing/notarization completed or local dogfood accepted.
+Do not confuse the historical 90–93/100 pre-local **formal roadmap ambition**
+with GB 90–93%. Separate denominators, separate goals.
+
+The 15/100 accepted progress ledger is **not changed** by this amendment,
+and PRs are not merged or accepted by writing a scorecard.
+
+
+### Tasks 63–92: native OS grant owner lifecycle + GitHub progress truth (28 Oct 2026)
+
+Thirty bounded source slices, enumerated in
+[Tasks 63–92 native lifecycle ledger](CANVAS-NATIVE-OWNER-LIFECYCLE-TASKS-63-92-2026-10-28.md).
+**Code and focused tests committed; final exact CI matrix not automatically
+accepted if a job is still queued or failed.**
+
+New OS [stacked draft PR #111](https://github.com/aiverse-filmmakers/AI-Verse-OS/pull/111)
+adds a host-only explicit owner-approved grant lifecycle, *on top of*
+readonly verifier [draft #110](https://github.com/aiverse-filmmakers/AI-Verse-OS/pull/110):
+shared grant schema, existing native OS root/scope, native owner callback,
+exact request digest and readable consent summary, immutable permission
+snapshot, effect-edge expiry and active workspace, real bot Gateway run
+verification twice, generation CAS, exclusive lock, fsync and private
+atomic file rename, one-grant revoke and revoke-all, fail-closed Windows
+without ACL, and extensive negative tests. **No HTTP issuer or
+model-available escalation path was created**. CI approval callbacks
+are disposable synthetic authority, NOT production owner login.
+
+Dashboard [draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+now tests this actual native OS grant lifecycle with the canonical
+GatewayStore, OS grant reader, and Dashboard host adapter, in addition
+to the earlier real Data/Canvas composition. It also adds
+`docs/github-browser-progress.json` and
+`scripts/verify-github-browser-progress.mjs` with independent
+cross-platform anti-inflation tests. The progress ledger checks
+separate GB engineering, FA official acceptance and local
+owner-only gates; it cannot auto-award milestones.
+
+**Latest OS code SHA:** `d304db51d11f8e4865e9d4dfbd2ceb7e79b7e0f7`.
+**Latest Dashboard composed code SHA:** `dff258f709daa5b4cbf4f9dbbd124f48a9076e7a`.
+Inspect source commit workflow conclusions before claiming fully green.
+Formal score still **15/100 accepted**; GitHub/browser engineering
+**~34/100 provisional** until current owner lifecycle verification
+qualifies any further estimate. Local/private Mac acceptance pending.
+
+**Next Task 93:** independent native Mac human-session authentication
+and durable audit receipt, not a browser-supplied approval. Then move
+to substantive next Personal-first owner-backed features. Preserve
+the 30-task ledger and do not rebuild this lifecycle.
+
+
+### Tasks 93–142: fixed engineering milestones and native Canvas selection context (28 October 2026)
+
+**50 small source/test/CI/documentation slices numbered 93–142** are
+enumerated in [Tasks 93–142 ledger](DEVELOPMENT-TASKS-93-142-2026-10-28.md).
+They are not 50 formal roadmap points. The true deliverables are:
+(1) a 10-chapter / 40-milestone stable GitHub engineering inventory,
+(2) an owner-backed Canvas selection context reader, and (3) a
+verified Gateway agent note edit from a real host-issued context,
+while preserving canonical Data/OS scope and actor boundaries.
+
+- GitHub milestone baseline:
+  `docs/github-chapters-milestones.json` and
+  `scripts/verify-github-milestones.mjs`, with 15 regression checks,
+  cross-platform integrity CI and checked evidence pointers.
+- Context code:
+  `apps/gateway/src/canvas-context.ts` and
+  `CanvasAgentActions.invokeSelectedNoteEdit`, tested with 30
+  context and eight selected-note regression scenarios.
+  The owner-only reader returns only selected notes/edges, marked
+  untrusted, at the current canonical version. The host-only
+  snapshot cannot be JSON-forged, and the action still checks
+  actual Gateway run workspace and canonical Data write CAS.
+- Real [Gateway/OS/Data composition CI 40775792089](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40775792089)
+  and [Chromium CI 40775791985](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40775791985)
+  **passed** at code `fb85aa4c6af92416b8f2e6c21d19632a5c4a62ca`.
+  Dashboard Linux/Windows CI passed; newest macOS matrix
+  jobs queued at last check. Progress integrity CI on
+  reconciled JSON/tests must be rechecked after its commit.
+
+**Reporting now:** GB engineering **~35/100 provisional** (+1
+Canvas source/CI evidence point, not +50), formal FA **15/100
+accepted**, 10 fixed chapters, 40 named milestones, 4 verified,
+8 implemented in draft, 28 planned. Production Mac owner session,
+provider account consent, native signing/install and private dogfood
+not accepted. G03.3 implemented draft; G03.4 retains grouping and
+production app model-tool dispatch. **Next task 143** after exact
+current CI inspection and milestone prioritization.
+
+The original MC0–MC7 100-point formal acceptance structure
+and pending MC2.1 review have NOT been changed.
+
+
+### Tasks 143–212: Data-authoritative Canvas grouping (29 October 2026)
+
+**70 small numbered development slices** itemized in
+[Tasks 143–212](DEVELOPMENT-TASKS-143-212-2026-10-29.md).
+The 70 consist of **two integrated implementation work packages**
+(Data grouping owner and Dashboard typed/UI/real composition), plus
+**35 specific native Data regression scenarios and 33 Dashboard
+typed/projection/security scenarios**. Per the operator's request,
+these small scenarios are legitimate flexible task slices, NOT
+70 major features or 70 program points. Task #213 is next.
+
+Data [stacked draft PR #23](https://github.com/aiverse-filmmakers/AI-Verse-Data/pull/23)
+extends canonical Canvas boards with optional `groups`,
+five versioned Data owner operations and full legacy revision
+digest preservation, with idempotent repeated group creation.
+[Data Linux/macOS/Windows CI 40781700269](https://github.com/aiverse-filmmakers/AI-Verse-Data/actions/runs/40781700269)
+**all green** at exact Data code
+`35ebd098fbd809d75ba3727c1c3ead61f2f2f8d3`.
+
+Dashboard [draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42)
+adds group RPC validation/projections and a functional first-party
+group editor: select notes, group, rename, adjust members, move
+whole group and ungroup without deleting notes; CSS adapts
+to narrow screens. The actual [Gateway+OS+Data composition
+40781907477](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40781907477)
+passed with create/retry, live agent group move, clone, archived
+old digests and undo. First-party code/browser CI also
+passed after the styling update at
+[40782054673](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40782054673)
+and [40782054681](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40782054681).
+These verify the typed UI build/Chromium baseline, not a
+production-installed real Mac user click-through.
+
+**GB ~36/100 provisional** (Canvas category 9/15), **FA
+15/100 accepted** (unchanged). Fixed engineering inventory
+remains 10 chapters, 40 milestones: **4 verified, 8
+implemented in draft, 1 in-progress (G03.4), 27 planned**.
+G03.4 is only partially closed because production model
+action dispatch, real workspace lifecycle and creative assets
+are still missing. No Mac owner authentication, grants, account
+consent, signed installer or private dogfood completed.
+
+**Next Task 213:** qualify native model-to-app dispatch and
+owner-authenticated scope (or the next source-backed ready
+milestone), after checking exact CI. Do not rebuild Data
+grouping, Canvas RPC or their 68 regressions.
+
+
+### Tasks 213–412: verified host-selected Canvas model-tool foundation (29 Oct 2026)
+
+**200 small slices** committed and individually mapped in
+[Task ledger 213–412](DEVELOPMENT-TASKS-213-412-2026-10-29.md):
+4 source/integration implementation slices and 196 named test-case
+tasks, with nine additional supplementary cases. These cases
+are testing activity, not 196 additional user features or GB points.
+
+Candidate first-party native (host-only) Canvas model-tool interface:
+`apps/gateway/src/canvas-agent-tool-coordinator.ts`.
+A host selects Canvas notes/edges/groups; an independently live
+canonical Gateway bot read and a human OS/Data owner-authorized
+selected context must agree on document, version, workspace.
+An in-process WeakMap handle, never a model-provided JSON handle,
+can invoke only selected note text edit or selected group
+rename/move. OS/Gateway/Data authorization and optimistic Data
+revision are repeated at effect edge. No HTTP/tool registration
+and no host grants issued. Selected Canvas note text and group
+labels are explicitly untrusted data.
+
+`test/canvas-agent-tool-coordinator.test.ts` now runs **205
+independently named targeted/hostile scenarios**, including 129
+variant authority and counterfeit-handle probes. All Dashboard
+CI Node22 Linux/macOS/Windows jobs passed at code
+`b2e5920cd2998c929eba3345379b7a45761fbc54`
+[CI 40788246223](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246223).
+Chromium [40788246028](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246028)
+and integrity [40788246082](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246082)
+passed at same code.
+New pinned real Gateway+OS+Data composition:
+[40788246113](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246113).
+At this checkpoint the real composition run was **still in progress**,
+and MUST be checked before awarding any new engineering points
+or claiming source-composition acceptance.
+
+**GB remains ~36/100 provisional** until cross-repo composition
+passes and source evidence reconciled. **Formal FA stays 15/100**,
+MC2.1 independent architecture acceptance not completed. 10
+chapters / 40 milestones unchanged, G03.4 in progress.
+Next task **413**, not 213. Real native authenticated Mac owner
+session, approved provider/model tool dispatcher, real user consent,
+asset storage, private installation and dogfood still pending.
+
+
+### Final exact-head source verification, 29 October 2026
+
+The native host-only Canvas model-tool code at
+`b2e5920cd2998c929eba3345379b7a45761fbc54` **passed**
+[Dashboard Linux/macOS/Windows CI 40788246223](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246223),
+[Chromium 40788246028](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246028)
+and [progress integrity 40788246082](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246082).
+The [real pinned Gateway+OS+Data CI 40788246113](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40788246113)
+also **completed successfully**, validating owner-selected note and group
+actions against actual disposable canonical services.
+
+**Score after verified source:** GitHub engineering **~37/100
+provisional**, Canvas workstream 10/15; formal accepted **15/100**;
+G03.4 remains **in progress**, production native host and model
+tool dispatch are unshipped. Tasks through **#412** committed.
+Next numbered task: **#413**. The 200 small task slices were
+4 implementation/integration slices and 196 individually named
+test cases, not 200 major feature milestones.
+
+
+### Tasks 413–438: Real paired Personal system/Gateway/Canvas/history diagnostics (29 October 2026)
+
+**26 small implementation and verification slices** itemized in
+[Tasks 413–438](DEVELOPMENT-TASKS-413-438-2026-10-29.md).
+This batch implements an actual host-authenticated
+**Personal → Workspace status** panel using four independent
+owner-backed sources: public scoped SystemRegistry, canonical
+Gateway preflight, canonical Data-owned Canvas document list,
+and bounded Gateway session library. It reports unavailable
+owners honestly, never infers successful model inference from
+a status check, prevents stale workspace responses and renders
+no OS roots, credentials, document contents or private chats.
+
+Host cookie access was extended to only the **paired scope's
+read-only `system.get`**, not the global system/workspace list.
+Expanded native localhost security regressions prove own public
+registry record, deny wrong system/workspace and broad listing.
+`test/personal-diagnostics.test.ts`: 36 source/scope/count/shape
+probes. Real paired Chromium checks the four sources, manual
+refresh and strict origin-bound no-bearer HTTP.
+
+Exact verified code `0f276bae960f98b0082bad4a7e1fe7685009e6b4`:
+[Dashboard Linux/macOS/Windows 40832818420](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40832818420)
+GREEN and [real canonical Gateway + paired Chromium browser
+40832818224](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40832818224)
+GREEN. New documentation/progress ledger head may have a later
+CI run; check exact result before claiming full-head green.
+
+**GB engineering ~38/100 provisional** (+1 control-panel
+source/CI point), **formal FA 15/100 accepted** unchanged.
+10 fixed chapters, 40 milestones: **4 verified, 8 implemented
+in draft, 2 in-progress (G03.4 and G06.1), 26 planned**.
+The controls chapter remains far from complete: real native
+system switching, workspace lifecycle, agents/approvals,
+Brain/Memory/Skills/Automations, Token/Connections and owner Mac
+dogfood still pending. **Next Task 439.**
+
+
+## Tasks 439–453 checkpoint, 29 October 2026
+
+Dashboard [draft PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42) continues on `codex/dashboard-source-checkpoint`. Tasks [439–453](DEVELOPMENT-TASKS-439-453-2026-10-29.md) add the fifth real owner-backed `workspace.get` observation in Personal Workspace Status and replace wildcard paired-browser Gateway/Canvas permissions with an explicit method allowlist. Access is still exactly host-paired system/workspace, never a second workspace authority or arbitrary system.list/workspace.list. Typed projection, live HTTP and Chromium regression coverage were added.
+
+Source `aea7544ffe4f2af909df7c75fcdefc117308348b` passed ordinary Dashboard Node 22 CI, browser QC and progress integrity. Its real process-restart composition run failed twice with an unhandled closed-IPC error. `5c371568dd380440343844bc281766eccb07d124` hardens cleanup and logs only the failed phase/error class/source location. **Full composition of this head is pending verification**. Do not mark all green or award new GB points until the exact run resolves.
+
+**GB ~38/100 provisional, FA 15/100 accepted. Next Task 454:** resolve composition gate, finalize evidence, then advance a real G06.1 owner capability rather than add mock panels. Local Mac owner authentication and deployment remain deferred.
+
+
+## Tasks 454–461: Real chat resizing and verified owner diagnostics, 29 October 2026
+
+Task ledger: [454–461](DEVELOPMENT-TASKS-454-461-2026-10-29.md). Dashboard draft PR #42 now has a fifth real paired-scope workspace manifest diagnostic, an explicit future-safe browser RPC method allowlist and real pointer/keyboard chat pane resizing with mobile full-width layout. Native first-party UI and Browser CI, Node 22 all platforms, and pinned real Gateway composition are **green** at source `0e915209fe2d151c2d9306ab156d05522460d4bf`, runs 40874888256, 40874888550 and 40874888319. The restart harness `5c371568` also passed real composition run 40874360134. These are tested draft source, not a member installation.
+
+The finite plan remains 10 chapters/40 milestones, now 4 verified, 8 implemented-in-draft, 3 in-progress (G03.4, G06.1, G08.2), 25 planned. **GB ~39/100 provisional**, UX category +1 for verified functional resizing; **FA 15/100 formally accepted**, unchanged. Local Mac/account/release gates remain separate.
+
+**Next Task #462:** prefer owner-backed native workspace lifecycle and system selection (G06.1) or a scoped provider/asset capability (G05), subject to existing authority contracts; no broad cookie permission expansion, no mock panels and no duplicate databases.
+
+
+## Tasks 462–480: Scoped local Agent Activity, 29 October 2026
+
+[Task ledger](DEVELOPMENT-TASKS-462-480-2026-10-29.md) and [activity owner runbook](PERSONAL-AGENT-ACTIVITY-2026-10-29.md). Dashboard draft PR #42 adds a first-party, host-cookie authenticated **Agent activity** panel backed by the existing *Dashboard-local in-memory* SessionStore with exact OS/system/workspace scope, redacted status and event kinds, refresh, all/tool/error filters. It does not claim the persistent canonical Gateway agent fleet and is unavailable when the local owner is missing. A new `operator.activity` read-only query is explicitly allowlisted for the paired browser; other methods and other workspaces remain denied.
+
+Exact source `9e9930805800482a843cee4ea95ee83a73cc4193` passed [Dashboard Linux/macOS/Windows 40878839555](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40878839555), [Chromium 40878839278](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40878839278), [real canonical Gateway + paired browser 40878839529](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40878839529), and [progress integrity 40878839235](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40878839235). New documentation head must pass its own exact CI.
+
+**GB ~40/100 provisional** (+1 Control Center for source+CI real constrained feature), **FA 15/100 formally accepted**, unchanged. 10 chapters/40 milestones: 4 verified, 8 implemented in draft, **4 in progress** (G03.4, G06.1, G06.2, G08.2), 24 planned. Native owner Mac, provider sign-in and releases remain not accepted. **Resume Task 481**, prioritize canonical persistent agent activity and native owner system/workspace lifecycle, preserving approved OS/Gateway/Data authority.
+
+
+## Tasks 481–495: canonical Gateway activity and workspace manifest security, 29 October 2026
+
+[Task ledger](DEVELOPMENT-TASKS-481-495-2026-10-29.md), [Agent Activity runbook](PERSONAL-AGENT-ACTIVITY-2026-10-29.md). The real first-party Agent Activity panel now displays two independent sources: ephemeral Dashboard-local sessions, and bounded persistent canonical Gateway session/run statuses, never raw prompts/outputs. A separate OS-adapter improvement rejects external symlinked workspace manifests/directory aliases and mismatched listing IDs. Last exact source `7fb93973766964a3c8cf98a73a5af47cb24607e2` passed [Dashboard Linux/macOS/Windows CI 40880147089](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40880147089), [Chromium 40880147102](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40880147102) and [real Gateway composition 40880147101](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40880147101). Check the final documentation commit CI separately.
+
+**GB ~41/100 provisional**, formal accepted **15/100** unchanged, 10 chapters/40 milestones (4 verified, 8 implemented draft, 4 in-progress, 24 planned). This is draft source, not user Mac install or approvals. **Next Task 496.**
+
+
+## Tasks 496–519: trusted TTY host workspace selection, 29 October 2026
+
+[Ledger](DEVELOPMENT-TASKS-496-519-2026-10-29.md) and [owner runbook](TRUSTED-HOST-WORKSPACE-SELECTION-2026-10-29.md). Existing `mc2:local-app` interactive trusted terminal now supports `:workspaces` and `:use <workspace-id>` using real OS registry + workspace manifest, pins registered root/generation and workspace realpath/device/inode, rotates pairing secrets and HttpOnly cookie, revokes all previous browser WS connections, and the first-party browser automatically clears private chats on host revocation. No browser route or RPC can switch workspace; no arbitrary system switch, native login, provider login or user Mac installation is claimed. Canonical run-stream delivery checks active scope before forwarding. The change is source-verified at `4c269f411ee0990e8a784f6542c1f2c13da3283e`, [Dashboard CI 40886502087](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40886502087), [Chromium 40886502368](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40886502368), [real Gateway composition 40886502198](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40886502198), all success; check current docs-head CI separately.
+
+**GB 42/100 provisional**, **FA 15/100 formal accepted**, 10 chapters/40 milestones unchanged: 4 verified, 8 implemented-draft, 4 in-progress, 24 planned. **Next Task 520**, G06.1 native graphical owner selection/approval lifecycle or a different actual owner-backed milestone after source review.
+
+
+## Tasks 520–548: real owner-approved graphical workspace switching, 29 October 2026
+
+[Task ledger](DEVELOPMENT-TASKS-520-548-2026-10-29.md) and [owner approval runbook](PERSONAL-WORKSPACE-OWNER-APPROVAL-2026-10-29.md). Real first-party **Workspaces** panel displays actual limited OS manifest catalog and submits strictly scoped, time-bound proposal. Only explicitly opted-in trusted TTY can `:approve <id>` or `:deny <id>`, with `:pending` inspection. Invalid request IDs, extra JSON keys, wrong origin, stale OS manifests, cookie replay and self-authorization fail closed; old browser secrets/sockets/turns are revoked and re-pair required. Browser/catalog reads remain separate from privileged RPC. Pinned real canonical Gateway composition executes a genuine `film` run after owner approval, and film persisted session history excludes operator conversations. Async UI state/chooser is fenced across logout, request denial and selection.
+
+Source `072afb8dfb428b57fce7c8c0d126f029d887a7df`: [Dashboard CI 40960567285](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40960567285), [Chromium QC 40960567514](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40960567514), [real canonical Gateway composition 40960567259](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40960567259), [progress 40960567232](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40960567232), all success. Check the docs-head CI separately.
+
+**GB engineering ~44/100 provisional**, **formal acceptance 15/100 unchanged**. 10 chapters, 40 fixed milestones: 4 verified, 8 draft implemented, 4 in progress, 24 planned. G06.1 is still **in progress**. No private Mac native login, durable owner approval grants/audit trail, signed packaging or production acceptance. **Next Task 549.**

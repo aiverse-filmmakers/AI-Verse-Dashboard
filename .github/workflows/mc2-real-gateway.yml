@@ -1,0 +1,112 @@
+name: MC2 Canonical Gateway Composition
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mc2-real-gateway.yml"
+      - "scripts/mc2/**"
+      - "apps/gateway/src/canonical-gateway-bridge.ts"
+      - "apps/gateway/src/canvas-owner-bridge.ts"
+      - "apps/gateway/src/canvas-os-policy.ts"
+      - "apps/gateway/src/canvas-data-owner.ts"
+      - "apps/gateway/src/canvas-agent-actions.ts"
+      - "apps/gateway/src/canvas-context.ts"
+      - "apps/gateway/src/canvas-agent-tool-coordinator.ts"
+      - "test/canvas-agent-tool-coordinator.test.ts"
+      - "test/canvas-context.test.ts"
+      - "apps/gateway/src/canvas-gateway-run-verifier.ts"
+      - "apps/gateway/src/canvas-os-grant.ts"
+      - "test/canvas-os-grant.test.ts"
+      - "test/canvas-gateway-run-verifier.test.ts"
+      - "test/canvas-agent-actions.test.ts"
+      - "packages/protocol/src/methods.ts"
+      - "apps/gateway/src/local-app-session.ts"
+      - "apps/gateway/src/server.ts"
+      - "packages/client/src/canonical-gateway-client.ts"
+      - "packages/registry/src/registry.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actual-gateway:
+    name: Real canonical Gateway / disposable deterministic runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - name: Checkout Dashboard without stored credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout exact reviewed canonical Gateway revision
+        uses: actions/checkout@v4
+        with:
+          repository: aiverse-filmmakers/AI-Verse-Gateway
+          ref: 9748dd0d5473b65ad95ef92df62fe0a13575e378
+          path: gateway-source
+          persist-credentials: false
+
+      - name: Checkout exact reviewed Data Canvas owner revision
+        uses: actions/checkout@v4
+        with:
+          repository: aiverse-filmmakers/AI-Verse-Data
+          ref: 35ebd098fbd809d75ba3727c1c3ead61f2f2f8d3
+          path: data-source
+          persist-credentials: false
+
+      - name: Checkout exact reviewed OS permission evaluator revision
+        uses: actions/checkout@v4
+        with:
+          repository: aiverse-filmmakers/AI-Verse-OS
+          ref: d304db51d11f8e4865e9d4dfbd2ceb7e79b7e0f7
+          path: os-source
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build Dashboard and run regression suite
+        run: |
+          npm ci
+          npm run check
+
+      - name: Build exact reviewed canonical Data Canvas owner in its own repository
+        run: |
+          cd data-source
+          npm install --ignore-scripts
+          npm run build
+
+      - name: Prove authenticated Dashboard Canvas RPC writes real scoped Data SQLite
+        env:
+          CI: "true"
+          AIVERSE_MC2_DATA_SOURCE: data-source
+          AIVERSE_MC2_OS_SOURCE: os-source
+          AIVERSE_MC2_GATEWAY_SOURCE: gateway-source
+        run: node scripts/mc2/ci-canvas-data-owner-proof.mjs
+
+      - name: Prove native OS owner-issued Canvas grants against actual GatewayStore
+        env:
+          CI: "true"
+          AIVERSE_MC2_OS_SOURCE: os-source
+          AIVERSE_MC2_GATEWAY_SOURCE: gateway-source
+        run: node scripts/mc2/ci-canvas-native-owner-lifecycle-proof.mjs
+
+      - name: Install pinned browser test dependencies without changing the lockfile
+        run: npm install --no-save --package-lock=false playwright@1.58.2 esbuild@0.25.12
+
+      - name: Install headless Chromium for real end-to-end Gateway/browser journey
+        run: npx playwright install --with-deps chromium
+
+      - name: Build the exact same first-party Personal Chat bundle used by the local launcher
+        run: npm run mc2:bundle
+
+      - name: Exercise a real canonical Gateway server with ephemeral OS fixture
+        env:
+          CI: "true"
+          AIVERSE_MC2_GATEWAY_SOURCE: gateway-source
+        run: node scripts/mc2/ci-canonical-proof.mjs

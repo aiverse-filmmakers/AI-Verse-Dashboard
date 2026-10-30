@@ -1,0 +1,347 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-28",
+  "scope": "personal-first-dashboard-v1",
+  "status": "planned-milestone-baseline-draft",
+  "note": "Engineering checkpoints, not formal roadmap acceptance. Changing milestones requires explicit versioned rebaseline.",
+  "chapterCount": 10,
+  "milestoneCount": 40,
+  "chapters": [
+    {
+      "id": "foundation",
+      "title": "Architecture & runtime",
+      "gbBudget": 15,
+      "milestones": [
+        {
+          "id": "G01.1",
+          "title": "System design and owner boundary",
+          "state": "verified",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "docs/PRD-MISSION-CONTROL-AIVERSE-DASHBOARD-2026-09-15.md"
+        },
+        {
+          "id": "G01.2",
+          "title": "Canonical Gateway routing and Qwen proof",
+          "state": "verified",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "docs/MC1-REAL-MODEL-ACCEPTANCE-2026-10-26.md"
+        },
+        {
+          "id": "G01.3",
+          "title": "Clean CI baseline and third-party attribution",
+          "state": "verified",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "THIRD_PARTY_NOTICES.md"
+        },
+        {
+          "id": "G01.4",
+          "title": "Architecture preservation and source-pinning",
+          "state": "verified",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "docs/BASELINE-PRESERVATION-REPORT-2026-09-15.md"
+        }
+      ]
+    },
+    {
+      "id": "chat",
+      "title": "Personal Chat & Gateway",
+      "gbBudget": 15,
+      "milestones": [
+        {
+          "id": "G02.1",
+          "title": "Typed authenticated canonical Gateway transport",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/gateway/src/canonical-gateway-bridge.ts"
+        },
+        {
+          "id": "G02.2",
+          "title": "Multi-turn persistence, restart and conversation continuity",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "scripts/mc2/ci-canonical-proof.mjs",
+          "partialEvidence": "Real Gateway session and run history, authenticated resume/continuation, 20-session pages and 25-run transcript pages beyond the first 50 (up to 200 displayed), strict duplicate and workspace-change fences, split preservation, minimized-pane restoration and Chromium 78-run scenario. Older history is display-only, not model context. Source-ledger docs/DEVELOPMENT-TASKS-594-606-2026-10-30.md. Implemented in draft only; no private owner Mac acceptance."
+        },
+        {
+          "id": "G02.3",
+          "title": "Supported model/provider selection, stream and controls",
+          "state": "in-progress",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/web/src/personal-model-status.ts",
+          "partialEvidence": "Owner-scoped actual virtual model inventory, exact run/session streaming and reconnect, host-privileged Stop and independently host-privileged canonical Pause/Resume, SSE multi-cycle replay fence, persisted checkpoint and read-only Check run. Source bc9a171ad691e6f5cab3551f897b15deb7c5f4dd passed four CI suites including pinned actual Gateway Store pause->resume->complete. Physical provider selection is NOT implemented. Signed provider consent, owner Mac acceptance, canonical attachments and OS Skills are also NOT implemented."
+        },
+        {
+          "id": "G02.4",
+          "title": "Attachments, commands and skills in real chat",
+          "state": "in-progress",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/web/src/personal-chat-ui.ts",
+          "partialEvidence": "User-click, canonical Data-reread saved Canvas note to Chat composer is implemented in first-party source. Exact workspace/document version/selected note and async UI epoch enforced, over-limit and unsaved editor text refused, nothing sent until user independently clicks Send. Browser tests on functional source e3a161ec4e38c932be53a95d89366afcfa2aa8f8 (or later fixes). Actual binary attachments, file hashes, media transports, Skill/command grants and owner Mac acceptance are NOT implemented. G02.4 remains IN PROGRESS. Task 648 verified upstream Data attachment_ref is metadata only and canonical Gateway messages remain string/null; real binary admission requires Data+OS+Gateway owner contract in docs/G02-4-CANONICAL-ASSET-ADMISSION-CONTRACT-2026-10-30.md. This is NOT implemented in Dashboard."
+        }
+      ]
+    },
+    {
+      "id": "canvas",
+      "title": "Personal, Workspace & Canvas",
+      "gbBudget": 15,
+      "milestones": [
+        {
+          "id": "G03.1",
+          "title": "Scoped persistent documents and version history",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/gateway/src/canvas-data-owner.ts"
+        },
+        {
+          "id": "G03.2",
+          "title": "Real editor, undo and owner-backed agent mutations",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/gateway/src/canvas-agent-actions.ts"
+        },
+        {
+          "id": "G03.3",
+          "title": "Host-bound selected Canvas context and verified note actions",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/gateway/src/canvas-context.ts"
+        },
+        {
+          "id": "G03.4",
+          "title": "Canvas grouping, workspace lifecycle, assets and production app-action round-trip",
+          "state": "in-progress",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/web/src/canvas-workspace.ts",
+          "partialEvidence": "Canonical grouping in Data PR #23 and real Gateway/UI owner routing; workspace lifecycle, assets and production model tools not done"
+        }
+      ]
+    },
+    {
+      "id": "os-authority",
+      "title": "OS actors, grants & approvals",
+      "gbBudget": 10,
+      "milestones": [
+        {
+          "id": "G04.1",
+          "title": "Read-only canonical OS grant admission",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/gateway/src/canvas-os-grant.ts"
+        },
+        {
+          "id": "G04.2",
+          "title": "Native owner grant issue/revoke with reviewed live-session authority",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "docs/CANVAS-NATIVE-OWNER-LIFECYCLE-TASKS-63-92-2026-10-28.md"
+        },
+        {
+          "id": "G04.3",
+          "title": "Owner approval receipts, audited lifecycle and secure platform ACL",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G04.4",
+          "title": "Cross-process cancellation, effects and recovery",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "providers",
+      "title": "Providers, generations & assets",
+      "gbBudget": 10,
+      "milestones": [
+        {
+          "id": "G05.1",
+          "title": "Owner-governed AI/provider authorization",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G05.2",
+          "title": "Supported model and reasoning discovery",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G05.3",
+          "title": "Real image generation job with charge approval",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G05.4",
+          "title": "Canonical persisted assets and Canvas placement",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "controls",
+      "title": "Owner-backed Control Center",
+      "gbBudget": 15,
+      "milestones": [
+        {
+          "id": "G06.1",
+          "title": "Systems, workspaces and Gateway health/diagnostics",
+          "state": "in-progress",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/web/src/personal-diagnostics.ts",
+          "partialEvidence": "First-party Workspace Status has canonical OS selected-system/workspace health, Data Canvas owner and canonical Gateway/session connectivity. Added authenticated owner-Gateway per-run advanced diagnostics (exact run/session/principal/workspace, safe bounded context/retrieval/fold counts, no raw prompts or traces), verified via real pinned Gateway CI. Added read-only scoped system.registry.summary from selected OS registry with registered/authorized and selected-OS workspace counts; full system.list remains denied to paired browser. Browser and local HTTP security tests include stale OS rebind, foreign sessions, forged diagnostics, forbidden registry filters, and async workspace/input change. Docs/DEVELOPMENT-TASKS-649-660-2026-10-30.md and docs/DEVELOPMENT-TASKS-661-669-2026-10-30.md. G06.1 remains IN PROGRESS: fully implemented multi-system workspace lifecycle, private owner Mac acceptance and broader production control-center coverage are NOT implemented."
+        },
+        {
+          "id": "G06.2",
+          "title": "Bots, runs, approvals, tasks and background automations",
+          "state": "in-progress",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/web/src/personal-agent-activity.ts",
+          "partialEvidence": "Existing Agent Activity reads Dashboard-local session records and canonical Gateway session/run history with strict workspace scoped provenance, 12-record local and 3-run page limits. Source-backed G06.2 update preserves actual canonical awaiting_approval, resuming and recovery statuses instead of calling them unknown, displays awaiting owner approval as read-only, and adds an Approvals filter over actual local approval events. Tests ensure no action/token/private prompt data or approval POST. Docs/DEVELOPMENT-TASKS-670-674-2026-10-30.md. Still missing owner approval receipt admission/decision lifecycle, audited actions, tasks/automations management and native owner acceptance, so G06.2 remains IN PROGRESS."
+        },
+        {
+          "id": "G06.3",
+          "title": "Memory, Skills, Brain, Data and app projections",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G06.4",
+          "title": "Token/spend, Connections and security/audit projections",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "film",
+      "title": "First Filmmaking application",
+      "gbBudget": 5,
+      "milestones": [
+        {
+          "id": "G07.1",
+          "title": "First bounded film use-case and acceptance contract",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G07.2",
+          "title": "Real scene/script owner-backed input and state",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G07.3",
+          "title": "Filmmaking UI with shared chat/context",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G07.4",
+          "title": "Verified first film workflow and recovery",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "ux",
+      "title": "UX, responsive & accessibility",
+      "gbBudget": 5,
+      "milestones": [
+        {
+          "id": "G08.1",
+          "title": "Personal-first information architecture",
+          "state": "implemented",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/web/src/personal-chat-ui.ts"
+        },
+        {
+          "id": "G08.2",
+          "title": "Mobile/desktop responsive panels and multi-chat interactions",
+          "state": "in-progress",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
+          "evidenceRef": "apps/web/src/personal-chat-ui.ts",
+          "partialEvidence": "Source and Chromium-verified real pointer/keyboard chat pane resizing with width continuity and mobile stacked fallback; broader responsive application layout not yet accepted."
+        },
+        {
+          "id": "G08.3",
+          "title": "Keyboard, focus and screen-reader accessibility",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G08.4",
+          "title": "Cross-browser regression and owner-facing usability packet",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "desktop",
+      "title": "Mac desktop and distribution",
+      "gbBudget": 5,
+      "milestones": [
+        {
+          "id": "G09.1",
+          "title": "Native macOS host shell and secure OS bridge",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G09.2",
+          "title": "Multiple local system registrations and Gateway supervision",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G09.3",
+          "title": "CI-built installable unsigned artifact and update/repair",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G09.4",
+          "title": "Distribution lifecycle, signing handoff and native runbook",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    },
+    {
+      "id": "audit",
+      "title": "Security and remote release readiness",
+      "gbBudget": 5,
+      "milestones": [
+        {
+          "id": "G10.1",
+          "title": "Independent cross-owner architecture and licensing audit",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G10.2",
+          "title": "Secrets, scopes, hostile-content and abuse regression",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G10.3",
+          "title": "Two-system failure/restart/restore acceptance evidence",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        },
+        {
+          "id": "G10.4",
+          "title": "Remote-to-owner handoff and clear local-only acceptance gates",
+          "state": "planned",
+          "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations"
+        }
+      ]
+    }
+  ],
+  "lastReconciliation": "2026-10-30: G06.1 authenticated diagnostics and privacy-safe registry summary, G06.2 read-only canonical approval state implemented in draft and regression tested. Both remain IN PROGRESS; no score or milestone changes. Chat 11/15, GitHub/browser 47/100 provisional; formal 15/100."
+}

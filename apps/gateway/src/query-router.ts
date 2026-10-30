@@ -21,13 +21,13 @@ import {
   buildWorkspaceProjections,
 } from "../../../packages/read-models/src/index.js";
 import type { SessionStore } from "../../../packages/live/src/sessions.js";
-import type { SystemRegistry } from "../../../packages/registry/src/index.js";
+import { toPublic, type SystemRegistry } from "../../../packages/registry/src/index.js";
 import type { PurposeMutationBridge } from "./purpose-mutation-bridge.js";
 
 export const GATEWAY_VERSION = "gateway-0.1.0-alpha.0";
 export const GATEWAY_PHASE = "phase-2-live" as const;
 const SUPPORTED_QUERIES = [
-  "system.list", "system.get", "system.info", "workspace.list", "workspace.get",
+  "system.list", "system.registry.summary", "system.get", "system.info", "workspace.list", "workspace.get", "operator.activity",
   "workspace.health", "workspace.inbox.list", "purpose.get", "task.list", "agent.list",
   "agent.sessions", "run.list", "run.get", "run.logs", "source.preview",
 ] as const;
@@ -110,16 +110,61 @@ export class QueryRouter {
       case "protocol.capabilities":
         return { phase: GATEWAY_PHASE, methods: [...SUPPORTED_QUERIES, ...SUPPORTED_PURPOSE_CONTROLS], maxParamsBytes: 65536 };
       case "system.list": return { systems: this.registry.listPublic() };
+      case "system.registry.summary": {
+        // This query has no caller-controlled filter or substitute scope.
+        if(req.params!==undefined)throw Object.assign(Error("Unexpected registry parameters"),{
+          code:"INVALID_ENVELOPE"});
+        const systemId=req.systemId as string,workspaceId=req.workspaceId as string;
+        if(!systemId||!workspaceId)throw Object.assign(Error("Scope required"),{
+          code:"SYSTEM_REQUIRED"});
+        // resolveRoot revalidates the trusted registered OS identity; an
+        // unauthorized or changed root cannot advertise a healthy summary.
+        this.registry.resolveRoot(systemId);
+        if(workspaceId!=="operator")getWorkspace(this.registry,systemId,workspaceId);
+        const rows=this.registry.listPublic();
+        const selected=rows.find(entry=>entry.systemId===systemId);
+        if(!selected||!selected.authorized)throw Object.assign(
+          Error("Selected OS is not authorized"),{code:"SYSTEM_NOT_REGISTERED"});
+        return {source:"dashboard-os-registry",systemId,workspaceId,
+          registered:rows.length,authorized:rows.filter(x=>x.authorized).length,
+          workspaces:listWorkspaces(this.registry,systemId).length,
+          selectedAuthorized:true};
+      }
       case "system.get":
       case "system.info": {
         const rec = this.registry.get(req.systemId as string);
         if (!rec) throw Object.assign(new Error(`unknown systemId ${req.systemId}`), { code: "SYSTEM_NOT_REGISTERED" });
         if (req.method === "system.get") {
-          const { root: _r, architecture: _a, ...pub } = rec; void _r; void _a; return { system: pub };
+          return { system: toPublic(rec) };
         }
         return { systemId: rec.systemId, authorized: rec.authorized, workspaces: listWorkspaces(this.registry, rec.systemId).length };
       }
       case "workspace.list": return { workspaces: listWorkspaces(this.registry, req.systemId as string) };
+      case "operator.activity": {
+        const systemId=req.systemId as string, workspaceId=req.workspaceId as string;
+        // The implicit operator scope is OS-root-bound. Named workspaces must
+        // pass the canonical manifest/realpath owner check before any read.
+        if(workspaceId==="operator")this.registry.resolveRoot(systemId);
+        else getWorkspace(this.registry,systemId,workspaceId);
+        const sessions=this.requireSessions();
+        const summaries=sessions.summaries(systemId,workspaceId);
+        const allowedStates=new Set(["active","idle","working","waiting","blocked","done","aborted"]);
+        const recent=summaries.slice()
+          .sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,12)
+          .map(s=>({
+            status:allowedStates.has(s.status)?s.status:"blocked",
+            entryCount:Math.max(0,Math.min(s.entryCount,500)),
+            updatedAt:s.updatedAt,
+          }));
+        // Intentionally no prompt bodies, session IDs, titles, providers,
+        // file refs, errors or agent outputs in the browser projection.
+        const events=sessions.recentEntries(systemId,workspaceId,{limit:12})
+          .slice().reverse()
+          .map(entry=>({kind:entry.kind,role:entry.role,createdAt:entry.createdAt}));
+        return {source:"dashboard-local-sessions",systemId,workspaceId,
+          retention:"in-memory-only",sessionCount:summaries.length,
+          sessions:recent,events,observedAt:new Date().toISOString()};
+      }
       case "workspace.get": {
         const { summary } = getWorkspace(this.registry, req.systemId as string, req.workspaceId as string);
         return { workspace: summary };
