@@ -124,6 +124,25 @@ describe("Personal Chat canonical run controller",()=>{
    assert.deepEqual(second.params?.messages,[{role:"user",content:"Continue the discussion"}]);
    assert.doesNotMatch(JSON.stringify(second.params),/NEVER REUSE DRAFT|Original prompt/);
  });
+ it("late Stop response after A to B to A workspace switching never repaints the old run",async()=>{
+   let release:(value:unknown)=>void=()=>{};
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run();
+     if(method==="aiverse.gateway.run.cancel")return new Promise(resolve=>{release=resolve;});
+     throw Error("unexpected method "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("Private draft","stable-create");
+   const pending=chat.stop("stop-owner");
+   chat.retarget({systemId:"aiverse-01",workspaceId:"other"});
+   chat.retarget(SCOPE);
+   release(run("canceled"));
+   await pending;
+   assert.equal(chat.snapshot().phase,"idle");
+   assert.equal(chat.snapshot().runId,undefined);
+   assert.equal(chat.snapshot().output,"");
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.cancel").length,1);
+ });
  it("Stop racing with a completed run reconciles the real finished reply",async()=>{
    const {client,calls}=clientWith(method=>{
      if(method==="aiverse.gateway.run.create")return run();
