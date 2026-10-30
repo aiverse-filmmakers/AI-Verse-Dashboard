@@ -34,6 +34,7 @@ interface Pane {
   historyHasOlder?:boolean;
   historyLoading?:boolean;
   historyError?:string;
+  historyNotice?:string;
   min?:boolean;
 }
 const MAX_PANES=3;
@@ -159,7 +160,7 @@ export class PersonalChatApplication {
     for(const pane of this.panes.values()){
       pane.generation++;
       pane.turns=[];pane.activeTurn=-1;
-      pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;
+      pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
       pane.run.retarget(this.selected);
       const scopeLabel=pane.node.querySelector(".live-chat-scope");
       if(scopeLabel)scopeLabel.textContent="Workspace: "+next.workspaceId;
@@ -306,7 +307,7 @@ export class PersonalChatApplication {
     pane.run.close();
     pane.run=this.controller(view=>this.onChange(paneId,view));
     pane.turns=[];pane.activeTurn=-1;pane.busy=true;
-    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;
+    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
     pane.status.textContent="Opening canonical conversation…";
     this.render(pane);
     const restored=await pane.run.openSession(sessionId);
@@ -330,7 +331,7 @@ export class PersonalChatApplication {
     if(!pane||this.destroyed||pane.historyLoading||!pane.historyHasOlder)return;
     const generation=pane.generation,scope={...this.selected};
     const clickAnchor=pane.log.scrollTop;
-    pane.historyLoading=true;pane.historyError=undefined;
+    pane.historyLoading=true;pane.historyError=undefined;pane.historyNotice=undefined;
     this.render(pane);
     pane.log.scrollTop=clickAnchor;
     let scrollAnchor:{height:number;top:number}|undefined;
@@ -342,6 +343,8 @@ export class PersonalChatApplication {
       scrollAnchor={height:pane.log.scrollHeight,top:pane.log.scrollTop};
       pane.turns.unshift(...result.turns.map(turn=>({role:turn.role,text:turn.content})));
       pane.historyHasOlder=result.hasOlder;
+      pane.historyNotice=result.limitedByView
+        ?"Showing the most recent 200 runs. Earlier records may still be available in Gateway.":undefined;
     }catch(error){
       if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation)return;
       pane.historyError="Older messages unavailable · "+errorCode(error);
@@ -496,6 +499,8 @@ export class PersonalChatApplication {
     }
     if(pane.historyError)
       fragment.append(el("p","live-chat-history-status",pane.historyError));
+    if(pane.historyNotice)
+      fragment.append(el("p","live-chat-history-status",pane.historyNotice));
     for(const turn of pane.turns){
       const card=el("div","live-chat-message "+turn.role);
       card.append(el("span","live-chat-role",turn.role==="user"?"You":
@@ -530,7 +535,7 @@ export class PersonalChatApplication {
     const payload=text.trim();
     if(!payload || payload.length>1200)return;
     const generation=++pane.generation;
-    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;
+    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
     pane.turns.push({role:"user",text:payload},{role:"assistant",text:""});
     pane.activeTurn=pane.turns.length-1;
     pane.busy=true;pane.input.value="";this.render(pane);
@@ -584,7 +589,7 @@ export class PersonalChatApplication {
     const pane=this.panes.get(paneId);
     if(!pane||this.destroyed||pane.busy)return;
     const generation=++pane.generation;
-    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;
+    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
     pane.turns.push({role:"assistant",text:""});
     pane.activeTurn=pane.turns.length-1;
     pane.busy=true;this.render(pane);
@@ -601,7 +606,7 @@ export class PersonalChatApplication {
     pane.generation++;pane.run.close();
     pane.run=this.controller(view=>this.onChange(paneId,view));
     pane.turns=[];pane.activeTurn=-1;pane.busy=false;pane.input.value="";
-    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;
+    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
     pane.status.textContent="New conversation. Previous runs remain in Gateway.";
     this.render(pane);
   }
