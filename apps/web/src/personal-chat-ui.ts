@@ -389,6 +389,8 @@ export class PersonalChatApplication {
     const clear=button("New chat",()=>this.newConversation(paneId),"");
     const retry=button("Retry request",()=>{void this.retry(paneId);},"live-chat-retry");
     const reconnect=button("Reconnect run",()=>{void this.reconnectRun(paneId);},"live-chat-reconnect");
+    const check=button("Check run",()=>{void this.checkRun(paneId);},"live-chat-check");
+    check.title="Refresh this exact run from the authenticated canonical Gateway";
     const stop=button("Stop run",()=>{void this.stopRun(paneId);},"live-chat-stop");
     stop.title="Requires the trusted host to authorize run cancellation";
     const pause=button("Pause run",()=>{void this.checkpointRun(paneId,"pause");},"live-chat-pause");
@@ -397,7 +399,7 @@ export class PersonalChatApplication {
     resume.title="Requires the trusted host to authorize checkpoint resume";
     const close=button("Close chat",()=>this.closePane(paneId),"");
     actions.append(open,clear,close);heading.append(name,actions);
-    runActions.append(retry,reconnect,pause,resume,stop);
+    runActions.append(retry,reconnect,check,pause,resume,stop);
     const scope=el("div","live-chat-scope","Workspace: "+this.selected.workspaceId);
     const log=el("div","live-chat-log");
     log.setAttribute("role","log");log.setAttribute("aria-live","polite");
@@ -536,6 +538,9 @@ export class PersonalChatApplication {
     const reconnect=pane.node.querySelector(".live-chat-reconnect") as HTMLButtonElement;
     if(reconnect)reconnect.disabled=pane.busy || pane.run.snapshot().phase!=="interrupted"
       || !pane.run.snapshot().runId;
+    const check=pane.node.querySelector(".live-chat-check") as HTMLButtonElement;
+    if(check)check.disabled=!pane.run.snapshot().runId
+      ||pane.run.snapshot().phase==="submitting";
     const stop=pane.node.querySelector(".live-chat-stop") as HTMLButtonElement;
     // A running run is busy for Send, but that is precisely when Stop is useful.
     if(stop)stop.disabled=!this.runCancelSupported
@@ -596,6 +601,18 @@ export class PersonalChatApplication {
     }
   }
   /** This dispatches a canonical Gateway cancellation, not UI-only hiding. */
+  /** Recover a run updated elsewhere via canonical GET, no new run.create. */
+  async checkRun(paneId:string):Promise<void>{
+    const pane=this.panes.get(paneId);
+    if(!pane||this.destroyed||!pane.run.snapshot().runId
+      ||pane.run.snapshot().phase==="submitting")return;
+    try{await pane.run.refreshStatus();}
+    catch(err){
+      if(this.panes.get(paneId)!==pane||this.destroyed)return;
+      pane.status.textContent="Status check unavailable · "+errorCode(err);
+      this.render(pane);
+    }
+  }
   /** Owner-gated checkpoint control: neither action creates a new run. */
   async checkpointRun(paneId:string,action:"pause"|"resume"):Promise<void>{
     const pane=this.panes.get(paneId);
