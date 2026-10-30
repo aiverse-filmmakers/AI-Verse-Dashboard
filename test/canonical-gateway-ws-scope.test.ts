@@ -25,6 +25,7 @@ function fixture(){
   }
   const systemId=registry.register(root,{label:"Test"}).systemId;
   let cancellations=0;
+  let releaseDelta:(()=>void)|undefined;
   const calls:string[]=[];
   const wire=(id:string,type:string,data:Record<string,unknown>)=>
     "event: "+type+"\ndata: "+JSON.stringify({event_id:id,run_id:"run-a",
@@ -37,19 +38,20 @@ function fixture(){
       workspace_id:"film",status:"running",private_secret:"not-for-browser",
     }),{headers:{"content-type":"application/json"}});
     if(p==="/v1/runs/run-a/events"){
-      let timer:ReturnType<typeof setTimeout>|undefined;
       let cancelled=false;
       return new Response(new ReadableStream<Uint8Array>({
         start(controller){
           controller.enqueue(new TextEncoder().encode(wire("ev-1","run.started",{})));
-          timer=setTimeout(()=>{
+          // The test controls when a late event becomes available, so slow CI
+          // never races the workspace switch against an arbitrary timer.
+          releaseDelta=()=>{
             if(cancelled)return;
             controller.enqueue(new TextEncoder().encode(
               wire("ev-2","assistant.delta",{text:"Scoped actual progress",secret:"private"})));
             controller.close();
-          },160);
+          };
         },
-        cancel(){cancelled=true;cancellations++;if(timer)clearTimeout(timer);}
+        cancel(){cancelled=true;cancellations++;}
       }),{headers:{"content-type":"text/event-stream"}});
     }
     return new Response(JSON.stringify({error:{code:"NOT_FOUND"}}),{status:404,
@@ -61,7 +63,7 @@ function fixture(){
   }],{fetchFn,timeoutMs:1200});
   const router=new QueryRouter(registry,new DisposableCache());
   return {registry,root,systemId,bridge,router,
-    hub:new SubscriptionHub(),calls,getCancels:()=>cancellations,
+    hub:new SubscriptionHub(),calls,releaseDelta:()=>releaseDelta?.(),getCancels:()=>cancellations,
     cleanup:()=>rmSync(root,{recursive:true,force:true})};
 }
 async function connect(port:number,systemId:string,token:string){
@@ -94,6 +96,9 @@ describe("MC2.2 canonical run SSE over authenticated Dashboard websocket",()=>{
     try{
       client.ws.send(JSON.stringify({type:"gateway-run-subscribe",workspaceId:"film",runId:"run-a"}));
       await client.wait(()=>client.seen.some(x=>x.event==="aiverse.gateway.run.event"
+        &&(x.payload as {kind?:string})?.kind==="run.started"));
+      f.releaseDelta();
+      await client.wait(()=>client.seen.some(x=>x.event==="aiverse.gateway.run.event"
         &&(x.payload as {kind?:string})?.kind==="assistant.delta"));
       const stream=client.seen.filter(x=>x.event==="aiverse.gateway.run.event");
       assert.deepEqual(stream.map(x=>(x.payload as {kind:string}).kind),
@@ -114,7 +119,8 @@ describe("MC2.2 canonical run SSE over authenticated Dashboard websocket",()=>{
       await client.wait(()=>client.seen.some(x=>x.event==="aiverse.gateway.run.event"));
       client.ws.send(JSON.stringify({type:"subscribe",workspaceId:"film2"}));
       await client.wait(()=>client.seen.some(x=>x.id==="subscribe"&&x.ok===true));
-      await new Promise(r=>setTimeout(r,260));
+      f.releaseDelta();
+      await new Promise(r=>setTimeout(r,70));
       assert.equal(client.seen.filter(x=>x.event==="aiverse.gateway.run.event"
         &&(x.payload as {kind?:string})?.kind==="assistant.delta").length,0);
       // Stream transport cancellation callbacks are not guaranteed after EOF;
