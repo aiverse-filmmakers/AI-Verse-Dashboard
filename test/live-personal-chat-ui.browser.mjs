@@ -586,6 +586,37 @@ test("Export loaded conversation saves verified Gateway text locally without lea
   assert.equal(await exporter.isDisabled(),true);
   assert.deepEqual(errors,[]);
 });
+test("export from canonical history includes only currently loaded pages and expands after Load older",async t=>{
+  const {page,errors}=await pageFor(t);
+  const pane=page.locator(".live-chat-pane").first();
+  await page.getByRole("button",{name:"Previous chats"}).click();
+  await page.locator(".live-chat-history-item").first().getByRole("button",{name:"Open conversation"}).click();
+  await pane.getByRole("button",{name:"Load older messages"}).waitFor();
+  assert.equal(await pane.locator(".live-chat-message").count(),100);
+  const firstDownload=page.waitForEvent("download");
+  await pane.getByRole("button",{name:"Export loaded"}).click();
+  const first=await firstDownload;
+  const partial=await readFile(await first.path(),"utf8");
+  assert.match(partial,/Historical user 029/);
+  assert.doesNotMatch(partial,/Historical user 001/);
+  assert.match(partial,/Older pages may not be loaded/);
+  await pane.getByRole("button",{name:"Load older messages"}).click();
+  await pane.locator(".live-chat-message").nth(149).waitFor();
+  await pane.getByRole("button",{name:"Load older messages"}).click();
+  await pane.locator(".live-chat-message").nth(155).waitFor();
+  const fullDownload=page.waitForEvent("download");
+  await pane.getByRole("button",{name:"Export loaded"}).click();
+  const full=await fullDownload;
+  const text=await readFile(await full.path(),"utf8");
+  assert.match(text,/Historical user 001/);
+  assert.match(text,/Historical AI 078/);
+  assert.ok(text.indexOf("Historical user 001")<text.indexOf("Historical user 078"),
+    "export order is actual Gateway chronological order");
+  assert.equal((text.match(/\nYou:\n/g)??[]).length,78);
+  assert.equal((text.match(/\nAI-Verse:\n/g)??[]).length,78);
+  assert.doesNotMatch(text,/privateBearer|do-not-show|reportedCost/);
+  assert.deepEqual(errors,[]);
+});
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
   const {page,errors}=await pageFor(t);
   const before=requests.length;
