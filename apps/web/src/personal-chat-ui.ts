@@ -179,7 +179,9 @@ export class PersonalChatApplication {
       this.runCancelSupported=value?.source==="canonical-gateway"
         &&value.workspaceId===scope.workspaceId
         &&value.runCancelSupported===true;
-    }catch{this.runCancelSupported=false;}
+    }catch{
+      if(!this.destroyed&&epoch===this.runControlEpoch)this.runCancelSupported=false;
+    }
     finally{
       if(!this.destroyed&&epoch===this.runControlEpoch)
         for(const pane of this.panes.values())this.render(pane);
