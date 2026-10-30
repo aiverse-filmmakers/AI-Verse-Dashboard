@@ -24,7 +24,22 @@ Six bounded source changes were extracted from still-draft PR #42 or added to ha
 | Retries and recovery | Stable idempotency/operation IDs and no cached live actions, stale-result rejection | Actual persisted conversation lifecycle, replay/cursor/race proof |
 | Model and cost truth | Only canonical virtual `aiverse` status is shown; upstream usage not billed-cost truth | Physical provider/model choice requires Gateway/Connections owner contract; Token cost projection |
 | UI user journey | Typed RPC facade and authenticated network paths exist, separate from preview | Real Personal Chat, error/recovery UX and full paired browser app acceptance |
-| Release | CI on exact PR heads succeeded for each slice | Post-merge push checks and private owner Mac/Distribution admission not fully observed |
+| Release | CI on exact PR heads **and mainline push checks** succeeded for all six slices | Private owner Mac/Distribution admission not observed |
+
+## Post-merge mainline CI verification
+
+The actual GitHub Actions `push` workflow runs on `main` were read back through the GitHub Actions repository runs API, not inferred from PR success alone.
+
+| Merged PR | Main commit | Push Dashboard CI |
+| --- | --- | --- |
+| #46 | `21ddcaf2` | [41139184020](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41139184020), successful |
+| #48 | `9ce334bb` | [41139869093](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41139869093), successful |
+| #49 | `79a5c9f9` | [41140283292](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41140283292), successful |
+| #51 | `ffa6062f` | [41140448680](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41140448680), successful |
+| #52 | `1c46933a` | [41140874158](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41140874158), successful |
+| #53 | `728d8c6b` | [41141101156](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41141101156), successful |
+
+These push results close the **remote source CI** check only, not real owner-installed integration, milestone acceptance, or release qualification.
 
 ## Required next MC2.2 acceptance action
 
