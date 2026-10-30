@@ -110,7 +110,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     await panel.waitFor({state:"visible"});
     await page.waitForFunction(()=>{
       const sources=[...document.querySelectorAll(".personal-diagnostics-source:not(.personal-diagnostics-run-result)")];
-      return sources.length===5&&sources.every(s=>
+      return sources.length===6&&sources.every(s=>
         s.getAttribute("data-state")!=="loading");
     },null,{timeout:20000});
     assert.ok(await panel.locator('[data-state="available"]').count()>=3,
@@ -147,7 +147,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     await page.getByRole("button",{name:"Refresh workspace status"}).click();
     await page.waitForFunction(()=>{
       const sources=[...document.querySelectorAll(".personal-diagnostics-source:not(.personal-diagnostics-run-result)")];
-      return sources.length===5&&sources.every(s=>
+      return sources.length===6&&sources.every(s=>
         s.getAttribute("data-state")!=="loading");
     },null,{timeout:20000});
     assert.ok(await panel.locator('[data-state="available"]').count()>=3);
