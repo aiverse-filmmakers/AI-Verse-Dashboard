@@ -185,6 +185,15 @@ export class PersonalDiagnostics{
     this.sessionInput=node("input","personal-diagnostics-session-input");
     this.sessionInput.placeholder="Exact session ID";this.sessionInput.maxLength=128;
     this.sessionInput.setAttribute("aria-label","Diagnostic session ID");
+    // Editing either identifier invalidates any prior result and pending GET.
+    // Old run telemetry must never appear under a newly typed ID.
+    const invalidateInput=()=>{
+      this.runEpoch++;this.runButton.disabled=false;
+      this.renderEntry(this.runResult,{state:"idle",label:"Inspect a canonical run",
+        details:"Run/session changed. Press Inspect run to query the owner."});
+    };
+    this.runInput.addEventListener("input",invalidateInput);
+    this.sessionInput.addEventListener("input",invalidateInput);
     this.runButton=node("button","personal-diagnostics-run-button","Inspect run");
     this.runButton.type="button";
     this.runButton.addEventListener("click",()=>{void this.inspectRun();});
@@ -254,12 +263,16 @@ export class PersonalDiagnostics{
     try{
       const response=await this.client.getGatewayRunDiagnostics(runId,sessionId);
       if(this.destroyed||!this.open||epoch!==this.runEpoch
-        ||workspace!==this.scope.workspaceId||system!==this.scope.systemId)return;
+        ||workspace!==this.scope.workspaceId||system!==this.scope.systemId
+        ||this.runInput.value.trim()!==runId
+        ||this.sessionInput.value.trim()!==sessionId)return;
       const checked=inspectRunDiagnostics(response.result,workspace,runId,sessionId);
       this.renderEntry(this.runResult,{...checked,observedAt:response.observedAt});
     }catch(error){
       if(this.destroyed||!this.open||epoch!==this.runEpoch
-        ||workspace!==this.scope.workspaceId||system!==this.scope.systemId)return;
+        ||workspace!==this.scope.workspaceId||system!==this.scope.systemId
+        ||this.runInput.value.trim()!==runId
+        ||this.sessionInput.value.trim()!==sessionId)return;
       this.renderEntry(this.runResult,{state:"unavailable",label:"Run diagnostics unavailable",
         details:safeCode(error)});
     }finally{
