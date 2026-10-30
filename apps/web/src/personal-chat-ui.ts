@@ -690,7 +690,7 @@ export class PersonalChatApplication {
     const match=this.findMatches(pane)[pane.findCursor];
     if(match===undefined)return;
     const card=pane.log.querySelectorAll(".live-chat-message")[match];
-    card?.scrollIntoView({block:"center",behavior:"instant"});
+    card?.scrollIntoView({block:"center",behavior:"auto"});
   }
   private stepFind(paneId:string,direction:-1|1):void{
     const pane=this.panes.get(paneId);
@@ -802,6 +802,7 @@ export class PersonalChatApplication {
     pane.generation++;pane.run.close();
     pane.run=this.controller(view=>this.onChange(paneId,view));
     pane.turns=[];pane.activeTurn=-1;pane.busy=false;pane.input.value="";
+    pane.findQuery="";pane.findInput.value="";pane.findCursor=0;pane.findOpen=false;
     pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
     pane.status.textContent="New conversation. Previous runs remain in Gateway.";
     this.render(pane);
