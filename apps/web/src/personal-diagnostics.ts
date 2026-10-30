@@ -99,14 +99,14 @@ export function inspectSystems(value:unknown,systemId:string,workspaceId:string)
     ||v.workspaceId!==workspaceId||v.selectedAuthorized!==true)
     throw Error("DIAGNOSTICS_SCOPE_MISMATCH");
   const number=(x:unknown)=>typeof x==="number"&&Number.isSafeInteger(x)&&x>=0&&x<=1_000_000;
-  if(!number(v.registered)||!number(v.authorized)
+  if(!number(v.registered)||!number(v.authorized)||!number(v.workspaces)
     ||(v.registered as number)<1
     ||(v.authorized as number)<1
     ||(v.authorized as number)>(v.registered as number))
     throw Error("DIAGNOSTICS_INVALID_SOURCE");
   return {state:"available",label:"Registered OS systems",
     details:String(v.registered)+" registered · "+v.authorized+
-      " authorized · selected system verified"};
+      " authorized · "+String(v.workspaces)+" selected-OS workspaces · selected system verified"};
 }
 export function inspectWorkspace(value:unknown,workspaceId:string):Observation{
   if(!value||typeof value!=="object"||Array.isArray(value))
