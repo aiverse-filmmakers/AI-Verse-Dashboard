@@ -27,9 +27,10 @@ async function listen(server:Server):Promise<number>{
  const address=server.address();if(!address || typeof address==="string")throw Error("Missing port");
  return address.port;
 }
-function gatewayFixture(options:{slowEvents?:boolean;onRunGet?:()=>void}={}){
+function gatewayFixture(options:{slowEvents?:boolean;onRunGet?:()=>void;
+  initialStatus?:string}={}){
  const received:{method:string;path:string;auth:string;key:string;body:unknown}[]=[];
- let storedRunStatus="running";
+ let storedRunStatus=options.initialStatus??"running";
  const server=createServer(async(req,res)=>{
    const chunks:Buffer[]=[];for await(const b of req)chunks.push(b as Buffer);
    let body:unknown;try{body=JSON.parse(Buffer.concat(chunks).toString("utf8"));}catch{body=null;}
@@ -349,7 +350,8 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
  it("Pause and Resume reject OS rebind between owner GET and control POST",async()=>{
    for(const action of ["pause","resume"] as const){
      const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
-     const upstream=gatewayFixture({onRunGet:()=>reg.rebind(a.systemId,a.root)});
+     const upstream=gatewayFixture({onRunGet:()=>reg.rebind(a.systemId,a.root),
+       initialStatus:action==="resume"?"paused":"running"});
      const port=await listen(upstream.server);
      closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
      const bridge=new CanonicalGatewayBridge(reg,[{
@@ -365,9 +367,7 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
          runId:"run-a",sessionId:"session-a",operationId:"rebound-"+action,
        }));
      assert.equal(response.data.ok,false);
-     // For resume, a non-paused run is refused before a stale lease check.
-     assert.equal((response.data.error as {code:string}).code,
-       action==="pause"?"GATEWAY_MAPPING_STALE":"RUN_NOT_RESUMABLE");
+     assert.equal((response.data.error as {code:string}).code,"GATEWAY_MAPPING_STALE");
      assert.equal(upstream.received.some(x=>x.method==="POST"),false);
    }
  });
