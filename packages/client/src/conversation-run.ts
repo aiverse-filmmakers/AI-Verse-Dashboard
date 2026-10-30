@@ -262,13 +262,19 @@ export class PersonalChatRunController {
     if(!text.trim() || text.length>32_768)fail("CHAT_MESSAGE_INVALID");
     if(!SAFE_ID.test(idempotencyKey) || (sessionId && !SAFE_ID.test(sessionId)))
       fail("CHAT_REQUEST_ID_INVALID");
-    if(this.view.phase!=="idle" && this.view.phase!=="completed")
+    if(this.view.phase!=="idle" && this.view.phase!=="completed"
+      && this.view.phase!=="canceled")
       fail("CHAT_PREVIOUS_RUN_UNRESOLVED");
     const scope=requiredScope(this.client.getScope());
     const confirmed=this.boundedHistory();
     const previousConfirmedRun=this.confirmedRunId;
-    const selectedSession=sessionId ?? (this.view.phase==="completed"?this.view.sessionId:undefined);
-    const limited=this.contextLimited || Boolean(sessionId && confirmed.length===0);
+    // A canceled generation is not a confirmed assistant turn. Reuse the
+    // canonical session, but explicitly mark omitted unfinished context.
+    const wasCanceled=this.view.phase==="canceled";
+    const selectedSession=sessionId ?? ((this.view.phase==="completed"||wasCanceled)
+      ?this.view.sessionId:undefined);
+    const limited=this.contextLimited || wasCanceled
+      || Boolean(sessionId && confirmed.length===0);
     const messages=[...confirmed,{role:"user" as const,content:text}];
     const epoch=this.reset(scope),selection=this.client.selectionVersion();
     this.confirmedTurns=confirmed;
