@@ -67,9 +67,9 @@ describe("MC2.2 browser facade for owner-authenticated canonical Gateway RPC",()
   it("does not dispatch any canonical run without selected operator/workspace",async()=>{
     let calls=0;
     const client=make(async()=>{calls++;return {json:async()=>valid()};},"");
-    await assert.rejects(client.gatewayStatus(),(e:unknown)=>
+    assert.throws(()=>client.gatewayStatus(),(e:unknown)=>
       (e as {code?:string}).code==="WORKSPACE_REQUIRED");
-    await assert.rejects(client.createGatewayRun({
+    assert.throws(()=>client.createGatewayRun({
       messages:[{role:"user",content:"hello"}],idempotencyKey:"x",
     }),(e:unknown)=>(e as {code?:string}).code==="WORKSPACE_REQUIRED");
     assert.equal(calls,0);
