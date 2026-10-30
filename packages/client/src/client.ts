@@ -40,6 +40,7 @@ export class DashboardClient {
   private scope: ClientScope;
   private readonly cache = new Map<string, CacheEntry>();
   private counter = 0;
+  private selectionEpoch = 0;
 
   constructor(
     private readonly gatewayBase: string,
@@ -55,9 +56,13 @@ export class DashboardClient {
     return { ...this.scope };
   }
 
+  /** Selection epoch prevents A→B→A late responses from reviving stale work. */
+  selectionVersion():number{return this.selectionEpoch;}
+
   /** Explicit user action retargets the client; never silent. */
   retarget(scope: ClientScope): void {
     this.scope = { ...scope };
+    this.selectionEpoch++;
   }
 
   cacheStats(): { entries: number } {
@@ -68,12 +73,49 @@ export class DashboardClient {
     this.cache.clear();
   }
 
-  /** Query the Gateway. Read-only methods only in Phase 1. */
+  /** Browser facade: all canonical calls go to authenticated Dashboard /rpc,
+   * not directly to the upstream Gateway or any provider endpoint. */
+  private requireGatewayScope():void{
+    if(!this.scope.workspaceId)throw Object.assign(
+      new Error("Select a workspace or operator scope"),{code:"WORKSPACE_REQUIRED"});
+  }
+  gatewayStatus(){this.requireGatewayScope();
+    return this.query("aiverse.gateway.status",{noCache:true});}
+  gatewayModels(){this.requireGatewayScope();
+    return this.query("aiverse.gateway.models",{noCache:true});}
+  createGatewayRun(args:{messages:Array<{
+    role:"system"|"user"|"assistant"|"tool";content:string|null;
+  }>;idempotencyKey:string;sessionId?:string}){
+    this.requireGatewayScope();
+    return this.query("aiverse.gateway.run.create",{noCache:true,params:args});
+  }
+  getGatewayRun(runId:string){
+    this.requireGatewayScope();
+    return this.query("aiverse.gateway.run.get",{noCache:true,params:{runId}});
+  }
+  cancelGatewayRun(runId:string,sessionId:string,operationId:string){
+    this.requireGatewayScope();
+    return this.query("aiverse.gateway.run.cancel",{noCache:true,
+      params:{runId,sessionId,operationId}});
+  }
+  pauseGatewayRun(runId:string,sessionId:string,operationId:string){
+    this.requireGatewayScope();
+    return this.query("aiverse.gateway.run.pause",{noCache:true,
+      params:{runId,sessionId,operationId}});
+  }
+  resumeGatewayRun(runId:string,sessionId:string,operationId:string){
+    this.requireGatewayScope();
+    return this.query("aiverse.gateway.run.resume",{noCache:true,
+      params:{runId,sessionId,operationId}});
+  }
+
+  /** Query Dashboard /rpc. Canonical commands still require a native host opt-in. */
   async query(
     method: DashboardMethod,
     opts?: QueryOptions,
   ): Promise<{ result: unknown; systemId?: string; observedAt: string }> {
     this.counter += 1;
+    const epoch=this.selectionEpoch;
     const frame: Record<string, unknown> = {
       type: "req",
       v: PROTOCOL_VERSION,
@@ -113,13 +155,22 @@ export class DashboardClient {
       systemId?: string;
       observedAt: string;
     };
+    if(epoch!==this.selectionEpoch){
+      throw Object.assign(new Error("Selection changed during request"),
+        {code:"STALE_SELECTION"});
+    }
+    if(out.systemId!==undefined&&out.systemId!==frame.systemId){
+      throw Object.assign(new Error("System scope mismatch in response"),
+        {code:"SYSTEM_MISMATCH"});
+    }
     if (!out.ok) {
       throw Object.assign(new Error(out.error?.message ?? "query failed"), {
         code: out.error?.code ?? "UNKNOWN",
       });
     }
     const value = { result: out.result, systemId: out.systemId, observedAt: out.observedAt };
-    this.cache.set(key, { value, atMs: Date.now(), ttlMs: opts?.ttlMs ?? 30_000 });
+    if(opts?.noCache!==true)
+      this.cache.set(key, { value, atMs: Date.now(), ttlMs: opts?.ttlMs ?? 30_000 });
     return value;
   }
 }
