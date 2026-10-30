@@ -224,6 +224,63 @@ describe("Personal Chat canonical run controller",()=>{
    assert.equal(chat.snapshot().output,"Verified reply 078");
    assert.equal(chat.snapshot().contextLimited,true);
  });
+ it("loading earlier turns does not expand the next canonical prompt, or persist a history cursor",async()=>{
+   const rows=Array.from({length:51},(_,i)=>{
+     const n=String(51-i).padStart(3,"0");
+     return {run_id:"r-"+n,session_id:"session-a",status:"completed",
+       user_text:"User "+n,output:"Answer "+n,
+       user_text_truncated:false,output_truncated:false};
+   });
+   const {client,calls}=clientWith((method,params)=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     assert.equal(method,"aiverse.gateway.session.runs");
+     const offset=Number(params?.offset??0),limit=Number(params?.limit??25);
+     const has_more=offset+limit<rows.length;
+     return {source:"canonical-gateway",workspaceId:"film",sessionId:"session-a",
+       data:rows.slice(offset,offset+limit),has_more,
+       next_offset:has_more?offset+limit:null};
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   assert.equal((await chat.openSession("session-a")).hasOlder,true);
+   const older=await chat.loadOlderSessionRuns();
+   assert.equal(older.hasOlder,false);
+   assert.equal(older.turns[0].content,"User 001");
+   await chat.send("New safe message","followup-once");
+   const created=calls.find(c=>c.method==="aiverse.gateway.run.create");
+   assert.equal(created?.params?.sessionId,"session-a");
+   const messages=created?.params?.messages as Array<{role:string;content:string}>;
+   assert.equal(messages.length,13,"exactly six verified recent pairs plus new user turn");
+   assert.equal(messages[0].content,"User 046");
+   assert.equal(messages.at(-2)?.content,"Answer 051");
+   assert.equal(messages.at(-1)?.content,"New safe message");
+   assert.doesNotMatch(JSON.stringify(messages),/User 001|Answer 001/);
+   await assert.rejects(chat.loadOlderSessionRuns(),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_OLDER_HISTORY_UNAVAILABLE");
+ });
+ it("transcript paging caps display at 200 canonical runs without fetching unbounded history",async()=>{
+   const rows=Array.from({length:250},(_,i)=>({
+     run_id:"r-"+(250-i),session_id:"session-a",status:"completed",
+     user_text:"Prompt "+(250-i),output:"Result "+(250-i),
+     user_text_truncated:false,output_truncated:false,
+   }));
+   const {client,calls}=clientWith((_method,params)=>{
+     const offset=Number(params?.offset??0),limit=Number(params?.limit??25);
+     return {source:"canonical-gateway",workspaceId:"film",sessionId:"session-a",
+       data:rows.slice(offset,offset+limit),has_more:offset+limit<rows.length,
+       next_offset:offset+limit<rows.length?offset+limit:null};
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   assert.equal((await chat.openSession("session-a")).hasOlder,true);
+   let total=50,hasOlder=true;
+   while(hasOlder){
+     const page=await chat.loadOlderSessionRuns();
+     total+=page.turns.length/2;hasOlder=page.hasOlder;
+   }
+   assert.equal(total,200);
+   assert.deepEqual(calls.map(c=>c.params?.offset),[0,25,50,75,100,125,150,175]);
+   await assert.rejects(chat.loadOlderSessionRuns(),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_OLDER_HISTORY_UNAVAILABLE");
+ });
  it("rejects duplicate older history run and retries same canonical offset safely",async()=>{
    let poison=true;
    const row=(num:number)=>({run_id:"historical-"+num,session_id:"session-a",
