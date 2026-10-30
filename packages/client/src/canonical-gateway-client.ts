@@ -287,13 +287,6 @@ export class CanonicalGatewayClient {
   async getRun(runId: string, signal?: AbortSignal): Promise<GatewayRun> {
     return this.run(await this.request("GET","/v1/runs/" + safeId(runId),undefined,undefined,signal),runId);
   }
-  /** Canonical Gateway-owned, principal-authenticated diagnostics. Raw response
-   * is trusted-host-only: callers must project an explicit safe allowlist.
-   */
-  async getRunDiagnostics(runId:string,signal?:AbortSignal):Promise<Record<string,unknown>>{
-    return this.request("GET","/v1/runs/"+safeId(runId)+"/diagnostics",
-      undefined,undefined,signal);
-  }
   async controlRun(args: {
     runId: string; action: GatewayControl; operationId: string;
     reason?: string; decision?: GatewayDecision; signal?: AbortSignal;
