@@ -31,6 +31,9 @@ interface Pane {
   activeTurn:number;
   busy:boolean;
   generation:number;
+  historyHasOlder?:boolean;
+  historyLoading?:boolean;
+  historyError?:string;
   min?:boolean;
 }
 const MAX_PANES=3;
@@ -156,6 +159,7 @@ export class PersonalChatApplication {
     for(const pane of this.panes.values()){
       pane.generation++;
       pane.turns=[];pane.activeTurn=-1;
+      pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;
       pane.run.retarget(this.selected);
       const scopeLabel=pane.node.querySelector(".live-chat-scope");
       if(scopeLabel)scopeLabel.textContent="Workspace: "+next.workspaceId;
@@ -285,11 +289,13 @@ export class PersonalChatApplication {
     pane.run.close();
     pane.run=this.controller(view=>this.onChange(paneId,view));
     pane.turns=[];pane.activeTurn=-1;pane.busy=true;
+    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;
     pane.status.textContent="Opening canonical conversation…";
     this.render(pane);
     const restored=await pane.run.openSession(sessionId);
     if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation)return;
     pane.turns=restored.turns.map(turn=>({role:turn.role,text:turn.content}));
+    pane.historyHasOlder=restored.hasOlder;
     pane.activeTurn=-1;
     pane.busy=false;
     if(restored.view.phase==="interrupted")
@@ -300,6 +306,32 @@ export class PersonalChatApplication {
     this.historyEpoch++;
     this.historyNextOffset=null;this.historySeen.clear();this.historyLoading=false;
     this.render(pane);
+  }
+  /** Load genuinely older canonical messages, never browser-local transcripts. */
+  async loadOlderHistory(paneId:string):Promise<void>{
+    const pane=this.panes.get(paneId);
+    if(!pane||this.destroyed||pane.historyLoading||!pane.historyHasOlder)return;
+    const generation=pane.generation,scope={...this.selected};
+    pane.historyLoading=true;pane.historyError=undefined;
+    this.render(pane);
+    try{
+      const result=await pane.run.loadOlderSessionRuns();
+      if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation
+        ||scope.systemId!==this.selected.systemId||scope.workspaceId!==this.selected.workspaceId)
+        return;
+      const previousHeight=pane.log.scrollHeight,previousScroll=pane.log.scrollTop;
+      pane.turns.unshift(...result.turns.map(turn=>({role:turn.role,text:turn.content})));
+      pane.historyHasOlder=result.hasOlder;
+      this.render(pane);
+      pane.log.scrollTop=previousScroll+pane.log.scrollHeight-previousHeight;
+    }catch(error){
+      if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation)return;
+      pane.historyError="Older messages unavailable · "+errorCode(error);
+    }finally{
+      if(!this.destroyed&&this.panes.get(paneId)===pane&&generation===pane.generation){
+        pane.historyLoading=false;this.render(pane);
+      }
+    }
   }
   private requireBearer(s:TrustedLocalChatSession):string{
     if(typeof s.dashboardBearer!=="string")throw Error("Trusted native host session missing");
@@ -436,6 +468,14 @@ export class PersonalChatApplication {
   }
   private render(pane:Pane):void{
     const fragment=document.createDocumentFragment();
+    if(pane.historyHasOlder){
+      const older=button(pane.historyLoading?"Loading older messages…":"Load older messages",
+        ()=>{void this.loadOlderHistory(pane.id);},"live-chat-older-messages");
+      older.disabled=Boolean(pane.historyLoading);
+      fragment.append(older);
+    }
+    if(pane.historyError)
+      fragment.append(el("p","live-chat-history-status",pane.historyError));
     for(const turn of pane.turns){
       const card=el("div","live-chat-message "+turn.role);
       card.append(el("span","live-chat-role",turn.role==="user"?"You":
@@ -470,6 +510,7 @@ export class PersonalChatApplication {
     const payload=text.trim();
     if(!payload || payload.length>1200)return;
     const generation=++pane.generation;
+    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;
     pane.turns.push({role:"user",text:payload},{role:"assistant",text:""});
     pane.activeTurn=pane.turns.length-1;
     pane.busy=true;pane.input.value="";this.render(pane);
@@ -523,6 +564,7 @@ export class PersonalChatApplication {
     const pane=this.panes.get(paneId);
     if(!pane||this.destroyed||pane.busy)return;
     const generation=++pane.generation;
+    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;
     pane.turns.push({role:"assistant",text:""});
     pane.activeTurn=pane.turns.length-1;
     pane.busy=true;this.render(pane);
@@ -539,6 +581,7 @@ export class PersonalChatApplication {
     pane.generation++;pane.run.close();
     pane.run=this.controller(view=>this.onChange(paneId,view));
     pane.turns=[];pane.activeTurn=-1;pane.busy=false;pane.input.value="";
+    pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;
     pane.status.textContent="New conversation. Previous runs remain in Gateway.";
     this.render(pane);
   }
