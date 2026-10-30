@@ -45,7 +45,13 @@ function gatewayFixture(options:{slowEvents?:boolean;onRunGet?:()=>void;
      object:"list",data:[{id:"aiverse"}]});
    const run={run_id:"run-a",session_id:"session-a",system_id:"canonical-a",workspace_id:"film",
      status:storedRunStatus,principal:"local-operator-secret",messages:[{content:"sensitive"}],
-     output:{content:"Test result"},private_data:"do-not-show"};
+     output:{content:"Test result"},private_data:"do-not-show",
+     usage:{input_tokens:123,output_tokens:45,actions:2,cost:99.99,
+       private_cost_api_key:"never-expose-cost-key"},
+     created_at:"2026-10-27T15:00:00.000Z",completed_at:storedRunStatus==="completed"
+       ?"2026-10-27T15:05:00.000Z":null,
+     runtime:{kind:"deterministic",model:"internal-private-model",
+       credential:"never-expose-runtime-credential"}};
    if(req.method==="GET"&&req.url==="/v1/runs/run-a/events"){
      res.writeHead(200,{"content-type":"text/event-stream","cache-control":"no-store"});
      const send=(n:string,type:string,data:Record<string,unknown>)=>{
@@ -170,7 +176,17 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
    }));
    assert.equal(found.data.ok,true);
    assert.equal((found.data.result as Record<string,unknown>).sessionId,"session-a");
-   assert.doesNotMatch(JSON.stringify(found.data),/messages|private_data|principal/);
+   const receipt=found.data.result as Record<string,unknown>;
+   assert.deepEqual(receipt.usage,{inputTokens:123,outputTokens:45,actions:2});
+   assert.equal(receipt.createdAt,"2026-10-27T15:00:00.000Z");
+   assert.equal(receipt.runtimeKind,"deterministic");
+   assert.equal("completedAt" in receipt,false);
+   assert.deepEqual(Object.keys(receipt).sort(),[
+     "runId","sessionId","systemId","workspaceId","status","output","source",
+     "usage","createdAt","runtimeKind",
+   ].sort());
+   assert.doesNotMatch(JSON.stringify(found.data),
+     /messages|private_data|principal|never-expose|99\.99|internal-private-model|credential/i);
  });
  it("Stop defaults denied without trusted host opt-in and does not touch upstream",async()=>{
    const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
