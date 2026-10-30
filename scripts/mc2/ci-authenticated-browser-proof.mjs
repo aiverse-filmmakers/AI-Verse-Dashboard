@@ -124,7 +124,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     assert.match(await panel.textContent(),/Registered OS authorized/);
     assert.match(await panel.textContent(),/Registered OS systems/);
     assert.match(await panel.textContent(),/1 registered · 1 authorized/);
-    assert.ok(trackedRequests.some(req=>req.frame?.method==="system.list"),
+    assert.ok(trackedRequests.some(req=>req.frame?.method==="system.registry.summary"),
       "owner-backed inventory must query actual canonical OS registry");
     assert.match(await panel.textContent(),/Selected workspace manifest|Workspace manifest unavailable/);
     assert.ok(trackedRequests.some(req=>req.frame?.method==="workspace.get"),
@@ -144,7 +144,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       req.frame?.method==="aiverse.canvas.list" ||
       req.frame?.method==="aiverse.gateway.session.list" ||
       req.frame?.method==="system.get" ||
-      req.frame?.method==="system.list" ||
+      req.frame?.method==="system.registry.summary" ||
       req.frame?.method==="workspace.get").every(req=>
       req.frame.workspaceId==="operator" && req.frame.systemId===systemId &&
       req.headers.authorization===undefined),
