@@ -360,6 +360,12 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       workspaceId:"operator"}),true);
     assert.equal(session.isAllowedFrame({method:"aiverse.gateway.models",systemId,
       workspaceId:"operator"}),true);
+    assert.equal(session.isAllowedFrame({method:"aiverse.gateway.run.cancel",systemId,
+      workspaceId:"operator"}),true);
+    assert.equal(session.isAllowedFrame({method:"aiverse.gateway.run.pause",systemId,
+      workspaceId:"operator"}),false);
+    assert.equal(session.isAllowedFrame({method:"aiverse.gateway.run.cancel",systemId,
+      workspaceId:"film"}),false);
     assert.equal(session.isAllowedFrame({method:"aiverse.gateway.models",systemId,
       workspaceId:"film"}),false);
     assert.equal(session.isAllowedFrame({method:"aiverse.gateway.models",systemId:"other",
