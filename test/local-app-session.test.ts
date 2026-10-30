@@ -151,7 +151,7 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.equal(summaryBody.ok,true);
     assert.deepEqual(summaryBody.result,{
       source:"dashboard-os-registry",systemId,workspaceId:"operator",
-      registered:1,authorized:1,selectedAuthorized:true,
+      registered:1,authorized:1,workspaces:1,selectedAuthorized:true,
     });
     assert.doesNotMatch(JSON.stringify(summaryBody),/Test OS|root|password|secret/);
     const otherPublic=await rpc(server.port,{
