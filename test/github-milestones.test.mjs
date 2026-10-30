@@ -9,7 +9,7 @@ test("keeps 10 known chapters and exactly 40 finite milestones",()=>{
  assert.equal(r.chapterCount,10);assert.equal(r.milestoneCount,40);
  assert.equal(r.completedMilestones,4);
  assert.equal(r.githubProvisional,47);
- assert.equal(r.formalAcceptance,15);
+ assert.equal(r.formalAcceptance,17);
  assert.equal(r.localProductionAccepted,false);
 });
 test("missing chapter cannot disappear silently",()=>{
@@ -70,11 +70,11 @@ test("Canvas-to-Chat source references and model selection remain partial and no
  assert.equal(r.states.verified,4);
  assert.equal(r.states.implemented,8);
  assert.equal(r.states.planned,22);
- assert.equal(r.formalAcceptance,15);
+ assert.equal(r.formalAcceptance,17);
 });
 test("40 milestones do not turn into 40 accepted roadmap points",()=>{
  const [c,p]=fixture(),r=validateMilestoneLedger(c,p);
- assert.equal(r.formalAcceptance,15);
+ assert.equal(r.formalAcceptance,17);
  assert.equal(r.githubProvisional,47);
  assert.equal(r.states.verified+r.states.implemented+r.states['in-progress']+r.states.planned+r.states.blocked,40);
 });
@@ -84,7 +84,7 @@ test("real canonical Canvas reference does not pretend binary attachments or Ski
  const g=c.chapters.find(x=>x.id==="chat").milestones.find(x=>x.id==="G02.4");
  assert.equal(g.state,"in-progress");
  assert.match(g.partialEvidence,/binary attachments.*NOT implemented/i);
- assert.equal(r.formalAcceptance,15);
+ assert.equal(r.formalAcceptance,17);
  assert.equal(r.githubProvisional,47);
 });
 test("real model inventory does not mark physical model selection as complete",()=>{
@@ -93,5 +93,5 @@ test("real model inventory does not mark physical model selection as complete",(
  assert.equal(model.id,"G02.3");
  assert.equal(model.state,"in-progress");
  assert.match(model.partialEvidence,/NOT implemented|NOT implemented|not complete|not implemented/i);
- assert.equal(r.formalAcceptance,15);
+ assert.equal(r.formalAcceptance,17);
 });
