@@ -44,6 +44,7 @@ test("local event filters remain data-only and do not manufacture hidden entries
  assert.equal(filterActivityEvents(view,"all").length,1);
  assert.deepEqual(filterActivityEvents(view,"tool-call"),view.events);
  assert.deepEqual(filterActivityEvents(view,"error-event"),[]);
+ assert.deepEqual(filterActivityEvents(view,"approval"),[]);
 });
 
 test("canonical history projection validates workspace and redacts session titles",()=>{
@@ -97,4 +98,18 @@ test("G06.2 unknown canonical action status never fabricates approval permission
  const result=inspectCanonicalRuns(data,"operator","session-a");
  assert.equal(result[0].status,"unknown");
  assert.doesNotMatch(JSON.stringify(result),/grant|approve_anything/);
+});
+
+test("G06.2 approval filter only selects actual owner-observed local approval events",()=>{
+ const input={...good(),events:[
+   {kind:"tool-call",role:"agent",createdAt:time},
+   {kind:"approval",role:"system",createdAt:time,requestedAction:"PRIVATE",
+     approvalToken:"NEVER-EXPOSE"},
+ ]};
+ const result=inspectActivity(input,scope);
+ assert.deepEqual(filterActivityEvents(result,"approval"),[
+   {kind:"approval",role:"system",createdAt:time},
+ ]);
+ assert.doesNotMatch(JSON.stringify(filterActivityEvents(result,"approval")),
+   /NEVER-EXPOSE|requestedAction|approvalToken/);
 });
