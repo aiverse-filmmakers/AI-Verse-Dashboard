@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {inspectGateway,inspectCanvas,inspectHistory,inspectSystem,inspectWorkspace,
-  inspectRunDiagnostics}
+  inspectRunDiagnostics,inspectSystems}
  from "../apps/web/src/personal-diagnostics.js";
 const gw=()=>({source:"canonical-gateway",workspaceId:"operator",
  capabilities:{runCreate:true,runGet:true,conversationLibrary:true,
@@ -245,4 +245,34 @@ test("G06.1 diagnostics reject invalid safety flags, forged object shapes or pri
    assert.throws(()=>inspectRunDiagnostics(item,"operator","run-1","session-1"),
      /DIAGNOSTICS_INVALID_SOURCE/);
  }
+});
+
+const systemList=()=>({systems:[
+ {systemId:"aiverse-01",authorized:true,label:"Host OS",root:"/secret/private"},
+ {systemId:"aiverse-02",authorized:false,label:"Revoked OS",root:"/secret/revoked"},
+]});
+test("G06.1 OS inventory shows exact count and no path or untrusted system label",()=>{
+ const observation=inspectSystems(systemList(),"aiverse-01");
+ assert.equal(observation.state,"available");
+ assert.match(observation.details,/2 registered · 1 authorized/);
+ assert.doesNotMatch(JSON.stringify(observation),/secret|revoked|Host OS/);
+});
+test("G06.1 system inventory rejects missing, revoked or duplicated selected system",()=>{
+ for(const item of [
+   {systems:[]},
+   {systems:[{systemId:"aiverse-01",authorized:false}]},
+   {systems:[{systemId:"aiverse-02",authorized:true}]},
+   {systems:[{systemId:"aiverse-01",authorized:true},{systemId:"aiverse-01",authorized:true}]},
+   {systems:[{systemId:"aiverse-01",authorized:true},null]},
+   {systems:[{systemId:"A/../../",authorized:true}]},
+ ])assert.throws(()=>inspectSystems(item,"aiverse-01"),
+   /DIAGNOSTICS_SCOPE_MISMATCH|DIAGNOSTICS_INVALID_SOURCE/);
+});
+test("G06.1 system inventory rejects oversized registry and forged authorization",()=>{
+ assert.throws(()=>inspectSystems({systems:Array.from({length:65},(_,i)=>({
+   systemId:"sys-"+i,authorized:true,
+ }))},"sys-1"),/DIAGNOSTICS_INVALID_SOURCE/);
+ assert.throws(()=>inspectSystems({systems:[{
+   systemId:"aiverse-01",authorized:"yes",root:"private",
+ }]},"aiverse-01"),/DIAGNOSTICS_INVALID_SOURCE/);
 });
