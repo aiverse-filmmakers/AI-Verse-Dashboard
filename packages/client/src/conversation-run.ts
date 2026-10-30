@@ -85,7 +85,7 @@ function phase(status:string):ChatRunPhase {
     case "failed":return "failed";
     case "canceled":return "canceled";
     case "blocked":case "budget_limited":case "parked":return "blocked";
-    case "paused":return "paused";
+    case "paused":case "paused_no_progress":return "paused";
     case "paused_recovery_required":return "recovery-required";
     default:return "running";
   }
@@ -407,6 +407,62 @@ export class PersonalChatRunController {
         this.show({phase:"interrupted",errorCode:
           typeof (error as {code?:unknown})?.code==="string"
             ?(error as {code:string}).code:"CHAT_STOP_UNCERTAIN"});
+    }
+    return this.snapshot();
+  }
+
+  /** Pause or resume the *same* owner-authorized canonical run.
+   * A paused run is not a canceled run; no new run.create can replace it.
+   * Every control response remains tied to this scope and OS selection epoch.
+   */
+  async checkpoint(action:"pause"|"resume",operationId:string):Promise<ChatRunView>{
+    if(!SAFE_ID.test(operationId))fail("CHAT_CONTROL_ID_INVALID");
+    const canPause=action==="pause"&&this.view.phase==="running";
+    const canResume=action==="resume"
+      &&(this.view.phase==="paused"||this.view.phase==="recovery-required");
+    if(!(canPause||canResume)||!this.view.runId||!this.view.sessionId)
+      fail(action==="pause"?"CHAT_PAUSE_UNAVAILABLE":"CHAT_RESUME_UNAVAILABLE");
+    const scope=requiredScope(this.client.getScope());
+    const runId=this.view.runId,sessionId=this.view.sessionId;
+    const epoch=++this.epoch,selection=this.client.selectionVersion();
+    this.streamEpoch++;
+    this.unsubscribe?.();this.unsubscribe=undefined;
+    this.show({phase:"submitting",output:"",errorCode:undefined});
+    try{
+      const response=action==="pause"
+        ?await this.client.pauseGatewayRun(runId,sessionId,operationId)
+        :await this.client.resumeGatewayRun(runId,sessionId,operationId);
+      if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
+      const run=asRun(response.result,scope,runId);
+      if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
+      this.confirmCanonicalOutput(run);
+      const state=phase(run.status);
+      this.show({phase:state,canonicalStatus:run.status,sessionId:run.sessionId,
+        output:state==="completed"?run.output??"":"",
+        errorCode:undefined,contextLimited:this.contextLimited});
+      if(state==="running")this.subscribe(epoch,scope,selection,runId);
+    }catch(error){
+      // A pause may race with a terminal run, or resume with another owner
+      // control. Reconcile without ever reissuing the mutating operation.
+      const code=(error as {code?:unknown})?.code;
+      if(code==="RUN_NOT_PAUSABLE"||code==="RUN_NOT_RESUMABLE"){
+        try{
+          const response=await this.client.getGatewayRun(runId);
+          if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
+          const run=asRun(response.result,scope,runId);
+          if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
+          this.confirmCanonicalOutput(run);
+          const state=phase(run.status);
+          this.show({phase:state,canonicalStatus:run.status,
+            output:state==="completed"?run.output??"":"",
+            errorCode:undefined,contextLimited:this.contextLimited});
+          if(state==="running")this.subscribe(epoch,scope,selection,runId);
+          return this.snapshot();
+        }catch{ /* preserve the known run for explicit GET-only recovery */ }
+      }
+      if(this.valid(epoch,scope,selection)&&this.view.runId===runId)
+        this.show({phase:"interrupted",errorCode:
+          typeof code==="string"?code:"CHAT_CONTROL_UNCERTAIN"});
     }
     return this.snapshot();
   }
