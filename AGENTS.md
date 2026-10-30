@@ -1,5 +1,9 @@
 # Dashboard implementation instructions
 
+## Required review and acceptance gate
+
+Before marking any planned feature `verified`, increasing engineering/formal acceptance scores, or merging a PR, follow [the operator-approved sequence](docs/REVIEW-ACCEPTANCE-WORKFLOW-2026-10-30.md): implement, exact-head CI and negative tests, separate recorded review, full acceptance criteria, safe merge with post-merge CI, then owner/private Mac validation where required. A self-review is a preliminary audit, not independent signoff. Record source SHA, reviewer/review status, owner contracts, CI URLs, acceptance decision, merge SHA and local-only gates. Prefer small independently reviewable PRs instead of treating draft Dashboard PR #42 as one mergeable unit. No new feature or score credit is authorized solely by governance documentation.
+
 ## UI/UX quality for every change
 
 For every user-visible Dashboard change—including each individual feedback fix, interaction, control, layout or styling update—read and apply [the Dashboard UI/UX quality plan](docs/DASHBOARD-UX-QC-PLAN.md).
