@@ -171,3 +171,14 @@
 .personal-agent-activity-filters{display:flex;gap:5px;flex-wrap:wrap}
 .personal-agent-activity-filter{font-size:11px!important;padding:4px 7px!important}
 .personal-agent-activity-filter[aria-pressed="true"]{background:#e8eff8!important;border-color:#91a9c9!important;color:#294764!important}
+
+/* Read-only authenticated model inventory. This is not a provider selector. */
+.aiverse-live-chat .personal-model-status[hidden]{display:none}
+.personal-model-status{padding:12px 16px;border-bottom:1px solid #e2e6ed;background:white}
+.personal-model-header{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.personal-model-status-heading{font-size:13px;color:#344558}
+.personal-model-content{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.personal-model-content p{margin:0}
+.personal-model-name{font-size:13px;font-weight:650}
+.personal-model-state{font-size:12px;color:#647386;overflow-wrap:anywhere}
+@media(max-width:750px){.live-chat-toolbar{flex-wrap:wrap}.live-chat-toolbar button{font-size:12px}}
