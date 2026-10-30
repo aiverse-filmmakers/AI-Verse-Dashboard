@@ -202,6 +202,37 @@ describe("Personal Chat canonical run controller",()=>{
    assert.deepEqual(calls[1].params,{runId:"run-a",sessionId:"session-a",operationId:"pause-1"});
    assert.deepEqual(calls[2].params,{runId:"run-a",sessionId:"session-a",operationId:"resume-1"});
  });
+ it("a second Resume discards all earlier replayed cycle deltas until its own marker",async()=>{
+   let state="running";
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run(state);
+     if(method==="aiverse.gateway.run.pause")state="paused";
+     if(method==="aiverse.gateway.run.resume")state="resuming";
+     return run(state);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("Long task","only-create");
+   await chat.checkpoint("pause","pause-first");
+   await chat.checkpoint("resume","resume-first");
+   const first=f.watchers[1];
+   first.handlers.event(event("assistant.delta",1,"EARLY PRE-FIRST"));
+   first.handlers.event(event("run.resumed",2));
+   first.handlers.event(event("assistant.delta",3,"First-cycle text"));
+   assert.equal(chat.snapshot().output,"First-cycle text");
+   await chat.checkpoint("pause","pause-second");
+   await chat.checkpoint("resume","resume-second");
+   const second=f.watchers[2];
+   assert.equal(first.cancelled,true);
+   second.handlers.event(event("assistant.delta",1,"PRE-RESUME REPLAY"));
+   second.handlers.event(event("run.resumed",2));
+   second.handlers.event(event("assistant.delta",3,"FIRST-CYCLE REPLAY"));
+   assert.equal(chat.snapshot().output,"");
+   second.handlers.event(event("run.resumed",4));
+   second.handlers.event(event("assistant.delta",5,"Second-cycle text"));
+   assert.equal(chat.snapshot().output,"Second-cycle text");
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.resume").length,2);
+ });
  it("checkpoint refusal racing with completed run reconciles existing canonical output",async()=>{
    const {client,calls}=clientWith(method=>{
      if(method==="aiverse.gateway.run.create")return run("running");
