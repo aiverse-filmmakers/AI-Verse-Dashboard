@@ -914,6 +914,23 @@ test("Canvas note insertion rejects stale Data version and does not overwrite cu
   assert.equal(requests.slice(before).filter(r=>r.method==="aiverse.gateway.run.create").length,0);
   assert.deepEqual(errors,[]);
 });
+test("Canvas note too long for Chat composer is refused without truncation or run creation",async t=>{
+  const {page,errors}=await pageFor(t),before=requests.length;
+  const pane=page.locator(".live-chat-pane").first(),canvas=page.locator(".aiverse-canvas");
+  await canvas.getByRole("button",{name:"Add note"}).click();
+  await canvas.locator(".canvas-note").first().waitFor();
+  await canvas.locator(".canvas-note").first().click();
+  const savedText="Important saved note content. ".repeat(48);
+  await canvas.locator(".canvas-note-text").fill(savedText);
+  await canvas.getByRole("button",{name:"Save note"}).click();
+  await canvas.locator(".canvas-status").getByText(/Note updated/).waitFor();
+  await pane.locator(".live-chat-input").fill("Preserve my manual draft");
+  await pane.getByRole("button",{name:"Insert Canvas note"}).click();
+  await pane.locator(".live-chat-status").getByText(/exceeds the 1,200-character Chat composer limit/).waitFor();
+  assert.equal(await pane.locator(".live-chat-input").inputValue(),"Preserve my manual draft");
+  assert.equal(requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.create").length,0);
+  assert.deepEqual(errors,[]);
+});
 test("Canvas: first Scratch edit persists through typed RPC and browser reload",async t=>{
   const {page,errors}=await pageFor(t);
   const canvas=page.locator(".aiverse-canvas");
