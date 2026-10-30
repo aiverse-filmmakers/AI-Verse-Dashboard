@@ -1,5 +1,11 @@
 # AI-Verse Dashboard implementation plan
 
+## Operator-approved review and acceptance amendment, 30 October 2026
+
+Every roadmap slice and milestone now follows **implementation → exact-head tests and security/negative CI → separate reviewer assessment → evidence-backed milestone acceptance → merge the eligible, bounded PR → local/production owner validation when required**. A merged remotely testable component is not automatically cleared for owner Mac installation, real provider access or paid inference. A draft PR and green CI do not themselves count as independent review, formal MC points or release approval.
+
+The authoritative [review workflow and 40-milestone catch-up audit](REVIEW-ACCEPTANCE-WORKFLOW-2026-10-30.md) defines reviewer independence, source/CI evidence, approval/merge logs, dependency holds and how to split large stacked PRs. Review [focused MC2.1 design PR #43](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/43) first; do not merge implementation [PR #42](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/42) as a bulk substitute for per-milestone review. Preserve 10 chapters, 40 milestones and all existing acceptance criteria and scoring denominators. No automatic points are awarded by this process amendment. As of adoption, MC formally accepted **15/100**, provisional GitHub/browser **47/100**, provisional Chat/Gateway **11/15**.
+
 Updated 27 October 2026 — **Personal-first scope amendment, review draft**.
 
 - **Outcome:** a useful Personal OS with persistent agent chat and a shared creative canvas. Filmmaking becomes a specialist surface using that same foundation.
