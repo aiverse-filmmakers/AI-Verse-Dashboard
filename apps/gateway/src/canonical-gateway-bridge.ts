@@ -260,7 +260,8 @@ export class CanonicalGatewayBridge {
             validateBeforePost:(run)=>{
               if(run.session_id!==sessionId)
                 throw new GatewayTransportError("SESSION_BINDING_MISMATCH");
-              if(!["queued","running","paused","paused_recovery_required"].includes(run.status))
+              if(!["queued","running","resuming","paused","paused_recovery_required",
+                "paused_no_progress"].includes(run.status))
                 throw new GatewayTransportError("RUN_NOT_CANCELABLE");
               if(this.registry.resolveRoot(system)!==configured.root
                 ||this.registry.bindingGeneration(system)!==configured.generation)
