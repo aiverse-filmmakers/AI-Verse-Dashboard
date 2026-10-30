@@ -195,6 +195,21 @@ const server=createServer(async(req,res)=>{
         slowStream:frame.params?.messages?.some(m=>
           ["Test stop active run","Test pause and resume same run"].includes(m.content))===true,
         subscriptions:0});
+    }else if(frame.method==="aiverse.gateway.run.diagnostics"){
+      const found=runs.get(frame.params?.runId);
+      if(!found||found.workspaceId!==frame.workspaceId
+        ||found.sessionId!==frame.params?.sessionId){
+        res.writeHead(200,{"content-type":"application/json"}).end(JSON.stringify({
+          type:"res",v:"1.0",id:frame.id,ok:false,systemId:frame.systemId,
+          error:{code:"SESSION_BINDING_MISMATCH",message:"Denied"},
+          observedAt:new Date().toISOString()}));return;
+      }
+      result={source:"canonical-gateway",runId:frame.params.runId,
+        sessionId:frame.params.sessionId,workspaceId:frame.workspaceId,
+        status:found.status,context:{status:"ready",window_tokens:8192,configured:true},
+        retrieval:{source_reads:4,gateway_source_range_reads:2,legacy_reads:0},
+        archive:{retrieval_depth:1},folds:{valid_cards:2,invalid_cards:0,pendingFoldWork:false},
+        safety:{rawContentIncluded:false,promptsIncluded:false,chainOfThoughtIncluded:false}};
     }else if(frame.method==="aiverse.gateway.run.pause"
       ||frame.method==="aiverse.gateway.run.resume"){
       const found=runs.get(frame.params?.runId);
@@ -615,6 +630,61 @@ test("export from canonical history includes only currently loaded pages and exp
   assert.equal((text.match(/\nYou:\n/g)??[]).length,78);
   assert.equal((text.match(/\nAI-Verse:\n/g)??[]).length,78);
   assert.doesNotMatch(text,/privateBearer|do-not-show|reportedCost/);
+  assert.deepEqual(errors,[]);
+});
+test("G06.1 workspace status inspects a real scoped run with factual safe diagnostics only",async t=>{
+  const {page,errors}=await pageFor(t),before=requests.length;
+  const pane=page.locator(".live-chat-pane").first();
+  await pane.locator(".live-chat-input").fill("Gateway diagnostic subject");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  const run=[...runs.values()].at(-1);
+  assert.ok(run?.runId&&run?.sessionId);
+  await page.getByRole("button",{name:"Workspace status"}).click();
+  const panel=page.locator(".personal-diagnostics");
+  await panel.getByRole("button",{name:"Refresh workspace status"}).waitFor();
+  await panel.getByRole("textbox",{name:"Diagnostic run ID"}).fill(run.runId);
+  await panel.getByRole("textbox",{name:"Diagnostic session ID"}).fill(run.sessionId);
+  await panel.getByRole("button",{name:"Inspect run"}).click();
+  const result=panel.locator(".personal-diagnostics-run-result");
+  await result.getByText(/Canonical run diagnostics/).waitFor();
+  assert.match(await result.innerText(),/Source reads: 4/);
+  assert.match(await result.innerText(),/Validated folds: 2/);
+  assert.match(await result.innerText(),/Raw prompts and traces excluded/);
+  assert.doesNotMatch(await result.innerText(),/privateBearer|do-not-show|reportedCost/);
+  const calls=requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.diagnostics");
+  assert.equal(calls.length,1);
+  assert.deepEqual(calls[0].params,{runId:run.runId,sessionId:run.sessionId});
+  assert.equal(calls[0].workspaceId,"operator");
+  assert.equal(requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+  assert.deepEqual(await page.evaluate(()=>({local:localStorage.length,session:sessionStorage.length})),
+    {local:0,session:0});
+  assert.deepEqual(errors,[]);
+});
+test("G06.1 diagnostic inspect rejects wrong session and clears scope after workspace switch",async t=>{
+  const {page,errors}=await pageFor(t),before=requests.length;
+  const pane=page.locator(".live-chat-pane").first();
+  await pane.locator(".live-chat-input").fill("Scoped diagnostic subject");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  const run=[...runs.values()].at(-1);
+  await page.getByRole("button",{name:"Workspace status"}).click();
+  const panel=page.locator(".personal-diagnostics");
+  await panel.getByRole("textbox",{name:"Diagnostic run ID"}).fill(run.runId);
+  await panel.getByRole("textbox",{name:"Diagnostic session ID"}).fill("wrong-session");
+  await panel.getByRole("button",{name:"Inspect run"}).click();
+  await panel.locator(".personal-diagnostics-run-result").getByText(/Run diagnostics unavailable/).waitFor();
+  assert.equal((await panel.locator(".personal-diagnostics-run-result").innerText()).includes("Source reads"),false);
+  await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"film"}));
+  assert.equal(await panel.getByRole("textbox",{name:"Diagnostic run ID"}).inputValue(),"");
+  assert.equal(await panel.getByRole("textbox",{name:"Diagnostic session ID"}).inputValue(),"");
+  await panel.getByRole("textbox",{name:"Diagnostic run ID"}).fill(run.runId);
+  await panel.getByRole("textbox",{name:"Diagnostic session ID"}).fill(run.sessionId);
+  await panel.getByRole("button",{name:"Inspect run"}).click();
+  await panel.locator(".personal-diagnostics-run-result").getByText(/Run diagnostics unavailable/).waitFor();
+  const calls=requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.diagnostics");
+  assert.equal(calls.length,2);
+  assert.deepEqual(calls.map(x=>x.workspaceId),["operator","film"]);
   assert.deepEqual(errors,[]);
 });
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
