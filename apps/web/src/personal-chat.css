@@ -20,6 +20,17 @@
 .live-pane-run-actions{display:flex;gap:5px;flex-wrap:wrap;padding:7px 11px;
   align-items:center;border-bottom:1px solid #edf0f4;background:#fbfcfe}
 .live-pane-run-actions button{font-size:11px;padding:4px 7px}
+/* Validated canonical execution receipt, not a browser-side billing estimate. */
+.live-chat-receipt{padding:12px;background:#f9fbfd;border-bottom:1px solid #dfe6ef;
+  max-height:290px;overflow-y:auto}
+.aiverse-live-chat .live-chat-receipt[hidden]{display:none}
+.live-chat-receipt-grid{margin:0;display:grid;grid-template-columns:minmax(110px,145px) minmax(0,1fr);
+  column-gap:12px;row-gap:6px;font-size:11px}
+.live-chat-receipt-grid dt{color:#5c6e80;font-weight:600}
+.live-chat-receipt-grid dd{margin:0;min-width:0;overflow-wrap:anywhere;color:#27394d}
+.live-chat-receipt-note{margin:12px 0 0;font-size:10px;color:#5c6e80;line-height:1.5}
+.live-chat-receipt-toggle[aria-expanded="true"]{background:#e9f1fa!important;border-color:#92a9c1!important}
+
 .live-pane-run-actions .live-chat-stop:not(:disabled){border-color:#a6becb;color:#234b65}
 .live-pane-run-actions .live-chat-pause:not(:disabled),
 .live-pane-run-actions .live-chat-resume:not(:disabled){border-color:#8faac4;background:#edf4fb;color:#254d77}
