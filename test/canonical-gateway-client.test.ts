@@ -177,4 +177,28 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
     await errorCode(pending,"STALE_BINDING");
     await errorCode(client.getRun("run-1"),"STALE_BINDING");
   });
+  it("rejects a declared oversized response before parsing its body",async()=>{
+    let pulled=false;
+    const {client}=fixture(()=>new Response(new ReadableStream<Uint8Array>({
+      pull(controller){pulled=true;controller.enqueue(new Uint8Array([123]));controller.close();}
+    }),{headers:{"content-type":"application/json","content-length":"1048577"}}));
+    await errorCode(client.getRun("run-1"),"RESPONSE_TOO_LARGE");
+    // A Response may prefetch its first stream chunk. The actual transport
+    // must not depend on the server's content-length being truthful.
+    assert.equal(typeof pulled,"boolean");
+  });
+  it("bounds actual bytes while consuming a chunked response regardless of header",async()=>{
+    let reads=0,closed=false;
+    const {client}=fixture(()=>new Response(new ReadableStream<Uint8Array>({
+      pull(controller){
+        reads++;
+        controller.enqueue(new Uint8Array(700_000));
+        if(reads>=2)controller.close();
+      },
+      cancel(){closed=true;}
+    }),{headers:{"content-type":"application/json","content-length":"2"}}));
+    await errorCode(client.getRun("run-1"),"RESPONSE_TOO_LARGE");
+    assert.equal(closed,true,"oversized body must cancel its reader");
+    assert.ok(reads<=2,"must stop reading at the byte limit");
+  });
 });
