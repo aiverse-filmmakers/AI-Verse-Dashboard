@@ -422,7 +422,11 @@ export class PersonalChatApplication {
       view.systemId!==this.selected.systemId)return;
     if(pane.activeTurn>=0){
       const turn=pane.turns[pane.activeTurn];
-      if(turn?.role==="assistant")turn.text=view.output;
+      if(turn?.role==="assistant"){
+        if(view.phase==="canceled"){
+          turn.role="status";turn.text="Response stopped";pane.activeTurn=-1;
+        }else turn.text=view.output;
+      }
     }
     pane.busy=view.phase==="submitting"||view.phase==="running";
     pane.status.textContent=view.phase+(view.runId?" · "+view.runId:"")
@@ -444,7 +448,7 @@ export class PersonalChatApplication {
     pane.log.replaceChildren(fragment);
     pane.log.scrollTop=pane.log.scrollHeight;
     const send=pane.form.querySelector("button[type=submit]") as HTMLButtonElement;
-    if(send)send.disabled=pane.busy || !["idle","completed"].includes(pane.run.snapshot().phase);
+    if(send)send.disabled=pane.busy || !["idle","completed","canceled"].includes(pane.run.snapshot().phase);
     const recover=pane.node.querySelector(".live-chat-recovery button") as HTMLButtonElement;
     if(recover)recover.disabled=pane.busy;
     const retry=pane.node.querySelector(".live-chat-retry") as HTMLButtonElement;
