@@ -428,6 +428,31 @@ test("Chat Pause and Resume controls a single existing canonical run and respect
   assert.equal(await resume.isDisabled(),true);
   assert.deepEqual(errors,[]);
 });
+test("Chat can Stop a paused run with separately granted owner cancellation",async t=>{
+  const {page,errors}=await pageFor(t);
+  const pane=page.locator(".live-chat-pane").first(),before=requests.length;
+  const pause=pane.getByRole("button",{name:"Pause run"});
+  const stop=pane.getByRole("button",{name:"Stop run"});
+  await pane.locator(".live-chat-input").fill("Test pause and resume same run");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await page.waitForFunction(()=>{
+    const button=document.querySelector(".live-chat-pause");
+    return button instanceof HTMLButtonElement&&!button.disabled;
+  });
+  await pause.click();
+  await pane.locator(".live-chat-status").getByText(/paused/).waitFor();
+  assert.equal(await stop.isEnabled(),true);
+  await stop.click();
+  await pane.locator(".live-chat-status").getByText(/canceled/).waitFor();
+  assert.equal(await pane.getByRole("button",{name:"Resume run"}).isDisabled(),true);
+  const calls=requests.slice(before).filter(r=>r.method.startsWith("aiverse.gateway.run."));
+  assert.deepEqual(calls.map(r=>r.method),[
+    "aiverse.gateway.run.create","aiverse.gateway.run.pause","aiverse.gateway.run.cancel",
+  ]);
+  assert.equal(calls[1].params.runId,calls[2].params.runId);
+  assert.equal(calls[1].params.sessionId,calls[2].params.sessionId);
+  assert.deepEqual(errors,[]);
+});
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
   const {page,errors}=await pageFor(t);
   const before=requests.length;
