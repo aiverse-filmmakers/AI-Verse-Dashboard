@@ -50,7 +50,9 @@ export function inspectActivity(value:unknown,scope:Required<ClientScope>):Activ
 export type CanonicalSession={id:string;status:string;updatedAt:string};
 export type CanonicalRun={status:string;createdAt:string};
 const STATUS=new Set(["active","idle","working","waiting","blocked","completed",
-  "running","queued","failed","canceled","cancelled","paused","done","aborted"]);
+  "running","queued","failed","canceled","cancelled","paused","done","aborted",
+  "awaiting_approval","resuming","paused_recovery_required","paused_no_progress",
+  "budget_limited","parked","no_progress"]);
 const runId=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 function safeStatus(value:unknown):string{
   return typeof value==="string"&&STATUS.has(value)?value:"unknown";
@@ -245,8 +247,10 @@ export class PersonalAgentActivity{
           try{
             for(const run of inspectCanonicalRuns(result.value.result,selected.workspaceId,
               page.sessions[index].id)){
+              const awaiting=run.status==="awaiting_approval";
               recentRuns.append(el("p","personal-agent-activity-entry",
-                "Run · "+run.status+" · "+run.createdAt));
+                awaiting?"Run · awaiting owner approval (read-only) · "+run.createdAt:
+                  "Run · "+run.status+" · "+run.createdAt));
               runCount++;
             }
           }catch{unavailable++;}
