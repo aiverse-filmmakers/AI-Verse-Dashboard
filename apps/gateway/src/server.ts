@@ -100,7 +100,7 @@ export async function startGateway(
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
-      void handleSocket(ws, systemId, router, hub);
+      void handleSocket(ws, systemId, router, hub, opts?.canonicalBridge);
     });
   });
 
@@ -191,7 +191,11 @@ function handleSocket(
   boundSystem: string,
   router: QueryRouter,
   hub: SubscriptionHub,
+  canonicalBridge?:CanonicalGatewayBridge,
 ): void {
+  let canonicalCancel:(()=>void)|undefined;
+  let canonicalEpoch=0;
+  let selectedWorkspaceScope:string|undefined;
   let activeSubId: string | undefined;
   const socketSubIds = new Set<string>();
   ws.on("message", (data) => {
@@ -202,7 +206,65 @@ function handleSocket(
       ws.send(JSON.stringify({ type: "res", v: "1.0", id: "unparseable", ok: false, error: { code: "INVALID_ENVELOPE", message: "bad json" }, observedAt: new Date().toISOString() }));
       return;
     }
-    const tagged = (frame as { type?: string }).type;
+    // An authenticated client can still send malformed JSON values. They must
+    // never throw from the socket message handler and terminate the host.
+    if(!frame||typeof frame!=="object"||Array.isArray(frame)){
+      ws.send(JSON.stringify({type:"res",v:"1.0",id:"unparseable",ok:false,
+        systemId:boundSystem,error:{code:"INVALID_ENVELOPE",message:"Expected a frame object"},
+        observedAt:new Date().toISOString()}));
+      return;
+    }
+    const tagged=(frame as {type?:unknown}).type;
+    if(tagged==="gateway-run-subscribe"){
+      canonicalEpoch++;
+      canonicalCancel?.();canonicalCancel=undefined;
+      const request=frame as Record<string,unknown>;
+      const fields=Object.keys(request);
+      const workspace=request.workspaceId,runId=request.runId;
+      const invalid=!canonicalBridge||fields.length!==3
+        ||fields.some(x=>!["type","workspaceId","runId"].includes(x))
+        ||typeof workspace!=="string"
+        ||!/^(operator|[a-z0-9][a-z0-9-]{0,127})$/.test(workspace)
+        ||typeof runId!=="string"
+        ||!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(runId);
+      if(invalid){
+        ws.send(JSON.stringify({type:"res",v:"1.0",id:"gateway-run-subscribe",
+          ok:false,systemId:boundSystem,
+          error:{code:canonicalBridge?"INVALID_SUBSCRIPTION":"GATEWAY_NOT_CONFIGURED",
+            message:"Gateway stream unavailable"},
+          observedAt:new Date().toISOString()}));
+        return;
+      }
+      if(activeSubId!==undefined){
+        hub.unsubscribe(activeSubId);
+        socketSubIds.delete(activeSubId);
+        activeSubId=undefined;
+      }
+      selectedWorkspaceScope=workspace as string;
+      const epoch=canonicalEpoch;
+      canonicalCancel=canonicalBridge!.openEventStream(boundSystem,workspace as string,
+        runId as string,
+        projection=>{
+          if(epoch===canonicalEpoch&&ws.readyState===1)
+            ws.send(JSON.stringify(projection));
+        },
+        code=>{
+          if(epoch===canonicalEpoch&&ws.readyState===1)
+            ws.send(JSON.stringify({type:"res",v:"1.0",
+              id:"gateway-run-subscribe",ok:false,systemId:boundSystem,
+              error:{code,message:"Canonical Gateway "+code},
+              observedAt:new Date().toISOString()}));
+        });
+      return;
+    }
+    if(tagged==="gateway-run-unsubscribe"){
+      canonicalEpoch++;
+      canonicalCancel?.();canonicalCancel=undefined;
+      ws.send(JSON.stringify({type:"res",v:"1.0",id:"gateway-run-unsubscribe",
+        ok:true,systemId:boundSystem,result:{unsubscribed:true},
+        observedAt:new Date().toISOString()}));
+      return;
+    }
     // Subscribe control frame: Dashboard-local, bound to this socket's system.
     if (tagged === "subscribe") {
       const parsed = subscriptionRequestSchema.safeParse(frame);
@@ -238,6 +300,11 @@ function handleSocket(
         return;
       }
 
+      if(selectedWorkspaceScope!==nextWorkspace){
+        canonicalEpoch++;
+        canonicalCancel?.();canonicalCancel=undefined;
+      }
+      selectedWorkspaceScope=nextWorkspace;
       if (activeSubId !== undefined) {
         hub.unsubscribe(activeSubId);
         socketSubIds.delete(activeSubId);
@@ -281,6 +348,8 @@ function handleSocket(
     ws.send(JSON.stringify(out));
   });
   ws.on("close", () => {
+    canonicalEpoch++;
+    canonicalCancel?.();canonicalCancel=undefined;
     for (const subId of socketSubIds) hub.unsubscribe(subId);
     socketSubIds.clear();
     activeSubId = undefined;
