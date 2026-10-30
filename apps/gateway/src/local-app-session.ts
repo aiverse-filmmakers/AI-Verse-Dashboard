@@ -27,7 +27,8 @@ const WS=/^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/;
 const PAIRED_BROWSER_METHODS=new Set([
   "system.get", "workspace.get", "operator.activity",
   "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.create",
-  "aiverse.gateway.run.get", "aiverse.gateway.run.cancel", "aiverse.gateway.session.list",
+  "aiverse.gateway.run.get", "aiverse.gateway.run.cancel",
+  "aiverse.gateway.run.pause", "aiverse.gateway.run.resume", "aiverse.gateway.session.list",
   "aiverse.gateway.session.runs",
   "aiverse.canvas.list", "aiverse.canvas.get", "aiverse.canvas.history",
   "aiverse.canvas.create", "aiverse.canvas.rename", "aiverse.canvas.edit",
