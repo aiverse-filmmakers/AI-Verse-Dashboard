@@ -288,7 +288,22 @@
       "document": "docs/G02-4-CANONICAL-ASSET-ADMISSION-CONTRACT-2026-10-30.md",
       "state": "owner-contract defined; upstream data binary asset API and Gateway modality dispatch not implemented",
       "scoring": "No score change. Chat 11/15, GitHub/browser 47/100 provisional, formal 15/100."
+    },
+    "g06_1OwnerDiagnostics": {
+      "scope": "Existing G06.1 Control Center: OS registry summary (no full system list) and actual owner-scoped Gateway per-run advanced diagnostics, safe projections only",
+      "sourceFiles": [
+        "apps/web/src/personal-diagnostics.ts",
+        "apps/gateway/src/canonical-gateway-bridge.ts",
+        "apps/gateway/src/query-router.ts",
+        "packages/client/src/canonical-gateway-client.ts"
+      ],
+      "ledgers": [
+        "docs/DEVELOPMENT-TASKS-649-660-2026-10-30.md",
+        "docs/DEVELOPMENT-TASKS-661-669-2026-10-30.md"
+      ],
+      "state": "implemented in draft with positive/negative CI; G06.1 remains in-progress until whole milestone and private owner acceptance",
+      "scoring": "No increase: Chat 11/15, GitHub/browser 47/100 provisional, formal accepted 15/100 unchanged"
     }
   },
-  "nextUnverifiedChange": "Task 649: implement the approved canonical Data asset/attachment and Gateway modality-admission contract only after owner APIs exist. Required owner gates: docs/G02-4-CANONICAL-ASSET-ADMISSION-CONTRACT-2026-10-30.md. Physical model choice separately awaits Gateway+Connections owner approval. No invented upload or Skill runner."
+  "nextUnverifiedChange": "Task 670: continue an existing source-backed Control Center owner milestone (G06.1 or G06.2) or wait for actual owner admission APIs for blocked G02.3/G02.4. Never invent provider choices, binary attachments, permission grants or arbitrary action RPCs."
 }
