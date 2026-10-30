@@ -206,9 +206,15 @@ function handleSocket(
       ws.send(JSON.stringify({ type: "res", v: "1.0", id: "unparseable", ok: false, error: { code: "INVALID_ENVELOPE", message: "bad json" }, observedAt: new Date().toISOString() }));
       return;
     }
-    // Reject null/primitive frames rather than throwing in an event handler.
-    const tagged=frame&&typeof frame==="object"&&!Array.isArray(frame)
-      ?(frame as {type?:unknown}).type:undefined;
+    // An authenticated client can still send malformed JSON values. They must
+    // never throw from the socket message handler and terminate the host.
+    if(!frame||typeof frame!=="object"||Array.isArray(frame)){
+      ws.send(JSON.stringify({type:"res",v:"1.0",id:"unparseable",ok:false,
+        systemId:boundSystem,error:{code:"INVALID_ENVELOPE",message:"Expected a frame object"},
+        observedAt:new Date().toISOString()}));
+      return;
+    }
+    const tagged=(frame as {type?:unknown}).type;
     if(tagged==="gateway-run-subscribe"){
       canonicalEpoch++;
       canonicalCancel?.();canonicalCancel=undefined;
