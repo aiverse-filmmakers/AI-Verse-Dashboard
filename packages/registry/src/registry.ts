@@ -114,6 +114,9 @@ export class SystemRegistry {
   private readonly byId = new Map<string, ConnectionRecord>();
   private readonly byRoot = new Map<string, string>();
   private counter = 0;
+  // Host-only generation; changing an approved binding, even to the same path,
+  // invalidates every previously established Gateway credential lease.
+  private readonly bindingGenerations = new Map<string, number>();
 
   private assertNoOverlap(root: string, ownSystemId?: string): void {
     const existingId = this.byRoot.get(root);
@@ -194,6 +197,7 @@ export class SystemRegistry {
     };
     this.byId.set(systemId, record);
     this.byRoot.set(root, systemId);
+    this.bindingGenerations.set(systemId, 1);
     return cloneRecord(record);
   }
 
@@ -226,6 +230,7 @@ export class SystemRegistry {
     record.lastValidatedAt = new Date().toISOString();
 
     this.byRoot.set(root, systemId);
+    this.bindingGenerations.set(systemId, (this.bindingGenerations.get(systemId) ?? 0) + 1);
     return cloneRecord(record);
   }
 
@@ -233,6 +238,7 @@ export class SystemRegistry {
     const record = this.byId.get(systemId);
     if (!record) return false;
     this.byId.delete(systemId);
+    this.bindingGenerations.delete(systemId);
     if (this.byRoot.get(record.root) === systemId) this.byRoot.delete(record.root);
     return true;
   }
@@ -252,6 +258,12 @@ export class SystemRegistry {
 
   has(systemId: string): boolean {
     return this.byId.has(systemId);
+  }
+
+  /** Host-only lease generation. Not included in any public connection view. */
+  bindingGeneration(systemId: string): number {
+    this.resolveRoot(systemId); // always validate current approved identity
+    return this.bindingGenerations.get(systemId) ?? 0;
   }
 
   /**
