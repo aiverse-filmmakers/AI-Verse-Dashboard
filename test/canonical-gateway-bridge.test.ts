@@ -122,6 +122,21 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
      conversationLibrary:true,providerSelection:false,
    });
    assert.equal(upstream.received.length,2);
+   const models=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.models",a.systemId));
+   assert.equal(models.data.ok,true);
+   const advertised=models.data.result as Record<string,unknown>;
+   assert.equal(advertised.source,"canonical-gateway");
+   assert.equal(advertised.workspaceId,"film");
+   assert.deepEqual(advertised.models,[{id:"aiverse",label:"AI-Verse Gateway",kind:"gateway-virtual"}]);
+   assert.equal(advertised.runtimeKind,"deterministic");
+   assert.equal(advertised.modelSelectionSupported,false);
+   assert.equal(advertised.providerSelectionSupported,false);
+   assert.equal(advertised.inferenceVerified,false);
+   assert.doesNotMatch(JSON.stringify(models.data),/actual-host-gateway-token|private_data|principal/);
+   const injected=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.models",a.systemId,"film",{provider:"evil",origin:"http://elsewhere"}));
+   assert.equal(injected.data.ok,false);
+   assert.equal((injected.data.error as {code:string}).code,"INVALID_ENVELOPE");
    assert.ok(upstream.received.every(r=>r.auth==="Bearer actual-host-gateway-token"));
    assert.doesNotMatch(JSON.stringify(status.data),/actual-host-gateway-token/);
    const created=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.run.create",a.systemId,"film",{
