@@ -294,6 +294,11 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
    const status=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.status",a.systemId));
    assert.equal((status.data.result as Record<string,unknown>).runPauseResumeSupported,true);
    assert.equal((status.data.result as Record<string,unknown>).runCancelSupported,false);
+   const stopDenied=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.cancel",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-a",operationId:"no-stop-grant",
+     }));
+   assert.equal((stopDenied.data.error as {code:string}).code,"RUN_CONTROL_NOT_AUTHORIZED");
    const bad=await rpc(dash.port,dash.authToken,
      frame("aiverse.gateway.run.pause",a.systemId,"film",{
        runId:"run-a",sessionId:"wrong-session",operationId:"paused-bad",
@@ -340,6 +345,31 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
        runId:"run-a",sessionId:"session-a",operationId:"foreign-workspace",
      }));
    assert.equal((foreign.data.error as {code:string}).code,"RUN_BINDING_MISMATCH");
+ });
+ it("Pause and Resume reject OS rebind between owner GET and control POST",async()=>{
+   for(const action of ["pause","resume"] as const){
+     const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+     const upstream=gatewayFixture({onRunGet:()=>reg.rebind(a.systemId,a.root)});
+     const port=await listen(upstream.server);
+     closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+     const bridge=new CanonicalGatewayBridge(reg,[{
+       dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",
+       origin:"http://127.0.0.1:"+port,resolveBearer:()=>"actual-host-gateway-token",
+       allowRunPauseResume:true,
+     }]);
+     const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),
+       new SubscriptionHub(),{port:0,canonicalBridge:bridge});
+     closing.push(()=>dash.close());
+     const response=await rpc(dash.port,dash.authToken,
+       frame("aiverse.gateway.run."+action,a.systemId,"film",{
+         runId:"run-a",sessionId:"session-a",operationId:"rebound-"+action,
+       }));
+     assert.equal(response.data.ok,false);
+     // For resume, a non-paused run is refused before a stale lease check.
+     assert.equal((response.data.error as {code:string}).code,
+       action==="pause"?"GATEWAY_MAPPING_STALE":"RUN_NOT_RESUMABLE");
+     assert.equal(upstream.received.some(x=>x.method==="POST"),false);
+   }
  });
  it("revoked OS binding between canonical GET and Stop prevents upstream control",async()=>{
    const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
