@@ -176,7 +176,8 @@ const server=createServer(async(req,res)=>{
       const total=78,sessionId=frame.params?.sessionId;
       const all=Array.from({length:total},(_,i)=>{
         const n=String(total-i).padStart(3,"0");
-        return {run_id:"history-run-"+n,session_id:sessionId,status:"completed",
+        return {run_id:"history-run-"+n,session_id:sessionId,
+          status:sessionId==="historical-002"&&i===0?"awaiting_approval":"completed",
           user_text:"Historical user "+n,output:"Historical AI "+n,
           user_text_truncated:false,output_truncated:false};
       });
@@ -741,6 +742,19 @@ test("G06.1 changing an inspection ID while Gateway responds revokes the old res
   assert.doesNotMatch(message,/Source reads|Canonical run diagnostics/);
   assert.equal(await panel.getByRole("button",{name:"Inspect run"}).isEnabled(),true);
   assert.deepEqual(errors,[]);
+});
+test("G06.2 Agent activity reports actual awaiting owner approval with no approval action",async t=>{
+ const {page,errors}=await pageFor(t),before=requests.length;
+ await page.getByRole("button",{name:"Agent activity"}).click();
+ const panel=page.locator(".personal-agent-activity");
+ await panel.getByText(/awaiting owner approval \(read-only\)/).waitFor();
+ assert.equal(await panel.getByRole("button",{name:/approve|deny|execute/i}).count(),0);
+ assert.equal(requests.slice(before).filter(x=>/approval.resolve|run.approval/.test(x.method)).length,0);
+ assert.ok(requests.slice(before).some(x=>x.method==="aiverse.gateway.session.runs"
+   &&x.params.sessionId==="historical-002"));
+ await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"film"}));
+ await panel.getByText(/Gateway history|Reading Gateway history/).first().waitFor();
+ assert.deepEqual(errors,[]);
 });
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
   const {page,errors}=await pageFor(t);
