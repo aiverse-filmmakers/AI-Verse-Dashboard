@@ -867,6 +867,9 @@ test("explicit Insert Canvas note rereads canonical Data into composer, never in
   const {page,errors}=await pageFor(t),before=requests.length;
   const pane=page.locator(".live-chat-pane").first();
   const canvas=page.locator(".aiverse-canvas");
+  await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Chat note insert test");
+  await canvas.getByRole("button",{name:"Create",exact:true}).click();
+  await canvas.locator(".canvas-current-title").getByText("Chat note insert test").waitFor();
   const insert=pane.getByRole("button",{name:"Insert Canvas note"});
   await insert.click();
   await pane.locator(".live-chat-status").getByText(/Select a saved note in Canvas/).waitFor();
@@ -901,6 +904,9 @@ test("Canvas note insertion rejects stale Data version and does not overwrite cu
   const {page,errors}=await pageFor(t),before=requests.length;
   const pane=page.locator(".live-chat-pane").first();
   const canvas=page.locator(".aiverse-canvas");
+  await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Chat stale reference test");
+  await canvas.getByRole("button",{name:"Create",exact:true}).click();
+  await canvas.locator(".canvas-current-title").getByText("Chat stale reference test").waitFor();
   await canvas.getByRole("button",{name:"Add note"}).click();
   await canvas.locator(".canvas-note").first().waitFor();
   await canvas.locator(".canvas-note").first().click();
@@ -920,6 +926,9 @@ test("Canvas note insertion rejects stale Data version and does not overwrite cu
 test("Canvas note too long for Chat composer is refused without truncation or run creation",async t=>{
   const {page,errors}=await pageFor(t),before=requests.length;
   const pane=page.locator(".live-chat-pane").first(),canvas=page.locator(".aiverse-canvas");
+  await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Chat long reference test");
+  await canvas.getByRole("button",{name:"Create",exact:true}).click();
+  await canvas.locator(".canvas-current-title").getByText("Chat long reference test").waitFor();
   await canvas.getByRole("button",{name:"Add note"}).click();
   await canvas.locator(".canvas-note").first().waitFor();
   await canvas.locator(".canvas-note").first().click();
