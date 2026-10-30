@@ -124,6 +124,7 @@ export class QueryRouter {
           Error("Selected OS is not authorized"),{code:"SYSTEM_NOT_REGISTERED"});
         return {source:"dashboard-os-registry",systemId,workspaceId,
           registered:rows.length,authorized:rows.filter(x=>x.authorized).length,
+          workspaces:listWorkspaces(this.registry,systemId).length,
           selectedAuthorized:true};
       }
       case "system.get":
