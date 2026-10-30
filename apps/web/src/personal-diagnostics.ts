@@ -112,10 +112,11 @@ export function inspectRunDiagnostics(value:unknown,workspaceId:string,
   runId:string,sessionId:string):Observation{
   const v=scopedResponse(value,workspaceId,"canonical-gateway");
   const safety=v.safety;
-  if(v.runId!==runId||v.sessionId!==sessionId
-    ||typeof v.status!=="string"||!/^[a-z_]{2,48}$/.test(v.status)
-    ||!safety||typeof safety!=="object"||Array.isArray(safety))
+  if(v.runId!==runId||v.sessionId!==sessionId)
     throw Error("DIAGNOSTICS_SCOPE_MISMATCH");
+  if(typeof v.status!=="string"||!/^[a-z_]{2,48}$/.test(v.status)
+    ||!safety||typeof safety!=="object"||Array.isArray(safety))
+    throw Error("DIAGNOSTICS_INVALID_SOURCE");
   const safe=safety as Record<string,unknown>;
   if(safe.rawContentIncluded!==false||safe.promptsIncluded!==false
     ||safe.chainOfThoughtIncluded!==false)throw Error("DIAGNOSTICS_INVALID_SOURCE");
