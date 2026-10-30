@@ -140,6 +140,17 @@ try {
   assert.equal(status.result.systemId,"ci-mc2");
   assert.equal(status.result.workspaceId,"operator");
   assert.equal(status.result.source,"canonical-gateway");
+  const models=await rpc(local.port,local.authToken,frame("aiverse.gateway.models",systemId));
+  assert.equal(models.ok,true,JSON.stringify(models.error??{}));
+  assert.equal(models.result.source,"canonical-gateway");
+  assert.equal(models.result.workspaceId,"operator");
+  assert.deepEqual(models.result.models,[
+    {id:"aiverse",label:"AI-Verse Gateway",kind:"gateway-virtual"},
+  ]);
+  assert.equal(models.result.modelSelectionSupported,false);
+  assert.equal(models.result.providerSelectionSupported,false);
+  assert.equal(models.result.inferenceVerified,false);
+  assert.doesNotMatch(JSON.stringify(models),/Bearer |actual-host-gateway-token|private_data/);
 
   const marker="mc2-ci-runtime-"+Date.now();
   const payload={messages:[{role:"user",content:marker}],idempotencyKey:"mc2-proof-run-1"};
