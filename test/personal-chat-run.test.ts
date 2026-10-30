@@ -306,6 +306,63 @@ describe("Personal Chat canonical run controller",()=>{
    assert.equal(chat.snapshot().runId,undefined);
    assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.pause").length,1);
  });
+ it("Check run reflects another client's Pause and Resume via authenticated GET only",async()=>{
+   let status="running";
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.get")return run(status,
+       status==="completed"?{output:"Verified remote final"}:{});
+     throw Error("Unexpected Gateway mutation "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("Real run","create-once");
+   f.watchers[0].handlers.event(event("assistant.delta",1,"Unverified stream"));
+   assert.equal((await chat.refreshStatus()).phase,"running");
+   assert.equal(chat.snapshot().output,"Unverified stream",
+     "running status must preserve the active stream");
+   assert.equal(f.watchers.length,1);
+   status="paused";
+   const paused=await chat.refreshStatus();
+   assert.equal(paused.phase,"paused");
+   assert.equal(paused.output,"");
+   assert.equal(f.watchers[0].cancelled,true);
+   status="resuming";
+   const resumed=await chat.refreshStatus();
+   assert.equal(resumed.phase,"running");
+   assert.equal(f.watchers.length,2);
+   f.watchers[1].handlers.event(event("assistant.delta",1,"OLD UNKNOWN REPLAY"));
+   f.watchers[1].handlers.event(event("run.resumed",2));
+   f.watchers[1].handlers.event(event("assistant.delta",3,"Still unverified"));
+   assert.equal(chat.snapshot().output,"",
+     "unknown external resume cycle cannot promote replayed draft text");
+   status="completed";
+   f.watchers[1].handlers.event(event("run.completed",4));
+   await nextTick();
+   assert.equal(chat.snapshot().phase,"completed");
+   assert.equal(chat.snapshot().output,"Verified remote final");
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.get").length,4);
+   assert.equal(calls.filter(x=>/run.(pause|resume)/.test(x.method)).length,0);
+ });
+ it("Check run fails without a run and stale A-B-A refresh cannot repaint",async()=>{
+   let release:(value:unknown)=>void=()=>{};
+   const {client}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.get")return new Promise(resolve=>{release=resolve;});
+     throw Error("Unexpected operation "+method);
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   await assert.rejects(chat.refreshStatus(),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_REFRESH_UNAVAILABLE");
+   await chat.send("task","create");
+   const pending=chat.refreshStatus();
+   chat.retarget({systemId:"aiverse-01",workspaceId:"other"});
+   chat.retarget(SCOPE);
+   release(run("completed",{output:"PRIVATE OLD RUN"}));
+   await pending;
+   assert.equal(chat.snapshot().phase,"idle");
+   assert.equal(chat.snapshot().output,"");
+ });
  it("Stop uncertainty preserves canonical run identity for GET-only recovery",async()=>{
    let failControl=true;
    const {client,calls}=clientWith(method=>{
