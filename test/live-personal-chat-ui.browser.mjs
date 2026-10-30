@@ -943,6 +943,26 @@ test("Canvas note too long for Chat composer is refused without truncation or ru
   assert.equal(requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.create").length,0);
   assert.deepEqual(errors,[]);
 });
+test("Canvas reference selection is revoked by workspace retarget before Chat insertion",async t=>{
+  const {page,errors}=await pageFor(t),before=requests.length;
+  const pane=page.locator(".live-chat-pane").first(),canvas=page.locator(".aiverse-canvas");
+  await canvas.getByRole("textbox",{name:"New Canvas name"}).fill("Scoped Canvas reference test");
+  await canvas.getByRole("button",{name:"Create",exact:true}).click();
+  await canvas.locator(".canvas-current-title").getByText("Scoped Canvas reference test").waitFor();
+  await canvas.getByRole("button",{name:"Add note"}).click();
+  await canvas.locator(".canvas-note").first().waitFor();
+  await canvas.locator(".canvas-note").first().click();
+  await canvas.locator(".canvas-note-text").waitFor();
+  await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"film"}));
+  await pane.getByRole("button",{name:"Insert Canvas note"}).click();
+  await pane.locator(".live-chat-status").getByText(/Select a saved note in Canvas/).waitFor();
+  assert.equal(await pane.locator(".live-chat-input").inputValue(),"");
+  assert.equal(requests.slice(before).filter(x=>x.method==="aiverse.canvas.get"
+    &&x.workspaceId==="film").length,0,
+    "old workspace selection must not cause a Data lookup in the new workspace");
+  assert.equal(requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.create").length,0);
+  assert.deepEqual(errors,[]);
+});
 test("Canvas: first Scratch edit persists through typed RPC and browser reload",async t=>{
   const {page,errors}=await pageFor(t);
   const canvas=page.locator(".aiverse-canvas");
