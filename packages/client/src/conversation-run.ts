@@ -176,6 +176,7 @@ export class DashboardChatEventFeed implements ChatEventFeed {
 export class PersonalChatRunController {
   private epoch=0;
   private streamEpoch=0;
+  private historicalOlder?:{sessionId:string;offset:number;total:number;seen:Set<string>};
   private unsubscribe?:()=>void;
   private seen=new Set<string>();
   private lastSeq=0;
@@ -204,6 +205,7 @@ export class PersonalChatRunController {
     this.streamEpoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
     this.seen.clear();this.lastSeq=0;this.activeRequest=undefined;
+    this.historicalOlder=undefined;
     this.confirmedTurns=[];this.contextLimited=false;this.confirmedRunId=undefined;
     this.view={...scope,phase:"idle",output:""};
     this.changed(this.snapshot());
@@ -218,6 +220,7 @@ export class PersonalChatRunController {
     this.epoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
     this.seen.clear();this.activeRequest=undefined;
+    this.historicalOlder=undefined;
     this.confirmedTurns=[];this.contextLimited=false;this.confirmedRunId=undefined;
     this.show({phase:"idle",runId:undefined,sessionId:undefined,
       output:"",errorCode:undefined,contextLimited:false});
@@ -473,6 +476,7 @@ export class PersonalChatRunController {
   async openSession(sessionId:string):Promise<{
     view:ChatRunView;
     turns:Array<{role:"user"|"assistant";content:string}>;
+    hasOlder:boolean;
   }>{
     if(!SAFE_ID.test(sessionId))fail("CHAT_SESSION_ID_INVALID");
     const scope=requiredScope(this.client.getScope());
@@ -483,7 +487,7 @@ export class PersonalChatRunController {
     try{
       for(let page=0;page<2;page++){
         const response=await this.client.listGatewaySessionRuns(sessionId,25,offset);
-        if(!this.valid(epoch,scope,selection))return {view:this.snapshot(),turns:[]};
+        if(!this.valid(epoch,scope,selection))return {view:this.snapshot(),turns:[],hasOlder:false};
         const data=response.result as Record<string,unknown>;
         if(!data||data.source!=="canonical-gateway"
           ||data.workspaceId!==scope.workspaceId || data.sessionId!==sessionId
@@ -511,7 +515,7 @@ export class PersonalChatRunController {
           fail("CHAT_HISTORY_INVALID");
         offset=data.next_offset;
       }
-      if(!this.valid(epoch,scope,selection))return {view:this.snapshot(),turns:[]};
+      if(!this.valid(epoch,scope,selection))return {view:this.snapshot(),turns:[],hasOlder:false};
       const ordered=all.reverse();
       const turns:Array<{role:"user"|"assistant";content:string}>=[];
       let limited=more;
@@ -530,7 +534,6 @@ export class PersonalChatRunController {
           else limited=true;
         }else limited=true;
       }
-      const last=all[0];
       // 'all' was reversed in-place above; its final entry is newest.
       const newest=ordered.at(-1);
       const canContinue=newest?.status==="completed"
@@ -538,6 +541,9 @@ export class PersonalChatRunController {
       const history=completed.slice(-12);
       this.confirmedTurns=history;
       if(completed.length>12)limited=true;
+      const seen=new Set(all.map(row=>String(row.run_id)));
+      if(seen.size!==all.length)fail("CHAT_HISTORY_DUPLICATE_RUN");
+      this.historicalOlder=more?{sessionId,offset,total:all.length,seen}:undefined;
       this.contextLimited=limited;
       this.confirmedRunId=canContinue?String(newest.run_id):undefined;
       this.show({phase:!newest?"idle":canContinue?"completed":"recovery-required",
@@ -545,15 +551,69 @@ export class PersonalChatRunController {
         output:canContinue?newest.output as string:"",
         canonicalStatus:typeof newest?.status==="string"?newest.status:undefined,
         errorCode:undefined,contextLimited:limited});
-      return {view:this.snapshot(),turns};
+      return {view:this.snapshot(),turns,hasOlder:Boolean(this.historicalOlder)};
     }catch(error){
       if(this.valid(epoch,scope,selection)){
         this.show({phase:"interrupted",errorCode:
           typeof (error as {code?:unknown})?.code==="string"
             ?(error as {code:string}).code:"CHAT_HISTORY_UNAVAILABLE"});
       }
-      return {view:this.snapshot(),turns:[]};
+      return {view:this.snapshot(),turns:[],hasOlder:false};
     }
+  }
+  /** Older pages are display-only. They do not silently expand the model's
+   * confirmed context. The canonical Gateway remains the sole history owner.
+   * Up to 200 runs may be viewed per open session; no browser persistence.
+   */
+  async loadOlderSessionRuns():Promise<{
+    turns:Array<{role:"user"|"assistant";content:string}>;hasOlder:boolean;
+  }>{
+    const cursor=this.historicalOlder;
+    if(!cursor || !this.view.sessionId || cursor.sessionId!==this.view.sessionId)
+      fail("CHAT_OLDER_HISTORY_UNAVAILABLE");
+    const scope=requiredScope(this.client.getScope());
+    const epoch=this.epoch,selection=this.client.selectionVersion();
+    const response=await this.client.listGatewaySessionRuns(cursor.sessionId,25,cursor.offset);
+    if(!this.valid(epoch,scope,selection)||this.historicalOlder!==cursor)
+      return {turns:[],hasOlder:false};
+    const page=response.result as Record<string,unknown>;
+    if(!page||page.source!=="canonical-gateway"||page.workspaceId!==scope.workspaceId
+      ||page.sessionId!==cursor.sessionId||!Array.isArray(page.data)
+      ||page.data.length>25||typeof page.has_more!=="boolean"
+      ||(page.has_more&&page.data.length===0)
+      ||(page.has_more
+        ?!Number.isSafeInteger(page.next_offset)||(page.next_offset as number)<=cursor.offset
+          ||(page.next_offset as number)>10_000
+        :page.next_offset!==null))fail("CHAT_HISTORY_INVALID");
+    const incoming=new Set<string>();
+    const rows:Array<Record<string,unknown>>=[];
+    for(const value of page.data){
+      if(!value||typeof value!=="object"||Array.isArray(value))fail("CHAT_HISTORY_INVALID");
+      const row=value as Record<string,unknown>;
+      if(typeof row.run_id!=="string"||!SAFE_ID.test(row.run_id)
+        ||row.session_id!==cursor.sessionId
+        ||typeof row.status!=="string"
+        ||!(row.user_text===null||typeof row.user_text==="string")
+        ||!(row.output===null||typeof row.output==="string")
+        ||typeof row.user_text_truncated!=="boolean"
+        ||typeof row.output_truncated!=="boolean"
+        ||cursor.seen.has(row.run_id)||incoming.has(row.run_id))
+        fail("CHAT_HISTORY_INVALID");
+      incoming.add(row.run_id);rows.push(row);
+    }
+    const turns:Array<{role:"user"|"assistant";content:string}>=[];
+    for(const row of rows.reverse()){
+      if(typeof row.user_text==="string"&&row.user_text.length)
+        turns.push({role:"user",content:row.user_text});
+      if(row.status==="completed"&&typeof row.output==="string")
+        turns.push({role:"assistant",content:row.output});
+    }
+    for(const value of incoming)cursor.seen.add(value);
+    cursor.total+=rows.length;
+    const hasOlder=page.has_more&&cursor.total<200;
+    this.historicalOlder=hasOlder?{...cursor,
+      offset:page.next_offset as number}:undefined;
+    return {turns,hasOlder};
   }
   /** Recovery is by explicit canonical run ID, not a manufactured session list. */
   async recover(runId:string):Promise<ChatRunView>{
