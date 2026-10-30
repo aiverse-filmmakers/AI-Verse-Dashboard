@@ -28,6 +28,14 @@ interface Pane {
   status:HTMLElement;
   receiptPanel:HTMLElement;
   receiptExpanded:boolean;
+  findHost:HTMLElement;
+  findInput:HTMLInputElement;
+  findCount:HTMLElement;
+  findPrevious:HTMLButtonElement;
+  findNext:HTMLButtonElement;
+  findOpen:boolean;
+  findQuery:string;
+  findCursor:number;
   run:PersonalChatRunController;
   turns:Turn[];
   activeTurn:number;
@@ -164,6 +172,7 @@ export class PersonalChatApplication {
     for(const pane of this.panes.values()){
       pane.generation++;
       pane.turns=[];pane.activeTurn=-1;
+      pane.findQuery="";pane.findInput.value="";pane.findCursor=0;pane.findOpen=false;
       pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
       pane.run.retarget(this.selected);
       const scopeLabel=pane.node.querySelector(".live-chat-scope");
@@ -316,6 +325,7 @@ export class PersonalChatApplication {
     pane.run.close();
     pane.run=this.controller(view=>this.onChange(paneId,view));
     pane.turns=[];pane.activeTurn=-1;pane.busy=true;
+    pane.findQuery="";pane.findInput.value="";pane.findCursor=0;pane.findOpen=false;
     pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
     pane.status.textContent="Opening canonical conversation…";
     this.render(pane);
@@ -351,6 +361,7 @@ export class PersonalChatApplication {
         return;
       scrollAnchor={height:pane.log.scrollHeight,top:pane.log.scrollTop};
       pane.turns.unshift(...result.turns.map(turn=>({role:turn.role,text:turn.content})));
+      pane.findCursor=0; // Older pages shift indices; search must recompute.
       pane.historyHasOlder=result.hasOlder;
       pane.historyNotice=result.limitedByView
         ?"Showing the most recent 200 runs. Earlier records may still be available in Gateway.":undefined;
@@ -395,6 +406,8 @@ export class PersonalChatApplication {
     check.title="Refresh this exact run from the authenticated canonical Gateway";
     const stop=button("Stop run",()=>{void this.stopRun(paneId);},"live-chat-stop");
     stop.title="Requires the trusted host to authorize run cancellation";
+    const find=button("Find messages",()=>this.toggleFind(paneId),"live-chat-find-toggle");
+    find.setAttribute("aria-expanded","false");
     const details=button("Run details",()=>this.toggleRunDetails(paneId),"live-chat-receipt-toggle");
     details.setAttribute("aria-expanded","false");
     details.title="Gateway run status and observed usage; cost requires separate Token verification";
@@ -404,7 +417,20 @@ export class PersonalChatApplication {
     resume.title="Requires the trusted host to authorize checkpoint resume";
     const close=button("Close chat",()=>this.closePane(paneId),"");
     actions.append(open,clear,close);heading.append(name,actions);
-    runActions.append(retry,reconnect,check,details,pause,resume,stop);
+    runActions.append(retry,reconnect,check,find,details,pause,resume,stop);
+    const findHost=el("section","live-chat-find");
+    findHost.hidden=true;
+    findHost.setAttribute("aria-label","Search messages already loaded in this conversation");
+    const findInput=el("input","live-chat-find-input");
+    findInput.type="search";findInput.maxLength=120;
+    findInput.autocomplete="off";findInput.spellcheck=false;
+    findInput.placeholder="Find in loaded messages";
+    findInput.setAttribute("aria-label","Search loaded messages");
+    const findCount=el("span","live-chat-find-count","Only loaded messages can be searched");
+    findCount.setAttribute("role","status");
+    const findPrevious=button("Previous match",()=>this.stepFind(paneId,-1),"live-chat-find-prev");
+    const findNext=button("Next match",()=>this.stepFind(paneId,1),"live-chat-find-next");
+    findHost.append(findInput,findPrevious,findNext,findCount);
     const receiptPanel=el("section","live-chat-receipt");
     receiptPanel.hidden=true;
     receiptPanel.setAttribute("aria-label","Canonical run execution details");
@@ -474,11 +500,25 @@ export class PersonalChatApplication {
       setPaneWidth(section.getBoundingClientRect().width+
         (event.key==="ArrowRight"?step:-step));
     });
-    section.append(heading,runActions,receiptPanel,scope,log,status,form,recovery,grip);
+    section.append(heading,runActions,findHost,receiptPanel,scope,log,status,form,recovery,grip);
     const pane:Pane={id:paneId,node:section,form,input,log,status,
       receiptPanel,receiptExpanded:false,
+      findHost,findInput,findCount,findPrevious,findNext,
+      findOpen:false,findQuery:"",findCursor:0,
       run:this.controller(view=>this.onChange(paneId,view)),
       turns:[],activeTurn:-1,busy:false,generation:0};
+    findInput.addEventListener("input",()=>{
+      pane.findQuery=findInput.value.trim().slice(0,120);
+      pane.findCursor=0;
+      this.render(pane);this.scrollToFind(pane);
+    });
+    findInput.addEventListener("keydown",event=>{
+      if(event.key==="Escape"){
+        event.preventDefault();pane.findOpen=false;this.render(pane);
+      }else if(event.key==="Enter"){
+        event.preventDefault();this.stepFind(pane.id,event.shiftKey?-1:1);
+      }
+    });
     form.addEventListener("submit",e=>{
       e.preventDefault();
       const message=input.value.trim();
@@ -515,6 +555,11 @@ export class PersonalChatApplication {
     this.render(pane);
   }
   private render(pane:Pane):void{
+    const previousTop=pane.log.scrollTop;
+    const nearBottom=pane.log.scrollHeight-pane.log.clientHeight-previousTop<75;
+    const matches=this.findMatches(pane);
+    pane.findCursor=matches.length?Math.min(pane.findCursor,matches.length-1):0;
+    const selectedMatch=matches[pane.findCursor];
     const fragment=document.createDocumentFragment();
     if(pane.historyHasOlder){
       const older=button(pane.historyLoading?"Loading older messages…":"Load older messages",
@@ -526,17 +571,36 @@ export class PersonalChatApplication {
       fragment.append(el("p","live-chat-history-status",pane.historyError));
     if(pane.historyNotice)
       fragment.append(el("p","live-chat-history-status",pane.historyNotice));
-    for(const turn of pane.turns){
+    for(const [index,turn] of pane.turns.entries()){
       const card=el("div","live-chat-message "+turn.role);
+      if(index===selectedMatch&&pane.findOpen&&pane.findQuery)
+        card.classList.add("live-chat-find-selected");
       card.append(el("span","live-chat-role",turn.role==="user"?"You":
         turn.role==="assistant"?"AI-Verse":"Status"));
-      card.append(el("p","",turn.text));
+      const paragraph=el("p","");
+      if(index===selectedMatch&&pane.findOpen&&pane.findQuery){
+        const matchAt=turn.text.toLowerCase().indexOf(pane.findQuery.toLowerCase());
+        if(matchAt>=0){
+          paragraph.append(document.createTextNode(turn.text.slice(0,matchAt)),
+            el("mark","live-chat-match",turn.text.slice(matchAt,matchAt+pane.findQuery.length)),
+            document.createTextNode(turn.text.slice(matchAt+pane.findQuery.length)));
+        }else paragraph.textContent=turn.text;
+      }else paragraph.textContent=turn.text;
+      card.append(paragraph);
       fragment.append(card);
     }
     if(!pane.turns.length)
       fragment.append(el("div","live-chat-empty","A new conversation. Your real Gateway will answer here."));
     pane.log.replaceChildren(fragment);
-    pane.log.scrollTop=pane.log.scrollHeight;
+    pane.log.scrollTop=nearBottom?pane.log.scrollHeight:previousTop;
+    pane.findHost.hidden=!pane.findOpen;
+    pane.findCount.textContent=!pane.findQuery?"Searches only the messages already loaded":
+      matches.length?String(pane.findCursor+1)+" of "+matches.length+" matching loaded messages":
+        "No matches in loaded messages";
+    pane.findPrevious.disabled=!matches.length;
+    pane.findNext.disabled=!matches.length;
+    const toggle=pane.node.querySelector(".live-chat-find-toggle") as HTMLButtonElement;
+    if(toggle)toggle.setAttribute("aria-expanded",String(pane.findOpen));
     const send=pane.form.querySelector("button[type=submit]") as HTMLButtonElement;
     if(send)send.disabled=pane.busy || !["idle","completed","canceled"].includes(pane.run.snapshot().phase);
     const recover=pane.node.querySelector(".live-chat-recovery button") as HTMLButtonElement;
@@ -616,6 +680,34 @@ export class PersonalChatApplication {
     }
   }
   /** This dispatches a canonical Gateway cancellation, not UI-only hiding. */
+  /** Local in-memory search across already loaded canonical turns only. */
+  private findMatches(pane:Pane):number[]{
+    if(!pane.findOpen||!pane.findQuery)return [];
+    const term=pane.findQuery.toLowerCase();
+    return pane.turns.flatMap((turn,i)=>turn.text.toLowerCase().includes(term)?[i]:[]);
+  }
+  private scrollToFind(pane:Pane):void{
+    const match=this.findMatches(pane)[pane.findCursor];
+    if(match===undefined)return;
+    const card=pane.log.querySelectorAll(".live-chat-message")[match];
+    card?.scrollIntoView({block:"center",behavior:"instant"});
+  }
+  private stepFind(paneId:string,direction:-1|1):void{
+    const pane=this.panes.get(paneId);
+    if(!pane||this.destroyed)return;
+    const matches=this.findMatches(pane);
+    if(!matches.length)return;
+    pane.findCursor=(pane.findCursor+direction+matches.length)%matches.length;
+    this.render(pane);this.scrollToFind(pane);
+  }
+  private toggleFind(paneId:string):void{
+    const pane=this.panes.get(paneId);
+    if(!pane||this.destroyed)return;
+    pane.findOpen=!pane.findOpen;
+    pane.findCursor=0;
+    this.render(pane);
+    if(pane.findOpen){pane.findInput.focus();this.scrollToFind(pane);}
+  }
   /** Explicit, display-only owner-projected run receipt. No cost or bill claim. */
   private toggleRunDetails(paneId:string):void{
     const pane=this.panes.get(paneId);
