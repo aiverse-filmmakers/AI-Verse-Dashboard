@@ -126,6 +126,14 @@ export class DashboardClient {
     });
   }
 
+  /** Read-only owner-scoped G06.1 diagnostics for an exact run/session. */
+  async getGatewayRunDiagnostics(runId:string,sessionId:string):
+    Promise<{result:unknown;systemId?:string;observedAt:string}>{
+    if(!this.scope.workspaceId)throw new Error("Select a workspace first");
+    return this.query("aiverse.gateway.run.diagnostics",{
+      noCache:true,params:{runId,sessionId},
+    });
+  }
   async getGatewayRun(runId:string):Promise<{result:unknown;systemId?:string;observedAt:string}> {
     if(!this.scope.workspaceId)throw new Error("Select a workspace or operator scope first");
     return this.query("aiverse.gateway.run.get",{noCache:true,params:{runId}});
