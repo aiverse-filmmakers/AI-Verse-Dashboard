@@ -76,7 +76,7 @@
           "state": "in-progress",
           "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
           "evidenceRef": "apps/web/src/personal-chat-ui.ts",
-          "partialEvidence": "User-click, canonical Data-reread saved Canvas note to Chat composer is implemented in first-party source. Exact workspace/document version/selected note and async UI epoch enforced, over-limit and unsaved editor text refused, nothing sent until user independently clicks Send. Browser tests on functional source e3a161ec4e38c932be53a95d89366afcfa2aa8f8 (or later fixes). Actual binary attachments, file hashes, media transports, Skill/command grants and owner Mac acceptance are NOT implemented. G02.4 remains IN PROGRESS."
+          "partialEvidence": "User-click, canonical Data-reread saved Canvas note to Chat composer is implemented in first-party source. Exact workspace/document version/selected note and async UI epoch enforced, over-limit and unsaved editor text refused, nothing sent until user independently clicks Send. Browser tests on functional source e3a161ec4e38c932be53a95d89366afcfa2aa8f8 (or later fixes). Actual binary attachments, file hashes, media transports, Skill/command grants and owner Mac acceptance are NOT implemented. G02.4 remains IN PROGRESS. Task 648 verified upstream Data attachment_ref is metadata only and canonical Gateway messages remain string/null; real binary admission requires Data+OS+Gateway owner contract in docs/G02-4-CANONICAL-ASSET-ADMISSION-CONTRACT-2026-10-30.md. This is NOT implemented in Dashboard."
         }
       ]
     },
@@ -343,5 +343,5 @@
       ]
     }
   ],
-  "lastReconciliation": "2026-10-30: G02.4 entered IN PROGRESS for explicit Data-backed saved Canvas note-to-composer transfer only. New canonical Gateway receipt, in-pane loaded history search/TXT export and safe manual recovery implemented and tested, but not a completed model/attachments/Skills milestone. Provisional Chat 11/15, GitHub/browser 47/100 unchanged; formal 15/100. 10 chapters, 40 milestones: 4 verified, 8 implemented draft, 6 in progress, 22 planned."
+  "lastReconciliation": "2026-10-30 Task 648: owner contract for G02.4 confirmed and documented, binary attachment admission blocked upstream; G02.4 in-progress and G02.3 model choice in-progress. Unplanned diagnostics source changes reverted. Provisional Chat 11/15, GitHub/browser 47/100, formal accepted 15/100 unchanged. No milestone moved."
 }
