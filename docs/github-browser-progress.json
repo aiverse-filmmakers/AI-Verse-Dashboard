@@ -7,10 +7,10 @@
   "provisionalEngineeringEarned": 47,
   "sourceAuditComplete": false,
   "formalRoadmap": {
-    "accepted": 15,
+    "accepted": 17,
     "total": 100,
-    "nextGate": "MC2.1 independent design review and Personal-first amendment",
-    "nextPotentialAccepted": 17
+    "nextGate": "MC2.2 actual Gateway client implementation acceptance; Personal-first amendment separately unaccepted",
+    "nextPotentialAccepted": 20
   },
   "localProduction": {
     "numericalScore": null,
@@ -309,6 +309,16 @@
       "scope": "Actual canonical Gateway awaiting_approval/recovery statuses displayed, local owner-observed approval event filter, no action authority or approval POST",
       "state": "source-tested in draft; G06.2 still in-progress, no owner acceptance",
       "scoring": "Chat 11/15, overall GitHub/browser 47/100 provisional, formal 15/100 unchanged"
+    },
+    "mc2_1DesignAcceptance": {
+      "sourcePr": 43,
+      "sourceHead": "e402febc7304cdda3942019db999d2d61342cdcf",
+      "mergedCommit": "297f99b9380c9905fbe6c359668f504142c2ee89",
+      "verifiedCi": 40711556090,
+      "aiAssistedReviewId": 5718854282,
+      "scope": "Original MC2.1 Gateway design contract only, 2 historical points; not implementation, provider admission or local Mac release",
+      "formalBefore": 15,
+      "formalAfter": 17
     }
   },
   "nextUnverifiedChange": "Task 675: owner-backed G06.2 audited approval receipts or next already planned owner-contract-backed milestone; no executable approval commands without explicit OS grant/revocation and native owner acceptance. G02.3 physical models and G02.4 binary assets remain blocked."
