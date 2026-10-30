@@ -79,6 +79,67 @@ describe("Personal Chat canonical run controller",()=>{
    assert.deepEqual(calls.map(x=>x.method),
      ["aiverse.gateway.run.create","aiverse.gateway.run.get"]);
  });
+ it("canonical run receipts show only validated usage, timestamps, runtime kind and no billing",async()=>{
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running",{
+       usage:{inputTokens:0,outputTokens:0,actions:0},
+       createdAt:"2026-10-30T11:00:00.000Z",runtimeKind:"deterministic",
+       privateBearer:"never-expose",reportedCost:400,
+     });
+     if(method==="aiverse.gateway.run.get")return run("completed",{
+       output:"Verified final",usage:{inputTokens:246,outputTokens:23,actions:1},
+       createdAt:"2026-10-30T11:00:00.000Z",
+       completedAt:"2026-10-30T11:00:05.000Z",runtimeKind:"deterministic",
+       privateBearer:"never-expose",reportedCost:400,
+     });
+     throw Error("Unexpected RPC "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   const started=await chat.send("Describe the image","first");
+   assert.deepEqual(started.receipt?.usage,{inputTokens:0,outputTokens:0,actions:0});
+   assert.equal(started.receipt?.runtimeKind,"deterministic");
+   f.watchers[0].handlers.event(event("run.completed",1));
+   await nextTick();
+   const done=chat.snapshot();
+   assert.equal(done.phase,"completed");
+   assert.equal(done.output,"Verified final");
+   assert.deepEqual(done.receipt,{
+     usage:{inputTokens:246,outputTokens:23,actions:1},
+     createdAt:"2026-10-30T11:00:00.000Z",
+     completedAt:"2026-10-30T11:00:05.000Z",runtimeKind:"deterministic",
+   });
+   assert.doesNotMatch(JSON.stringify(done),/never-expose|reportedCost|400/);
+   assert.deepEqual(calls.map(c=>c.method),[
+     "aiverse.gateway.run.create","aiverse.gateway.run.get"]);
+   chat.close();
+   assert.equal(chat.snapshot().receipt,undefined);
+   assert.equal(chat.snapshot().runId,undefined);
+ });
+ it("tampered or malformed receipt is rejected, never promoted as a completed run",async()=>{
+   for(const receipt of [
+     {usage:{inputTokens:-1,outputTokens:1,actions:0}},
+     {usage:{inputTokens:1.2,outputTokens:1,actions:0}},
+     {usage:{inputTokens:1,outputTokens:1,actions:0,cost:0}},
+     {usage:{inputTokens:1,outputTokens:1,actions:0,api_key:"secret"}},
+     {createdAt:"yesterday"},
+     {runtimeKind:"https://upstream.evil/private"},
+   ]){
+     const {client}=clientWith(method=>{
+       if(method==="aiverse.gateway.run.create")return run("running");
+       if(method==="aiverse.gateway.run.get")return run("completed",{
+         output:"UNVERIFIED FAKED COMPLETION",...receipt,
+       });
+       throw Error("Unexpected method "+method);
+     });
+     const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+     await chat.send("Task","create-key");
+     f.watchers[0].handlers.event(event("run.completed",1));
+     await nextTick();
+     assert.equal(chat.snapshot().phase,"interrupted");
+     assert.equal(chat.snapshot().errorCode,"INVALID_RUN_RECEIPT");
+     assert.notEqual(chat.snapshot().output,"UNVERIFIED FAKED COMPLETION");
+   }
+ });
  it("Stop invokes the canonical run cancel exactly once and never promotes draft text",async()=>{
    const {client,calls}=clientWith(method=>{
      if(method==="aiverse.gateway.run.create")return run("running");
