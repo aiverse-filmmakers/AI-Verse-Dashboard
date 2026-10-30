@@ -36,6 +36,13 @@ const owned=system as {id?:unknown;root?:unknown};
 if(typeof owned.id!=="string"||!owned.id||typeof owned.root!=="string"||!owned.root)fail("GATEWAY_CONFIG_INVALID");
 const port=Number(env.AIVERSE_DASHBOARD_PORT||"3100");
 if(!Number.isInteger(port)||port<1024||port>65535)fail("DASHBOARD_PORT_INVALID");
+// Refuse unattended run cancellation before connecting to the Gateway.
+const uiEnabled=env.AIVERSE_DASHBOARD_PERSONAL_UI==="1";
+const cancelEnabled=env.AIVERSE_DASHBOARD_ALLOW_RUN_CANCEL==="1";
+if(uiEnabled && (!process.stdin.isTTY || !process.stderr.isTTY))
+  fail("LOCAL_APP_INTERACTIVE_TTY_REQUIRED");
+if(cancelEnabled && (!uiEnabled || !process.stdin.isTTY || !process.stderr.isTTY))
+  fail("RUN_CANCEL_REQUIRES_INTERACTIVE_OWNER");
 
 // This registry rechecks OS compatibility, realpath containment and root
 // identity before granting any outbound canonical-Gateway operation.
@@ -51,14 +58,6 @@ let readiness;
 try{readiness=await transport.preflight();}
 catch{fail("CANONICAL_GATEWAY_PREFLIGHT_FAILED")}
 finally{transport.invalidate()}
-// The operator must opt in to paired UI and *separately* to run Stop.
-// Plain connected-host sessions and headless automation cannot enable it.
-const uiEnabled=env.AIVERSE_DASHBOARD_PERSONAL_UI==="1";
-const cancelEnabled=env.AIVERSE_DASHBOARD_ALLOW_RUN_CANCEL==="1";
-if(uiEnabled && (!process.stdin.isTTY || !process.stderr.isTTY))
-  fail("LOCAL_APP_INTERACTIVE_TTY_REQUIRED");
-if(cancelEnabled && (!uiEnabled || !process.stdin.isTTY || !process.stderr.isTTY))
-  fail("RUN_CANCEL_REQUIRES_INTERACTIVE_OWNER");
 const bridge=new CanonicalGatewayBridge(registry,[{
   dashboardSystemId:systemId,canonicalSystemId:owned.id,origin:address,
   resolveBearer,allowRunCancel:cancelEnabled,
