@@ -285,7 +285,11 @@ server.on("upgrade",(req,socket,head)=>{
         }
         makeEvent("assistant.delta",2,"Draft stream");
         if(run.slowStream && run.status!=="resuming")return; // Wait for a real control, not WS closure.
-        makeEvent("run.completed",3);
+        if(run.slowStream && run.status==="resuming"){
+          makeEvent("run.resumed",3);
+          makeEvent("assistant.delta",4,"Fresh resumed generation");
+          makeEvent("run.completed",5);
+        }else makeEvent("run.completed",3);
       }
     });
     ws.on("close",()=>sockets.delete(ws));
