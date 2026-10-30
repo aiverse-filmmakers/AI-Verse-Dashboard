@@ -224,7 +224,22 @@ Acceptance:
 - design review against Gateway protocol and Dashboard invariants.
 
 ### MC2.2 - AI-Verse Gateway client package - 3 points - A
-Status: PENDING
+Status: **SOURCE IMPLEMENTATION PARTIALLY MERGED, FULL ACCEPTANCE PENDING (0/3 points)**
+
+**31 October 2026 review checkpoint:** The following bounded, AI-assisted Code Review-cleared implementation PRs have exact-head Linux/macOS/Windows Dashboard CI and are merged into `main` in sequence. This is actual source, not a simulated feature claim:
+
+| Slice | Merged PR / commit | Exact-head CI | Scope |
+| --- | --- | --- | --- |
+| Host-only canonical Gateway transport | [#46](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/46) / `21ddcaf22dd86fa752b7cda46d8668b48403b93c` | 41139063402 | Loopback host binding, bearer redaction, model/status, run control, bounded SSE |
+| Streamed JSON byte cap | [#48](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/48) / `9ce334bb9f0c46beeeb2119f40fa971a6ffd396a` | 41139745419 | 1 MiB byte bound before buffering, forged-size negatives |
+| Native scope/lease Gateway bridge | [#49](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/49) / `79a5c9f9a51019b88260170229272621665fadf2` | 41140143589 | Host credential mapping, allowlisted projection, monotonic OS rebind/re-register revocation |
+| Authenticated HTTP /rpc dispatch | [#51](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/51) / `ffa6062f387560d0fbdef341d418439882cbed3e` | 41140354565 | Existing local bearer+Origin, absent owner mapping deny-first, redacted canonical projections |
+| Scoped WebSocket run events | [#52](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/52) / `1c46933a57cfa7dbe5075a658d08ed7482ae6711` | 41140792051 | Event allowlist, workspace-switch epoch fence, malformed frames fail closed |
+| Typed browser RPC facade | [#53](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/53) / `728d8c6b3540a9752b29ca74a47e39754fabd0fc` | 41140987362 | No live effect cache, A→B→A response fencing, typed run operations |
+
+All six have documented scoped AI-assisted **COMMENT** reviews on their respective PRs. **These source reviews are not independent GitHub approval or permission to use an owner/private Mac.**
+
+**Remaining original MC2.2 acceptance:** Integrate the above modules against the real pinned canonical Gateway owner and build its next exact-head disposable CI proof with actual run/stream/control and negative scope/permission checks; reconcile owner-supported approval actions, reliable timeout/idempotency and no direct canonical-domain writes. Do not assume the yet-unmerged Gateway conversation discovery PR #80 is a released session-history API. A working Personal Chat UI, browser app session/credential admission, paid provider choice and user Mac install are later or separate owner-gated requirements; do not infer their readiness. The historic formal roadmap remains **17/100 accepted** (MC2.2 still 0/3) and provisional GitHub/Browser **47/100** is not automatically increased by these source merges. See [review checkpoint](MC2.2-CODE-REVIEW-CHECKPOINT-2026-10-31.md) for the exact risks and next acceptance action.
 
 Deliver:
 - typed client for models/chat/runs/events/cancel/pause/resume/approval;
