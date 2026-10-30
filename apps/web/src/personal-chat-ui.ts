@@ -71,6 +71,8 @@ export class PersonalChatApplication {
   private readonly diagnostics:PersonalDiagnostics;
   private readonly activity:PersonalAgentActivity;
   private readonly models:PersonalModelStatus;
+  private runControlEpoch=0;
+  private runCancelSupported=false;
   private historyEpoch=0;
   private historyNextOffset:number|null=null;
   private historyLoading=false;
@@ -131,6 +133,7 @@ export class PersonalChatApplication {
       new DashboardClient(session.dashboardOrigin,this.selected,
         session.authentication==="host-cookie" ? {mode:"host-cookie"} : this.requireBearer(session)));
     this.openPane();
+    void this.refreshRunControls();
   }
   get paneIds():string[]{return [...this.panes.keys()];}
   /** Host-owned selection, not parsed from model text or preview workspace IDs. */
@@ -139,6 +142,9 @@ export class PersonalChatApplication {
     if(!next.systemId || !next.workspaceId)throw Error("Explicit OS scope required");
     this.selected={...next};
     this.historyClient.retarget(this.selected);
+    this.runControlEpoch++;
+    this.runCancelSupported=false;
+    void this.refreshRunControls();
     this.canvas.retarget(this.selected);
     this.diagnostics.retarget(this.selected);
     this.activity.retarget(this.selected);
@@ -157,6 +163,26 @@ export class PersonalChatApplication {
       pane.busy=false;
       this.render(pane);
       pane.status.textContent="New workspace selected. Previous runs remain in Gateway.";
+    }
+  }
+  /** Only authenticated host status can unlock Stop in this workspace. */
+  private async refreshRunControls():Promise<void>{
+    const epoch=++this.runControlEpoch,scope={...this.selected};
+    this.runCancelSupported=false;
+    for(const pane of this.panes.values())this.render(pane);
+    try{
+      const response=await this.historyClient.gatewayStatus();
+      if(this.destroyed||epoch!==this.runControlEpoch
+        ||scope.systemId!==this.selected.systemId
+        ||scope.workspaceId!==this.selected.workspaceId)return;
+      const value=response.result as Record<string,unknown>;
+      this.runCancelSupported=value?.source==="canonical-gateway"
+        &&value.workspaceId===scope.workspaceId
+        &&value.runCancelSupported===true;
+    }catch{this.runCancelSupported=false;}
+    finally{
+      if(!this.destroyed&&epoch===this.runControlEpoch)
+        for(const pane of this.panes.values())this.render(pane);
     }
   }
   private async toggleHistory():Promise<void>{
@@ -297,8 +323,10 @@ export class PersonalChatApplication {
     const clear=button("New chat",()=>this.newConversation(paneId),"");
     const retry=button("Retry request",()=>{void this.retry(paneId);},"live-chat-retry");
     const reconnect=button("Reconnect run",()=>{void this.reconnectRun(paneId);},"live-chat-reconnect");
+    const stop=button("Stop run",()=>{void this.stopRun(paneId);},"live-chat-stop");
+    stop.title="Requires the trusted host to authorize run cancellation";
     const close=button("Close chat",()=>this.closePane(paneId),"");
-    actions.append(open,clear,retry,reconnect,close);heading.append(name,actions);
+    actions.append(open,clear,retry,reconnect,stop,close);heading.append(name,actions);
     const scope=el("div","live-chat-scope","Workspace: "+this.selected.workspaceId);
     const log=el("div","live-chat-log");
     log.setAttribute("role","log");log.setAttribute("aria-live","polite");
@@ -414,7 +442,7 @@ export class PersonalChatApplication {
     pane.log.replaceChildren(fragment);
     pane.log.scrollTop=pane.log.scrollHeight;
     const send=pane.form.querySelector("button[type=submit]") as HTMLButtonElement;
-    if(send)send.disabled=pane.busy;
+    if(send)send.disabled=pane.busy || !["idle","completed"].includes(pane.run.snapshot().phase);
     const recover=pane.node.querySelector(".live-chat-recovery button") as HTMLButtonElement;
     if(recover)recover.disabled=pane.busy;
     const retry=pane.node.querySelector(".live-chat-retry") as HTMLButtonElement;
@@ -423,6 +451,9 @@ export class PersonalChatApplication {
     const reconnect=pane.node.querySelector(".live-chat-reconnect") as HTMLButtonElement;
     if(reconnect)reconnect.disabled=pane.busy || pane.run.snapshot().phase!=="interrupted"
       || !pane.run.snapshot().runId;
+    const stop=pane.node.querySelector(".live-chat-stop") as HTMLButtonElement;
+    if(stop)stop.disabled=!this.runCancelSupported || pane.busy
+      ||pane.run.snapshot().phase!=="running" || !pane.run.snapshot().runId;
     const split=pane.node.querySelector(".live-pane-actions .live-chat-split") as HTMLButtonElement;
     if(split)split.disabled=this.panes.size>=MAX_PANES;
   }
@@ -469,6 +500,18 @@ export class PersonalChatApplication {
       this.render(pane);
     }
   }
+  /** This dispatches a canonical Gateway cancellation, not UI-only hiding. */
+  async stopRun(paneId:string):Promise<void>{
+    const pane=this.panes.get(paneId);
+    if(!pane||this.destroyed||!this.runCancelSupported||pane.busy
+      ||pane.run.snapshot().phase!=="running")return;
+    try{await pane.run.stop(id());}
+    catch(err){
+      if(this.panes.get(paneId)!==pane || this.destroyed)return;
+      pane.status.textContent="Stop unavailable · "+errorCode(err);
+      this.render(pane);
+    }
+  }
   async recover(paneId:string,runId:string):Promise<void>{
     const pane=this.panes.get(paneId);
     if(!pane||this.destroyed||pane.busy)return;
@@ -507,7 +550,7 @@ export class PersonalChatApplication {
     for(const other of this.panes.values())this.render(other);
   }
   destroy():void{
-    this.destroyed=true;this.historyEpoch++;
+    this.destroyed=true;this.historyEpoch++;this.runControlEpoch++;
     this.canvas.destroy();
     this.diagnostics.destroy();
     this.activity.destroy();
