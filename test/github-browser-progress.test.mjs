@@ -6,7 +6,7 @@ const file=new URL("../docs/github-browser-progress.json",import.meta.url);
 const base=()=>JSON.parse(readFileSync(file,"utf8"));
 test("GitHub score, formal roadmap and local release are separate",()=>{
  const r=validateGithubBrowserProgress(base());
- assert.deepEqual(r.remote,{earned:44,total:100,provisional:true});
+ assert.deepEqual(r.remote,{earned:45,total:100,provisional:true});
  assert.deepEqual(r.formal,{earned:15,total:100});
  assert.equal(r.local.numericalScore,null);
  assert.ok(r.local.blockers>=5);
@@ -30,4 +30,14 @@ test("cannot claim owner-private Mac production readiness from GitHub evidence",
 test("cannot over-credit any individual engineering workstream",()=>{
  const d=base();d.categories[6].provisionalEarned=6;
  assert.throws(()=>validateGithubBrowserProgress(d),/INVALID_CATEGORY_EVIDENCE/);
+});
+
+test("Chat provisional model discovery increment is backed by a verified source identity",()=>{
+ const p=base();
+ const chat=p.categories.find(x=>x.id==="chat");
+ assert.equal(chat.provisionalEarned,9);
+ assert.equal(chat.evidenceStatus,"source-and-ci");
+ assert.equal(p.evidence.canonicalModelInventoryReconnect.sourceCommit,
+  "e94b2fbb7c4d7494525c55e8711a43cc6d167956");
+ assert.equal(p.formalRoadmap.accepted,15);
 });
