@@ -271,12 +271,14 @@ describe("Personal Chat canonical run controller",()=>{
    });
    const chat=new PersonalChatRunController(client,testFeed().feed);
    assert.equal((await chat.openSession("session-a")).hasOlder,true);
-   let total=50,hasOlder=true;
+   let total=50,hasOlder=true,lastPage;
    while(hasOlder){
      const page=await chat.loadOlderSessionRuns();
-     total+=page.turns.length/2;hasOlder=page.hasOlder;
+     total+=page.turns.length/2;hasOlder=page.hasOlder;lastPage=page;
    }
    assert.equal(total,200);
+   assert.equal(lastPage?.limitedByView,true,
+     "earlier canonical history exists after the bounded 200-run view");
    assert.deepEqual(calls.map(c=>c.params?.offset),[0,25,50,75,100,125,150,175]);
    await assert.rejects(chat.loadOlderSessionRuns(),(e:unknown)=>
      (e as {code?:string}).code==="CHAT_OLDER_HISTORY_UNAVAILABLE");
