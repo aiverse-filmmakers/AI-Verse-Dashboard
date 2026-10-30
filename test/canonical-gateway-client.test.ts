@@ -193,7 +193,7 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
       pull(controller){
         reads++;
         controller.enqueue(new Uint8Array(700_000));
-        if(reads>=2)controller.close();
+        // Keep the stream open so cancellation is observable at the limit.
       },
       cancel(){closed=true;}
     }),{headers:{"content-type":"application/json","content-length":"2"}}));
