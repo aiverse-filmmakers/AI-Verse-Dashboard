@@ -372,7 +372,8 @@ export class PersonalChatRunController {
    */
   async stop(operationId:string):Promise<ChatRunView>{
     if(!SAFE_ID.test(operationId))fail("CHAT_CONTROL_ID_INVALID");
-    if(this.view.phase!=="running" || !this.view.runId || !this.view.sessionId)
+    if(!["running","paused","recovery-required"].includes(this.view.phase)
+      ||!this.view.runId || !this.view.sessionId)
       fail("CHAT_STOP_UNAVAILABLE");
     const scope=requiredScope(this.client.getScope());
     const runId=this.view.runId,sessionId=this.view.sessionId;
