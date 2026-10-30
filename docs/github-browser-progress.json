@@ -283,7 +283,12 @@
       "scope": "Authenticated safe canonical Gateway run receipts without unverifiable Token cost; per-pane loaded-history find/TXT export; manual recovery cannot mix sessions; explicit Canvas selected saved note re-read from Data before copying to Chat composer, no automatic Gateway send.",
       "limitations": "G02.4 only IN PROGRESS: binary attachments, Data asset/MIME admission, OS Skills, provider selection, native owner Mac acceptance NOT implemented.",
       "score": "No increase: Chat 11/15, GitHub/browser 47/100 provisional, formal 15/100 unchanged; owner-admitted attachment/skill contract still missing."
+    },
+    "task648AssetContract": {
+      "document": "docs/G02-4-CANONICAL-ASSET-ADMISSION-CONTRACT-2026-10-30.md",
+      "state": "owner-contract defined; upstream data binary asset API and Gateway modality dispatch not implemented",
+      "scoring": "No score change. Chat 11/15, GitHub/browser 47/100 provisional, formal 15/100."
     }
   },
-  "nextUnverifiedChange": "Task 648: native owner-approved Data asset references (including binary payload security), Gateway/Connections physical models or OS-granted Skills; preserve explicit permission and revocation boundaries."
+  "nextUnverifiedChange": "Task 649: implement the approved canonical Data asset/attachment and Gateway modality-admission contract only after owner APIs exist. Required owner gates: docs/G02-4-CANONICAL-ASSET-ADMISSION-CONTRACT-2026-10-30.md. Physical model choice separately awaits Gateway+Connections owner approval. No invented upload or Skill runner."
 }
