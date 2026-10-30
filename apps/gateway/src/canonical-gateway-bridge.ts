@@ -19,10 +19,13 @@ export interface ApprovedCanonicalGateway {
   origin: string;
   /** Secret resolved by the trusted runtime, not serialized to a browser. */
   resolveBearer: HostGatewayBinding["resolveBearer"];
+  /** Explicit trusted-launcher opt-in. Default false: no browser run control. */
+  allowRunCancel?:boolean;
 }
 const methods = new Set([
   "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.create", "aiverse.gateway.run.get",
   "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
+  "aiverse.gateway.run.cancel",
 ]);
 const identifier = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
 const input = z.object({
@@ -34,6 +37,8 @@ const input = z.object({
   sessionId: identifier.optional(),
 }).strict();
 const getInput = z.object({runId:identifier}).strict();
+const cancelInput=z.object({runId:identifier,sessionId:identifier,
+  operationId:identifier}).strict();
 const pageInput=z.object({limit:z.number().int().min(1).max(25).optional(),
   offset:z.number().int().min(0).max(10_000).optional()}).strict();
 const historyInput=pageInput.extend({sessionId:identifier}).strict();
@@ -48,6 +53,7 @@ const SAFE_CODES = new Set([
   "HTTP_401", "HTTP_403", "HTTP_404", "HTTP_409", "HTTP_429", "HTTP_503",
   "SESSION_NOT_FOUND", "INVALID_HISTORY_QUERY", "INVALID_HISTORY_SCOPE",
   "HISTORY_BINDING_MISMATCH", "HISTORY_INDEX_TOO_LARGE",
+  "RUN_CONTROL_NOT_AUTHORIZED", "RUN_NOT_CANCELABLE",
 ]);
 function failureCode(error: unknown): string {
   const code=(error as {code?:unknown})?.code;
@@ -194,7 +200,7 @@ export class CanonicalGatewayBridge {
               inferenceVerified:false},
             capabilities:{runCreate:true,runGet:true,events:true,controls:false,
               conversationLibrary:true,providerSelection:false},
-            source:"canonical-gateway"});
+            source:"canonical-gateway",runCancelSupported:configured.binding.allowRunCancel===true});
         }
         if(frame.method==="aiverse.gateway.models"){
           if(frame.params!==undefined && !z.object({}).strict().safeParse(frame.params).success)
@@ -231,6 +237,30 @@ export class CanonicalGatewayBridge {
           // A real Gateway status/identity check, not an inferred browser state.
           await client.preflight(signal);
           return respond(true,boundedRun(await client.createRun({...args,signal})));
+        }
+        if(frame.method==="aiverse.gateway.run.cancel"){
+          // The paired browser is not a native owner grant. Only a trusted
+          // launch configuration may *also* opt this specific control in.
+          if(configured.binding.allowRunCancel!==true)
+            throw new GatewayTransportError("RUN_CONTROL_NOT_AUTHORIZED");
+          const parsed=cancelInput.safeParse(frame.params);
+          if(!parsed.success)throw new GatewayTransportError("INVALID_ENVELOPE");
+          const {runId,sessionId,operationId}=parsed.data;
+          const canceled=await client.controlRun({runId,action:"cancel",operationId,
+            reason:"dashboard_operator_stop",signal,
+            validateBeforePost:(run)=>{
+              if(run.session_id!==sessionId)
+                throw new GatewayTransportError("SESSION_BINDING_MISMATCH");
+              if(!["queued","running","paused","paused_recovery_required"].includes(run.status))
+                throw new GatewayTransportError("RUN_NOT_CANCELABLE");
+              if(this.registry.resolveRoot(system)!==configured.root
+                ||this.registry.bindingGeneration(system)!==configured.generation)
+                throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
+              if(workspace!=="operator")getWorkspace(this.registry,system,workspace);
+              if(signal?.aborted)throw new GatewayTransportError("ABORTED");
+            },
+          });
+          return respond(true,boundedRun(canceled));
         }
         if(frame.method==="aiverse.gateway.run.get"){
           const parse=getInput.safeParse(frame.params);
