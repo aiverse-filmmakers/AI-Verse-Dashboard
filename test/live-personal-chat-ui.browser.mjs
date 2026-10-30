@@ -146,7 +146,7 @@ const server=createServer(async(req,res)=>{
     let result;
     if(frame.method==="system.registry.summary"){
       result={source:"dashboard-os-registry",systemId:frame.systemId,
-        workspaceId:frame.workspaceId,registered:1,authorized:1,
+        workspaceId:frame.workspaceId,registered:1,authorized:1,workspaces:1,
         selectedAuthorized:true};
     }else if(frame.method==="aiverse.gateway.status"){
       result={source:"canonical-gateway",workspaceId:frame.workspaceId,
