@@ -64,6 +64,9 @@ function gatewayFixture(options:{slowEvents?:boolean}={}){
      } else finish();
      return;
    }
+   if(req.method==="POST"&&req.url==="/v1/runs/run-a/cancel"){
+     run.status="canceled";return send(200,run);
+   }
    if(req.method==="POST"&&req.url==="/v1/runs")return send(202,run);
    if(req.method==="GET"&&req.url==="/v1/runs/run-a")return send(200,run);
    return send(404,{error:{code:"NOT_FOUND"}});
@@ -158,6 +161,87 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
    assert.equal(found.data.ok,true);
    assert.equal((found.data.result as Record<string,unknown>).sessionId,"session-a");
    assert.doesNotMatch(JSON.stringify(found.data),/messages|private_data|principal/);
+ });
+ it("Stop defaults denied without trusted host opt-in and does not touch upstream",async()=>{
+   const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+   const upstream=gatewayFixture(),port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",
+     origin:"http://127.0.0.1:"+port,resolveBearer:()=>"actual-host-gateway-token",
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),
+     new SubscriptionHub(),{port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   const status=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.status",a.systemId));
+   assert.equal((status.data.result as Record<string,unknown>).runCancelSupported,false);
+   const before=upstream.received.length;
+   const denied=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.cancel",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-a",operationId:"op-1",
+     }));
+   assert.equal(denied.data.ok,false);
+   assert.equal((denied.data.error as {code:string}).code,"RUN_CONTROL_NOT_AUTHORIZED");
+   assert.equal(upstream.received.length,before,"unapproved Stop cannot probe the upstream run");
+ });
+ it("explicit host-enabled Stop checks session, scope, terminal state and parameters",async()=>{
+   const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+   const upstream=gatewayFixture(),port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",
+     origin:"http://127.0.0.1:"+port,resolveBearer:()=>"actual-host-gateway-token",
+     allowRunCancel:true,
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),
+     new SubscriptionHub(),{port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   const status=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.status",a.systemId));
+   assert.equal((status.data.result as Record<string,unknown>).runCancelSupported,true);
+   const invalid=[
+     {runId:"run-a",sessionId:"session-a",operationId:"op-1",decision:"approve"},
+     {runId:"../../private",sessionId:"session-a",operationId:"op-1"},
+     {runId:"run-a",sessionId:"session-a",operationId:"../../private"},
+   ];
+   const before=upstream.received.length;
+   for(const params of invalid){
+     const res=await rpc(dash.port,dash.authToken,
+       frame("aiverse.gateway.run.cancel",a.systemId,"film",params));
+     assert.equal(res.data.ok,false);
+     assert.equal((res.data.error as {code:string}).code,"INVALID_ENVELOPE");
+   }
+   assert.equal(upstream.received.length,before);
+   const mismatched=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.cancel",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-foreign",operationId:"op-2",
+     }));
+   assert.equal((mismatched.data.error as {code:string}).code,"SESSION_BINDING_MISMATCH");
+   assert.equal(upstream.received.filter(x=>x.method==="POST").length,0);
+   const stopped=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.cancel",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-a",operationId:"op-3",
+     }));
+   assert.equal(stopped.data.ok,true);
+   const data=stopped.data.result as Record<string,unknown>;
+   assert.equal(data.status,"canceled");
+   assert.equal(data.source,"canonical-gateway");
+   assert.doesNotMatch(JSON.stringify(data),/principal|private_data|sensitive/);
+   const post=upstream.received.find(x=>x.path==="/v1/runs/run-a/cancel");
+   assert.equal(post?.method,"POST");
+   assert.deepEqual(post?.body,{operation_id:"op-3",reason:"dashboard_operator_stop"});
+   assert.equal(post?.auth,"Bearer actual-host-gateway-token");
+   const repeated=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.cancel",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-a",operationId:"op-4",
+     }));
+   assert.equal((repeated.data.error as {code:string}).code,"RUN_NOT_CANCELABLE");
+   assert.equal(upstream.received.filter(x=>x.path==="/v1/runs/run-a/cancel").length,1);
+   const wrong=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.cancel",a.systemId,"operator",{
+       runId:"run-a",sessionId:"session-a",operationId:"op-5",
+     }));
+   assert.equal((wrong.data.error as {code:string}).code,"RUN_BINDING_MISMATCH");
+   assert.equal(upstream.received.filter(x=>x.path==="/v1/runs/run-a/cancel").length,1);
  });
  it("fails closed for wrong system, absent workspace, unconfigured host and invalid params",async()=>{
    const reg=new SystemRegistry();
