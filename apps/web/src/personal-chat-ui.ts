@@ -289,6 +289,8 @@ export class PersonalChatApplication {
     const idle=[...this.panes.values()].find(p=>!p.busy&&p.turns.length===0
       &&p.run.snapshot().phase==="idle");
     const paneId=idle?.id??(this.panes.size<MAX_PANES?this.openPane():undefined);
+    if(idle?.node.classList.contains("live-chat-minimized"))
+      idle.node.classList.remove("live-chat-minimized");
     if(!paneId){
       this.historyPanel.querySelector(".live-chat-history-no-room")?.remove();
       this.historyPanel.prepend(el("p","live-chat-history-status live-chat-history-no-room",
