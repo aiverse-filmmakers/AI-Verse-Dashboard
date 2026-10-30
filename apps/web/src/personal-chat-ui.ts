@@ -247,8 +247,7 @@ export class PersonalChatApplication {
         const label=el("span","",typeof record.title==="string"
           ?record.title.slice(0,120):record.session_id);
         const open=button("Open conversation",()=>{
-          const first=this.panes.values().next().value as Pane|undefined;
-          if(first)void this.openHistoricalSession(first.id,record.session_id as string);
+          void this.openFromHistory(record.session_id as string);
         });
         item.append(label,open);rows.append(item);
       }
@@ -281,6 +280,22 @@ export class PersonalChatApplication {
     }finally{
       if(epoch===this.historyEpoch)this.historyLoading=false;
     }
+  }
+  /** History must never silently replace an existing chat, including a
+   * currently running generation. Find an empty pane or open a new split.
+   */
+  private async openFromHistory(sessionId:string):Promise<void>{
+    if(this.destroyed)return;
+    const idle=[...this.panes.values()].find(p=>!p.busy&&p.turns.length===0
+      &&p.run.snapshot().phase==="idle");
+    const paneId=idle?.id??(this.panes.size<MAX_PANES?this.openPane():undefined);
+    if(!paneId){
+      this.historyPanel.querySelector(".live-chat-history-no-room")?.remove();
+      this.historyPanel.prepend(el("p","live-chat-history-status live-chat-history-no-room",
+        "All three chats are in use. Close a chat or start a new one before opening history."));
+      return;
+    }
+    await this.openHistoricalSession(paneId,sessionId);
   }
   async openHistoricalSession(paneId:string,sessionId:string):Promise<void>{
     const pane=this.panes.get(paneId);
