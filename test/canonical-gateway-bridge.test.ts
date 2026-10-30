@@ -29,6 +29,7 @@ async function listen(server:Server):Promise<number>{
 }
 function gatewayFixture(options:{slowEvents?:boolean}={}){
  const received:{method:string;path:string;auth:string;key:string;body:unknown}[]=[];
+ let storedRunStatus="running";
  const server=createServer(async(req,res)=>{
    const chunks:Buffer[]=[];for await(const b of req)chunks.push(b as Buffer);
    let body:unknown;try{body=JSON.parse(Buffer.concat(chunks).toString("utf8"));}catch{body=null;}
@@ -42,7 +43,7 @@ function gatewayFixture(options:{slowEvents?:boolean}={}){
    if(req.method==="GET"&&req.url==="/v1/models")return send(200,{
      object:"list",data:[{id:"aiverse"}]});
    const run={run_id:"run-a",session_id:"session-a",system_id:"canonical-a",workspace_id:"film",
-     status:"running",principal:"local-operator-secret",messages:[{content:"sensitive"}],
+     status:storedRunStatus,principal:"local-operator-secret",messages:[{content:"sensitive"}],
      output:{content:"Test result"},private_data:"do-not-show"};
    if(req.method==="GET"&&req.url==="/v1/runs/run-a/events"){
      res.writeHead(200,{"content-type":"text/event-stream","cache-control":"no-store"});
@@ -65,7 +66,7 @@ function gatewayFixture(options:{slowEvents?:boolean}={}){
      return;
    }
    if(req.method==="POST"&&req.url==="/v1/runs/run-a/cancel"){
-     run.status="canceled";return send(200,run);
+     storedRunStatus="canceled";run.status=storedRunStatus;return send(200,run);
    }
    if(req.method==="POST"&&req.url==="/v1/runs")return send(202,run);
    if(req.method==="GET"&&req.url==="/v1/runs/run-a")return send(200,run);
