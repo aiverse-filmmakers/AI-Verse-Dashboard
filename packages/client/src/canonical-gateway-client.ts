@@ -290,6 +290,8 @@ export class CanonicalGatewayClient {
   async controlRun(args: {
     runId: string; action: GatewayControl; operationId: string;
     reason?: string; decision?: GatewayDecision; signal?: AbortSignal;
+    /** Trusted-host-only short-lease recheck after the canonical owner GET. */
+    validateBeforePost?: (prechecked:GatewayRun)=>void | Promise<void>;
   }): Promise<GatewayRun> {
     const id = safeId(args.runId);
     safeId(args.operationId);
@@ -297,7 +299,8 @@ export class CanonicalGatewayClient {
     if (args.action === "approval" && !["approve","deny"].includes(args.decision ?? "")) throw new GatewayTransportError("APPROVAL_INVALID");
     // Non-atomic precheck. Host must gate UI controls on an admitted owner
     // lease and separately resolve the documented workspace-rebind race.
-    await this.getRun(args.runId,args.signal);
+    const prechecked=await this.getRun(args.runId,args.signal);
+    await args.validateBeforePost?.(prechecked);
     const body: Record<string, unknown> = { operation_id:args.operationId };
     if (args.reason) body.reason = args.reason;
     if (args.action === "approval") body.decision = args.decision;
