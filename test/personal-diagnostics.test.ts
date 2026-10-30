@@ -247,32 +247,30 @@ test("G06.1 diagnostics reject invalid safety flags, forged object shapes or pri
  }
 });
 
-const systemList=()=>({systems:[
- {systemId:"aiverse-01",authorized:true,label:"Host OS",root:"/secret/private"},
- {systemId:"aiverse-02",authorized:false,label:"Revoked OS",root:"/secret/revoked"},
-]});
-test("G06.1 OS inventory shows exact count and no path or untrusted system label",()=>{
- const observation=inspectSystems(systemList(),"aiverse-01");
+const systemSummary=()=>({source:"dashboard-os-registry",
+ systemId:"aiverse-01",workspaceId:"operator",registered:2,authorized:1,
+ selectedAuthorized:true,
+ private_roots:["/secret/system-2"],labels:["another private registered system"]});
+test("G06.1 OS summary displays scoped actual count but never other registry metadata",()=>{
+ const observation=inspectSystems(systemSummary(),"aiverse-01","operator");
  assert.equal(observation.state,"available");
  assert.match(observation.details,/2 registered · 1 authorized/);
- assert.doesNotMatch(JSON.stringify(observation),/secret|revoked|Host OS/);
+ assert.doesNotMatch(JSON.stringify(observation),/secret|private|labels|roots/);
 });
-test("G06.1 system inventory rejects missing, revoked or duplicated selected system",()=>{
- for(const item of [
-   {systems:[]},
-   {systems:[{systemId:"aiverse-01",authorized:false}]},
-   {systems:[{systemId:"aiverse-02",authorized:true}]},
-   {systems:[{systemId:"aiverse-01",authorized:true},{systemId:"aiverse-01",authorized:true}]},
-   {systems:[{systemId:"aiverse-01",authorized:true},null]},
-   {systems:[{systemId:"A/../../",authorized:true}]},
- ])assert.throws(()=>inspectSystems(item,"aiverse-01"),
-   /DIAGNOSTICS_SCOPE_MISMATCH|DIAGNOSTICS_INVALID_SOURCE/);
+test("G06.1 OS summary rejects wrong owner, wrong scope and unapproved selected system",()=>{
+ for(const update of [
+  {source:"preview"},
+  {systemId:"aiverse-02"},
+  {workspaceId:"other"},
+  {selectedAuthorized:false},
+ ])assert.throws(()=>inspectSystems({...systemSummary(),...update},"aiverse-01","operator"),
+   /DIAGNOSTICS_SCOPE_MISMATCH/);
 });
-test("G06.1 system inventory rejects oversized registry and forged authorization",()=>{
- assert.throws(()=>inspectSystems({systems:Array.from({length:65},(_,i)=>({
-   systemId:"sys-"+i,authorized:true,
- }))},"sys-1"),/DIAGNOSTICS_INVALID_SOURCE/);
- assert.throws(()=>inspectSystems({systems:[{
-   systemId:"aiverse-01",authorized:"yes",root:"private",
- }]},"aiverse-01"),/DIAGNOSTICS_INVALID_SOURCE/);
+test("G06.1 OS summary rejects fabricated counts and malformed aggregates",()=>{
+ for(const update of [
+  {registered:0}, {authorized:0}, {registered:1,authorized:3},
+  {registered:-1}, {registered:Infinity}, {authorized:"2"},
+  {registered:2.5},{registered:1_000_001},
+ ])assert.throws(()=>inspectSystems({...systemSummary(),...update},"aiverse-01","operator"),
+   /DIAGNOSTICS_INVALID_SOURCE/);
 });
