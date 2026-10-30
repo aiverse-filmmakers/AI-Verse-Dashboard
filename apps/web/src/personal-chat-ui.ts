@@ -312,8 +312,10 @@ export class PersonalChatApplication {
     const pane=this.panes.get(paneId);
     if(!pane||this.destroyed||pane.historyLoading||!pane.historyHasOlder)return;
     const generation=pane.generation,scope={...this.selected};
+    const clickAnchor=pane.log.scrollTop;
     pane.historyLoading=true;pane.historyError=undefined;
     this.render(pane);
+    pane.log.scrollTop=clickAnchor;
     let scrollAnchor:{height:number;top:number}|undefined;
     try{
       const result=await pane.run.loadOlderSessionRuns();
