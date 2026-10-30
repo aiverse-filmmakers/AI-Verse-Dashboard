@@ -9,6 +9,14 @@ import { DashboardClient, type ClientScope } from "./client.js";
 export type ChatRunPhase =
   | "idle" | "submitting" | "running" | "interrupted" | "completed"
   | "failed" | "canceled" | "blocked" | "paused" | "recovery-required";
+/** Only fields explicitly projected by the trusted canonical Gateway bridge.
+ * Cost is intentionally excluded until Token verifies cost truth. */
+export interface ChatRunReceipt {
+  usage?:{inputTokens:number;outputTokens:number;actions:number};
+  createdAt?:string;
+  completedAt?:string;
+  runtimeKind?:string;
+}
 export interface ChatRunView {
   systemId: string;
   workspaceId: string;
@@ -20,6 +28,7 @@ export interface ChatRunView {
   canonicalStatus?: string;
   /** Canonical session is known but preceding raw turns are unavailable. */
   contextLimited?: boolean;
+  receipt?: ChatRunReceipt;
 }
 export interface ChatRunEvent {
   systemId: string;
@@ -61,6 +70,7 @@ function current(scope: Required<ClientScope>, other: ClientScope): boolean {
 }
 function asRun(result: unknown, expected: Required<ClientScope>, runId?: string): {
   runId: string; sessionId: string; status: string; output?: string;
+  receipt:ChatRunReceipt;
 } {
   if (!result || typeof result !== "object" || Array.isArray(result))
     fail("INVALID_RUN_PROJECTION");
@@ -74,9 +84,39 @@ function asRun(result: unknown, expected: Required<ClientScope>, runId?: string)
     || value.source !== "canonical-gateway"
     || (value.output !== undefined && typeof value.output !== "string"))
     fail("INVALID_RUN_PROJECTION");
+  // Exact, bounded fields only. All raw cost is intentionally omitted because
+  // the Token owner, not Gateway counters, owns verifiable billed cost truth.
+  const receipt:ChatRunReceipt={};
+  if(value.usage!==undefined){
+    if(!value.usage||typeof value.usage!=="object"||Array.isArray(value.usage))
+      fail("INVALID_RUN_RECEIPT");
+    const usage=value.usage as Record<string,unknown>;
+    const safe=(v:unknown)=>typeof v==="number"&&Number.isSafeInteger(v)
+      &&v>=0&&v<=1_000_000_000_000;
+    if(!safe(usage.inputTokens)||!safe(usage.outputTokens)||!safe(usage.actions)
+      ||Object.keys(usage).some(k=>!["inputTokens","outputTokens","actions"].includes(k)))
+      fail("INVALID_RUN_RECEIPT");
+    receipt.usage={inputTokens:usage.inputTokens as number,
+      outputTokens:usage.outputTokens as number,actions:usage.actions as number};
+  }
+  for(const key of ["createdAt","completedAt"] as const){
+    const stamp=value[key];
+    if(stamp===undefined)continue;
+    if(typeof stamp!=="string"||stamp.length<20||stamp.length>35
+      ||!/^\\d{4}-\\d{2}-\\d{2}T/.test(stamp)
+      ||!Number.isFinite(Date.parse(stamp)))fail("INVALID_RUN_RECEIPT");
+    receipt[key]=stamp;
+  }
+  if(value.runtimeKind!==undefined){
+    if(typeof value.runtimeKind!=="string"
+      ||!/^[a-z][a-z0-9_-]{0,31}$/.test(value.runtimeKind))
+      fail("INVALID_RUN_RECEIPT");
+    receipt.runtimeKind=value.runtimeKind;
+  }
   // Dashboard systemId and upstream canonical system_id are distinct. The
   // host bridge verifies the latter against its admitted private mapping.
   return {runId:value.runId,sessionId:value.sessionId,status:value.status,
+    receipt,
     ...(typeof value.output==="string"?{output:value.output.slice(0,65_536)}:{})};
 }
 function phase(status:string):ChatRunPhase {
@@ -317,7 +357,7 @@ export class PersonalChatRunController {
       const run=asRun(response.result,scope);
       if(request.sessionId && run.sessionId!==request.sessionId)
         fail("CHAT_SESSION_BINDING_MISMATCH");
-      this.show({runId:run.runId,sessionId:run.sessionId,
+      this.show({runId:run.runId,sessionId:run.sessionId,receipt:run.receipt,
         phase:run.status==="completed"?"running":phase(run.status),
         canonicalStatus:run.status,output:run.status==="completed"?"":run.output??""});
       if(run.status==="completed")await this.reconcile(epoch,scope,selection,run.runId);
@@ -353,6 +393,7 @@ export class PersonalChatRunController {
       this.confirmCanonicalOutput(run);
       const nextPhase=phase(run.status);
       this.show({phase:nextPhase,canonicalStatus:run.status,sessionId:run.sessionId,
+        receipt:run.receipt,
         output:nextPhase==="completed"?run.output??"":"",
         errorCode:undefined,contextLimited:this.contextLimited});
       if(nextPhase==="running" || nextPhase==="submitting" || nextPhase==="interrupted")
@@ -389,6 +430,7 @@ export class PersonalChatRunController {
       this.confirmCanonicalOutput(run);
       const next=phase(run.status);
       this.show({phase:next,canonicalStatus:run.status,sessionId:run.sessionId,
+        receipt:run.receipt,
         output:next==="completed"?run.output??"":"",
         errorCode:undefined,contextLimited:this.contextLimited});
       if(next==="running")this.subscribe(epoch,scope,selection,runId);
@@ -404,7 +446,7 @@ export class PersonalChatRunController {
           if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
           this.confirmCanonicalOutput(run);
           const state=phase(run.status);
-          this.show({phase:state,canonicalStatus:run.status,
+          this.show({phase:state,canonicalStatus:run.status,receipt:run.receipt,
             output:state==="completed"?run.output??"":"",
             errorCode:undefined,contextLimited:this.contextLimited});
           if(state==="running")this.subscribe(epoch,scope,selection,runId);
@@ -437,7 +479,7 @@ export class PersonalChatRunController {
       if(TERMINAL.has(this.view.phase)&&!TERMINAL.has(state))return this.snapshot();
       this.confirmCanonicalOutput(run);
       if(state==="running"&&this.view.phase==="running"){
-        this.show({canonicalStatus:run.status,errorCode:undefined});
+        this.show({canonicalStatus:run.status,receipt:run.receipt,errorCode:undefined});
         return this.snapshot(); // Keep the existing live subscription and deltas.
       }
       this.streamEpoch++;
@@ -448,7 +490,8 @@ export class PersonalChatRunController {
         this.resumeMarkersRequired=Number.MAX_SAFE_INTEGER;
       }
       this.show({phase:state,canonicalStatus:run.status,
-        sessionId:run.sessionId,output:state==="completed"?run.output??"":"",
+        sessionId:run.sessionId,receipt:run.receipt,
+        output:state==="completed"?run.output??"":"",
         errorCode:undefined,contextLimited:this.contextLimited});
       if(state==="running")this.subscribe(epoch,scope,selection,runId);
     }catch(error){
@@ -487,7 +530,7 @@ export class PersonalChatRunController {
       const state=phase(run.status);
       if(action==="resume"&&state==="running")this.resumeMarkersRequired++;
       this.show({phase:state,canonicalStatus:run.status,sessionId:run.sessionId,
-        output:state==="completed"?run.output??"":"",
+        receipt:run.receipt,output:state==="completed"?run.output??"":"",
         errorCode:undefined,contextLimited:this.contextLimited});
       if(state==="running")this.subscribe(epoch,scope,selection,runId);
     }catch(error){
@@ -502,7 +545,7 @@ export class PersonalChatRunController {
           if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
           this.confirmCanonicalOutput(run);
           const state=phase(run.status);
-          this.show({phase:state,canonicalStatus:run.status,
+          this.show({phase:state,canonicalStatus:run.status,receipt:run.receipt,
             output:state==="completed"?run.output??"":"",
             errorCode:undefined,contextLimited:this.contextLimited});
           if(state==="running")this.subscribe(epoch,scope,selection,runId);
@@ -571,7 +614,7 @@ export class PersonalChatRunController {
       const run=asRun(response.result,scope,runId);
       this.confirmCanonicalOutput(run);
       this.show({phase:phase(run.status),canonicalStatus:run.status,
-        sessionId:run.sessionId,
+        receipt:run.receipt,sessionId:run.sessionId,
         ...(run.output!==undefined?{output:run.output}:{}),
         errorCode:undefined,contextLimited:this.contextLimited});
     }catch(error){
@@ -743,7 +786,7 @@ export class PersonalChatRunController {
       // Recovered resuming runs may have unknown prior pause/resume cycles:
       // show canonical final GET, never project unverified replay as fresh.
       this.resumeMarkersRequired=run.status==="resuming"?Number.MAX_SAFE_INTEGER:0;
-      this.show({runId:run.runId,sessionId:run.sessionId,
+      this.show({runId:run.runId,sessionId:run.sessionId,receipt:run.receipt,
         phase:phase(run.status),canonicalStatus:run.status,
         output:run.output??"",contextLimited:true});
       if(!TERMINAL.has(this.view.phase) && this.view.phase!=="recovery-required"
