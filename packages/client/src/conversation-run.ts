@@ -349,6 +349,41 @@ export class PersonalChatRunController {
     }
     return this.snapshot();
   }
+  /**
+   * User-requested Stop is an actual canonical cancellation, never merely
+   * closing a socket. Unknown network outcomes must be reconciled by run GET.
+   * The host must independently opt in to this control; no browser grant.
+   */
+  async stop(operationId:string):Promise<ChatRunView>{
+    if(!SAFE_ID.test(operationId))fail("CHAT_CONTROL_ID_INVALID");
+    if(this.view.phase!=="running" || !this.view.runId || !this.view.sessionId)
+      fail("CHAT_STOP_UNAVAILABLE");
+    const scope=requiredScope(this.client.getScope());
+    const runId=this.view.runId,sessionId=this.view.sessionId;
+    const epoch=++this.epoch,selection=this.client.selectionVersion();
+    this.streamEpoch++;
+    this.unsubscribe?.();this.unsubscribe=undefined;
+    this.show({phase:"submitting",errorCode:undefined});
+    try{
+      const response=await this.client.cancelGatewayRun(runId,sessionId,operationId);
+      if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
+      const run=asRun(response.result,scope,runId);
+      if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
+      this.confirmCanonicalOutput(run);
+      const next=phase(run.status);
+      this.show({phase:next,canonicalStatus:run.status,sessionId:run.sessionId,
+        output:next==="completed"?run.output??"":"",
+        errorCode:undefined,contextLimited:this.contextLimited});
+      if(next==="running")this.subscribe(epoch,scope,selection,runId);
+    }catch(error){
+      if(this.valid(epoch,scope,selection)&&this.view.runId===runId)
+        this.show({phase:"interrupted",errorCode:
+          typeof (error as {code?:unknown})?.code==="string"
+            ?(error as {code:string}).code:"CHAT_STOP_UNCERTAIN"});
+    }
+    return this.snapshot();
+  }
+
   private subscribe(epoch:number,scope:Required<ClientScope>,selection:number,runId:string):void {
     this.unsubscribe?.();
     this.seen.clear();this.lastSeq=0;
