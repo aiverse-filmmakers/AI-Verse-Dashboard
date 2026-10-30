@@ -40,10 +40,15 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
     assert.equal(isCommandMethod("chat.send"), true); assert.equal(isQueryMethod("purpose.get"), true); assert.equal(isPurposeControlMethod("purpose.change.apply"), true);
     assert.deepEqual([...PURPOSE_CONTROL_METHODS], ["purpose.change.propose", "purpose.change.confirm", "purpose.change.apply"]);
     assert.throws(() => assertQueryOnly("chat.send"), /blocked/); assert.throws(() => assertQueryOnly("purpose.change.apply"), /blocked/); assert.doesNotThrow(() => assertQueryOnly("purpose.get"));
-    assert.equal(COMMAND_METHODS.length, 23); assert.equal(QUERY_METHODS.length, 33); assert.equal(ALL_METHODS.length, 58);
+    assert.equal(COMMAND_METHODS.length, 25); assert.equal(QUERY_METHODS.length, 33); assert.equal(ALL_METHODS.length, 60);
     assert.equal(isCommandMethod("aiverse.canvas.duplicate"),true);
     assert.equal(isCommandMethod("aiverse.gateway.run.create"),true);
     assert.equal(isCommandMethod("aiverse.gateway.run.cancel"),true);
+    for(const name of ["aiverse.gateway.run.pause","aiverse.gateway.run.resume"]){
+      assert.equal(isCommandMethod(name),true);
+      assert.equal(isQueryMethod(name),false);
+      assert.throws(()=>assertQueryOnly(name),/blocked/);
+    }
     assert.equal(isQueryMethod("aiverse.gateway.run.cancel"),false);
     assert.throws(()=>assertQueryOnly("aiverse.gateway.run.cancel"),/blocked/);
     assert.equal(isQueryMethod("aiverse.gateway.status"),true);
@@ -53,7 +58,8 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
     assert.equal(isQueryMethod("operator.activity"),true);
     assert.equal(requiresSystem("operator.activity"),true);
     assert.equal(requiresWorkspace("operator.activity"),true);
-    for(const method of ["aiverse.gateway.status","aiverse.gateway.models","aiverse.gateway.run.create","aiverse.gateway.run.cancel","aiverse.gateway.run.get"]) {
+    for(const method of ["aiverse.gateway.status","aiverse.gateway.models","aiverse.gateway.run.create","aiverse.gateway.run.cancel",
+      "aiverse.gateway.run.pause","aiverse.gateway.run.resume","aiverse.gateway.run.get"]) {
       assert.equal(requiresSystem(method),true);assert.equal(requiresWorkspace(method),true);
     }
   });
