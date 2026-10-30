@@ -154,6 +154,19 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       registered:1,authorized:1,workspaces:1,selectedAuthorized:true,
     });
     assert.doesNotMatch(JSON.stringify(summaryBody),/Test OS|root|password|secret/);
+    const injected=await rpc(server.port,{
+      type:"req",v:"1.0",id:"registry-summary-forgery",
+      method:"system.registry.summary",systemId,workspaceId:"operator",
+      params:{requestedSystem:"another-system",includePrivate:true},
+    },{cookie,origin:base});
+    const injectedResult=await injected.json() as {ok:boolean;error?:{code:string}};
+    assert.equal(injectedResult.ok,false);
+    assert.equal(injectedResult.error?.code,"INVALID_ENVELOPE");
+    const foreignSummary=await rpc(server.port,{
+      type:"req",v:"1.0",id:"registry-summary-other-system",
+      method:"system.registry.summary",systemId:"another-system",workspaceId:"operator",
+    },{cookie,origin:base});
+    assert.equal(foreignSummary.status,403);
     const otherPublic=await rpc(server.port,{
       type:"req",v:"1.0",id:"native-os-other-system",method:"system.get",
       systemId:"another-system",workspaceId:"operator",
