@@ -303,7 +303,13 @@
       ],
       "state": "implemented in draft with positive/negative CI; G06.1 remains in-progress until whole milestone and private owner acceptance",
       "scoring": "No increase: Chat 11/15, GitHub/browser 47/100 provisional, formal accepted 15/100 unchanged"
+    },
+    "g06_2ApprovalReadOnly": {
+      "ledger": "docs/DEVELOPMENT-TASKS-670-674-2026-10-30.md",
+      "scope": "Actual canonical Gateway awaiting_approval/recovery statuses displayed, local owner-observed approval event filter, no action authority or approval POST",
+      "state": "source-tested in draft; G06.2 still in-progress, no owner acceptance",
+      "scoring": "Chat 11/15, overall GitHub/browser 47/100 provisional, formal 15/100 unchanged"
     }
   },
-  "nextUnverifiedChange": "Task 670: continue an existing source-backed Control Center owner milestone (G06.1 or G06.2) or wait for actual owner admission APIs for blocked G02.3/G02.4. Never invent provider choices, binary attachments, permission grants or arbitrary action RPCs."
+  "nextUnverifiedChange": "Task 675: owner-backed G06.2 audited approval receipts or next already planned owner-contract-backed milestone; no executable approval commands without explicit OS grant/revocation and native owner acceptance. G02.3 physical models and G02.4 binary assets remain blocked."
 }
