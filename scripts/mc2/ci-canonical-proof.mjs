@@ -82,6 +82,7 @@ async function checkInstalledLocalLaunch(origin,gatewayHome,bearer){
     assert.equal(info.gatewayModel,"aiverse");
     assert.equal(info.gatewayRuntimeKind,"deterministic");
     assert.equal(info.personalUIEnabled,false);
+    assert.equal(info.runCancelSupported,false,"real headless launcher never grants Stop by default");
     assert.equal(info.connectionStorageWritten,false);
     assert.equal(info.privateBearerExported,false);
     assert.equal(stdout.includes(bearer),false,"no token in stdout");
@@ -97,6 +98,33 @@ async function checkInstalledLocalLaunch(origin,gatewayHome,bearer){
       pause(3000).then(()=>{child.kill("SIGKILL")})
     ]);
   }
+  // The same installed launcher must reject a run-control env flag unless
+  // the owner opted into an interactive paired Personal UI session.
+  const blocked=spawn(process.execPath,["dist/scripts/mc2/start-connected.js"],{
+    env:{...process.env,AIVERSE_GATEWAY_HOME:gatewayHome,AIVERSE_GATEWAY_URL:origin,
+      AIVERSE_GATEWAY_TOKEN:bearer,AIVERSE_DASHBOARD_PORT:String(hostPort),
+      AIVERSE_DASHBOARD_ALLOW_RUN_CANCEL:"1",AIVERSE_DASHBOARD_PERSONAL_UI:"0"},
+    stdio:["ignore","pipe","pipe"],
+  });
+  let blockedOutput="";
+  blocked.stdout.on("data",d=>blockedOutput=(blockedOutput+String(d)).slice(-2048));
+  blocked.stderr.on("data",d=>blockedOutput=(blockedOutput+String(d)).slice(-4096));
+  const exit=await Promise.race([
+    new Promise(resolve=>blocked.once("close",resolve)),
+    pause(9000).then(()=>{blocked.kill("SIGKILL");throw Error("RUN_CANCEL_HEADLESS_GUARD_TIMEOUT")}),
+  ]);
+  assert.notEqual(exit,0,"headless owner-control opt-in must not start Dashboard");
+  assert.match(blockedOutput,/RUN_CANCEL_REQUIRES_INTERACTIVE_OWNER/);
+  assert.doesNotMatch(blockedOutput,new RegExp(bearer.replace(/[.*+?^${}()|[\\]\\]/g,"\\  }finally{
+    child.kill("SIGTERM");
+    await Promise.race([
+      new Promise(resolve=>child.once("close",resolve)),
+      pause(3000).then(()=>{child.kill("SIGKILL")})
+    ]);
+  }
+}
+let primaryError;")),
+    "blocked local launcher cannot expose owner token");
 }
 let primaryError;
 try {
