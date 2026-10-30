@@ -406,6 +406,9 @@ export class PersonalChatApplication {
     check.title="Refresh this exact run from the authenticated canonical Gateway";
     const stop=button("Stop run",()=>{void this.stopRun(paneId);},"live-chat-stop");
     stop.title="Requires the trusted host to authorize run cancellation";
+    const exportText=button("Export loaded",()=>this.exportLoadedTranscript(paneId),
+      "live-chat-export");
+    exportText.title="Download a text copy of already loaded and verified conversation turns";
     const find=button("Find messages",()=>this.toggleFind(paneId),"live-chat-find-toggle");
     find.setAttribute("aria-expanded","false");
     const details=button("Run details",()=>this.toggleRunDetails(paneId),"live-chat-receipt-toggle");
@@ -417,7 +420,7 @@ export class PersonalChatApplication {
     resume.title="Requires the trusted host to authorize checkpoint resume";
     const close=button("Close chat",()=>this.closePane(paneId),"");
     actions.append(open,clear,close);heading.append(name,actions);
-    runActions.append(retry,reconnect,check,find,details,pause,resume,stop);
+    runActions.append(retry,reconnect,check,find,exportText,details,pause,resume,stop);
     const findHost=el("section","live-chat-find");
     findHost.hidden=true;
     findHost.setAttribute("aria-label","Search messages already loaded in this conversation");
@@ -601,6 +604,10 @@ export class PersonalChatApplication {
     pane.findNext.disabled=!matches.length;
     const toggle=pane.node.querySelector(".live-chat-find-toggle") as HTMLButtonElement;
     if(toggle)toggle.setAttribute("aria-expanded",String(pane.findOpen));
+    const exporter=pane.node.querySelector(".live-chat-export") as HTMLButtonElement;
+    if(exporter)exporter.disabled=!pane.turns.length||![
+      "completed","canceled","blocked","recovery-required"
+    ].includes(pane.run.snapshot().phase);
     const send=pane.form.querySelector("button[type=submit]") as HTMLButtonElement;
     if(send)send.disabled=pane.busy || !["idle","completed","canceled"].includes(pane.run.snapshot().phase);
     const recover=pane.node.querySelector(".live-chat-recovery button") as HTMLButtonElement;
@@ -680,6 +687,40 @@ export class PersonalChatApplication {
     }
   }
   /** This dispatches a canonical Gateway cancellation, not UI-only hiding. */
+  /** Explicit user-triggered local export. Never sends transcript to any
+   * other server, invents missing messages or includes speculative deltas.
+   */
+  private exportLoadedTranscript(paneId:string):void{
+    const pane=this.panes.get(paneId);
+    if(!pane||this.destroyed||!pane.turns.length||![
+      "completed","canceled","blocked","recovery-required"
+    ].includes(pane.run.snapshot().phase))return;
+    const run=pane.run.snapshot();
+    const lines=[
+      "AI-Verse canonical conversation, loaded transcript only",
+      "System: "+run.systemId,
+      "Workspace: "+run.workspaceId,
+      "Session: "+(run.sessionId??"Unknown"),
+      "Run: "+(run.runId??"Unknown"),
+      "Source: authenticated canonical Gateway projection",
+      "Older pages may not be loaded and Gateway history fields may be truncated.",
+      "Draft streaming content and unverified billing totals are not included.",
+      "",
+    ];
+    for(const turn of pane.turns){
+      lines.push((turn.role==="user"?"You":turn.role==="assistant"?"AI-Verse":"Status")+":");
+      lines.push(turn.text,"");
+    }
+    const payload=lines.join("\n");
+    if(new TextEncoder().encode(payload).byteLength>5_000_000){
+      pane.status.textContent="Loaded transcript exceeds the 5 MB local export safety bound.";
+      return;
+    }
+    const url=URL.createObjectURL(new Blob([payload],{type:"text/plain;charset=utf-8"}));
+    const a=el("a","");a.href=url;a.download="aiverse-loaded-conversation.txt";
+    a.hidden=true;pane.node.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
   /** Local in-memory search across already loaded canonical turns only. */
   private findMatches(pane:Pane):number[]{
     if(!pane.findOpen||!pane.findQuery)return [];
