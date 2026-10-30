@@ -312,7 +312,7 @@ export class PersonalDiagnostics{
       if(!this.destroyed&&this.open&&epoch===this.runEpoch)this.runButton.disabled=false;
     }
   }
-  snapshot():Readonly<{system:Observation;workspace:Observation;gateway:Observation;canvas:Observation;history:Observation}>{
+  snapshot():Readonly<{system:Observation;systems:Observation;workspace:Observation;gateway:Observation;canvas:Observation;history:Observation}>{
     return {system:{...this.current.system},systems:{...this.current.systems},
       workspace:{...this.current.workspace},gateway:{...this.current.gateway},
       canvas:{...this.current.canvas},history:{...this.current.history}};
