@@ -83,6 +83,8 @@ async function checkInstalledLocalLaunch(origin,gatewayHome,bearer){
     assert.equal(info.gatewayRuntimeKind,"deterministic");
     assert.equal(info.personalUIEnabled,false);
     assert.equal(info.runCancelSupported,false,"real headless launcher never grants Stop by default");
+    assert.equal(info.runPauseResumeSupported,false,
+      "real headless launcher never grants Pause/Resume by default");
     assert.equal(info.connectionStorageWritten,false);
     assert.equal(info.privateBearerExported,false);
     assert.equal(stdout.includes(bearer),false,"no token in stdout");
@@ -117,6 +119,26 @@ async function checkInstalledLocalLaunch(origin,gatewayHome,bearer){
   assert.match(blockedOutput,/RUN_CANCEL_REQUIRES_INTERACTIVE_OWNER/);
   assert.equal(blockedOutput.includes(bearer),false,
     "blocked local launcher cannot expose owner token");
+  const checkpointDenied=spawn(process.execPath,["dist/scripts/mc2/start-connected.js"],{
+    env:{...process.env,AIVERSE_GATEWAY_HOME:gatewayHome,AIVERSE_GATEWAY_URL:origin,
+      AIVERSE_GATEWAY_TOKEN:bearer,AIVERSE_DASHBOARD_PORT:String(hostPort),
+      AIVERSE_DASHBOARD_ALLOW_RUN_PAUSE_RESUME:"1",AIVERSE_DASHBOARD_PERSONAL_UI:"0",
+      AIVERSE_DASHBOARD_ALLOW_RUN_CANCEL:"0"},
+    stdio:["ignore","pipe","pipe"],
+  });
+  let checkpointOutput="";
+  checkpointDenied.stdout.on("data",d=>checkpointOutput=(checkpointOutput+String(d)).slice(-2048));
+  checkpointDenied.stderr.on("data",d=>checkpointOutput=(checkpointOutput+String(d)).slice(-4096));
+  const checkpointExit=await Promise.race([
+    new Promise(resolve=>checkpointDenied.once("close",resolve)),
+    pause(9000).then(()=>{
+      checkpointDenied.kill("SIGKILL");throw Error("RUN_CHECKPOINT_HEADLESS_GUARD_TIMEOUT");
+    }),
+  ]);
+  assert.notEqual(checkpointExit,0,"headless Pause/Resume grant must be rejected");
+  assert.match(checkpointOutput,/RUN_CHECKPOINT_REQUIRES_INTERACTIVE_OWNER/);
+  assert.equal(checkpointOutput.includes(bearer),false,
+    "headless checkpoint rejection must never reveal a Gateway credential");
 }
 let primaryError;
 try {
