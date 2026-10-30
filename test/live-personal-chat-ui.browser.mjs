@@ -517,6 +517,48 @@ test("per-pane Run details shows only actual Gateway usage and never treats it a
   assert.equal(await details.isDisabled(),true);
   assert.deepEqual(errors,[]);
 });
+test("Find messages locates loaded canonical turns, pages older records and never persists search",async t=>{
+  const {page,errors}=await pageFor(t);
+  const before=requests.length;
+  const pane=page.locator(".live-chat-pane").first();
+  await page.getByRole("button",{name:"Previous chats"}).click();
+  await page.locator(".live-chat-history-item").first().getByRole("button",{name:"Open conversation"}).click();
+  await pane.getByRole("button",{name:"Load older messages"}).waitFor();
+  const find=pane.getByRole("button",{name:"Find messages"});
+  await find.click();
+  assert.equal(await find.getAttribute("aria-expanded"),"true");
+  const input=pane.getByRole("searchbox",{name:"Search loaded messages"});
+  await input.fill("Historical user 051");
+  assert.match(await pane.locator(".live-chat-find-count").innerText(),/1 of 1 matching loaded messages/);
+  assert.equal(await pane.locator(".live-chat-match").count(),1);
+  assert.equal(await pane.locator(".live-chat-match").innerText(),"Historical user 051");
+  await input.fill("Historical user");
+  assert.match(await pane.locator(".live-chat-find-count").innerText(),/1 of 50 matching loaded messages/);
+  await pane.getByRole("button",{name:"Next match"}).click();
+  assert.match(await pane.locator(".live-chat-find-count").innerText(),/2 of 50 matching loaded messages/);
+  await pane.getByRole("button",{name:"Previous match"}).click();
+  assert.match(await pane.locator(".live-chat-find-count").innerText(),/1 of 50 matching loaded messages/);
+  await pane.getByRole("button",{name:"Load older messages"}).click();
+  await pane.locator(".live-chat-message").nth(149).waitFor();
+  assert.match(await pane.locator(".live-chat-find-count").innerText(),/1 of 75 matching loaded messages/);
+  await pane.getByRole("button",{name:"Load older messages"}).click();
+  await pane.locator(".live-chat-message").nth(155).waitFor();
+  assert.match(await pane.locator(".live-chat-find-count").innerText(),/1 of 78 matching loaded messages/);
+  await input.fill("UNSEEN SECRET");
+  assert.match(await pane.locator(".live-chat-find-count").innerText(),/No matches in loaded messages/);
+  assert.equal(await pane.getByRole("button",{name:"Next match"}).isDisabled(),true);
+  await input.press("Escape");
+  assert.equal(await find.getAttribute("aria-expanded"),"false");
+  assert.equal(await pane.locator(".live-chat-find").isVisible(),false);
+  assert.equal(requests.slice(before).filter(r=>r.method==="aiverse.gateway.run.create").length,0);
+  assert.equal(requests.slice(before).filter(r=>r.method==="aiverse.gateway.session.runs").length,4);
+  assert.deepEqual(await page.evaluate(()=>({local:localStorage.length,session:sessionStorage.length})),
+    {local:0,session:0});
+  await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"film"}));
+  assert.equal(await pane.locator(".live-chat-find-input").inputValue(),"");
+  assert.equal(await pane.locator(".live-chat-find").isVisible(),false);
+  assert.deepEqual(errors,[]);
+});
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
   const {page,errors}=await pageFor(t);
   const before=requests.length;
