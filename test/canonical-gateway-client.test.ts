@@ -105,6 +105,25 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
     assert.deepEqual(JSON.parse(String(requests[1].init.body)),{operation_id:"op-1",reason:"operator"});
     await errorCode(client.controlRun({runId:"run-1",action:"approval",operationId:"op-2"}),"APPROVAL_INVALID");
   });
+  it("runs trusted owner lease callback after scoped GET but before any control POST",async()=>{
+    let rebind=false,checks=0;
+    const {client,requests}=fixture((url,init)=>{
+      if(init.method==="GET")return json(run());
+      assert.equal(rebind,false,"the old owner must never reach the control endpoint");
+      return json(run({status:"canceled"}));
+    });
+    await errorCode(client.controlRun({runId:"run-1",action:"cancel",operationId:"op-1",
+      validateBeforePost:prechecked=>{
+        checks++;
+        assert.equal(prechecked.run_id,"run-1");
+        rebind=true;
+        throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
+      },
+    }),"GATEWAY_MAPPING_STALE");
+    assert.equal(checks,1);
+    assert.deepEqual(requests.map(x=>x.path),["/v1/runs/run-1"]);
+    assert.equal(requests.some(x=>x.init.method==="POST"),false);
+  });
   it("redacts upstream error messages and does not leak the bearer",async()=>{
     const {client}=fixture(()=>json({error:{code:"FORBIDDEN",message:"host-token-123 secret upstream detail"}},403));
     try{await client.getRun("run-1");assert.fail("must fail");}
