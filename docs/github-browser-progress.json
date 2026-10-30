@@ -275,7 +275,15 @@
       "scope": "Separate interactive owner-granted persistent canonical Pause/Resume, exact session/OS rebind pre-POST gate, SSE replay fence for repeated resumes, Stop paused run, read-only Check run status; real pinned Gateway Store paused->resumed->completed",
       "status": "Functional source verified across four CI suites, draft PR; private Mac and physical providers unaccepted",
       "score": "Chat 10→11/15 and GitHub/browser 46→47/100 provisional; formal 15/100 unchanged"
+    },
+    "canonicalChatRunReceiptsTranscriptFindAndCanvasNote": {
+      "sourceCommit": "e3a161ec4e38c932be53a95d89366afcfa2aa8f8",
+      "ledger": "docs/DEVELOPMENT-TASKS-628-647-2026-10-30.md",
+      "status": "functional source verified on all four CI suites; subsequent docs/test commits independently checked",
+      "scope": "Authenticated safe canonical Gateway run receipts without unverifiable Token cost; per-pane loaded-history find/TXT export; manual recovery cannot mix sessions; explicit Canvas selected saved note re-read from Data before copying to Chat composer, no automatic Gateway send.",
+      "limitations": "G02.4 only IN PROGRESS: binary attachments, Data asset/MIME admission, OS Skills, provider selection, native owner Mac acceptance NOT implemented.",
+      "score": "No increase: Chat 11/15, GitHub/browser 47/100 provisional, formal 15/100 unchanged; owner-admitted attachment/skill contract still missing."
     }
   },
-  "nextUnverifiedChange": "Task 628: canonical Gateway+Connections owner-approved physical model catalog/run authorization and revocation; then native asset/Skills integration and production owner acceptance."
+  "nextUnverifiedChange": "Task 648: native owner-approved Data asset references (including binary payload security), Gateway/Connections physical models or OS-granted Skills; preserve explicit permission and revocation boundaries."
 }
