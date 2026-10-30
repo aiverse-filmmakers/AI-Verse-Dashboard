@@ -69,3 +69,32 @@ test("canonical run projection excludes prompts and model outputs",()=>{
  assert.throws(()=>inspectCanonicalRuns({...data,data:[{...data.data[0],session_id:"other"}]},"operator","sess-a"),
    /ACTIVITY_SCOPE_MISMATCH/);
 });
+
+
+test("G06.2 canonical run states preserve owner waiting and recovery status without granting actions",()=>{
+ const valid=["awaiting_approval","resuming","paused_recovery_required",
+   "paused_no_progress","budget_limited","parked","no_progress"];
+ const data={source:"canonical-gateway",workspaceId:"operator",sessionId:"session-a",
+   has_more:false,data:valid.map((status,i)=>({
+     session_id:"session-a",run_id:"run-"+i,status,created_at:time,
+     pending_approval:{reason:"PRIVATE ACTION"},
+   })).slice(0,3)};
+ const result=inspectCanonicalRuns(data,"operator","session-a");
+ assert.deepEqual(result.map(x=>x.status),valid.slice(0,3));
+ assert.doesNotMatch(JSON.stringify(result),/PRIVATE ACTION|pending_approval/);
+ for(const status of valid.slice(3)){
+   const current=inspectCanonicalRuns({...data,data:[{
+     ...data.data[0],status,
+   }]},"operator","session-a");
+   assert.equal(current[0].status,status);
+ }
+});
+test("G06.2 unknown canonical action status never fabricates approval permission",()=>{
+ const data={source:"canonical-gateway",workspaceId:"operator",sessionId:"session-a",
+   has_more:false,data:[{session_id:"session-a",run_id:"run-1",
+     status:"user_can_approve_anything",created_at:time,
+     pending_approval:{grant:true}}]};
+ const result=inspectCanonicalRuns(data,"operator","session-a");
+ assert.equal(result[0].status,"unknown");
+ assert.doesNotMatch(JSON.stringify(result),/grant|approve_anything/);
+});
