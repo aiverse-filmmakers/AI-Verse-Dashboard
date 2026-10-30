@@ -146,7 +146,8 @@ const server=createServer(async(req,res)=>{
     let result;
     if(frame.method==="aiverse.gateway.status"){
       result={source:"canonical-gateway",workspaceId:frame.workspaceId,
-        runCancelSupported:true,capabilities:{controls:true,runCancel:true}};
+        runCancelSupported:true,runPauseResumeSupported:frame.workspaceId==="operator",
+        capabilities:{controls:true,runCancel:true,runPauseResume:true}};
     }else if(frame.method==="aiverse.gateway.models"){
       result={source:"canonical-gateway",workspaceId:frame.workspaceId,
         models:[{id:"aiverse",label:"AI-Verse Gateway",kind:"gateway-virtual"}],
@@ -186,8 +187,29 @@ const server=createServer(async(req,res)=>{
         workspaceId:frame.workspaceId,status:"running",source:"canonical-gateway"};
       runs.set(runId,{...result,output:"Authoritative answer "+next,
         dropFirstStream:frame.params?.messages?.some(m=>m.content==="Test dropped stream")===true,
-        slowStream:frame.params?.messages?.some(m=>m.content==="Test stop active run")===true,
+        slowStream:frame.params?.messages?.some(m=>
+          ["Test stop active run","Test pause and resume same run"].includes(m.content))===true,
         subscriptions:0});
+    }else if(frame.method==="aiverse.gateway.run.pause"
+      ||frame.method==="aiverse.gateway.run.resume"){
+      const found=runs.get(frame.params?.runId);
+      if(!found||found.workspaceId!==frame.workspaceId
+        ||found.sessionId!==frame.params?.sessionId
+        ||typeof frame.params?.operationId!=="string"){
+        res.writeHead(200,{"content-type":"application/json"}).end(JSON.stringify({
+          type:"res",v:"1.0",id:frame.id,ok:false,systemId:frame.systemId,
+          error:{code:"RUN_BINDING_MISMATCH",message:"Scope denied"},
+          observedAt:new Date().toISOString()}));return;
+      }
+      const isPause=frame.method.endsWith(".pause");
+      const valid=isPause?found.status==="running":found.status==="paused";
+      if(!valid){
+        res.writeHead(200,{"content-type":"application/json"}).end(JSON.stringify({
+          type:"res",v:"1.0",id:frame.id,ok:false,systemId:frame.systemId,
+          error:{code:isPause?"RUN_NOT_PAUSABLE":"RUN_NOT_RESUMABLE",message:"State conflict"},
+          observedAt:new Date().toISOString()}));return;
+      }
+      found.status=isPause?"paused":"resuming";result={...found};
     }else if(frame.method==="aiverse.gateway.run.cancel"){
       const found=runs.get(frame.params?.runId);
       if(!found||found.workspaceId!==frame.workspaceId
@@ -207,7 +229,7 @@ const server=createServer(async(req,res)=>{
           error:{code:"RUN_BINDING_MISMATCH",message:"Scope denied"},observedAt:new Date().toISOString(),
         }));return;
       }
-      result={...found,status:found.status==="canceled"?"canceled"
+      result={...found,status:["canceled","paused"].includes(found.status)?found.status
         :found.dropFirstStream && found.subscriptions<2?"running":"completed"};
     }else{
       res.writeHead(400).end("Unknown method");return;
@@ -262,7 +284,7 @@ server.on("upgrade",(req,socket,head)=>{
           return;
         }
         makeEvent("assistant.delta",2,"Draft stream");
-        if(run.slowStream)return; // The real Stop RPC, not WS closure, ends this run.
+        if(run.slowStream && run.status!=="resuming")return; // Wait for a real control, not WS closure.
         makeEvent("run.completed",3);
       }
     });
@@ -354,6 +376,52 @@ test("Real Chat Stop invokes exactly one authorized canonical cancel and keeps d
   assert.deepEqual(creations[1].params.messages,[
     {role:"user",content:"Continue from stopped run"},
   ]);
+  assert.deepEqual(errors,[]);
+});
+test("Chat Pause and Resume controls a single existing canonical run and respects workspace grant",async t=>{
+  const {page,errors}=await pageFor(t);
+  const pane=page.locator(".live-chat-pane").first(),before=requests.length;
+  const pause=pane.getByRole("button",{name:"Pause run"});
+  const resume=pane.getByRole("button",{name:"Resume run"});
+  assert.equal(await pause.isDisabled(),true);
+  assert.equal(await resume.isDisabled(),true);
+  await pane.locator(".live-chat-input").fill("Test pause and resume same run");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pause.waitFor({state:"visible"});
+  await page.waitForFunction(()=>{
+    const p=document.querySelector(".live-chat-pause");
+    return p instanceof HTMLButtonElement&&!p.disabled;
+  });
+  assert.equal(await resume.isDisabled(),true);
+  await pause.click();
+  await pane.locator(".live-chat-status").getByText(/paused/).waitFor();
+  assert.equal(await pause.isDisabled(),true);
+  assert.equal(await resume.isEnabled(),true);
+  assert.equal(await pane.getByRole("button",{name:"Send",exact:true}).isDisabled(),true);
+  await resume.click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  assert.equal(await resume.isDisabled(),true);
+  const relevant=requests.slice(before)
+    .filter(r=>r.method.startsWith("aiverse.gateway.run."));
+  assert.equal(relevant.filter(r=>r.method==="aiverse.gateway.run.create").length,1);
+  assert.equal(relevant.filter(r=>r.method==="aiverse.gateway.run.pause").length,1);
+  assert.equal(relevant.filter(r=>r.method==="aiverse.gateway.run.resume").length,1);
+  const create=relevant.find(r=>r.method==="aiverse.gateway.run.create");
+  const paused=relevant.find(r=>r.method==="aiverse.gateway.run.pause");
+  const resumed=relevant.find(r=>r.method==="aiverse.gateway.run.resume");
+  assert.ok(create&&paused&&resumed);
+  assert.equal(paused.params.runId,resumed.params.runId);
+  assert.equal(paused.params.sessionId,resumed.params.sessionId);
+  assert.ok(/^[A-Fa-f0-9-]{36}$/.test(paused.params.operationId));
+  assert.ok(/^[A-Fa-f0-9-]{36}$/.test(resumed.params.operationId));
+  assert.notEqual(paused.params.operationId,resumed.params.operationId);
+  await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"film"}));
+  await pane.locator(".live-chat-input").fill("Test pause and resume same run");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pane.locator(".live-chat-status").getByText(/running/).waitFor();
+  assert.equal(await pause.isDisabled(),true,
+    "operator checkpoint grant cannot be reused in another workspace");
+  assert.equal(await resume.isDisabled(),true);
   assert.deepEqual(errors,[]);
 });
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
