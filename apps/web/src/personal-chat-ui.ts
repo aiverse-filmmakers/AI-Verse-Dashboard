@@ -539,7 +539,8 @@ export class PersonalChatApplication {
     const stop=pane.node.querySelector(".live-chat-stop") as HTMLButtonElement;
     // A running run is busy for Send, but that is precisely when Stop is useful.
     if(stop)stop.disabled=!this.runCancelSupported
-      ||pane.run.snapshot().phase!=="running" || !pane.run.snapshot().runId;
+      ||!["running","paused","recovery-required"].includes(pane.run.snapshot().phase)
+      ||!pane.run.snapshot().runId;
     const pause=pane.node.querySelector(".live-chat-pause") as HTMLButtonElement;
     if(pause)pause.disabled=!this.runPauseResumeSupported
       ||pane.run.snapshot().phase!=="running" || !pane.run.snapshot().runId;
@@ -612,7 +613,7 @@ export class PersonalChatApplication {
   async stopRun(paneId:string):Promise<void>{
     const pane=this.panes.get(paneId);
     if(!pane||this.destroyed||!this.runCancelSupported
-      ||pane.run.snapshot().phase!=="running")return;
+      ||!["running","paused","recovery-required"].includes(pane.run.snapshot().phase))return;
     try{await pane.run.stop(id());}
     catch(err){
       if(this.panes.get(paneId)!==pane || this.destroyed)return;
