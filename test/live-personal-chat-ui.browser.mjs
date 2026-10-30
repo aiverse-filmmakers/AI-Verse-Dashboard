@@ -310,7 +310,7 @@ test.after(async()=>{
   await new Promise(resolve=>server.close(resolve));
 });
 async function pageFor(t){
-  const context=await browser.newContext({viewport:{width:1500,height:900}});
+  const context=await browser.newContext({viewport:{width:1500,height:900},acceptDownloads:true});
   t.after(()=>context.close());
   const page=await context.newPage();
   page.setDefaultTimeout(6500);
@@ -557,6 +557,33 @@ test("Find messages locates loaded canonical turns, pages older records and neve
   await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"film"}));
   assert.equal(await pane.locator(".live-chat-find-input").inputValue(),"");
   assert.equal(await pane.locator(".live-chat-find").isVisible(),false);
+  assert.deepEqual(errors,[]);
+});
+test("Export loaded conversation saves verified Gateway text locally without leaking raw receipt or status",async t=>{
+  const {page,errors}=await pageFor(t),before=requests.length;
+  const pane=page.locator(".live-chat-pane").first();
+  const exporter=pane.getByRole("button",{name:"Export loaded"});
+  assert.equal(await exporter.isDisabled(),true);
+  await pane.locator(".live-chat-input").fill("Film shoot notes for local export");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  assert.equal(await exporter.isEnabled(),true);
+  const downloadEvent=page.waitForEvent("download");
+  await exporter.click();
+  const download=await downloadEvent;
+  assert.equal(download.suggestedFilename(),"aiverse-loaded-conversation.txt");
+  const content=await readFile(await download.path(),"utf8");
+  assert.match(content,/AI-Verse canonical conversation, loaded transcript only/);
+  assert.match(content,/Source: authenticated canonical Gateway projection/);
+  assert.match(content,/You:\nFilm shoot notes for local export/);
+  assert.match(content,/AI-Verse:\nAuthoritative answer/);
+  assert.match(content,/may not be loaded and Gateway history fields may be truncated/);
+  assert.doesNotMatch(content,/do-not-show|privateBearer|reportedCost|99\.99|password/);
+  assert.equal(requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+  assert.deepEqual(await page.evaluate(()=>({local:localStorage.length,session:sessionStorage.length})),
+    {local:0,session:0});
+  await pane.getByRole("button",{name:"New chat"}).click();
+  assert.equal(await exporter.isDisabled(),true);
   assert.deepEqual(errors,[]);
 });
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
