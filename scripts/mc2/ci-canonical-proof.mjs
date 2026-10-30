@@ -226,6 +226,19 @@ try {
   assert.ok(done,"real deterministic Gateway run must reach terminal status");
   assert.equal(done.status,"completed","run should finish, not just be accepted");
   assert.ok(String(done.output??"").includes(marker),"actual deterministic runtime output must contain submitted unique marker");
+  const storedReceipt=await canonical.store.getRun(runId);
+  assert.deepEqual(done.usage,{
+    inputTokens:storedReceipt.usage.input_tokens,
+    outputTokens:storedReceipt.usage.output_tokens,
+    actions:storedReceipt.usage.actions,
+  },"Dashboard must project actual persisted canonical Gateway usage, never calculated UI numbers");
+  assert.equal(done.runtimeKind,"deterministic");
+  assert.equal(done.createdAt,storedReceipt.created_at);
+  assert.equal(done.completedAt,storedReceipt.completed_at);
+  assert.equal("cost" in done,false,
+    "raw Gateway cost is not Token-verified billing and must not be projected");
+  assert.equal("runtime" in done,false,"full runtime config is never browser-visible");
+  assert.equal("messages" in done,false,"raw canonical internal message transcript is private");
 
   // Real pinned canonical Gateway Store/RunEngine checkpoint lifecycle,
   // exercised through the admitted Dashboard host RPC, not synthetic HTTP.
