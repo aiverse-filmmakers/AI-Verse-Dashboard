@@ -90,7 +90,7 @@ export function inspectCanonicalRuns(value:unknown,workspaceId:string,sessionId:
       createdAt:validDate(item.created_at)?item.created_at:"Date unavailable"};
   });
 }
-export type ActivityFilter="all"|"tool-call"|"error-event";
+export type ActivityFilter="all"|"tool-call"|"error-event"|"approval";
 export function filterActivityEvents(view:ActivityView,filter:ActivityFilter):ActivityEvent[]{
   return filter==="all" ?view.events.slice():view.events.filter(event=>event.kind===filter);
 }
@@ -170,7 +170,7 @@ export class PersonalAgentActivity{
     }
     const controls=el("div","personal-agent-activity-filters");
     const options:[ActivityFilter,string][]=[
-      ["all","All events"],["tool-call","Tool calls"],["error-event","Errors"],
+      ["all","All events"],["tool-call","Tool calls"],["approval","Approvals"],["error-event","Errors"],
     ];
     for(const [value,label] of options){
       const button=el("button","personal-agent-activity-filter",label);
