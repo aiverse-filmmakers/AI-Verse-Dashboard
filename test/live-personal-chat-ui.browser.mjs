@@ -863,6 +863,57 @@ test("Static Pages design preview never mounts the authenticated runtime applica
 });
 
 
+test("explicit Insert Canvas note rereads canonical Data into composer, never invokes Gateway until Send",async t=>{
+  const {page,errors}=await pageFor(t),before=requests.length;
+  const pane=page.locator(".live-chat-pane").first();
+  const canvas=page.locator(".aiverse-canvas");
+  const insert=pane.getByRole("button",{name:"Insert Canvas note"});
+  await insert.click();
+  await pane.locator(".live-chat-status").getByText(/Select a saved note in Canvas/).waitFor();
+  assert.equal(requests.slice(before).filter(r=>r.method==="aiverse.canvas.get").length,0);
+  await canvas.getByRole("button",{name:"Add note"}).click();
+  await canvas.locator(".canvas-note").first().waitFor();
+  await canvas.locator(".canvas-note").first().click();
+  await canvas.locator(".canvas-note-text").waitFor();
+  await pane.locator(".live-chat-input").fill("How can I improve this shot?");
+  const beforeInsert=requests.length;
+  await insert.click();
+  await pane.locator(".live-chat-status").getByText(/inserted for review. Nothing has been sent/).waitFor();
+  const draft=await pane.locator(".live-chat-input").inputValue();
+  assert.match(draft,/\[Saved Canvas: .*\(v\d+, note note-/);
+  assert.match(draft,/New note/);
+  assert.match(draft,/How can I improve this shot\?/);
+  assert.equal(requests.slice(beforeInsert).filter(r=>r.method==="aiverse.canvas.get").length,1,
+    "Canvas note must be refetched from Data before entering Chat");
+  assert.equal(requests.slice(before).filter(r=>r.method==="aiverse.gateway.run.create").length,0,
+    "inserting a note must never submit an AI request");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  const sent=requests.slice(before).filter(r=>r.method==="aiverse.gateway.run.create");
+  assert.equal(sent.length,1);
+  assert.equal(sent[0].params.messages[0].content,draft);
+  assert.deepEqual(errors,[]);
+});
+test("Canvas note insertion rejects stale Data version and does not overwrite current draft",async t=>{
+  const {page,errors}=await pageFor(t),before=requests.length;
+  const pane=page.locator(".live-chat-pane").first();
+  const canvas=page.locator(".aiverse-canvas");
+  await canvas.getByRole("button",{name:"Add note"}).click();
+  await canvas.locator(".canvas-note").first().waitFor();
+  await canvas.locator(".canvas-note").first().click();
+  await canvas.locator(".canvas-note-text").waitFor();
+  const store=canvasDocuments.get("aiverse-01|operator");
+  const doc=[...store.values()].at(-1);
+  assert.ok(doc?.board?.nodes.length);
+  doc.version+=1;
+  doc.board.nodes[0].text="DATA EDITED ELSEWHERE";
+  await pane.locator(".live-chat-input").fill("Keep this draft unchanged");
+  await pane.getByRole("button",{name:"Insert Canvas note"}).click();
+  await pane.locator(".live-chat-status").getByText(/Canvas changed since it was opened/).waitFor();
+  assert.equal(await pane.locator(".live-chat-input").inputValue(),"Keep this draft unchanged");
+  assert.equal(requests.slice(before).filter(r=>r.method==="aiverse.gateway.run.create").length,0);
+  assert.deepEqual(errors,[]);
+});
 test("Canvas: first Scratch edit persists through typed RPC and browser reload",async t=>{
   const {page,errors}=await pageFor(t);
   const canvas=page.locator(".aiverse-canvas");
