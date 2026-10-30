@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 45,
+  "provisionalEngineeringEarned": 46,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -37,9 +37,9 @@
       "id": "chat",
       "title": "Personal chat and canonical Gateway",
       "budget": 15,
-      "provisionalEarned": 9,
+      "provisionalEarned": 10,
       "evidenceStatus": "source-and-ci",
-      "remaining": "Real host-authenticated virtual model inventory and replay-safe interrupted-run reconnect pass cross-platform, Chromium and pinned Gateway CI. Physical provider/model selection, reason/skills/attachments and approval-safe run controls remain pending."
+      "remaining": "Real owner-scoped virtual-model status, interrupted-run reconnection, and TTY-host opt-in Stop with canonical cancellation/continuation have cross-platform, Chromium and pinned Gateway CI. Still pending: owner-authorized physical model choice, attachment/asset owner, Skills/commands, native owner identities, consent and private Mac acceptance."
     },
     {
       "id": "canvas",
@@ -246,7 +246,18 @@
       "categoryIncrement": "chat 8->9 provisional, partly progressed G02.3; no formal acceptance",
       "limitations": "No physical provider/model selection, no signed owner login or provider consent, no run control, no Skills/attachment integration",
       "status": "functional source CI verified; PR draft; not private owner Mac"
+    },
+    "canonicalRunCancelAndContinuation": {
+      "sourceCommit": "f8571dd32630c69a0534ac3d0a2d0684739eafbc",
+      "dashboardCi": 41023718870,
+      "browserCi": 41023718799,
+      "canonicalGatewayCi": 41023718875,
+      "progressCi": 41023718779,
+      "ledger": "docs/DEVELOPMENT-TASKS-574-593-2026-10-30.md",
+      "scope": "Explicit operator TTY host opt-in; one canonical cancel run/session/operation; pre-post owner lease revalidation; browser Stop; same-session canceled continuation without unfinished context; headless denial",
+      "status": "source and four exact-head CI suites verified, PR draft, private Mac unaccepted",
+      "score": "Chat 9->10/15, GitHub/browser 45->46/100 provisional; formal 15/100 unchanged"
     }
   },
-  "nextUnverifiedChange": "Task 574: implement owner-verified physical model/provider selection contract only with real canonical Gateway+Connections capability; otherwise continue approval-safe run controls and owner-backed attachments/Skills. No browser model-string override."
+  "nextUnverifiedChange": "Task 594: establish real provider/model entitlement and capability contract owned by canonical Gateway+Connections before implementing model selection; then canonical asset/Skills admission and native owner grants."
 }
