@@ -126,14 +126,6 @@ export class DashboardClient {
     });
   }
 
-  /** Read-only canonical diagnostics, exact run and session, no model/OS commands. */
-  async gatewayRunDiagnostics(runId:string,sessionId:string):
-    Promise<{result:unknown;systemId?:string;observedAt:string}>{
-    if(!this.scope.workspaceId)throw new Error("Select a workspace first");
-    return this.query("aiverse.gateway.run.diagnostics",{
-      noCache:true,params:{runId,sessionId},
-    });
-  }
   async getGatewayRun(runId:string):Promise<{result:unknown;systemId?:string;observedAt:string}> {
     if(!this.scope.workspaceId)throw new Error("Select a workspace or operator scope first");
     return this.query("aiverse.gateway.run.get",{noCache:true,params:{runId}});
