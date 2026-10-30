@@ -129,7 +129,7 @@ function safeDiagnostics(raw:Record<string,unknown>,run:GatewayRun):Record<strin
     if(v===undefined||v===null)return undefined;
     if(typeof v!=="number"||!Number.isSafeInteger(v)||v<0||v>1_000_000_000_000)
       invalid();
-    return v;
+    return v as number;
   };
   const numbers=(v:Record<string,unknown>,fields:readonly string[])=>{
     const out:Record<string,number>={};
@@ -158,9 +158,9 @@ function safeDiagnostics(raw:Record<string,unknown>,run:GatewayRun):Record<strin
       emergencyTailShrink:yes(context,"emergency_tail_shrink")}:null,
     retrieval:retrieval?numbers(retrieval,[
       "source_reads","gateway_source_range_reads","legacy_reads"]):null,
-    archive:numbers(archive,["retrieval_depth"]),
-    folds:{...numbers(folds,["valid_cards","invalid_cards","max_level"]),
-      pendingFoldWork:yes(folds,"pending_fold_work")},
+    archive:numbers(archive!,["retrieval_depth"]),
+    folds:{...numbers(folds!,["valid_cards","invalid_cards","max_level"]),
+      pendingFoldWork:yes(folds!,"pending_fold_work")},
     safety:{rawContentIncluded:false,promptsIncluded:false,chainOfThoughtIncluded:false},
   };
 }
