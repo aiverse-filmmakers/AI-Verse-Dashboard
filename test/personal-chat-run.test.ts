@@ -124,6 +124,25 @@ describe("Personal Chat canonical run controller",()=>{
    assert.deepEqual(second.params?.messages,[{role:"user",content:"Continue the discussion"}]);
    assert.doesNotMatch(JSON.stringify(second.params),/NEVER REUSE DRAFT|Original prompt/);
  });
+ it("Stop racing with a completed run reconciles the real finished reply",async()=>{
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run();
+     if(method==="aiverse.gateway.run.cancel")
+       throw Object.assign(Error("Already complete"),{code:"RUN_NOT_CANCELABLE"});
+     if(method==="aiverse.gateway.run.get")return run("completed",{output:"Real finished answer"});
+     throw Error("Unexpected method "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("Describe frame","first");
+   const response=await chat.stop("stop-late");
+   assert.equal(response.phase,"completed");
+   assert.equal(response.output,"Real finished answer");
+   assert.equal(response.errorCode,undefined);
+   assert.deepEqual(calls.map(c=>c.method),[
+     "aiverse.gateway.run.create","aiverse.gateway.run.cancel","aiverse.gateway.run.get",
+   ]);
+   assert.equal(f.watchers[0].cancelled,true);
+ });
  it("Stop uncertainty preserves canonical run identity for GET-only recovery",async()=>{
    let failControl=true;
    const {client,calls}=clientWith(method=>{
