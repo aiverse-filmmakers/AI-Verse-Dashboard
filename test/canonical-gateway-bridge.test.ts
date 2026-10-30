@@ -27,7 +27,7 @@ async function listen(server:Server):Promise<number>{
  const address=server.address();if(!address || typeof address==="string")throw Error("Missing port");
  return address.port;
 }
-function gatewayFixture(options:{slowEvents?:boolean}={}){
+function gatewayFixture(options:{slowEvents?:boolean;onRunGet?:()=>void}={}){
  const received:{method:string;path:string;auth:string;key:string;body:unknown}[]=[];
  let storedRunStatus="running";
  const server=createServer(async(req,res)=>{
@@ -69,7 +69,9 @@ function gatewayFixture(options:{slowEvents?:boolean}={}){
      storedRunStatus="canceled";run.status=storedRunStatus;return send(200,run);
    }
    if(req.method==="POST"&&req.url==="/v1/runs")return send(202,run);
-   if(req.method==="GET"&&req.url==="/v1/runs/run-a")return send(200,run);
+   if(req.method==="GET"&&req.url==="/v1/runs/run-a"){
+     options.onRunGet?.();return send(200,run);
+   }
    return send(404,{error:{code:"NOT_FOUND"}});
  });
  return {server,received};
@@ -243,6 +245,27 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
      }));
    assert.equal((wrong.data.error as {code:string}).code,"RUN_BINDING_MISMATCH");
    assert.equal(upstream.received.filter(x=>x.path==="/v1/runs/run-a/cancel").length,1);
+ });
+ it("revoked OS binding between canonical GET and Stop prevents upstream control",async()=>{
+   const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+   const upstream=gatewayFixture({onRunGet:()=>reg.rebind(a.systemId,a.root)});
+   const port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",
+     origin:"http://127.0.0.1:"+port,resolveBearer:()=>"actual-host-gateway-token",
+     allowRunCancel:true,
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),
+     new SubscriptionHub(),{port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   const canceled=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.cancel",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-a",operationId:"op-old",
+     }));
+   assert.equal(canceled.data.ok,false);
+   assert.equal((canceled.data.error as {code:string}).code,"GATEWAY_MAPPING_STALE");
+   assert.equal(upstream.received.some(r=>r.path==="/v1/runs/run-a/cancel"),false);
  });
  it("fails closed for wrong system, absent workspace, unconfigured host and invalid params",async()=>{
    const reg=new SystemRegistry();
