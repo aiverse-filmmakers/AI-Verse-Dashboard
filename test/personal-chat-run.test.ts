@@ -202,6 +202,28 @@ describe("Personal Chat canonical run controller",()=>{
    assert.deepEqual(calls[1].params,{runId:"run-a",sessionId:"session-a",operationId:"pause-1"});
    assert.deepEqual(calls[2].params,{runId:"run-a",sessionId:"session-a",operationId:"resume-1"});
  });
+ it("Stop after Pause cancels that exact run without an implicit resume",async()=>{
+   let status="running";
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run(status);
+     if(method==="aiverse.gateway.run.pause")status="paused";
+     if(method==="aiverse.gateway.run.cancel")status="canceled";
+     return run(status);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("Long task","create-once");
+   await chat.checkpoint("pause","pause-once");
+   assert.equal(chat.snapshot().phase,"paused");
+   const stopped=await chat.stop("stop-after-pause");
+   assert.equal(stopped.phase,"canceled");
+   assert.equal(stopped.runId,"run-a");
+   assert.equal(stopped.output,"");
+   assert.deepEqual(calls.map(x=>x.method),[
+     "aiverse.gateway.run.create","aiverse.gateway.run.pause",
+     "aiverse.gateway.run.cancel"]);
+   await assert.rejects(chat.checkpoint("resume","late-resume"),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_RESUME_UNAVAILABLE");
+ });
  it("a second Resume discards all earlier replayed cycle deltas until its own marker",async()=>{
    let state="running";
    const {client,calls}=clientWith(method=>{
