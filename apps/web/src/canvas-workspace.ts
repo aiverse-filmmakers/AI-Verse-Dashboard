@@ -204,6 +204,33 @@ export class CanvasWorkspace {
     }catch(error){if(this.alive(epoch))this.failure(error);}
     finally{if(this.alive(epoch)){this.busy=false;this.render();}}
   }
+  /** Explicit user-selected, saved note as read-only reference material.
+   * Re-fetch the canonical Data document before use: the UI's cached board
+   * or unsaved editor text is not authority for a Chat prompt. Never sends it.
+   */
+  async selectedNoteForChat():Promise<{
+    documentId:string;noteId:string;title:string;version:number;
+    workspaceId:string;text:string;
+  }>{
+    if(this.destroyed||this.busy||!this.current||!this.selectedNote)
+      throw Object.assign(Error("CANVAS_NOTE_NOT_SELECTED"),{code:"CANVAS_NOTE_NOT_SELECTED"});
+    const epoch=this.epoch,scope={...this.selected};
+    const docId=this.current.id,noteId=this.selectedNote,version=this.current.version;
+    const result=this.snapshot(await this.client.canvasGet(docId),scope);
+    if(!this.alive(epoch)||scope.systemId!==this.selected.systemId
+      ||scope.workspaceId!==this.selected.workspaceId||this.current?.id!==docId
+      ||this.selectedNote!==noteId)
+      throw Object.assign(Error("CANVAS_SELECTION_CHANGED"),{code:"CANVAS_SELECTION_CHANGED"});
+    if(Array.isArray(result)||result.id!==docId||result.version!==version)
+      throw Object.assign(Error("CANVAS_VERSION_CHANGED"),{code:"CANVAS_VERSION_CHANGED"});
+    const chosen=result.board?.nodes.find(n=>n.id===noteId);
+    if(!chosen||!chosen.text.trim())
+      throw Object.assign(Error("CANVAS_NOTE_UNAVAILABLE"),{code:"CANVAS_NOTE_UNAVAILABLE"});
+    if(chosen.text.length>5000)
+      throw Object.assign(Error("CANVAS_NOTE_TOO_LONG"),{code:"CANVAS_NOTE_TOO_LONG"});
+    return {documentId:docId,noteId,title:result.title,
+      version:result.version,workspaceId:scope.workspaceId,text:chosen.text};
+  }
   scratch(){
     if(this.busy)return;
     this.current=null;this.selectedNote=null;this.groupSelection.clear();this.pendingDelete=false;
