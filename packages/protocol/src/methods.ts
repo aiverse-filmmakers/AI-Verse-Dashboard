@@ -22,7 +22,7 @@ export const COMMAND_METHODS = [
   "chat.send", "chat.abort", "task.start", "task.cancel", "task.retry", "cron.create",
   "cron.pause", "cron.resume", "cron.runNow", "approval.resolve", "initiative.activate",
   "inbox.resolve", ...PURPOSE_CONTROL_METHODS,
-  "aiverse.gateway.run.create",
+  "aiverse.gateway.run.create", "aiverse.gateway.run.cancel",
   "aiverse.canvas.create", "aiverse.canvas.rename",
   "aiverse.canvas.edit", "aiverse.canvas.duplicate", "aiverse.canvas.revert", "aiverse.canvas.delete",
 ] as const;
@@ -42,7 +42,7 @@ const WORKSPACE_SCOPED = new Set<string>([
   "initiative.list", "initiative.get", "task.list", "task.get", "task.children",
   "run.list", "run.get", "run.logs", "cron.list", "cron.history", "agent.list",
   "agent.sessions", "usage.summary", "graph.query", "graph.node", "source.preview",
-  "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.get", "aiverse.gateway.run.create",
+  "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.get", "aiverse.gateway.run.create", "aiverse.gateway.run.cancel",
   "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
   "aiverse.canvas.list", "aiverse.canvas.get", "aiverse.canvas.history", "aiverse.canvas.create",
   "aiverse.canvas.rename", "aiverse.canvas.edit", "aiverse.canvas.duplicate", "aiverse.canvas.revert", "aiverse.canvas.delete",
