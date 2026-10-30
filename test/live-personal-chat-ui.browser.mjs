@@ -144,11 +144,10 @@ const server=createServer(async(req,res)=>{
         .end(JSON.stringify(body));return;
     }
     let result;
-    if(frame.method==="system.list"){
-      result={systems:[{systemId:"aiverse-01",label:"Test OS",
-        osType:"ai-verse",osVersion:"2.1",authorized:true,
-        registeredAt:"2026-10-30T11:00:00Z",lastValidatedAt:"2026-10-30T11:00:00Z",
-        root:"should-not-be-visible"}]};
+    if(frame.method==="system.registry.summary"){
+      result={source:"dashboard-os-registry",systemId:frame.systemId,
+        workspaceId:frame.workspaceId,registered:1,authorized:1,
+        selectedAuthorized:true};
     }else if(frame.method==="aiverse.gateway.status"){
       result={source:"canonical-gateway",workspaceId:frame.workspaceId,
         runCancelSupported:true,runPauseResumeSupported:frame.workspaceId==="operator",
@@ -666,6 +665,9 @@ test("G06.1 workspace status inspects a real scoped run with factual safe diagno
   assert.equal(calls.length,1);
   assert.deepEqual(calls[0].params,{runId:run.runId,sessionId:run.sessionId});
   assert.equal(calls[0].workspaceId,"operator");
+  assert.ok(requests.slice(before).some(x=>x.method==="system.registry.summary"));
+  assert.equal(requests.slice(before).filter(x=>x.method==="system.list").length,0,
+    "paired UI must not obtain the full OS registry");
   assert.equal(requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.create").length,1);
   assert.deepEqual(await page.evaluate(()=>({local:localStorage.length,session:sessionStorage.length})),
     {local:0,session:0});
