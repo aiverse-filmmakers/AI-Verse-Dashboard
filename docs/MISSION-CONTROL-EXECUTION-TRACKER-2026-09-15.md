@@ -7,7 +7,7 @@
 
 ## Pre-dogfood whole-system audit override
 
-AI-Verse-System retains the whole-system audit authority. The operator explicitly approved the bounded disposable local Qwen trial recorded in System PR #288 and Dashboard PR #40. Its real Mac proof passed; [scope, evidence and limitations](MC1-REAL-MODEL-ACCEPTANCE-2026-10-26.md) close MC1.4/MC1.5 for this standalone local-model path. Generic/private-owner and credentialed-cloud trials remain blocked. Current Dashboard progress is **15/100**; next is MC2.1.
+AI-Verse-System retains the whole-system audit authority. The operator explicitly approved the bounded disposable local Qwen trial recorded in System PR #288 and Dashboard PR #40. Its real Mac proof passed; [scope, evidence and limitations](MC1-REAL-MODEL-ACCEPTANCE-2026-10-26.md) close MC1.4/MC1.5 for this standalone local-model path. Generic/private-owner and credentialed-cloud trials remain blocked. Current formal Dashboard progress is **17/100** after scoped MC2.1 design acceptance on 30 October; MC2.2 implementation is next. This does not qualify a user Mac release or the Personal-first extra scope.
 
 ## How to use this tracker
 
@@ -35,7 +35,7 @@ Formal program weight totals **100 points**.
 
 A task contributes its points only after its acceptance gate is satisfied and evidence is recorded.
 
-**Current accepted progress: 15 / 100. 85% remaining.**
+**Current formal accepted progress: 17 / 100. 83% remaining.** MC0/MC1 15 points plus MC2.1 scoped original design 2 points, see source/CI/review/merge evidence below.
 
 The previously merged canonical adoption plan is prerequisite context, not retroactive execution credit for this tracker.
 
@@ -198,18 +198,20 @@ Acceptance evidence: [real Mac proof](MC1-REAL-MODEL-ACCEPTANCE-2026-10-26.md) a
 ### MC1.5 - MC1 evidence + gate closure - 1 point - A
 Status: COMPLETE
 
-Sanitized evidence, exact refs, execution-path amendment, initial failures and remaining limitations are recorded in the linked acceptance packet. Mission Control state remains disposable. Existing MC2.1 is the next eligible Dashboard task; Gateway G4.2 remains separately owned.
+Sanitized evidence, exact refs, execution-path amendment, initial failures and remaining limitations are recorded in the linked acceptance packet. Mission Control state remains disposable. MC2.1 design has since been accepted with scoped evidence; MC2.2 implementation is the next historical acceptance gate. Gateway G4.2 remains separately owned.
 
 ---
 
 # MC2 - First-class AI-Verse adapter - 15 points
 
 ### MC2.1 - Adapter contract design - 2 points - A
-Status: **FOCUSED DESIGN REVIEW PR #43 OPEN / NOT ACCEPTED (0/2 points)**
+Status: **ACCEPTED: SCOPED DESIGN ONLY, 2/2 POINTS. NO IMPLEMENTATION OR RELEASE CREDIT.**
+
+**30 October 2026 acceptance evidence:** [focused design PR #43](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/43) merged with squash commit `297f99b9380c9905fbe6c359668f504142c2ee89`, after [exact-head Dashboard CI 40711556090](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/40711556090) passed Linux, macOS and Windows and AI-assisted Code Review COMMENT `5718854282` examined the actual design and current owner contracts. **Reviewer provenance: AI-assisted self-review, explicitly delegated by product owner, not an independent human or GitHub APPROVE.** Original MC2.1 design acceptance checks (exact Gateway routes, auth/root/workspace bind, SSE/replay, scope separation and documented absent APIs) are satisfied **for the design packet only**. Implementation PR #42 and Gateway/Data/OS owner drafts remain unaccepted. Next historical gate MC2.2. Formal 15→17/100; no source code, local installation, real provider, Personal-first extra-scope, or privileged permissions are accepted by this record.
 
 28 October 2026: [MC2.1 design-only acceptance PR #43](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/43) is independently reviewable against main. The [Gateway client wire contract](MC2.1-AIVERSE-GATEWAY-CLIENT-CONTRACT-2026-10-26.md) and [source-pinned Personal-first review packet](MC2.1-ACCEPTANCE-REVIEW-2026-10-28.md) cover the actual Gateway routes, host/auth/system/workspace binding, SSE/cancel race, Connections credential ownership, typed app-action design, current owner-draft API status, missing routes and negative tests. This is **documentation/review**, not a deployed/approved interface; implementation PR #42, Gateway #80, Data #22 and Personal-first plan PR #41 remain separate drafts.
 
-**Acceptance step:** record independent review and merge of the exact design PR, then formally award the existing **2 points** (15 → **17/100**) in the canonical tracker with approval/merge evidence. No points awarded for opening the PR or for self-authored review. Revised scope totals need their own Personal-first amendment review before any future reweighting.
+**Acceptance closure:** original design-only review and merge were recorded above. The owner explicitly delegated AI-assisted technical review in the [review policy](REVIEW-ACCEPTANCE-WORKFLOW-2026-10-30.md); this is not described as independent signoff. Revised Personal-first scope totals still require their own plan review before any reweighting.
 
 Deliver:
 - exact Dashboard <-> AI-Verse Gateway client contract;
