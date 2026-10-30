@@ -875,6 +875,7 @@ test("explicit Insert Canvas note rereads canonical Data into composer, never in
   await canvas.locator(".canvas-note").first().waitFor();
   await canvas.locator(".canvas-note").first().click();
   await canvas.locator(".canvas-note-text").waitFor();
+  await canvas.locator(".canvas-note-text").fill("UNSAVED EDITOR CONTENT");
   await pane.locator(".live-chat-input").fill("How can I improve this shot?");
   const beforeInsert=requests.length;
   await insert.click();
@@ -882,6 +883,8 @@ test("explicit Insert Canvas note rereads canonical Data into composer, never in
   const draft=await pane.locator(".live-chat-input").inputValue();
   assert.match(draft,/\[Saved Canvas: .*\(v\d+, note note-/);
   assert.match(draft,/New note/);
+  assert.doesNotMatch(draft,/UNSAVED EDITOR CONTENT/,
+    "only the canonical saved Data note, not a draft editor field, may be admitted");
   assert.match(draft,/How can I improve this shot\?/);
   assert.equal(requests.slice(beforeInsert).filter(r=>r.method==="aiverse.canvas.get").length,1,
     "Canvas note must be refetched from Data before entering Chat");
