@@ -169,7 +169,7 @@ const server=createServer(async(req,res)=>{
         workspaceId:frame.workspaceId,source:"canonical-gateway"};
     }else if(frame.method==="aiverse.gateway.run.create"){
       const runId="run-"+(++next);
-      result={runId,sessionId:"session-"+next,systemId:"canonical-a",
+      result={runId,sessionId:frame.params?.sessionId??"session-"+next,systemId:"canonical-a",
         workspaceId:frame.workspaceId,status:"running",source:"canonical-gateway"};
       runs.set(runId,{...result,output:"Authoritative answer "+next,
         dropFirstStream:frame.params?.messages?.some(m=>m.content==="Test dropped stream")===true,
@@ -330,6 +330,17 @@ test("Real Chat Stop invokes exactly one authorized canonical cancel and keeps d
   assert.match(canceled.params.runId,/^run-/);
   assert.match(canceled.params.sessionId,/^session-/);
   assert.ok(/^[A-Fa-f0-9-]{36}$/.test(canceled.params.operationId));
+  assert.equal(await pane.locator(".live-chat-message.status").getByText("Response stopped").count(),1);
+  assert.equal(await pane.getByRole("button",{name:"Send",exact:true}).isEnabled(),true);
+  await pane.locator(".live-chat-input").fill("Continue from stopped run");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  const creations=requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.create");
+  assert.equal(creations.length,2);
+  assert.equal(creations[1].params.sessionId,canceled.params.sessionId);
+  assert.deepEqual(creations[1].params.messages,[
+    {role:"user",content:"Continue from stopped run"},
+  ]);
   assert.deepEqual(errors,[]);
 });
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
