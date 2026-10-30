@@ -111,6 +111,9 @@ export class QueryRouter {
         return { phase: GATEWAY_PHASE, methods: [...SUPPORTED_QUERIES, ...SUPPORTED_PURPOSE_CONTROLS], maxParamsBytes: 65536 };
       case "system.list": return { systems: this.registry.listPublic() };
       case "system.registry.summary": {
+        // This query has no caller-controlled filter or substitute scope.
+        if(req.params!==undefined)throw Object.assign(Error("Unexpected registry parameters"),{
+          code:"INVALID_ENVELOPE"});
         const systemId=req.systemId as string,workspaceId=req.workspaceId as string;
         if(!systemId||!workspaceId)throw Object.assign(Error("Scope required"),{
           code:"SYSTEM_REQUIRED"});
