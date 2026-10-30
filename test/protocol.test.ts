@@ -40,7 +40,7 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
     assert.equal(isCommandMethod("chat.send"), true); assert.equal(isQueryMethod("purpose.get"), true); assert.equal(isPurposeControlMethod("purpose.change.apply"), true);
     assert.deepEqual([...PURPOSE_CONTROL_METHODS], ["purpose.change.propose", "purpose.change.confirm", "purpose.change.apply"]);
     assert.throws(() => assertQueryOnly("chat.send"), /blocked/); assert.throws(() => assertQueryOnly("purpose.change.apply"), /blocked/); assert.doesNotThrow(() => assertQueryOnly("purpose.get"));
-    assert.equal(COMMAND_METHODS.length, 25); assert.equal(QUERY_METHODS.length, 34); assert.equal(ALL_METHODS.length, 61);
+    assert.equal(COMMAND_METHODS.length, 25); assert.equal(QUERY_METHODS.length, 35); assert.equal(ALL_METHODS.length, 62);
     assert.equal(isCommandMethod("aiverse.canvas.duplicate"),true);
     assert.equal(isCommandMethod("aiverse.gateway.run.create"),true);
     assert.equal(isCommandMethod("aiverse.gateway.run.cancel"),true);
@@ -59,6 +59,10 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
     assert.equal(isCommandMethod("aiverse.gateway.run.diagnostics"),false);
     assert.doesNotThrow(()=>assertQueryOnly("aiverse.gateway.run.diagnostics"));
     assert.equal(isQueryMethod("operator.activity"),true);
+    assert.equal(isQueryMethod("system.registry.summary"),true);
+    assert.equal(isCommandMethod("system.registry.summary"),false);
+    assert.equal(requiresSystem("system.registry.summary"),true);
+    assert.equal(requiresWorkspace("system.registry.summary"),true);
     assert.equal(requiresSystem("operator.activity"),true);
     assert.equal(requiresWorkspace("operator.activity"),true);
     for(const method of ["aiverse.gateway.status","aiverse.gateway.models","aiverse.gateway.run.create","aiverse.gateway.run.cancel",
