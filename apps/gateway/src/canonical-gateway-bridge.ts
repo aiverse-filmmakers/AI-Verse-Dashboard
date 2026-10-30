@@ -21,11 +21,13 @@ export interface ApprovedCanonicalGateway {
   resolveBearer: HostGatewayBinding["resolveBearer"];
   /** Explicit trusted-launcher opt-in. Default false: no browser run control. */
   allowRunCancel?:boolean;
+  /** Independent interactive-owner grant for checkpointed Pause/Resume. */
+  allowRunPauseResume?:boolean;
 }
 const methods = new Set([
   "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.create", "aiverse.gateway.run.get",
   "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
-  "aiverse.gateway.run.cancel",
+  "aiverse.gateway.run.cancel", "aiverse.gateway.run.pause", "aiverse.gateway.run.resume",
 ]);
 const identifier = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
 const input = z.object({
@@ -39,6 +41,9 @@ const input = z.object({
 const getInput = z.object({runId:identifier}).strict();
 const cancelInput=z.object({runId:identifier,sessionId:identifier,
   operationId:identifier}).strict();
+// Pause and Resume also require the exact canonical session and a unique
+// idempotent operation, never a browser-supplied action or principal.
+const checkpointInput=cancelInput;
 const pageInput=z.object({limit:z.number().int().min(1).max(25).optional(),
   offset:z.number().int().min(0).max(10_000).optional()}).strict();
 const historyInput=pageInput.extend({sessionId:identifier}).strict();
@@ -54,6 +59,7 @@ const SAFE_CODES = new Set([
   "SESSION_NOT_FOUND", "INVALID_HISTORY_QUERY", "INVALID_HISTORY_SCOPE",
   "HISTORY_BINDING_MISMATCH", "HISTORY_INDEX_TOO_LARGE",
   "RUN_CONTROL_NOT_AUTHORIZED", "RUN_NOT_CANCELABLE",
+  "RUN_NOT_PAUSABLE", "RUN_NOT_RESUMABLE",
 ]);
 function failureCode(error: unknown): string {
   const code=(error as {code?:unknown})?.code;
@@ -198,9 +204,12 @@ export class CanonicalGatewayBridge {
             runtimeSource:{id:"aiverse",owner:"canonical-gateway",model:"aiverse",
               runtimeKind:value.runtime,readinessEvidence:"authenticated-status-and-models",
               inferenceVerified:false},
-            capabilities:{runCreate:true,runGet:true,events:true,controls:false,
+            capabilities:{runCreate:true,runGet:true,events:true,
+              controls:configured.binding.allowRunCancel===true
+                ||configured.binding.allowRunPauseResume===true,
               conversationLibrary:true,providerSelection:false},
-            source:"canonical-gateway",runCancelSupported:configured.binding.allowRunCancel===true});
+            source:"canonical-gateway",runCancelSupported:configured.binding.allowRunCancel===true,
+            runPauseResumeSupported:configured.binding.allowRunPauseResume===true});
         }
         if(frame.method==="aiverse.gateway.models"){
           if(frame.params!==undefined && !z.object({}).strict().safeParse(frame.params).success)
@@ -261,6 +270,36 @@ export class CanonicalGatewayBridge {
             },
           });
           return respond(true,boundedRun(canceled));
+        }
+        if(frame.method==="aiverse.gateway.run.pause"
+          ||frame.method==="aiverse.gateway.run.resume"){
+          // A separate explicit owner grant is required; Stop alone is NOT
+          // permission to pause or restart compute.
+          if(configured.binding.allowRunPauseResume!==true)
+            throw new GatewayTransportError("RUN_CONTROL_NOT_AUTHORIZED");
+          const parsed=checkpointInput.safeParse(frame.params);
+          if(!parsed.success)throw new GatewayTransportError("INVALID_ENVELOPE");
+          const {runId,sessionId,operationId}=parsed.data;
+          const action=frame.method==="aiverse.gateway.run.pause"?"pause":"resume";
+          const result=await client.controlRun({runId,action,operationId,
+            ...(action==="pause"?{reason:"dashboard_operator_pause"}:{}),signal,
+            validateBeforePost:run=>{
+              if(run.session_id!==sessionId)
+                throw new GatewayTransportError("SESSION_BINDING_MISMATCH");
+              if(action==="pause"
+                &&!["queued","running","resuming"].includes(run.status))
+                throw new GatewayTransportError("RUN_NOT_PAUSABLE");
+              if(action==="resume"
+                &&!["paused","paused_recovery_required","paused_no_progress"].includes(run.status))
+                throw new GatewayTransportError("RUN_NOT_RESUMABLE");
+              if(this.registry.resolveRoot(system)!==configured.root
+                ||this.registry.bindingGeneration(system)!==configured.generation)
+                throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
+              if(workspace!=="operator")getWorkspace(this.registry,system,workspace);
+              if(signal?.aborted)throw new GatewayTransportError("ABORTED");
+            },
+          });
+          return respond(true,boundedRun(result));
         }
         if(frame.method==="aiverse.gateway.run.get"){
           const parse=getInput.safeParse(frame.params);
