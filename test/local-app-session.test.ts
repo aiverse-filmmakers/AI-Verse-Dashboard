@@ -374,6 +374,42 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       {cookie,origin:base});
     assert.equal(denied.status,401);
   });
+  it("G06.1 paired OS sees true two-system counts, never second system identity",async()=>{
+    const first=fixture(),second=fixture();
+    roots.push(first.root,second.root);
+    const secondId=first.reg.register(second.root,{
+      systemId:"production-private",label:"SECRET SECOND STUDIO OS",
+    }).systemId;
+    const local=new LocalApplicationSession({systemId:first.systemId,workspaceId:"operator"},
+      undefined,first.reg);
+    const srv=await startGateway(new QueryRouter(first.reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:local});
+    closers.push(()=>srv.close());
+    const base="http://127.0.0.1:"+srv.port;
+    const paired=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(srv.port),
+      body:json({code:local.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    const cookie=(paired.headers.get("set-cookie")??"").split(";")[0];
+    const req={type:"req",v:"1.0",id:"count-only",method:"system.registry.summary",
+      systemId:first.systemId,workspaceId:"operator"};
+    const response=await rpc(srv.port,req,{cookie,origin:base});
+    assert.equal(response.status,200);
+    const value=await response.json() as {ok:boolean;result:Record<string,unknown>};
+    assert.equal(value.ok,true);
+    assert.deepEqual(value.result,{
+      source:"dashboard-os-registry",systemId:first.systemId,workspaceId:"operator",
+      registered:2,authorized:2,workspaces:1,selectedAuthorized:true,
+    });
+    assert.doesNotMatch(JSON.stringify(value),/SECRET SECOND|production-private|private\/|rootIdentity/);
+    const denied=await rpc(srv.port,{...req,method:"system.list"},
+      {cookie,origin:base});
+    assert.equal(denied.status,403);
+    assert.equal(first.reg.unregister(secondId),true);
+    const updated=await rpc(srv.port,req,{cookie,origin:base});
+    assert.equal((await updated.json() as {result:{registered:number}}).result.registered,1);
+  });
   it("rejects a caller-mutated scope object and a replaced workspace manifest",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
     const ownerScope={systemId,workspaceId:"operator"};
