@@ -8,6 +8,7 @@ export const QUERY_METHODS = [
   "run.logs", "cron.list", "cron.history", "agent.list", "agent.sessions",
   "usage.summary", "graph.query", "graph.node", "source.preview",
   "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.get",
+  "aiverse.gateway.run.diagnostics",
   "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
   "aiverse.canvas.list", "aiverse.canvas.get", "aiverse.canvas.history",
 ] as const;
@@ -43,7 +44,8 @@ const WORKSPACE_SCOPED = new Set<string>([
   "initiative.list", "initiative.get", "task.list", "task.get", "task.children",
   "run.list", "run.get", "run.logs", "cron.list", "cron.history", "agent.list",
   "agent.sessions", "usage.summary", "graph.query", "graph.node", "source.preview",
-  "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.get", "aiverse.gateway.run.create", "aiverse.gateway.run.cancel",
+  "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.get",
+  "aiverse.gateway.run.diagnostics", "aiverse.gateway.run.create", "aiverse.gateway.run.cancel",
   "aiverse.gateway.run.pause", "aiverse.gateway.run.resume",
   "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
   "aiverse.canvas.list", "aiverse.canvas.get", "aiverse.canvas.history", "aiverse.canvas.create",
