@@ -65,12 +65,44 @@ function failureCode(error: unknown): string {
   const code=(error as {code?:unknown})?.code;
   return typeof code==="string" && SAFE_CODES.has(code) ? code : "GATEWAY_UNAVAILABLE";
 }
+/** Whitelist factual execution metadata only. Canonical Gateway cost is NOT
+ * Token-owner verified billed cost, so no price or cost figure is projected.
+ * Never spread an upstream run, runtime object or checkpoint into /rpc.
+ */
+function safeRunReceipt(run:GatewayRun):Record<string,unknown>{
+  const extra=run as Record<string,unknown>;
+  const usage=extra.usage;
+  const counter=(v:unknown)=>Number.isSafeInteger(v)&&typeof v==="number"
+    &&v>=0&&v<=1_000_000_000_000?v:undefined;
+  let counts:Record<string,number>|undefined;
+  if(usage&&typeof usage==="object"&&!Array.isArray(usage)){
+    const u=usage as Record<string,unknown>;
+    const incoming=counter(u.input_tokens),outgoing=counter(u.output_tokens),actions=counter(u.actions);
+    if(incoming!==undefined&&outgoing!==undefined&&actions!==undefined)
+      counts={inputTokens:incoming,outputTokens:outgoing,actions};
+  }
+  const timestamp=(value:unknown)=>typeof value==="string"
+    &&value.length>=20&&value.length<=35
+    &&/^\\d{4}-\\d{2}-\\d{2}T/.test(value)
+    &&Number.isFinite(Date.parse(value))?value:undefined;
+  const runtime=extra.runtime;
+  const kind=runtime&&typeof runtime==="object"&&!Array.isArray(runtime)
+    ?(runtime as Record<string,unknown>).kind:undefined;
+  return {
+    ...(counts?{usage:counts}:{}),
+    ...(timestamp(extra.created_at)?{createdAt:timestamp(extra.created_at)}:{}),
+    ...(timestamp(extra.completed_at)?{completedAt:timestamp(extra.completed_at)}:{}),
+    ...(typeof kind==="string"&&/^[a-z][a-z0-9_-]{0,31}$/.test(kind)
+      ?{runtimeKind:kind}:{}),
+  };
+}
 function boundedRun(run:GatewayRun):Record<string,unknown> {
   const output=run.output?.content;
   return {
     runId:run.run_id,sessionId:run.session_id,systemId:run.system_id,
     workspaceId:run.workspace_id,status:run.status,
     ...(typeof output==="string" ? {output:output.slice(0,65_536)} : {}),
+    ...safeRunReceipt(run),
     source:"canonical-gateway",
   };
 }
