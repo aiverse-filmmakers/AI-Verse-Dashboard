@@ -100,6 +100,15 @@ export class DashboardClient {
     return this.query("aiverse.gateway.run.create",{noCache:true,params:args});
   }
 
+  /** Explicitly host-approved cancel of a known canonical run and session. */
+  async cancelGatewayRun(runId:string,sessionId:string,operationId:string):
+    Promise<{result:unknown;systemId?:string;observedAt:string}> {
+    if(!this.scope.workspaceId)throw new Error("Select a workspace first");
+    return this.query("aiverse.gateway.run.cancel",{
+      noCache:true,params:{runId,sessionId,operationId},
+    });
+  }
+
   async getGatewayRun(runId:string):Promise<{result:unknown;systemId?:string;observedAt:string}> {
     if(!this.scope.workspaceId)throw new Error("Select a workspace or operator scope first");
     return this.query("aiverse.gateway.run.get",{noCache:true,params:{runId}});
