@@ -248,7 +248,7 @@ test("G06.1 diagnostics reject invalid safety flags, forged object shapes or pri
 });
 
 const systemSummary=()=>({source:"dashboard-os-registry",
- systemId:"aiverse-01",workspaceId:"operator",registered:2,authorized:1,
+ systemId:"aiverse-01",workspaceId:"operator",registered:2,authorized:1,workspaces:1,
  selectedAuthorized:true,
  private_roots:["/secret/system-2"],labels:["another private registered system"]});
 test("G06.1 OS summary displays scoped actual count but never other registry metadata",()=>{
@@ -270,7 +270,7 @@ test("G06.1 OS summary rejects fabricated counts and malformed aggregates",()=>{
  for(const update of [
   {registered:0}, {authorized:0}, {registered:1,authorized:3},
   {registered:-1}, {registered:Infinity}, {authorized:"2"},
-  {registered:2.5},{registered:1_000_001},
+  {registered:2.5},{registered:1_000_001},{workspaces:-2},{workspaces:"1"},
  ])assert.throws(()=>inspectSystems({...systemSummary(),...update},"aiverse-01","operator"),
    /DIAGNOSTICS_INVALID_SOURCE/);
 });
