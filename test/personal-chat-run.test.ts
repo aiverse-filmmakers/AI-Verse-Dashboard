@@ -185,6 +185,94 @@ describe("Personal Chat canonical run controller",()=>{
    assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.cancel").length,1);
    assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.get").length,1);
  });
+ it("opens canonical 50-run transcript then loads older 25+3 without changing model context",async()=>{
+   const fixtureRows=Array.from({length:78},(_,index)=>{
+     const number=78-index,id=String(number).padStart(3,"0");
+     return {run_id:"historical-"+id,session_id:"session-a",status:"completed",
+       user_text:"Earlier prompt "+id,output:"Verified reply "+id,
+       user_text_truncated:false,output_truncated:false};
+   });
+   const {client,calls}=clientWith((method,params)=>{
+     assert.equal(method,"aiverse.gateway.session.runs");
+     const offset=Number(params?.offset??0),limit=Number(params?.limit??25);
+     return {source:"canonical-gateway",workspaceId:"film",sessionId:"session-a",
+       data:fixtureRows.slice(offset,offset+limit),
+       has_more:offset+limit<fixtureRows.length,
+       next_offset:offset+limit<fixtureRows.length?offset+limit:null};
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   const opened=await chat.openSession("session-a");
+   assert.equal(opened.view.phase,"completed");
+   assert.equal(opened.hasOlder,true);
+   assert.equal(opened.turns.length,100);
+   assert.equal(opened.turns[0].content,"Earlier prompt 029");
+   assert.equal(opened.turns.at(-1)?.content,"Verified reply 078");
+   const older=await chat.loadOlderSessionRuns();
+   assert.equal(older.hasOlder,true);
+   assert.equal(older.turns.length,50);
+   assert.equal(older.turns[0].content,"Earlier prompt 004");
+   assert.equal(older.turns.at(-1)?.content,"Verified reply 028");
+   const oldest=await chat.loadOlderSessionRuns();
+   assert.equal(oldest.hasOlder,false);
+   assert.equal(oldest.turns.length,6);
+   assert.equal(oldest.turns[0].content,"Earlier prompt 001");
+   await assert.rejects(chat.loadOlderSessionRuns(),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_OLDER_HISTORY_UNAVAILABLE");
+   assert.deepEqual(calls.map(c=>c.params?.offset),[0,25,50,75]);
+   assert.equal(calls.some(c=>c.method==="aiverse.gateway.run.create"),false);
+   assert.equal(chat.snapshot().phase,"completed");
+   assert.equal(chat.snapshot().output,"Verified reply 078");
+   assert.equal(chat.snapshot().contextLimited,true);
+ });
+ it("rejects duplicate older history run and retries same canonical offset safely",async()=>{
+   let poison=true;
+   const row=(num:number)=>({run_id:"historical-"+num,session_id:"session-a",
+     status:"completed",user_text:"Message "+num,output:"Answer "+num,
+     user_text_truncated:false,output_truncated:false});
+   const {client,calls}=clientWith((method,params)=>{
+     assert.equal(method,"aiverse.gateway.session.runs");
+     const offset=Number(params?.offset??0);
+     const incoming=offset===50&&poison?[row(100)]:Array.from({length:offset===50?10:25},
+       (_,i)=>row(100-offset-i));
+     const has_more=offset<50;
+     return {source:"canonical-gateway",workspaceId:"film",sessionId:"session-a",
+       data:incoming,has_more,next_offset:has_more?offset+25:null};
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   const opened=await chat.openSession("session-a");
+   assert.equal(opened.hasOlder,true);
+   await assert.rejects(chat.loadOlderSessionRuns(),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_HISTORY_INVALID");
+   poison=false;
+   const older=await chat.loadOlderSessionRuns();
+   assert.equal(older.hasOlder,false);
+   assert.equal(older.turns.length,20);
+   assert.deepEqual(calls.map(c=>c.params?.offset),[0,25,50,50]);
+ });
+ it("switching workspace cancels older-history projection and denies replay",async()=>{
+   let release:(value:unknown)=>void=()=>{};
+   const data=Array.from({length:25},(_,index)=>({run_id:"r-"+index,
+     session_id:"session-a",status:"completed",user_text:"U"+index,output:"A"+index,
+     user_text_truncated:false,output_truncated:false}));
+   const {client}=clientWith((_method,params)=>{
+     if(params?.offset===50)return new Promise(resolve=>{release=resolve;});
+     return {source:"canonical-gateway",workspaceId:"film",sessionId:"session-a",
+       data,has_more:true,next_offset:Number(params?.offset??0)+25};
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   // Return unique run identities on the second page in this separate fixture.
+   await chat.openSession("session-a");
+   const pending=chat.loadOlderSessionRuns();
+   chat.retarget({systemId:"aiverse-01",workspaceId:"other"});
+   chat.retarget(SCOPE);
+   release({source:"canonical-gateway",workspaceId:"film",sessionId:"session-a",
+     data:[],has_more:false,next_offset:null});
+   try{await pending;}catch{}
+   assert.equal(chat.snapshot().phase,"idle");
+   assert.equal(chat.snapshot().output,"");
+   await assert.rejects(chat.loadOlderSessionRuns(),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_OLDER_HISTORY_UNAVAILABLE");
+ });
  it("rejects Stop before a canonical run identity exists",async()=>{
    const {client,calls}=clientWith(()=>{throw Error("must not reach Gateway")});
    const chat=new PersonalChatRunController(client,testFeed().feed);
