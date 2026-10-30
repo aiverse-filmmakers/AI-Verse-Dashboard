@@ -89,33 +89,24 @@ export function inspectSystem(value:unknown,systemId:string):Observation{
     details:s.label.slice(0,80)+" · "+s.osType.slice(0,60)+
       " · "+s.osVersion.slice(0,40)};
 }
-/** Bounded public OS registry inventory, never filesystem root data. */
-export function inspectSystems(value:unknown,systemId:string):Observation{
+/** Owner-calculated aggregate over the actual OS registry. No system labels,
+ * paths or other registrations can be revealed to the paired browser. */
+export function inspectSystems(value:unknown,systemId:string,workspaceId:string):Observation{
   if(!value||typeof value!=="object"||Array.isArray(value))
     throw Error("DIAGNOSTICS_INVALID_SOURCE");
   const v=value as Record<string,unknown>;
-  if(!Array.isArray(v.systems)||v.systems.length>64)
+  if(v.source!=="dashboard-os-registry"||v.systemId!==systemId
+    ||v.workspaceId!==workspaceId||v.selectedAuthorized!==true)
+    throw Error("DIAGNOSTICS_SCOPE_MISMATCH");
+  const number=(x:unknown)=>typeof x==="number"&&Number.isSafeInteger(x)&&x>=0&&x<=1_000_000;
+  if(!number(v.registered)||!number(v.authorized)
+    ||(v.registered as number)<1
+    ||(v.authorized as number)<1
+    ||(v.authorized as number)>(v.registered as number))
     throw Error("DIAGNOSTICS_INVALID_SOURCE");
-  const seen=new Set<string>();let selected=false,authorized=0;
-  for(const raw of v.systems){
-    if(!raw||typeof raw!=="object"||Array.isArray(raw))
-      throw Error("DIAGNOSTICS_INVALID_SOURCE");
-    const row=raw as Record<string,unknown>;
-    if(typeof row.systemId!=="string"
-      ||!/^[a-z0-9][a-z0-9-]{0,63}$/.test(row.systemId)
-      ||typeof row.authorized!=="boolean"
-      ||seen.has(row.systemId))throw Error("DIAGNOSTICS_INVALID_SOURCE");
-    seen.add(row.systemId);
-    if(row.authorized)authorized++;
-    if(row.systemId===systemId){
-      selected=true;
-      if(!row.authorized)throw Error("DIAGNOSTICS_SCOPE_MISMATCH");
-    }
-  }
-  if(!selected)throw Error("DIAGNOSTICS_SCOPE_MISMATCH");
   return {state:"available",label:"Registered OS systems",
-    details:String(v.systems.length)+" registered · "+authorized+
-      " authorized · selected system verified (up to 64)"};
+    details:String(v.registered)+" registered · "+v.authorized+
+      " authorized · selected system verified"};
 }
 export function inspectWorkspace(value:unknown,workspaceId:string):Observation{
   if(!value||typeof value!=="object"||Array.isArray(value))
@@ -353,7 +344,7 @@ export class PersonalDiagnostics{
       this.client.listGatewaySessions(5,0),
       this.client.query("system.get",{noCache:true}),
       this.client.query("workspace.get",{noCache:true}),
-      this.client.query("system.list",{noCache:true}),
+      this.client.query("system.registry.summary",{noCache:true}),
     ]);
     if(this.destroyed||!this.open||epoch!==this.epoch
       ||workspaceId!==this.scope.workspaceId
@@ -413,7 +404,7 @@ export class PersonalDiagnostics{
     }
     try{
       this.current.systems=systems.status==="fulfilled"
-        ?{...inspectSystems(systems.value.result,systemId),
+        ?{...inspectSystems(systems.value.result,systemId,workspaceId),
           observedAt:systems.value.observedAt||observed()}
         :{state:"unavailable",label:"Registered systems inventory unavailable",
           details:safeCode(systems.reason)};
