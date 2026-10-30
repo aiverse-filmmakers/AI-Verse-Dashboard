@@ -141,4 +141,20 @@ describe("MC2.2 canonical run SSE over authenticated Dashboard websocket",()=>{
       assert.equal(f.calls.length,0);
     }finally{await client.close();await server.close();f.cleanup();}
   });
+  it("rejects null and array frames without crashing authenticated socket",async()=>{
+    const f=fixture();
+    const server=await startGateway(f.router,f.hub,{port:0,canonicalBridge:f.bridge});
+    const client=await connect(server.port,f.systemId,server.authToken);
+    try{
+      client.ws.send("null");
+      await client.wait(()=>client.seen.some(x=>x.id==="unparseable"
+        &&(x.error as {code?:string})?.code==="INVALID_ENVELOPE"));
+      client.ws.send("[]");
+      await client.wait(()=>client.seen.filter(x=>x.id==="unparseable").length===2);
+      assert.equal(client.ws.readyState,WebSocket.OPEN);
+      client.ws.send(JSON.stringify({type:"gateway-run-subscribe",workspaceId:"film",runId:"run-a"}));
+      await client.wait(()=>client.seen.some(x=>x.event==="aiverse.gateway.run.event"));
+      assert.equal(f.calls.some(x=>x==="/v1/runs/run-a"),true);
+    }finally{await client.close();await server.close();f.cleanup();}
+  });
 });
