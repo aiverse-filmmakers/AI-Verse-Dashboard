@@ -6,7 +6,7 @@ const file=new URL("../docs/github-browser-progress.json",import.meta.url);
 const base=()=>JSON.parse(readFileSync(file,"utf8"));
 test("GitHub score, formal roadmap and local release are separate",()=>{
  const r=validateGithubBrowserProgress(base());
- assert.deepEqual(r.remote,{earned:46,total:100,provisional:true});
+ assert.deepEqual(r.remote,{earned:47,total:100,provisional:true});
  assert.deepEqual(r.formal,{earned:15,total:100});
  assert.equal(r.local.numericalScore,null);
  assert.ok(r.local.blockers>=5);
@@ -35,7 +35,9 @@ test("cannot over-credit any individual engineering workstream",()=>{
 test("Chat provisional model discovery increment is backed by a verified source identity",()=>{
  const p=base();
  const chat=p.categories.find(x=>x.id==="chat");
- assert.equal(chat.provisionalEarned,10);
+ assert.equal(chat.provisionalEarned,11);
+ assert.equal(p.evidence.canonicalRunPauseResume.sourceCommit,
+  "bc9a171ad691e6f5cab3551f897b15deb7c5f4dd");
  assert.equal(p.evidence.canonicalRunCancelAndContinuation.sourceCommit,
   "f8571dd32630c69a0534ac3d0a2d0684739eafbc");
  assert.equal(chat.evidenceStatus,"source-and-ci");
