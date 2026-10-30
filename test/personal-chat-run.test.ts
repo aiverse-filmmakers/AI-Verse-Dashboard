@@ -79,6 +79,58 @@ describe("Personal Chat canonical run controller",()=>{
    assert.deepEqual(calls.map(x=>x.method),
      ["aiverse.gateway.run.create","aiverse.gateway.run.get"]);
  });
+ it("Stop invokes the canonical run cancel exactly once and never promotes draft text",async()=>{
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.cancel")return run("canceled");
+     throw Error("unexpected Gateway method "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("Shoot a long shot","stable-create");
+   f.watchers[0].handlers.event(event("assistant.delta",1,"UNCONFIRMED PREVIEW"));
+   const stopped=await chat.stop("stable-stop-1");
+   assert.equal(stopped.phase,"canceled");
+   assert.equal(stopped.output,"");
+   assert.equal(stopped.runId,"run-a");
+   assert.equal(f.watchers[0].cancelled,true);
+   assert.deepEqual(calls.map(c=>c.method),[
+     "aiverse.gateway.run.create","aiverse.gateway.run.cancel"]);
+   assert.deepEqual(calls[1].params,{runId:"run-a",sessionId:"session-a",operationId:"stable-stop-1"});
+   await assert.rejects(chat.stop("second-stop"),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_STOP_UNAVAILABLE");
+   f.watchers[0].handlers.event(event("assistant.delta",2,"FORGED LATE"));
+   assert.equal(chat.snapshot().output,"");
+ });
+ it("Stop uncertainty preserves canonical run identity for GET-only recovery",async()=>{
+   let failControl=true;
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run();
+     if(method==="aiverse.gateway.run.cancel"&&failControl){
+       failControl=false;
+       throw Object.assign(Error("disconnect"),{code:"TRANSPORT_UNAVAILABLE"});
+     }
+     if(method==="aiverse.gateway.run.get")return run("canceled");
+     throw Error("unexpected Gateway call "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("test","create");
+   const interrupted=await chat.stop("stop-key");
+   assert.equal(interrupted.phase,"interrupted");
+   assert.equal(interrupted.runId,"run-a");
+   assert.equal(interrupted.errorCode,"TRANSPORT_UNAVAILABLE");
+   const recovered=await chat.reconnect();
+   assert.equal(recovered.phase,"canceled");
+   assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.create").length,1);
+   assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.cancel").length,1);
+   assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.get").length,1);
+ });
+ it("rejects Stop before a canonical run identity exists",async()=>{
+   const {client,calls}=clientWith(()=>{throw Error("must not reach Gateway")});
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   await assert.rejects(chat.stop("control-1"),(e:unknown)=>
+     (e as {code?:string}).code==="CHAT_STOP_UNAVAILABLE");
+   assert.equal(calls.length,0);
+ });
  it("reconnects a known interrupted run using GET and event replay, never creates another run",async()=>{
    let state="running";
    const {client,calls}=clientWith(method=>{
