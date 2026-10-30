@@ -144,7 +144,10 @@ const server=createServer(async(req,res)=>{
         .end(JSON.stringify(body));return;
     }
     let result;
-    if(frame.method==="aiverse.gateway.models"){
+    if(frame.method==="aiverse.gateway.status"){
+      result={source:"canonical-gateway",workspaceId:frame.workspaceId,
+        runCancelSupported:true,capabilities:{controls:true,runCancel:true}};
+    }else if(frame.method==="aiverse.gateway.models"){
       result={source:"canonical-gateway",workspaceId:frame.workspaceId,
         models:[{id:"aiverse",label:"AI-Verse Gateway",kind:"gateway-virtual"}],
         runtimeKind:"deterministic",modelSelectionSupported:false,
@@ -170,7 +173,19 @@ const server=createServer(async(req,res)=>{
         workspaceId:frame.workspaceId,status:"running",source:"canonical-gateway"};
       runs.set(runId,{...result,output:"Authoritative answer "+next,
         dropFirstStream:frame.params?.messages?.some(m=>m.content==="Test dropped stream")===true,
+        slowStream:frame.params?.messages?.some(m=>m.content==="Test stop active run")===true,
         subscriptions:0});
+    }else if(frame.method==="aiverse.gateway.run.cancel"){
+      const found=runs.get(frame.params?.runId);
+      if(!found||found.workspaceId!==frame.workspaceId
+        ||found.sessionId!==frame.params?.sessionId
+        ||typeof frame.params?.operationId!=="string"){
+        res.writeHead(200,{"content-type":"application/json"}).end(JSON.stringify({
+          type:"res",v:"1.0",id:frame.id,ok:false,systemId:frame.systemId,
+          error:{code:"RUN_BINDING_MISMATCH",message:"Scope denied"},
+          observedAt:new Date().toISOString()}));return;
+      }
+      found.status="canceled";result={...found};
     }else if(frame.method==="aiverse.gateway.run.get"){
       const found=runs.get(frame.params?.runId);
       if(!found || found.workspaceId!==frame.workspaceId){
@@ -179,8 +194,8 @@ const server=createServer(async(req,res)=>{
           error:{code:"RUN_BINDING_MISMATCH",message:"Scope denied"},observedAt:new Date().toISOString(),
         }));return;
       }
-      result={...found,status:found.dropFirstStream && found.subscriptions<2
-        ?"running":"completed"};
+      result={...found,status:found.status==="canceled"?"canceled"
+        :found.dropFirstStream && found.subscriptions<2?"running":"completed"};
     }else{
       res.writeHead(400).end("Unknown method");return;
     }
@@ -234,6 +249,7 @@ server.on("upgrade",(req,socket,head)=>{
           return;
         }
         makeEvent("assistant.delta",2,"Draft stream");
+        if(run.slowStream)return; // The real Stop RPC, not WS closure, ends this run.
         makeEvent("run.completed",3);
       }
     });
@@ -274,7 +290,8 @@ test("MC2.5 actual browser interface sends canonical RPC, receives WS, and rende
   }
   assert.equal(await page.locator(".live-chat-message.user").count(),1);
   assert.equal(await page.locator(".live-chat-message.assistant p").innerText(),"Authoritative answer 1");
-  const chatRequests=requests.filter(r=>r.method.startsWith("aiverse.gateway."));
+  const chatRequests=requests.filter(r=>[
+    "aiverse.gateway.run.create","aiverse.gateway.run.get"].includes(r.method));
   assert.equal(chatRequests[0].method,"aiverse.gateway.run.create");
   assert.equal(chatRequests[0].workspaceId,"operator");
   assert.deepEqual(chatRequests[0].params.messages,[{
@@ -286,6 +303,34 @@ test("MC2.5 actual browser interface sends canonical RPC, receives WS, and rende
     local:localStorage.length,session:sessionStorage.length,
   }));
   assert.deepEqual(browserStorage,{local:0,session:0},"real turns and tokens never enter preview localStorage");
+});
+test("Real Chat Stop invokes exactly one authorized canonical cancel and keeps draft output unconfirmed",async t=>{
+  const {page,errors}=await pageFor(t);
+  const pane=page.locator(".live-chat-pane").first();
+  const stop=pane.getByRole("button",{name:"Stop run"});
+  assert.equal(await stop.isDisabled(),true);
+  const before=requests.length;
+  await pane.locator(".live-chat-input").fill("Test stop active run");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await page.waitForFunction(()=>{
+    const stop=document.querySelector(".live-chat-stop");
+    return stop instanceof HTMLButtonElement && !stop.disabled;
+  });
+  await stop.click();
+  await pane.locator(".live-chat-status").getByText(/canceled/).waitFor();
+  assert.equal(await stop.isDisabled(),true);
+  assert.equal(await pane.locator(".live-chat-message.user").count(),1);
+  assert.doesNotMatch(await pane.locator(".live-chat-log").innerText(),/Draft stream|Authoritative answer/);
+  const calls=requests.slice(before).filter(x=>x.method.startsWith("aiverse.gateway.run."));
+  assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+  assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.cancel").length,1);
+  const created=calls.find(x=>x.method==="aiverse.gateway.run.create");
+  const canceled=calls.find(x=>x.method==="aiverse.gateway.run.cancel");
+  assert.ok(created&&canceled);
+  assert.match(canceled.params.runId,/^run-/);
+  assert.match(canceled.params.sessionId,/^session-/);
+  assert.ok(/^[A-Fa-f0-9-]{36}$/.test(canceled.params.operationId));
+  assert.deepEqual(errors,[]);
 });
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
   const {page,errors}=await pageFor(t);
