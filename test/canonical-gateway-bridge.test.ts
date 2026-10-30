@@ -287,6 +287,14 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
        messages:[{role:"user",content:"hello"}],idempotencyKey:"1",origin:"http://wrong.example",
      }),"INVALID_ENVELOPE"],
      [frame("aiverse.gateway.run.get",a.systemId,"film",{runId:"../../other"}),"INVALID_ENVELOPE"],
+     [frame("aiverse.gateway.run.create",a.systemId,"film",{
+       messages:[{role:"user",content:"Unauthorized direct model"}],
+       idempotencyKey:"model-override-1",model:"gpt-6",
+     }),"INVALID_ENVELOPE"],
+     [frame("aiverse.gateway.run.create",a.systemId,"film",{
+       messages:[{role:"user",content:"Unauthorized provider"}],
+       idempotencyKey:"provider-override-1",provider:"external-provider",
+     }),"INVALID_ENVELOPE"],
    ] as const){
      const reply=await rpc(dash.port,dash.authToken,f);
      assert.equal(reply.data.ok,false);
