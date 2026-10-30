@@ -369,7 +369,7 @@ export class PersonalChatRunController {
     const epoch=++this.epoch,selection=this.client.selectionVersion();
     this.streamEpoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
-    this.show({phase:"submitting",errorCode:undefined});
+    this.show({phase:"submitting",output:"",errorCode:undefined});
     try{
       const response=await this.client.cancelGatewayRun(runId,sessionId,operationId);
       if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
