@@ -107,9 +107,47 @@ export function inspectWorkspace(value:unknown,workspaceId:string):Observation{
   return {state:"available",label:"Selected workspace manifest found",
     details:name+" · "+state};
 }
+/** Accept only host-whitelisted, exact-scope factual owner diagnostics. */
+export function inspectRunDiagnostics(value:unknown,workspaceId:string,
+  runId:string,sessionId:string):Observation{
+  const v=scopedResponse(value,workspaceId,"canonical-gateway");
+  const safety=v.safety;
+  if(v.runId!==runId||v.sessionId!==sessionId
+    ||typeof v.status!=="string"||!/^[a-z_]{2,48}$/.test(v.status)
+    ||!safety||typeof safety!=="object"||Array.isArray(safety))
+    throw Error("DIAGNOSTICS_SCOPE_MISMATCH");
+  const safe=safety as Record<string,unknown>;
+  if(safe.rawContentIncluded!==false||safe.promptsIncluded!==false
+    ||safe.chainOfThoughtIncluded!==false)throw Error("DIAGNOSTICS_INVALID_SOURCE");
+  const obj=(x:unknown):Record<string,unknown>|null=>
+    x&&typeof x==="object"&&!Array.isArray(x)?x as Record<string,unknown>:null;
+  const folds=obj(v.folds),archive=obj(v.archive);
+  const retrieval=v.retrieval===null?null:obj(v.retrieval);
+  const context=v.context===null?null:obj(v.context);
+  if(!folds||!archive||(v.retrieval!==null&&!retrieval)
+    ||(v.context!==null&&!context))throw Error("DIAGNOSTICS_INVALID_SOURCE");
+  const count=(x:unknown)=>typeof x==="number"&&Number.isSafeInteger(x)
+    &&x>=0&&x<=1_000_000_000_000?x:undefined;
+  const values:[string,unknown][]=[
+    ["Source reads",retrieval?.source_reads],
+    ["Gateway source-range reads",retrieval?.gateway_source_range_reads],
+    ["Archived retrieval depth",archive.retrieval_depth],
+    ["Validated folds",folds.valid_cards],
+    ["Invalid folds",folds.invalid_cards],
+  ];
+  for(const [,raw] of values){if(raw!==undefined&&raw!==null&&count(raw)===undefined)
+    throw Error("DIAGNOSTICS_INVALID_SOURCE");}
+  if(typeof folds.pendingFoldWork!=="boolean")throw Error("DIAGNOSTICS_INVALID_SOURCE");
+  const facts=[...values.filter(([,x])=>count(x)!==undefined)
+    .map(([label,x])=>label+": "+String(x)),
+    "Pending fold work: "+(folds.pendingFoldWork?"yes":"no")];
+  return {state:"available",label:"Canonical run diagnostics · "+v.status,
+    details:facts.join(" · ")+" · Raw prompts and traces excluded"};
+}
 export class PersonalDiagnostics{
   private readonly scope:Required<ClientScope>;
   private epoch=0;
+  private runEpoch=0;
   private open=false;
   private destroyed=false;
   private readonly gateway:HTMLElement;
@@ -119,6 +157,10 @@ export class PersonalDiagnostics{
   private readonly history:HTMLElement;
   private readonly heading:HTMLElement;
   private readonly reload:HTMLButtonElement;
+  private readonly runInput:HTMLInputElement;
+  private readonly sessionInput:HTMLInputElement;
+  private readonly runButton:HTMLButtonElement;
+  private readonly runResult:HTMLElement;
   private current:{system:Observation;workspace:Observation;gateway:Observation;canvas:Observation;history:Observation};
   constructor(private readonly host:HTMLElement,
     private readonly client:DashboardClient){
@@ -136,12 +178,25 @@ export class PersonalDiagnostics{
     this.workspace=node("div","personal-diagnostics-source");
     this.canvas=node("div","personal-diagnostics-source");
     this.history=node("div","personal-diagnostics-source");
+    this.runInput=node("input","personal-diagnostics-run-input");
+    this.runInput.placeholder="Canonical run ID";this.runInput.maxLength=128;
+    this.runInput.setAttribute("aria-label","Diagnostic run ID");
+    this.sessionInput=node("input","personal-diagnostics-session-input");
+    this.sessionInput.placeholder="Exact session ID";this.sessionInput.maxLength=128;
+    this.sessionInput.setAttribute("aria-label","Diagnostic session ID");
+    this.runButton=node("button","personal-diagnostics-run-button","Inspect run");
+    this.runButton.type="button";
+    this.runButton.addEventListener("click",()=>{void this.inspectRun();});
+    this.runResult=node("div","personal-diagnostics-source personal-diagnostics-run-result");
+    const inspectControls=node("div","personal-diagnostics-run-controls");
+    inspectControls.append(this.runInput,this.sessionInput,this.runButton);
     host.classList.add("personal-diagnostics");
     host.setAttribute("aria-label","Canonical workspace diagnostics");
     host.hidden=true;
     const head=node("div","personal-diagnostics-header");
     head.append(this.heading,this.reload);
-    host.replaceChildren(head,this.system,this.workspace,this.gateway,this.canvas,this.history);
+    host.replaceChildren(head,this.system,this.workspace,this.gateway,this.canvas,this.history,
+      inspectControls,this.runResult);
     this.current={
       system:{state:"idle",label:"OS system registry",details:"Not checked"},
       workspace:{state:"idle",label:"Selected workspace manifest",details:"Not checked"},
@@ -150,18 +205,21 @@ export class PersonalDiagnostics{
       history:{state:"idle",label:"Conversation library",details:"Not checked"},
     };
     this.render();
+    this.renderEntry(this.runResult,{state:"idle",label:"Inspect a canonical run",
+      details:"Read-only, requires the exact run and session IDs"});
   }
   isOpen():boolean{return this.open;}
   toggle():void{
     if(this.destroyed)return;
     this.open=!this.open;this.host.hidden=!this.open;
     if(this.open)void this.refresh();
-    else this.epoch++;
+    else {this.epoch++;this.runEpoch++;this.resetRunInspection();}
   }
   retarget(next:Required<ClientScope>):void{
     if(this.destroyed)throw Error("Diagnostics closed");
     if(!next.systemId||!next.workspaceId)throw Error("DIAGNOSTICS_SCOPE_REQUIRED");
-    this.epoch++;this.scope.systemId=next.systemId;
+    this.epoch++;this.runEpoch++;this.resetRunInspection();
+    this.scope.systemId=next.systemId;
     this.scope.workspaceId=next.workspaceId;this.client.retarget(next);
     this.heading.textContent="Workspace · "+next.workspaceId;
     this.current={
@@ -173,6 +231,39 @@ export class PersonalDiagnostics{
     };
     this.render();
     if(this.open)void this.refresh();
+  }
+  private resetRunInspection():void{
+    this.runInput.value="";this.sessionInput.value="";this.runButton.disabled=false;
+    this.renderEntry(this.runResult,{state:"idle",label:"Inspect a canonical run",
+      details:"Read-only, requires the exact run and session IDs"});
+  }
+  async inspectRun():Promise<void>{
+    if(this.destroyed||!this.open)return;
+    const runId=this.runInput.value.trim(),sessionId=this.sessionInput.value.trim();
+    const valid=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+    if(!valid.test(runId)||!valid.test(sessionId)){
+      this.renderEntry(this.runResult,{state:"unavailable",label:"Invalid run or session ID",
+        details:"Enter both exact canonical identifiers"});return;
+    }
+    const epoch=++this.runEpoch,workspace=this.scope.workspaceId,
+      system=this.scope.systemId;
+    this.runButton.disabled=true;
+    this.renderEntry(this.runResult,{state:"loading",label:"Inspecting canonical run",
+      details:"Requesting owner-scoped diagnostics…"});
+    try{
+      const response=await this.client.getGatewayRunDiagnostics(runId,sessionId);
+      if(this.destroyed||!this.open||epoch!==this.runEpoch
+        ||workspace!==this.scope.workspaceId||system!==this.scope.systemId)return;
+      const checked=inspectRunDiagnostics(response.result,workspace,runId,sessionId);
+      this.renderEntry(this.runResult,{...checked,observedAt:response.observedAt});
+    }catch(error){
+      if(this.destroyed||!this.open||epoch!==this.runEpoch
+        ||workspace!==this.scope.workspaceId||system!==this.scope.systemId)return;
+      this.renderEntry(this.runResult,{state:"unavailable",label:"Run diagnostics unavailable",
+        details:safeCode(error)});
+    }finally{
+      if(!this.destroyed&&this.open&&epoch===this.runEpoch)this.runButton.disabled=false;
+    }
   }
   snapshot():Readonly<{system:Observation;workspace:Observation;gateway:Observation;canvas:Observation;history:Observation}>{
     return {system:{...this.current.system},workspace:{...this.current.workspace},gateway:{...this.current.gateway},
@@ -272,6 +363,7 @@ export class PersonalDiagnostics{
     this.reload.disabled=false;this.render();
   }
   destroy():void{
-    this.destroyed=true;this.epoch++;this.host.replaceChildren();
+    this.destroyed=true;this.epoch++;this.runEpoch++;this.resetRunInspection();
+    this.host.replaceChildren();
   }
 }
