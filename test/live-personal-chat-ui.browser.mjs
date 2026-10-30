@@ -453,6 +453,35 @@ test("Chat can Stop a paused run with separately granted owner cancellation",asy
   assert.equal(calls[1].params.sessionId,calls[2].params.sessionId);
   assert.deepEqual(errors,[]);
 });
+test("Check run tracks externally paused and completed canonical state without control mutations",async t=>{
+  const {page,errors}=await pageFor(t),before=requests.length;
+  const pane=page.locator(".live-chat-pane").first();
+  const check=pane.getByRole("button",{name:"Check run"});
+  assert.equal(await check.isDisabled(),true);
+  await pane.locator(".live-chat-input").fill("Test pause and resume same run");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await page.waitForFunction(()=>{
+    const run=document.querySelector(".live-chat-status")?.textContent??"";
+    return run.startsWith("running");
+  });
+  const created=requests.slice(before).find(r=>r.method==="aiverse.gateway.run.create");
+  assert.ok(created);
+  const createdRun=[...runs.values()].at(-1);
+  assert.ok(createdRun);
+  createdRun.status="paused";
+  await check.click();
+  await pane.locator(".live-chat-status").getByText(/paused/).waitFor();
+  assert.equal(await pane.getByRole("button",{name:"Resume run"}).isEnabled(),true);
+  createdRun.status="completed";
+  await check.click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  const calls=requests.slice(before).filter(r=>r.method.startsWith("aiverse.gateway.run."));
+  assert.equal(calls.filter(r=>r.method==="aiverse.gateway.run.create").length,1);
+  assert.equal(calls.filter(r=>r.method==="aiverse.gateway.run.get").length,2);
+  assert.equal(calls.filter(r=>r.method==="aiverse.gateway.run.pause").length,0);
+  assert.equal(calls.filter(r=>r.method==="aiverse.gateway.run.resume").length,0);
+  assert.deepEqual(errors,[]);
+});
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
   const {page,errors}=await pageFor(t);
   const before=requests.length;
