@@ -42,6 +42,20 @@
 | In progress (6) | G02.3, G02.4, G03.4, G06.1, G06.2, G08.2 | Evaluate completed sub-slices for independently reviewable PRs; do not mark milestone fully accepted. Physical model admission, binary asset/Skills, native approvals and broader Control Center/UX coverage remain unfinished. |
 | Planned (22) | G04.3, G04.4, G05.1–G05.4, G06.3–G06.4, G07.1–G07.4, G08.3–G08.4, G09.1–G09.4, G10.1–G10.4 | No approval claim. Execute when owner contract and roadmap order allow. |
 
+### Cross-repository CI and reviewer verification, same-day follow-up
+
+PR metadata was inspected for Dashboard #41, #43, Gateway #80, Data #22/#23 and OS #110/#111. **All their reported exact-head workflows were successful** at the checked PR heads; none had an independent approval recorded at the time of inspection. #43 is the only focused **ready-for-review** PR in this set; the others remain drafts. CI success does not change their status.
+
+| PR | Checked head | Review state / prerequisite |
+| --- | --- | --- |
+| Dashboard #41 | `c28b2ec` | Draft Personal-first plan; requires scope review. |
+| Dashboard #43 | `e402febc` | Focused MC2.1 design, green 3-platform CI, preliminary non-approving COMMENT review #5718426884 submitted; independent review outstanding. |
+| Gateway #80 | `9748dd0d` | Draft, green workflows, session-history owner acceptance pending. |
+| Data #22 / #23 | `a62cb730` / `9834e734` | Draft base-plus-stacked Canvas group source, green workflows; owner contract review and merge order pending. |
+| OS #110 / #111 | `a9b6eaf` / `d304db51` | Draft base-plus-stacked Canvas grant source, green workflows; security review and merge order pending. |
+
+**Reviewer assignment attempt:** requesting `pkbannutz` for Dashboard #43 failed (GitHub HTTP 422: user is not a repository collaborator). Do not claim an assigned reviewer or substitute a self-created GitHub identity. A permitted non-author reviewer must be invited/assigned by repository governance before the separate-review requirement can close.
+
 ### Required near-term execution sequence
 
 1. **Review PR #43 / MC2.1** against actual owner API and Personal-first scope, capture findings and secure an actual non-author GitHub reviewer; merge only on gate completion. The reviewer is unassigned as of this audit.
