@@ -481,6 +481,18 @@ test("opening history preserves active chats in splits and never evicts a full t
   assert.equal(await page.locator(".live-chat-pane").nth(1).locator(".live-chat-message").count(),100);
   assert.deepEqual(errors,[]);
 });
+test("opening a historical session into an empty minimized last pane restores it visibly",async t=>{
+  const {page,errors}=await pageFor(t);
+  const pane=page.locator(".live-chat-pane").first();
+  await pane.getByRole("button",{name:"Close chat"}).click();
+  assert.equal(await pane.evaluate(x=>x.classList.contains("live-chat-minimized")),true);
+  await page.getByRole("button",{name:"Previous chats"}).click();
+  await page.locator(".live-chat-history-item").first().getByRole("button",{name:"Open conversation"}).click();
+  await pane.getByRole("button",{name:"Load older messages"}).waitFor();
+  assert.equal(await pane.evaluate(x=>x.classList.contains("live-chat-minimized")),false);
+  assert.equal(await page.locator(".live-chat-pane").count(),1);
+  assert.deepEqual(errors,[]);
+});
 test("MC2.5 split panes independently stream, resize, close and keep functional controls",async t=>{
   const {page,errors}=await pageFor(t);
   await page.locator(".live-chat-toolbar .live-chat-split").click();
