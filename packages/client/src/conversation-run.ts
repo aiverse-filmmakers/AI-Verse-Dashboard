@@ -175,6 +175,7 @@ export class DashboardChatEventFeed implements ChatEventFeed {
  */
 export class PersonalChatRunController {
   private epoch=0;
+  private streamEpoch=0;
   private unsubscribe?:()=>void;
   private seen=new Set<string>();
   private lastSeq=0;
@@ -200,6 +201,7 @@ export class PersonalChatRunController {
   }
   private reset(scope:Required<ClientScope>):number{
     this.epoch++;
+    this.streamEpoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
     this.seen.clear();this.lastSeq=0;this.activeRequest=undefined;
     this.confirmedTurns=[];this.contextLimited=false;this.confirmedRunId=undefined;
@@ -323,6 +325,7 @@ export class PersonalChatRunController {
       fail("CHAT_RECONNECT_UNAVAILABLE");
     const scope=requiredScope(this.client.getScope());
     const epoch=this.epoch,selection=this.client.selectionVersion();
+    this.streamEpoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
     this.show({phase:"submitting",output:"",errorCode:undefined});
     try{
@@ -349,10 +352,11 @@ export class PersonalChatRunController {
   private subscribe(epoch:number,scope:Required<ClientScope>,selection:number,runId:string):void {
     this.unsubscribe?.();
     this.seen.clear();this.lastSeq=0;
+    const streamEpoch=++this.streamEpoch;
     this.unsubscribe=this.feed.subscribe(scope,runId,{
       event:event=>{
-        if(!this.valid(epoch,scope,selection) || this.view.runId!==runId
-          || TERMINAL.has(this.view.phase))return;
+        if(streamEpoch!==this.streamEpoch || !this.valid(epoch,scope,selection)
+          || this.view.runId!==runId || TERMINAL.has(this.view.phase))return;
         if(event.systemId!==scope.systemId || event.workspaceId!==scope.workspaceId
           || event.runId!==runId || event.seq<=this.lastSeq
           || this.seen.has(event.eventId))return;
@@ -371,8 +375,9 @@ export class PersonalChatRunController {
         }
       },
       interrupted:code=>{
-        if(this.valid(epoch,scope,selection) && this.view.runId===runId
-          && !TERMINAL.has(this.view.phase)){
+        if(streamEpoch===this.streamEpoch && this.valid(epoch,scope,selection)
+          && this.view.runId===runId && !TERMINAL.has(this.view.phase)){
+          this.streamEpoch++;
           const dispose=this.unsubscribe;
           this.unsubscribe=undefined;
           dispose?.();
@@ -383,6 +388,7 @@ export class PersonalChatRunController {
   }
   private async reconcile(epoch:number,scope:Required<ClientScope>,
     selection:number,runId:string):Promise<void> {
+    this.streamEpoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
     try{
       const response=await this.client.getGatewayRun(runId);
