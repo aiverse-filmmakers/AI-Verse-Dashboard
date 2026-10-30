@@ -144,7 +144,13 @@ const server=createServer(async(req,res)=>{
         .end(JSON.stringify(body));return;
     }
     let result;
-    if(frame.method==="aiverse.gateway.session.list"){
+    if(frame.method==="aiverse.gateway.models"){
+      result={source:"canonical-gateway",workspaceId:frame.workspaceId,
+        models:[{id:"aiverse",label:"AI-Verse Gateway",kind:"gateway-virtual"}],
+        runtimeKind:"deterministic",modelSelectionSupported:false,
+        providerSelectionSupported:false,inferenceVerified:false,
+        evidence:"authenticated-status-and-models",observedAt:"2026-10-30T00:00:00Z"};
+    }else if(frame.method==="aiverse.gateway.session.list"){
       // The fixture models a bounded canonical Gateway history, not browser storage.
       const count=frame.workspaceId==="operator"?47:3;
       const all=Array.from({length:count},(_,index)=>({
@@ -280,6 +286,22 @@ test("MC2.5 actual browser interface sends canonical RPC, receives WS, and rende
     local:localStorage.length,session:sessionStorage.length,
   }));
   assert.deepEqual(browserStorage,{local:0,session:0},"real turns and tokens never enter preview localStorage");
+});
+test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
+  const {page,errors}=await pageFor(t);
+  const before=requests.length;
+  await page.getByRole("button",{name:"AI models"}).click();
+  await page.locator(".personal-model-name").getByText("AI-Verse Gateway (aiverse)").waitFor();
+  assert.match(await page.locator(".personal-model-status").innerText(),/selection is not supported/);
+  assert.equal(await page.locator(".personal-model-status select").count(),0);
+  assert.deepEqual(requests.slice(before)
+    .filter(x=>x.method==="aiverse.gateway.models")
+    .map(x=>[x.systemId,x.workspaceId]),[["aiverse-01","operator"]]);
+  await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"film"}));
+  await page.locator(".personal-model-status-heading").getByText(/film/).waitFor();
+  const after=requests.filter(x=>x.method==="aiverse.gateway.models");
+  assert.equal(after.at(-1).workspaceId,"film");
+  assert.deepEqual(errors,[]);
 });
 test("Chat reconnect recovers a dropped WebSocket without creating a second canonical run",async t=>{
   const {page,errors}=await pageFor(t);
