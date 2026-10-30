@@ -26,6 +26,7 @@ export interface ApprovedCanonicalGateway {
 }
 const methods = new Set([
   "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.create", "aiverse.gateway.run.get",
+  "aiverse.gateway.run.diagnostics",
   "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
   "aiverse.gateway.run.cancel", "aiverse.gateway.run.pause", "aiverse.gateway.run.resume",
 ]);
@@ -39,6 +40,7 @@ const input = z.object({
   sessionId: identifier.optional(),
 }).strict();
 const getInput = z.object({runId:identifier}).strict();
+const diagnosticsInput=z.object({runId:identifier,sessionId:identifier}).strict();
 const cancelInput=z.object({runId:identifier,sessionId:identifier,
   operationId:identifier}).strict();
 // Pause and Resume also require the exact canonical session and a unique
@@ -58,6 +60,7 @@ const SAFE_CODES = new Set([
   "HTTP_401", "HTTP_403", "HTTP_404", "HTTP_409", "HTTP_429", "HTTP_503",
   "SESSION_NOT_FOUND", "INVALID_HISTORY_QUERY", "INVALID_HISTORY_SCOPE",
   "HISTORY_BINDING_MISMATCH", "HISTORY_INDEX_TOO_LARGE",
+  "DIAGNOSTICS_INVALID",
   "RUN_CONTROL_NOT_AUTHORIZED", "RUN_NOT_CANCELABLE",
   "RUN_NOT_PAUSABLE", "RUN_NOT_RESUMABLE",
 ]);
@@ -104,6 +107,62 @@ function boundedRun(run:GatewayRun):Record<string,unknown> {
     ...(typeof output==="string" ? {output:output.slice(0,65_536)} : {}),
     ...safeRunReceipt(run),
     source:"canonical-gateway",
+  };
+}
+/** Principal-bound canonical owner telemetry. The raw diagnostics endpoint may
+ * contain source refs, fingerprints, provenance or sensitive query text. This
+ * allowlist excludes all of those, and refuses a claimed raw-content leak.
+ */
+function boundedDiagnostics(raw:Record<string,unknown>,run:GatewayRun):Record<string,unknown>{
+  const fail=()=>{throw new GatewayTransportError("DIAGNOSTICS_INVALID");};
+  const obj=(x:unknown):Record<string,unknown>|null=>
+    x&&typeof x==="object"&&!Array.isArray(x)?x as Record<string,unknown>:null;
+  const safeNumber=(x:unknown):number|undefined=>
+    typeof x==="number"&&Number.isSafeInteger(x)&&x>=0&&x<=1_000_000_000_000?x:undefined;
+  const numeric=(x:Record<string,unknown>,keys:readonly string[])=>{
+    const out:Record<string,number>={};
+    for(const key of keys){
+      if(x[key]===undefined||x[key]===null)continue;
+      const v=safeNumber(x[key]);if(v===undefined)fail();out[key]=v;
+    }
+    return out;
+  };
+  const scoped=obj(raw.scope);
+  const safety=obj(raw.safety);
+  if(raw.kind!=="gateway_advanced_diagnostics"||raw.schema_version!=="1.0"
+    ||raw.run_id!==run.run_id||raw.session_id!==run.session_id
+    ||typeof raw.status!=="string"||!/^[a-z_]{2,48}$/.test(raw.status)
+    ||!scoped||scoped.system_id!==run.system_id
+    ||scoped.workspace_id!==run.workspace_id||scoped.principal!==run.principal
+    ||!safety||safety.raw_message_content_included!==false
+    ||safety.prompts_included!==false||safety.chain_of_thought_included!==false)fail();
+  const context=raw.context===null?null:obj(raw.context);
+  const retrieval=raw.retrieval===null?null:obj(raw.retrieval);
+  const archive=obj(raw.archive),folds=obj(raw.folds);
+  if((raw.context!==null&&!context)||(raw.retrieval!==null&&!retrieval)
+    ||!archive||!folds||archive.raw_content_included!==false
+    ||archive.chain_of_thought_included!==false)fail();
+  const bool=(x:Record<string,unknown>,field:string):boolean=>{
+    if(typeof x[field]!=="boolean")fail();return x[field] as boolean;
+  };
+  const status=context?.status;
+  if(status!==undefined&&status!==null&&(typeof status!=="string"
+    ||!/^[a-z][a-z0-9_-]{0,47}$/.test(status)))fail();
+  const retrievalStats=retrieval?numeric(retrieval,[
+    "source_reads","gateway_source_range_reads","legacy_reads"]):undefined;
+  return {
+    source:"canonical-gateway",runId:run.run_id,sessionId:run.session_id,
+    workspaceId:run.workspace_id,status:raw.status,
+    context:context?{...(status?{status}:{}),
+      ...numeric(context,["window_tokens","estimated_tokens_before","estimated_tokens_after"]),
+      configured:bool(context,"configured"),foldScheduled:bool(context,"fold_scheduled"),
+      cacheSensitiveSkip:bool(context,"cache_sensitive_skip"),
+      emergencyTailShrink:bool(context,"emergency_tail_shrink")}:null,
+    retrieval:retrievalStats??null,
+    archive:{...numeric(archive,["retrieval_depth"])},
+    folds:{...numeric(folds,["valid_cards","invalid_cards","max_level"]),
+      pendingFoldWork:bool(folds,"pending_fold_work")},
+    safety:{rawContentIncluded:false,promptsIncluded:false,chainOfThoughtIncluded:false},
   };
 }
 export class CanonicalGatewayBridge {
@@ -333,6 +392,22 @@ export class CanonicalGatewayBridge {
             },
           });
           return respond(true,boundedRun(result));
+        }
+        if(frame.method==="aiverse.gateway.run.diagnostics"){
+          const parsed=diagnosticsInput.safeParse(frame.params);
+          if(!parsed.success)throw new GatewayTransportError("INVALID_ENVELOPE");
+          const {runId,sessionId}=parsed.data;
+          const run=await client.getRun(runId,signal);
+          if(run.session_id!==sessionId)
+            throw new GatewayTransportError("SESSION_BINDING_MISMATCH");
+          const raw=await client.getRunDiagnostics(runId,signal);
+          // Snapshot cannot be presented after OS root/generation rebind.
+          if(this.registry.resolveRoot(system)!==configured.root
+            ||this.registry.bindingGeneration(system)!==configured.generation)
+            throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
+          if(workspace!=="operator")getWorkspace(this.registry,system,workspace);
+          if(signal?.aborted)throw new GatewayTransportError("ABORTED");
+          return respond(true,boundedDiagnostics(raw,run));
         }
         if(frame.method==="aiverse.gateway.run.get"){
           const parse=getInput.safeParse(frame.params);
