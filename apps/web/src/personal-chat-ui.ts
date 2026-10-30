@@ -383,6 +383,8 @@ export class PersonalChatApplication {
     const heading=el("div","live-pane-heading");
     const name=el("strong","","AI-Verse");
     const actions=el("div","live-pane-actions");
+    const runActions=el("div","live-pane-run-actions");
+    runActions.setAttribute("aria-label","Current AI run controls");
     const open=button("Split chat",()=>{this.openPane();},"live-chat-split");
     const clear=button("New chat",()=>this.newConversation(paneId),"");
     const retry=button("Retry request",()=>{void this.retry(paneId);},"live-chat-retry");
@@ -394,7 +396,8 @@ export class PersonalChatApplication {
     const resume=button("Resume run",()=>{void this.checkpointRun(paneId,"resume");},"live-chat-resume");
     resume.title="Requires the trusted host to authorize checkpoint resume";
     const close=button("Close chat",()=>this.closePane(paneId),"");
-    actions.append(open,clear,retry,reconnect,pause,resume,stop,close);heading.append(name,actions);
+    actions.append(open,clear,close);heading.append(name,actions);
+    runActions.append(retry,reconnect,pause,resume,stop);
     const scope=el("div","live-chat-scope","Workspace: "+this.selected.workspaceId);
     const log=el("div","live-chat-log");
     log.setAttribute("role","log");log.setAttribute("aria-live","polite");
@@ -461,7 +464,7 @@ export class PersonalChatApplication {
       setPaneWidth(section.getBoundingClientRect().width+
         (event.key==="ArrowRight"?step:-step));
     });
-    section.append(heading,scope,log,status,form,recovery,grip);
+    section.append(heading,runActions,scope,log,status,form,recovery,grip);
     const pane:Pane={id:paneId,node:section,form,input,log,status,
       run:this.controller(view=>this.onChange(paneId,view)),
       turns:[],activeTurn:-1,busy:false,generation:0};
