@@ -65,6 +65,12 @@ function gatewayFixture(options:{slowEvents?:boolean;onRunGet?:()=>void}={}){
      } else finish();
      return;
    }
+   if(req.method==="POST"&&req.url==="/v1/runs/run-a/pause"){
+     storedRunStatus="paused";run.status=storedRunStatus;return send(200,run);
+   }
+   if(req.method==="POST"&&req.url==="/v1/runs/run-a/resume"){
+     storedRunStatus="resuming";run.status=storedRunStatus;return send(200,run);
+   }
    if(req.method==="POST"&&req.url==="/v1/runs/run-a/cancel"){
      storedRunStatus="canceled";run.status=storedRunStatus;return send(200,run);
    }
@@ -245,6 +251,95 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
      }));
    assert.equal((wrong.data.error as {code:string}).code,"RUN_BINDING_MISMATCH");
    assert.equal(upstream.received.filter(x=>x.path==="/v1/runs/run-a/cancel").length,1);
+ });
+ it("Pause/Resume are denied by default even when Stop is host-enabled",async()=>{
+   const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+   const upstream=gatewayFixture(),port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",
+     origin:"http://127.0.0.1:"+port,resolveBearer:()=>"actual-host-gateway-token",
+     allowRunCancel:true,
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),
+     new SubscriptionHub(),{port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   const status=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.status",a.systemId));
+   assert.equal((status.data.result as Record<string,unknown>).runCancelSupported,true);
+   assert.equal((status.data.result as Record<string,unknown>).runPauseResumeSupported,false);
+   const before=upstream.received.length;
+   for(const action of ["pause","resume"]){
+     const result=await rpc(dash.port,dash.authToken,
+       frame("aiverse.gateway.run."+action,a.systemId,"film",{
+         runId:"run-a",sessionId:"session-a",operationId:"op-"+action,
+       }));
+     assert.equal(result.data.ok,false);
+     assert.equal((result.data.error as {code:string}).code,"RUN_CONTROL_NOT_AUTHORIZED");
+   }
+   assert.equal(upstream.received.length,before,
+     "a Stop grant must not allow any Pause or Resume preflight");
+ });
+ it("explicit Pause/Resume host opt-in controls a canonical run without creating a new one",async()=>{
+   const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+   const upstream=gatewayFixture(),port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",
+     origin:"http://127.0.0.1:"+port,resolveBearer:()=>"actual-host-gateway-token",
+     allowRunPauseResume:true,
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),
+     new SubscriptionHub(),{port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   const status=await rpc(dash.port,dash.authToken,frame("aiverse.gateway.status",a.systemId));
+   assert.equal((status.data.result as Record<string,unknown>).runPauseResumeSupported,true);
+   assert.equal((status.data.result as Record<string,unknown>).runCancelSupported,false);
+   const bad=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.pause",a.systemId,"film",{
+       runId:"run-a",sessionId:"wrong-session",operationId:"paused-bad",
+     }));
+   assert.equal((bad.data.error as {code:string}).code,"SESSION_BINDING_MISMATCH");
+   assert.equal(upstream.received.filter(x=>x.method==="POST").length,0);
+   const forged=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.pause",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-a",operationId:"bad-id",decision:"approve",
+     }));
+   assert.equal((forged.data.error as {code:string}).code,"INVALID_ENVELOPE");
+   const pause=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.pause",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-a",operationId:"pause-once",
+     }));
+   assert.equal(pause.data.ok,true);
+   assert.equal((pause.data.result as Record<string,unknown>).status,"paused");
+   const postPause=upstream.received.find(x=>x.path==="/v1/runs/run-a/pause");
+   assert.deepEqual(postPause?.body,{operation_id:"pause-once",reason:"dashboard_operator_pause"});
+   assert.equal(postPause?.auth,"Bearer actual-host-gateway-token");
+   const cannotPause=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.pause",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-a",operationId:"pause-again",
+     }));
+   assert.equal((cannotPause.data.error as {code:string}).code,"RUN_NOT_PAUSABLE");
+   const resume=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.resume",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-a",operationId:"resume-once",
+     }));
+   assert.equal(resume.data.ok,true);
+   assert.equal((resume.data.result as Record<string,unknown>).status,"resuming");
+   const postResume=upstream.received.find(x=>x.path==="/v1/runs/run-a/resume");
+   assert.deepEqual(postResume?.body,{operation_id:"resume-once"});
+   assert.equal(postResume?.auth,"Bearer actual-host-gateway-token");
+   const cannotResume=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.resume",a.systemId,"film",{
+       runId:"run-a",sessionId:"session-a",operationId:"resume-again",
+     }));
+   assert.equal((cannotResume.data.error as {code:string}).code,"RUN_NOT_RESUMABLE");
+   assert.equal(upstream.received.filter(x=>x.path==="/v1/runs/run-a/resume").length,1);
+   assert.equal(upstream.received.filter(x=>x.path==="/v1/runs").length,0);
+   const foreign=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.pause",a.systemId,"operator",{
+       runId:"run-a",sessionId:"session-a",operationId:"foreign-workspace",
+     }));
+   assert.equal((foreign.data.error as {code:string}).code,"RUN_BINDING_MISMATCH");
  });
  it("revoked OS binding between canonical GET and Stop prevents upstream control",async()=>{
    const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
