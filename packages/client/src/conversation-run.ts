@@ -270,7 +270,8 @@ export class PersonalChatRunController {
     this.historicalOlder=undefined;
     this.confirmedTurns=[];this.contextLimited=false;this.confirmedRunId=undefined;
     this.show({phase:"idle",runId:undefined,sessionId:undefined,
-      output:"",errorCode:undefined,contextLimited:false});
+      output:"",errorCode:undefined,canonicalStatus:undefined,receipt:undefined,
+      contextLimited:false});
   }
   private valid(epoch:number,scope:Required<ClientScope>,selection:number):boolean{
     return epoch===this.epoch && current(scope,this.client.getScope())
