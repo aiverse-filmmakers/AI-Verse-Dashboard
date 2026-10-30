@@ -103,7 +103,7 @@ function asRun(result: unknown, expected: Required<ClientScope>, runId?: string)
     const stamp=value[key];
     if(stamp===undefined)continue;
     if(typeof stamp!=="string"||stamp.length<20||stamp.length>35
-      ||!/^\\d{4}-\\d{2}-\\d{2}T/.test(stamp)
+      ||!/^\d{4}-\d{2}-\d{2}T/.test(stamp)
       ||!Number.isFinite(Date.parse(stamp)))fail("INVALID_RUN_RECEIPT");
     receipt[key]=stamp;
   }
