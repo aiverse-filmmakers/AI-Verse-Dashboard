@@ -26,6 +26,8 @@ interface Pane {
   input:HTMLTextAreaElement;
   log:HTMLElement;
   status:HTMLElement;
+  receiptPanel:HTMLElement;
+  receiptExpanded:boolean;
   run:PersonalChatRunController;
   turns:Turn[];
   activeTurn:number;
@@ -393,13 +395,19 @@ export class PersonalChatApplication {
     check.title="Refresh this exact run from the authenticated canonical Gateway";
     const stop=button("Stop run",()=>{void this.stopRun(paneId);},"live-chat-stop");
     stop.title="Requires the trusted host to authorize run cancellation";
+    const details=button("Run details",()=>this.toggleRunDetails(paneId),"live-chat-receipt-toggle");
+    details.setAttribute("aria-expanded","false");
+    details.title="Gateway run status and observed usage; cost requires separate Token verification";
     const pause=button("Pause run",()=>{void this.checkpointRun(paneId,"pause");},"live-chat-pause");
     pause.title="Requires the trusted host to authorize checkpoint pause";
     const resume=button("Resume run",()=>{void this.checkpointRun(paneId,"resume");},"live-chat-resume");
     resume.title="Requires the trusted host to authorize checkpoint resume";
     const close=button("Close chat",()=>this.closePane(paneId),"");
     actions.append(open,clear,close);heading.append(name,actions);
-    runActions.append(retry,reconnect,check,pause,resume,stop);
+    runActions.append(retry,reconnect,check,details,pause,resume,stop);
+    const receiptPanel=el("section","live-chat-receipt");
+    receiptPanel.hidden=true;
+    receiptPanel.setAttribute("aria-label","Canonical run execution details");
     const scope=el("div","live-chat-scope","Workspace: "+this.selected.workspaceId);
     const log=el("div","live-chat-log");
     log.setAttribute("role","log");log.setAttribute("aria-live","polite");
@@ -466,8 +474,9 @@ export class PersonalChatApplication {
       setPaneWidth(section.getBoundingClientRect().width+
         (event.key==="ArrowRight"?step:-step));
     });
-    section.append(heading,runActions,scope,log,status,form,recovery,grip);
+    section.append(heading,runActions,receiptPanel,scope,log,status,form,recovery,grip);
     const pane:Pane={id:paneId,node:section,form,input,log,status,
+      receiptPanel,receiptExpanded:false,
       run:this.controller(view=>this.onChange(paneId,view)),
       turns:[],activeTurn:-1,busy:false,generation:0};
     form.addEventListener("submit",e=>{
@@ -538,6 +547,12 @@ export class PersonalChatApplication {
     const reconnect=pane.node.querySelector(".live-chat-reconnect") as HTMLButtonElement;
     if(reconnect)reconnect.disabled=pane.busy || pane.run.snapshot().phase!=="interrupted"
       || !pane.run.snapshot().runId;
+    const details=pane.node.querySelector(".live-chat-receipt-toggle") as HTMLButtonElement;
+    if(details){
+      details.disabled=!pane.run.snapshot().runId;
+      details.setAttribute("aria-expanded",String(pane.receiptExpanded&&Boolean(pane.run.snapshot().runId)));
+    }
+    this.renderReceipt(pane);
     const check=pane.node.querySelector(".live-chat-check") as HTMLButtonElement;
     if(check)check.disabled=!pane.run.snapshot().runId
       ||pane.run.snapshot().phase==="submitting";
@@ -601,6 +616,42 @@ export class PersonalChatApplication {
     }
   }
   /** This dispatches a canonical Gateway cancellation, not UI-only hiding. */
+  /** Explicit, display-only owner-projected run receipt. No cost or bill claim. */
+  private toggleRunDetails(paneId:string):void{
+    const pane=this.panes.get(paneId);
+    if(!pane||this.destroyed||!pane.run.snapshot().runId)return;
+    pane.receiptExpanded=!pane.receiptExpanded;
+    this.render(pane);
+  }
+  private renderReceipt(pane:Pane):void{
+    const run=pane.run.snapshot(),panel=pane.receiptPanel;
+    panel.hidden=!pane.receiptExpanded||!run.runId;
+    if(panel.hidden){panel.replaceChildren();return;}
+    const rows:[string,string][]=[
+      ["Source","Canonical Gateway, authenticated owner read"],
+      ["Run ID",run.runId??"Unavailable"],
+      ["Session",run.sessionId??"Unavailable"],
+      ["Workspace",run.workspaceId],
+      ["Run state",run.canonicalStatus??run.phase],
+    ];
+    const receipt=run.receipt;
+    if(receipt?.runtimeKind)rows.push(["Runtime kind",receipt.runtimeKind]);
+    if(receipt?.createdAt)rows.push(["Created (UTC)",receipt.createdAt]);
+    if(receipt?.completedAt)rows.push(["Finished (UTC)",receipt.completedAt]);
+    if(receipt?.usage){
+      rows.push(["Input tokens (Gateway)",receipt.usage.inputTokens.toLocaleString()]);
+      rows.push(["Output tokens (Gateway)",receipt.usage.outputTokens.toLocaleString()]);
+      rows.push(["Actions (Gateway)",receipt.usage.actions.toLocaleString()]);
+    }
+    const grid=el("dl","live-chat-receipt-grid");
+    for(const [name,value] of rows){
+      grid.append(el("dt","",name),el("dd","",value));
+    }
+    const note=el("p","live-chat-receipt-note",
+      receipt?.usage?"Gateway-observed usage, not Token-verified billing. No cost total is claimed.":
+        "No owner-reported token counts for this run yet. No cost total is claimed.");
+    panel.replaceChildren(grid,note);
+  }
   /** Recover a run updated elsewhere via canonical GET, no new run.create. */
   async checkRun(paneId:string):Promise<void>{
     const pane=this.panes.get(paneId);
