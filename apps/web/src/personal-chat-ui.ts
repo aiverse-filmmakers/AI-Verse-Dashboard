@@ -454,7 +454,8 @@ export class PersonalChatApplication {
     if(reconnect)reconnect.disabled=pane.busy || pane.run.snapshot().phase!=="interrupted"
       || !pane.run.snapshot().runId;
     const stop=pane.node.querySelector(".live-chat-stop") as HTMLButtonElement;
-    if(stop)stop.disabled=!this.runCancelSupported || pane.busy
+    // A running run is busy for Send, but that is precisely when Stop is useful.
+    if(stop)stop.disabled=!this.runCancelSupported
       ||pane.run.snapshot().phase!=="running" || !pane.run.snapshot().runId;
     const split=pane.node.querySelector(".live-pane-actions .live-chat-split") as HTMLButtonElement;
     if(split)split.disabled=this.panes.size>=MAX_PANES;
@@ -505,7 +506,7 @@ export class PersonalChatApplication {
   /** This dispatches a canonical Gateway cancellation, not UI-only hiding. */
   async stopRun(paneId:string):Promise<void>{
     const pane=this.panes.get(paneId);
-    if(!pane||this.destroyed||!this.runCancelSupported||pane.busy
+    if(!pane||this.destroyed||!this.runCancelSupported
       ||pane.run.snapshot().phase!=="running")return;
     try{await pane.run.stop(id());}
     catch(err){
