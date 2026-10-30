@@ -358,6 +358,12 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       workspaceId:"film"}),false);
     assert.equal(session.isAllowedFrame({method:"system.get",systemId,
       workspaceId:"operator"}),true);
+    assert.equal(session.isAllowedFrame({method:"aiverse.gateway.models",systemId,
+      workspaceId:"operator"}),true);
+    assert.equal(session.isAllowedFrame({method:"aiverse.gateway.models",systemId,
+      workspaceId:"film"}),false);
+    assert.equal(session.isAllowedFrame({method:"aiverse.gateway.models",systemId:"other",
+      workspaceId:"operator"}),false);
     session.rotateWorkspaceFromHost("film");
     const srv=await startGateway(new QueryRouter(reg,new DisposableCache()),
       new SubscriptionHub(),{port:0,localApp:session});
