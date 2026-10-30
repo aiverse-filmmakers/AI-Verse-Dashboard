@@ -4,7 +4,7 @@
   "purpose": "GitHub/browser engineering completion, separate from formal acceptance and private Mac release readiness",
   "scope": "personal-first-dashboard-v1-including-first-narrow-film-feature",
   "totalBudget": 100,
-  "provisionalEngineeringEarned": 44,
+  "provisionalEngineeringEarned": 45,
   "sourceAuditComplete": false,
   "formalRoadmap": {
     "accepted": 15,
@@ -37,9 +37,9 @@
       "id": "chat",
       "title": "Personal chat and canonical Gateway",
       "budget": 15,
-      "provisionalEarned": 8,
+      "provisionalEarned": 9,
       "evidenceStatus": "source-and-ci",
-      "remaining": "Authenticated canonical conversation browsing now supports multi-page history with verified scoped Chromium flow. Still missing real provider/model controls, safe run-control authority, attachments, OS Skills/commands and private owner acceptance."
+      "remaining": "Real host-authenticated virtual model inventory and replay-safe interrupted-run reconnect pass cross-platform, Chromium and pinned Gateway CI. Physical provider/model selection, reason/skills/attachments and approval-safe run controls remain pending."
     },
     {
       "id": "canvas",
@@ -234,7 +234,19 @@
       "taskLedger": "docs/DEVELOPMENT-TASKS-549-554-2026-10-30.md",
       "result": "47 canonical sessions through three bounded UI pages; stale-scope and duplicate guards; no browser-owned history",
       "status": "source-and-CI-tested; draft; no category or formal acceptance points claimed"
+    },
+    "canonicalModelInventoryReconnect": {
+      "sourceCommit": "e94b2fbb7c4d7494525c55e8711a43cc6d167956",
+      "dashboardCi": 40977323923,
+      "browserCi": 40977323908,
+      "canonicalGatewayCi": 40977323926,
+      "progressCi": 40977323901,
+      "ledger": "docs/DEVELOPMENT-TASKS-555-573-2026-10-30.md",
+      "scope": "Host-read-only actual virtual Gateway model + first-party bounded model view; safe same-run reconnect without duplicate create and stale stream contamination",
+      "categoryIncrement": "chat 8->9 provisional, partly progressed G02.3; no formal acceptance",
+      "limitations": "No physical provider/model selection, no signed owner login or provider consent, no run control, no Skills/attachment integration",
+      "status": "functional source CI verified; PR draft; not private owner Mac"
     }
   },
-  "nextUnverifiedChange": "Task 555: audit canonical Gateway/Connections/Token model discovery and owner-authorized selection; implement only supported capabilities. Follow with control safety, real attachments and OS Skills, without browser-issued authority."
+  "nextUnverifiedChange": "Task 574: implement owner-verified physical model/provider selection contract only with real canonical Gateway+Connections capability; otherwise continue approval-safe run controls and owner-backed attachments/Skills. No browser model-string override."
 }
