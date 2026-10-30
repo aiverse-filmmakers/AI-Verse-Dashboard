@@ -82,6 +82,26 @@ function gatewayFixture(options:{slowEvents?:boolean;onRunGet?:()=>void;
      storedRunStatus="canceled";run.status=storedRunStatus;return send(200,run);
    }
    if(req.method==="POST"&&req.url==="/v1/runs")return send(202,run);
+   if(req.method==="GET"&&req.url==="/v1/runs/run-a/diagnostics"){
+     return send(200,{
+       schema_version:"1.0",kind:"gateway_advanced_diagnostics",
+       run_id:"run-a",session_id:"session-a",status:storedRunStatus,
+       scope:{system_id:"canonical-a",workspace_id:"film",principal:"local-operator-secret"},
+       context:{status:"ready",configured:true,window_tokens:12000,
+         estimated_tokens_before:3200,estimated_tokens_after:2900,
+         fold_scheduled:false,emergency_tail_shrink:false,
+         private_prompt:"never-expose-prompt",tokens_by_layer:{secret:"never-expose-layer"}},
+       retrieval:{source_reads:4,gateway_source_range_reads:2,legacy_reads:0,
+         query_fingerprint:"never-expose-fingerprint",requests:[{secret:"never-expose"}]},
+       deep_retrieval:{requests:[{raw:"never-expose-deep-retrieval"}]},
+       archive:{retrieval_depth:2,raw_content_included:false,
+         chain_of_thought_included:false,cards_used:["never-expose-card"]},
+       folds:{valid_cards:3,invalid_cards:1,max_level:2,pending_fold_work:false,
+         catalog_fingerprint:"never-expose-catalog"},
+       safety:{raw_message_content_included:false,prompts_included:false,
+         chain_of_thought_included:false},
+     });
+   }
    if(req.method==="GET"&&req.url==="/v1/runs/run-a"){
      options.onRunGet?.();return send(200,run);
    }
@@ -268,6 +288,61 @@ describe("MC2.2 authenticated host bridge, local synthetic Gateway",()=>{
      }));
    assert.equal((wrong.data.error as {code:string}).code,"RUN_BINDING_MISMATCH");
    assert.equal(upstream.received.filter(x=>x.path==="/v1/runs/run-a/cancel").length,1);
+ });
+ it("read-only G06.1 diagnostics match canonical run and session, redact all private traces",async()=>{
+   const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
+   const upstream=gatewayFixture(),port=await listen(upstream.server);
+   closing.push(()=>new Promise<void>((resolve,reject)=>upstream.server.close(e=>e?reject(e):resolve())));
+   const bridge=new CanonicalGatewayBridge(reg,[{
+     dashboardSystemId:a.systemId,canonicalSystemId:"canonical-a",
+     origin:"http://127.0.0.1:"+port,resolveBearer:()=>"actual-host-gateway-token",
+   }]);
+   const dash=await startGateway(new QueryRouter(reg,new DisposableCache()),
+     new SubscriptionHub(),{port:0,canonicalBridge:bridge});
+   closing.push(()=>dash.close());
+   const query=frame("aiverse.gateway.run.diagnostics",a.systemId,"film",{
+     runId:"run-a",sessionId:"session-a",
+   });
+   const response=await rpc(dash.port,dash.authToken,query);
+   assert.equal(response.data.ok,true,JSON.stringify(response.data.error));
+   const value=response.data.result as Record<string,unknown>;
+   assert.deepEqual(value,{
+     source:"canonical-gateway",workspaceId:"film",runId:"run-a",
+     sessionId:"session-a",status:"running",
+     context:{status:"ready",configured:true,window_tokens:12000,
+       estimated_tokens_before:3200,estimated_tokens_after:2900,
+       foldScheduled:false,emergencyTailShrink:false},
+     retrieval:{source_reads:4,gateway_source_range_reads:2,legacy_reads:0},
+     archive:{retrieval_depth:2},
+     folds:{valid_cards:3,invalid_cards:1,max_level:2,pendingFoldWork:false},
+     safety:{rawContentIncluded:false,promptsIncluded:false,chainOfThoughtIncluded:false},
+   });
+   assert.doesNotMatch(JSON.stringify(response.data),
+     /never-expose|fingerprint|principal|Bearer|private_prompt|cost|credentials|messages/);
+   const received=upstream.received.filter(x=>x.path.includes("/v1/runs/run-a"));
+   assert.deepEqual(received.map(x=>x.method+" "+x.path),[
+     "GET /v1/runs/run-a","GET /v1/runs/run-a/diagnostics"]);
+   assert.equal(upstream.received.some(x=>x.method==="POST"),false);
+   const before=upstream.received.length;
+   for(const bad of [
+     {runId:"run-a",sessionId:"other-session"},
+     {runId:"../secrets",sessionId:"session-a"},
+     {runId:"run-a",sessionId:"session-a",principal:"operator"},
+     {runId:"run-a",sessionId:"session-a",action:"approve"},
+   ]){
+     const denial=await rpc(dash.port,dash.authToken,
+       frame("aiverse.gateway.run.diagnostics",a.systemId,"film",bad));
+     assert.equal(denial.data.ok,false);
+   }
+   assert.equal(upstream.received.filter(x=>x.path.endsWith("/diagnostics")).length,1,
+     "invalid input or session must never reach detailed owner diagnostics");
+   const foreign=await rpc(dash.port,dash.authToken,
+     frame("aiverse.gateway.run.diagnostics",a.systemId,"operator",{
+       runId:"run-a",sessionId:"session-a",
+     }));
+   assert.equal(foreign.data.ok,false);
+   assert.equal((foreign.data.error as {code:string}).code,"RUN_BINDING_MISMATCH");
+   assert.ok(upstream.received.length>=before);
  });
  it("Pause/Resume are denied by default even when Stop is host-enabled",async()=>{
    const reg=new SystemRegistry(),a=makeRoot(reg,"A");roots.push(a.root);
