@@ -190,7 +190,12 @@ describe("Personal Chat canonical run controller",()=>{
    assert.equal(resumed.runId,"run-a");
    assert.equal(f.watchers.length,2);
    f.watchers[0].handlers.event(event("assistant.delta",2,"OBSOLETE WATCHER"));
-   assert.equal(chat.snapshot().output,"");
+   f.watchers[1].handlers.event(event("assistant.delta",1,"OLD ATTEMPT REPLAY"));
+   assert.equal(chat.snapshot().output,"",
+     "pre-resume partials must never masquerade as fresh streaming output");
+   f.watchers[1].handlers.event(event("run.resumed",2));
+   f.watchers[1].handlers.event(event("assistant.delta",3,"New resumed stream"));
+   assert.equal(chat.snapshot().output,"New resumed stream");
    assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
    assert.deepEqual(calls.slice(1).map(x=>x.method),[
      "aiverse.gateway.run.pause","aiverse.gateway.run.resume"]);
