@@ -199,7 +199,7 @@
           "state": "in-progress",
           "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
           "evidenceRef": "apps/web/src/personal-agent-activity.ts",
-          "partialEvidence": "Bounded authenticated Dashboard-local in-memory SessionStore status/events PLUS independent real canonical persisted Gateway session/run status summaries, read-only, scope-checked, no prompt/output display and full disposable Chromium CI; actual bots, approvals, tasks, automation controls incomplete."
+          "partialEvidence": "Existing Agent Activity reads Dashboard-local session records and canonical Gateway session/run history with strict workspace scoped provenance, 12-record local and 3-run page limits. Source-backed G06.2 update preserves actual canonical awaiting_approval, resuming and recovery statuses instead of calling them unknown, displays awaiting owner approval as read-only, and adds an Approvals filter over actual local approval events. Tests ensure no action/token/private prompt data or approval POST. Docs/DEVELOPMENT-TASKS-670-674-2026-10-30.md. Still missing owner approval receipt admission/decision lifecycle, audited actions, tasks/automations management and native owner acceptance, so G06.2 remains IN PROGRESS."
         },
         {
           "id": "G06.3",
@@ -343,5 +343,5 @@
       ]
     }
   ],
-  "lastReconciliation": "2026-10-30: G06.1 canonical Gateway run diagnostics and safe OS registry summary implemented in draft with real owner tests; G06.1 remains in-progress. No new formal or provisional score. Chat 11/15, GitHub/browser 47/100, formal 15/100. Fixed 10 chapters/40 milestones unchanged."
+  "lastReconciliation": "2026-10-30: G06.1 authenticated diagnostics and privacy-safe registry summary, G06.2 read-only canonical approval state implemented in draft and regression tested. Both remain IN PROGRESS; no score or milestone changes. Chat 11/15, GitHub/browser 47/100 provisional; formal 15/100."
 }
