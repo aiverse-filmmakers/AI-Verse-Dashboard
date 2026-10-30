@@ -144,7 +144,12 @@ const server=createServer(async(req,res)=>{
         .end(JSON.stringify(body));return;
     }
     let result;
-    if(frame.method==="aiverse.gateway.status"){
+    if(frame.method==="system.list"){
+      result={systems:[{systemId:"aiverse-01",label:"Test OS",
+        osType:"ai-verse",osVersion:"2.1",authorized:true,
+        registeredAt:"2026-10-30T11:00:00Z",lastValidatedAt:"2026-10-30T11:00:00Z",
+        root:"should-not-be-visible"}]};
+    }else if(frame.method==="aiverse.gateway.status"){
       result={source:"canonical-gateway",workspaceId:frame.workspaceId,
         runCancelSupported:true,runPauseResumeSupported:frame.workspaceId==="operator",
         capabilities:{controls:true,runCancel:true,runPauseResume:true}};
@@ -651,6 +656,9 @@ test("G06.1 workspace status inspects a real scoped run with factual safe diagno
   const result=panel.locator(".personal-diagnostics-run-result");
   await result.getByText(/Canonical run diagnostics/).waitFor();
   assert.match(await result.innerText(),/Source reads: 4/);
+  await panel.locator(".personal-diagnostics-source").getByText("Registered OS systems").waitFor();
+  assert.match(await panel.textContent(),/1 registered · 1 authorized/);
+  assert.doesNotMatch(await panel.textContent(),/should-not-be-visible/);
   assert.match(await result.innerText(),/Validated folds: 2/);
   assert.match(await result.innerText(),/Raw prompts and traces excluded/);
   assert.doesNotMatch(await result.innerText(),/privateBearer|do-not-show|reportedCost/);
