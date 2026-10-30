@@ -194,6 +194,7 @@ const server=createServer(async(req,res)=>{
         dropFirstStream:frame.params?.messages?.some(m=>m.content==="Test dropped stream")===true,
         slowStream:frame.params?.messages?.some(m=>
           ["Test stop active run","Test pause and resume same run"].includes(m.content))===true,
+        slowDiagnostics:frame.params?.messages?.some(m=>m.content==="Test slow diagnostics")===true,
         subscriptions:0});
     }else if(frame.method==="aiverse.gateway.run.diagnostics"){
       const found=runs.get(frame.params?.runId);
@@ -204,6 +205,7 @@ const server=createServer(async(req,res)=>{
           error:{code:"SESSION_BINDING_MISMATCH",message:"Denied"},
           observedAt:new Date().toISOString()}));return;
       }
+      if(found.slowDiagnostics)await new Promise(resolve=>setTimeout(resolve,350));
       result={source:"canonical-gateway",runId:frame.params.runId,
         sessionId:frame.params.sessionId,workspaceId:frame.workspaceId,
         status:found.status,context:{status:"ready",window_tokens:8192,configured:true},
@@ -685,6 +687,28 @@ test("G06.1 diagnostic inspect rejects wrong session and clears scope after work
   const calls=requests.slice(before).filter(x=>x.method==="aiverse.gateway.run.diagnostics");
   assert.equal(calls.length,2);
   assert.deepEqual(calls.map(x=>x.workspaceId),["operator","film"]);
+  assert.deepEqual(errors,[]);
+});
+test("G06.1 stale diagnostics never repaint the Workspace Status panel after OS switch",async t=>{
+  const {page,errors}=await pageFor(t);
+  const pane=page.locator(".live-chat-pane").first();
+  await pane.locator(".live-chat-input").fill("Test slow diagnostics");
+  await pane.getByRole("button",{name:"Send",exact:true}).click();
+  await pane.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  const run=[...runs.values()].at(-1);
+  await page.getByRole("button",{name:"Workspace status"}).click();
+  const panel=page.locator(".personal-diagnostics");
+  await panel.getByRole("textbox",{name:"Diagnostic run ID"}).fill(run.runId);
+  await panel.getByRole("textbox",{name:"Diagnostic session ID"}).fill(run.sessionId);
+  await panel.getByRole("button",{name:"Inspect run"}).click();
+  await panel.locator(".personal-diagnostics-run-result").getByText(/Inspecting canonical run/).waitFor();
+  await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"film"}));
+  await page.waitForTimeout(480);
+  const details=await panel.locator(".personal-diagnostics-run-result").innerText();
+  assert.match(details,/Inspect a canonical run/);
+  assert.doesNotMatch(details,/Source reads|Canonical run diagnostics/);
+  assert.equal(await panel.getByRole("textbox",{name:"Diagnostic run ID"}).inputValue(),"");
+  assert.equal(await panel.getByRole("textbox",{name:"Diagnostic session ID"}).inputValue(),"");
   assert.deepEqual(errors,[]);
 });
 test("Chat model panel reads real scoped Gateway inventory and never shows fake provider switching",async t=>{
