@@ -448,7 +448,10 @@ export class PersonalChatApplication {
     input.rows=2;input.maxLength=1200;input.placeholder="What's on your mind?";
     input.setAttribute("aria-label","Message in conversation "+this.counter);
     const send=el("button","live-chat-send","Send");
-    send.type="submit";form.append(input,send);
+    const insertCanvas=button("Insert Canvas note",()=>{void this.insertCanvasNote(paneId);},
+      "live-chat-canvas-insert");
+    insertCanvas.title="Copy the selected, saved Data-owned note into this composer for review. Never sends automatically.";
+    send.type="submit";form.append(input,insertCanvas,send);
     const recovery=el("div","live-chat-recovery");
     const recoverInput=el("input","live-chat-run-id");
     recoverInput.placeholder="Canonical run ID";
@@ -608,6 +611,8 @@ export class PersonalChatApplication {
     if(exporter)exporter.disabled=!pane.turns.length||![
       "completed","canceled","blocked","recovery-required"
     ].includes(pane.run.snapshot().phase);
+    const insertCanvas=pane.form.querySelector(".live-chat-canvas-insert") as HTMLButtonElement;
+    if(insertCanvas)insertCanvas.disabled=pane.busy;
     const send=pane.form.querySelector("button[type=submit]") as HTMLButtonElement;
     if(send)send.disabled=pane.busy || !["idle","completed","canceled"].includes(pane.run.snapshot().phase);
     const recover=pane.node.querySelector(".live-chat-recovery button") as HTMLButtonElement;
@@ -687,6 +692,43 @@ export class PersonalChatApplication {
     }
   }
   /** This dispatches a canonical Gateway cancellation, not UI-only hiding. */
+  /** User-initiated Canvas-to-Chat composer reference, not an attachment
+   * upload and never an automatic model invocation. Canonical Data is reread
+   * and checked for version + scope; the note does not inherit extra grants.
+   */
+  async insertCanvasNote(paneId:string):Promise<void>{
+    const pane=this.panes.get(paneId);
+    if(!pane||this.destroyed||pane.busy)return;
+    const generation=pane.generation,scope={...this.selected};
+    try{
+      const note=await this.canvas.selectedNoteForChat();
+      if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation
+        ||scope.systemId!==this.selected.systemId||scope.workspaceId!==this.selected.workspaceId
+        ||note.workspaceId!==scope.workspaceId)return;
+      const reference="[Saved Canvas: "+note.title+" (v"+note.version+", note "+note.noteId+")]\n"
+        +note.text+"\n[/Saved Canvas]";
+      const composed=reference+(pane.input.value?"\n\n"+pane.input.value:"");
+      if(composed.length>pane.input.maxLength){
+        pane.status.textContent="Saved note exceeds the 1,200-character Chat composer limit. Shorten it in Canvas first.";
+        return;
+      }
+      pane.input.value=composed;
+      pane.input.focus();
+      pane.status.textContent="Saved Canvas note inserted for review. Nothing has been sent.";
+    }catch(error){
+      if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation)return;
+      const code=errorCode(error);
+      pane.status.textContent=code==="CANVAS_NOTE_NOT_SELECTED"
+        ?"Select a saved note in Canvas before inserting it."
+        :code==="CANVAS_VERSION_CHANGED"
+          ?"Canvas changed since it was opened. Reload Canvas and select the note again."
+        :code==="CANVAS_NOTE_TOO_LONG"
+          ?"Selected Canvas note is too long. Shorten it before inserting into Chat."
+        :code==="CANVAS_SELECTION_CHANGED"
+          ?"Canvas selection changed. Select the note again."
+        :"Selected Canvas note unavailable · "+code;
+    }
+  }
   /** Explicit user-triggered local export. Never sends transcript to any
    * other server, invents missing messages or includes speculative deltas.
    */
