@@ -169,7 +169,10 @@ try {
   const systemId=registry.register(osRoot).systemId;
   const bridge=new CanonicalGatewayBridge(registry,[{
     dashboardSystemId:systemId,canonicalSystemId:"ci-mc2",
-    origin:canonicalOrigin,resolveBearer:()=>token
+    origin:canonicalOrigin,resolveBearer:()=>token,
+    // CI only: isolated test operator explicitly grants checkpoint controls.
+    // This does not modify the user host or any provider configuration.
+    allowRunPauseResume:true,
   }]);
   local=await startGateway(new QueryRouter(registry,new DisposableCache()),
     new SubscriptionHub(),{port:0,canonicalBridge:bridge});
@@ -182,6 +185,8 @@ try {
   assert.equal(status.result.systemId,"ci-mc2");
   assert.equal(status.result.workspaceId,"operator");
   assert.equal(status.result.source,"canonical-gateway");
+  assert.equal(status.result.runPauseResumeSupported,true);
+  assert.equal(status.result.runCancelSupported,false);
   const models=await rpc(local.port,local.authToken,frame("aiverse.gateway.models",systemId));
   assert.equal(models.ok,true,JSON.stringify(models.error??{}));
   assert.equal(models.result.source,"canonical-gateway");
@@ -221,6 +226,58 @@ try {
   assert.ok(done,"real deterministic Gateway run must reach terminal status");
   assert.equal(done.status,"completed","run should finish, not just be accepted");
   assert.ok(String(done.output??"").includes(marker),"actual deterministic runtime output must contain submitted unique marker");
+
+  // Real pinned canonical Gateway Store/RunEngine checkpoint lifecycle,
+  // exercised through the admitted Dashboard host RPC, not synthetic HTTP.
+  const canonicalSession=await canonical.store.createSession({
+    system_id:"ci-mc2",workspace_id:"operator",principal:"operator",
+  });
+  const checkpointMarker="mc2-real-checkpoint-"+Date.now();
+  const queued=await canonical.store.createRun({
+    session_id:canonicalSession.session_id,system_id:"ci-mc2",workspace_id:"operator",
+    principal:"operator",runtime:{kind:"deterministic",model:null},
+    messages:[{role:"user",content:checkpointMarker}],max_turns:1,
+    budget:{max_tokens:null,max_cost:null,max_actions:16},
+    deadline_at:new Date(Date.now()+60_000).toISOString(),
+  });
+  canonicalSession.active_run_id=queued.run_id;
+  await canonical.store.saveSession(canonicalSession);
+  const pauseReq={runId:queued.run_id,sessionId:canonicalSession.session_id,
+    operationId:"real-checkpoint-pause-1"};
+  const realPaused=await rpc(local.port,local.authToken,
+    frame("aiverse.gateway.run.pause",systemId,pauseReq));
+  assert.equal(realPaused.ok,true,JSON.stringify(realPaused.error??{}));
+  assert.equal(realPaused.result.status,"paused");
+  assert.equal((await canonical.store.getRun(queued.run_id)).status,"paused",
+    "the canonical Gateway Store must persist the checkpoint");
+  const refused=await rpc(local.port,local.authToken,
+    frame("aiverse.gateway.run.resume",systemId,{...pauseReq,sessionId:"foreign-session",
+      operationId:"real-checkpoint-foreign-1"}));
+  assert.equal(refused.ok,false);
+  assert.equal(refused.error.code,"SESSION_BINDING_MISMATCH");
+  assert.equal((await canonical.store.getRun(queued.run_id)).status,"paused");
+  const resumed=await rpc(local.port,local.authToken,
+    frame("aiverse.gateway.run.resume",systemId,{
+      ...pauseReq,operationId:"real-checkpoint-resume-1",
+    }));
+  assert.equal(resumed.ok,true,JSON.stringify(resumed.error??{}));
+  assert.equal(resumed.result.runId,queued.run_id);
+  assert.equal(resumed.result.sessionId,canonicalSession.session_id);
+  let checkpointDone;
+  for(let attempt=0;attempt<60;attempt++){
+    const current=await rpc(local.port,local.authToken,
+      frame("aiverse.gateway.run.get",systemId,{runId:queued.run_id}));
+    assert.equal(current.ok,true,JSON.stringify(current.error??{}));
+    if(["completed","failed","canceled","blocked","budget_limited","parked"].includes(current.result.status)){
+      checkpointDone=current.result;break;
+    }
+    await pause(150);
+  }
+  assert.ok(checkpointDone,"resumed actual Gateway run must reach a terminal state");
+  assert.equal(checkpointDone.status,"completed");
+  assert.ok(String(checkpointDone.output??"").includes(checkpointMarker),
+    "the resumed real deterministic runtime must execute the original user request");
+  assert.equal((await canonical.store.getRun(queued.run_id)).status,"completed");
 
   const url="ws://127.0.0.1:"+local.port+"/ws?systemId="+systemId;
   ws=new WebSocket(url,[DASHBOARD_WS_PROTOCOL,dashboardWsAuthProtocol(local.authToken)]);
