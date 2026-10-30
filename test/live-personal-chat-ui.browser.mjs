@@ -454,6 +454,33 @@ test("Chat opens real canonical transcript and pages older 25+3 without duplicat
     {local:0,session:0});
   assert.deepEqual(errors,[]);
 });
+test("opening history preserves active chats in splits and never evicts a full three-pane layout",async t=>{
+  const {page,errors}=await pageFor(t);
+  const first=page.locator(".live-chat-pane").first();
+  await first.locator(".live-chat-input").fill("Keep this active conversation");
+  await first.getByRole("button",{name:"Send",exact:true}).click();
+  await first.locator(".live-chat-message.assistant p").getByText(/Authoritative answer/).waitFor();
+  const original=await first.locator(".live-chat-message").allTextContents();
+  await page.getByRole("button",{name:"Previous chats"}).click();
+  await page.locator(".live-chat-history-item").first().getByRole("button",{name:"Open conversation"}).click();
+  await page.locator(".live-chat-pane").nth(1).getByRole("button",{name:"Load older messages"}).waitFor();
+  assert.equal(await page.locator(".live-chat-pane").count(),2);
+  assert.deepEqual(await first.locator(".live-chat-message").allTextContents(),original,
+    "opening history must not replace a live conversation in the first pane");
+  const third=await page.evaluate(()=>window.chatApp.openPane());
+  assert.ok(third);
+  await page.locator(".live-chat-pane").nth(2).locator(".live-chat-input").fill("Third chat occupied");
+  await page.locator(".live-chat-pane").nth(2).getByRole("button",{name:"Send",exact:true}).click();
+  await page.locator(".live-chat-pane").nth(2).locator(".live-chat-message.assistant p")
+    .getByText(/Authoritative answer/).waitFor();
+  await page.getByRole("button",{name:"Previous chats"}).click();
+  await page.locator(".live-chat-history-item").first().getByRole("button",{name:"Open conversation"}).click();
+  await page.locator(".live-chat-history-no-room").getByText(/All three chats are in use/).waitFor();
+  assert.equal(await page.locator(".live-chat-pane").count(),3);
+  assert.deepEqual(await first.locator(".live-chat-message").allTextContents(),original);
+  assert.equal(await page.locator(".live-chat-pane").nth(1).locator(".live-chat-message").count(),100);
+  assert.deepEqual(errors,[]);
+});
 test("MC2.5 split panes independently stream, resize, close and keep functional controls",async t=>{
   const {page,errors}=await pageFor(t);
   await page.locator(".live-chat-toolbar .live-chat-split").click();
