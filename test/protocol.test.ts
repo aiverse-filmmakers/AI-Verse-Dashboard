@@ -40,15 +40,17 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
     assert.equal(isCommandMethod("chat.send"), true); assert.equal(isQueryMethod("purpose.get"), true); assert.equal(isPurposeControlMethod("purpose.change.apply"), true);
     assert.deepEqual([...PURPOSE_CONTROL_METHODS], ["purpose.change.propose", "purpose.change.confirm", "purpose.change.apply"]);
     assert.throws(() => assertQueryOnly("chat.send"), /blocked/); assert.throws(() => assertQueryOnly("purpose.change.apply"), /blocked/); assert.doesNotThrow(() => assertQueryOnly("purpose.get"));
-    assert.equal(COMMAND_METHODS.length, 22); assert.equal(QUERY_METHODS.length, 32); assert.equal(ALL_METHODS.length, 56);
+    assert.equal(COMMAND_METHODS.length, 22); assert.equal(QUERY_METHODS.length, 33); assert.equal(ALL_METHODS.length, 57);
     assert.equal(isCommandMethod("aiverse.canvas.duplicate"),true);
     assert.equal(isCommandMethod("aiverse.gateway.run.create"),true);
     assert.equal(isQueryMethod("aiverse.gateway.status"),true);
+    assert.equal(isQueryMethod("aiverse.gateway.models"),true);
+    assert.equal(isCommandMethod("aiverse.gateway.models"),false);
     assert.equal(isQueryMethod("aiverse.gateway.run.get"),true);
     assert.equal(isQueryMethod("operator.activity"),true);
     assert.equal(requiresSystem("operator.activity"),true);
     assert.equal(requiresWorkspace("operator.activity"),true);
-    for(const method of ["aiverse.gateway.status","aiverse.gateway.run.create","aiverse.gateway.run.get"]) {
+    for(const method of ["aiverse.gateway.status","aiverse.gateway.models","aiverse.gateway.run.create","aiverse.gateway.run.get"]) {
       assert.equal(requiresSystem(method),true);assert.equal(requiresWorkspace(method),true);
     }
   });
