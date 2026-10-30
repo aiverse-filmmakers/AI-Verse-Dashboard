@@ -176,6 +176,9 @@ export class DashboardChatEventFeed implements ChatEventFeed {
 export class PersonalChatRunController {
   private epoch=0;
   private streamEpoch=0;
+  /** A resumed SSE stream replays prior canceled/paused attempt deltas. */
+  private resumedRun=false;
+  private awaitingResumeMarker=false;
   private historicalOlder?:{sessionId:string;offset:number;total:number;seen:Set<string>};
   private unsubscribe?:()=>void;
   private seen=new Set<string>();
@@ -205,6 +208,7 @@ export class PersonalChatRunController {
     this.streamEpoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
     this.seen.clear();this.lastSeq=0;this.activeRequest=undefined;
+    this.resumedRun=false;this.awaitingResumeMarker=false;
     this.historicalOlder=undefined;
     this.confirmedTurns=[];this.contextLimited=false;this.confirmedRunId=undefined;
     this.view={...scope,phase:"idle",output:""};
@@ -220,6 +224,7 @@ export class PersonalChatRunController {
     this.epoch++;
     this.unsubscribe?.();this.unsubscribe=undefined;
     this.seen.clear();this.activeRequest=undefined;
+    this.resumedRun=false;this.awaitingResumeMarker=false;
     this.historicalOlder=undefined;
     this.confirmedTurns=[];this.contextLimited=false;this.confirmedRunId=undefined;
     this.show({phase:"idle",runId:undefined,sessionId:undefined,
@@ -437,6 +442,7 @@ export class PersonalChatRunController {
       if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
       this.confirmCanonicalOutput(run);
       const state=phase(run.status);
+      if(action==="resume"&&state==="running")this.resumedRun=true;
       this.show({phase:state,canonicalStatus:run.status,sessionId:run.sessionId,
         output:state==="completed"?run.output??"":"",
         errorCode:undefined,contextLimited:this.contextLimited});
@@ -470,6 +476,7 @@ export class PersonalChatRunController {
   private subscribe(epoch:number,scope:Required<ClientScope>,selection:number,runId:string):void {
     this.unsubscribe?.();
     this.seen.clear();this.lastSeq=0;
+    this.awaitingResumeMarker=this.resumedRun;
     const streamEpoch=++this.streamEpoch;
     this.unsubscribe=this.feed.subscribe(scope,runId,{
       event:event=>{
@@ -479,9 +486,11 @@ export class PersonalChatRunController {
           || event.runId!==runId || event.seq<=this.lastSeq
           || this.seen.has(event.eventId))return;
         this.lastSeq=event.seq;
+        if(event.kind==="run.resumed")this.awaitingResumeMarker=false;
         if(this.seen.size>=512){this.seen.clear();}
         this.seen.add(event.eventId);
-        if(event.kind==="assistant.delta" && typeof event.text==="string"){
+        if(event.kind==="assistant.delta" && typeof event.text==="string"
+          &&!this.awaitingResumeMarker){
           this.show({output:(this.view.output+event.text).slice(0,65_536)});
         }
         if(event.kind==="run.completed" || event.kind==="run.failed"
@@ -683,6 +692,7 @@ export class PersonalChatRunController {
       if(!this.valid(epoch,scope,selection))return this.snapshot();
       const run=asRun(response.result,scope,runId);
       this.contextLimited=true;
+      this.resumedRun=run.status==="resuming";
       this.show({runId:run.runId,sessionId:run.sessionId,
         phase:phase(run.status),canonicalStatus:run.status,
         output:run.output??"",contextLimited:true});
