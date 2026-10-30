@@ -100,4 +100,21 @@ describe("MC2.2 trusted canonical Gateway scope bridge",()=>{
       assert.equal(f.calls.some(x=>x.method==="POST"),false);
     }finally{f.cleanup();}
   });
+  it("rejects resurrected credentials after unregister and same-id same-root registration",async()=>{
+    const f=fixture();
+    try{
+      const first=await f.bridge.handle(f.frame("aiverse.gateway.status"));
+      assert.equal(first.ok,true);
+      const count=f.calls.length;
+      const previous=f.reg.bindingGeneration(f.system);
+      assert.equal(f.reg.unregister(f.system),true);
+      f.reg.register(f.root,{systemId:f.system,label:"reinstalled"});
+      assert.notEqual(f.reg.bindingGeneration(f.system),previous,
+        "re-registration must never reuse an earlier live lease epoch");
+      const stale=await f.bridge.handle(f.frame("aiverse.gateway.status"));
+      assert.equal(stale.ok,false);
+      assert.equal(stale.error?.code,"GATEWAY_MAPPING_STALE");
+      assert.equal(f.calls.length,count,"old bearer must never be dispatched");
+    }finally{f.cleanup();}
+  });
 });
