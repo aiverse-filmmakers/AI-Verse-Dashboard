@@ -314,22 +314,23 @@ export class PersonalChatApplication {
     const generation=pane.generation,scope={...this.selected};
     pane.historyLoading=true;pane.historyError=undefined;
     this.render(pane);
+    let scrollAnchor:{height:number;top:number}|undefined;
     try{
       const result=await pane.run.loadOlderSessionRuns();
       if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation
         ||scope.systemId!==this.selected.systemId||scope.workspaceId!==this.selected.workspaceId)
         return;
-      const previousHeight=pane.log.scrollHeight,previousScroll=pane.log.scrollTop;
+      scrollAnchor={height:pane.log.scrollHeight,top:pane.log.scrollTop};
       pane.turns.unshift(...result.turns.map(turn=>({role:turn.role,text:turn.content})));
       pane.historyHasOlder=result.hasOlder;
-      this.render(pane);
-      pane.log.scrollTop=previousScroll+pane.log.scrollHeight-previousHeight;
     }catch(error){
       if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation)return;
       pane.historyError="Older messages unavailable · "+errorCode(error);
     }finally{
       if(!this.destroyed&&this.panes.get(paneId)===pane&&generation===pane.generation){
         pane.historyLoading=false;this.render(pane);
+        if(scrollAnchor)pane.log.scrollTop=scrollAnchor.top+
+          pane.log.scrollHeight-scrollAnchor.height;
       }
     }
   }
