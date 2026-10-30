@@ -191,7 +191,7 @@
           "state": "in-progress",
           "acceptance": "source-backed implementation, named owner, positive/negative CI, recorded scope and limitations",
           "evidenceRef": "apps/web/src/personal-diagnostics.ts",
-          "partialEvidence": "Five-source authenticated diagnostics plus functional first-party graphical OS workspace picker. Paired browser reads capped real OS catalog, proposes a strict scoped request, trusted terminal explicitly approves or denies with TTL/rate limit. Browser re-pairs after old cookie/WS/chat revocation. Real paired Chromium + pinned canonical Gateway executes a film workspace run and proves its sessions cannot include earlier operator history. Native owner login, durable approval grants, multi-OS lifecycle and production Mac signing remain incomplete."
+          "partialEvidence": "First-party Workspace Status has canonical OS selected-system/workspace health, Data Canvas owner and canonical Gateway/session connectivity. Added authenticated owner-Gateway per-run advanced diagnostics (exact run/session/principal/workspace, safe bounded context/retrieval/fold counts, no raw prompts or traces), verified via real pinned Gateway CI. Added read-only scoped system.registry.summary from selected OS registry with registered/authorized and selected-OS workspace counts; full system.list remains denied to paired browser. Browser and local HTTP security tests include stale OS rebind, foreign sessions, forged diagnostics, forbidden registry filters, and async workspace/input change. Docs/DEVELOPMENT-TASKS-649-660-2026-10-30.md and docs/DEVELOPMENT-TASKS-661-669-2026-10-30.md. G06.1 remains IN PROGRESS: fully implemented multi-system workspace lifecycle, private owner Mac acceptance and broader production control-center coverage are NOT implemented."
         },
         {
           "id": "G06.2",
@@ -343,5 +343,5 @@
       ]
     }
   ],
-  "lastReconciliation": "2026-10-30 Task 648: owner contract for G02.4 confirmed and documented, binary attachment admission blocked upstream; G02.4 in-progress and G02.3 model choice in-progress. Unplanned diagnostics source changes reverted. Provisional Chat 11/15, GitHub/browser 47/100, formal accepted 15/100 unchanged. No milestone moved."
+  "lastReconciliation": "2026-10-30: G06.1 canonical Gateway run diagnostics and safe OS registry summary implemented in draft with real owner tests; G06.1 remains in-progress. No new formal or provisional score. Chat 11/15, GitHub/browser 47/100, formal 15/100. Fixed 10 chapters/40 milestones unchanged."
 }
