@@ -83,6 +83,32 @@ function validateOrigin(origin: string): string {
     || url.port === "0") throw new GatewayTransportError("UNAPPROVED_GATEWAY_ORIGIN");
   return url.origin;
 }
+/** Reject oversized Gateway bodies *during* streaming, before Response.text() can
+ * buffer an untrusted megabyte-scale payload into the host process. */
+async function boundedJsonText(response:Response):Promise<string>{
+  const reported=response.headers.get("content-length");
+  if(reported!==null&&/^\d+$/.test(reported)&&Number(reported)>MAX_JSON_BYTES)
+    throw new GatewayTransportError("RESPONSE_TOO_LARGE");
+  if(!response.body)return "";
+  const reader=response.body.getReader();
+  const decoder=new TextDecoder();
+  let received=0,body="";
+  try{
+    while(true){
+      const chunk=await reader.read();
+      if(chunk.done)break;
+      received+=chunk.value.byteLength;
+      if(received>MAX_JSON_BYTES)
+        throw new GatewayTransportError("RESPONSE_TOO_LARGE");
+      body+=decoder.decode(chunk.value,{stream:true});
+    }
+    return body+decoder.decode();
+  }finally{
+    try{await reader.cancel();}catch{}
+    reader.releaseLock();
+  }
+}
+
 function gatewayError(status: number, json?: unknown): GatewayTransportError {
   let code = "HTTP_" + status;
   if (json && typeof json === "object" && !Array.isArray(json)) {
@@ -161,8 +187,7 @@ export class CanonicalGatewayClient {
         signal: lease.controller.signal,
         redirect: "error",
       });
-      const raw = await response.text();
-      if (raw.length > MAX_JSON_BYTES) throw new GatewayTransportError("RESPONSE_TOO_LARGE");
+      const raw = await boundedJsonText(response);
       let obj: unknown;
       try {obj = JSON.parse(raw);} catch {throw new GatewayTransportError("INVALID_RESPONSE");}
       this.check();
