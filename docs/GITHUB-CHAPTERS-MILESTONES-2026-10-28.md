@@ -1,5 +1,7 @@
 # GitHub-first development: chapters, milestones and flexible tasks
 
+> **Review and acceptance order, effective 30 October 2026:** The operator approved a mandatory sequence: **implement → exact-head automated tests → distinct reviewer/source-security assessment → full milestone acceptance → merge eligible isolated code → private owner/production validation when required**. Follow [the canonical review and catch-up workflow](REVIEW-ACCEPTANCE-WORKFLOW-2026-10-30.md) before awarding any new `verified` milestone, increasing formal MC acceptance or merging a development PR. Review and merge are distinct from private Mac release. No self-approval, green-CI-only acceptance, or task-count-based scoring. Current inventory at adoption: **4 verified, 8 implemented in draft, 6 in progress, 22 planned**; Chat 11/15, provisional GB 47/100, formal MC accepted 15/100, unchanged.
+
 **28 October 2026. Scope:** current Personal-first AI-Verse Dashboard
 with the first narrow Filmmaking feature. Full filmmaking/3D
 production suite is **not silently counted** in this initial 100%.
