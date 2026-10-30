@@ -240,6 +240,35 @@ try {
   assert.equal("runtime" in done,false,"full runtime config is never browser-visible");
   assert.equal("messages" in done,false,"raw canonical internal message transcript is private");
 
+  // G06.1: real pinned canonical Gateway diagnostics, not a mock endpoint.
+  const ownerDiagnostics=await rpc(local.port,local.authToken,
+    frame("aiverse.gateway.run.diagnostics",systemId,{
+      runId,sessionId:done.sessionId,
+    }));
+  assert.equal(ownerDiagnostics.ok,true,JSON.stringify(ownerDiagnostics.error??{}));
+  const diag=ownerDiagnostics.result;
+  assert.equal(diag.source,"canonical-gateway");
+  assert.equal(diag.runId,runId);
+  assert.equal(diag.sessionId,done.sessionId);
+  assert.equal(diag.workspaceId,"operator");
+  assert.equal(diag.status,"completed");
+  assert.deepEqual(diag.safety,{
+    rawContentIncluded:false,promptsIncluded:false,chainOfThoughtIncluded:false,
+  });
+  assert.equal(typeof diag.folds.valid_cards,"number");
+  assert.equal(typeof diag.archive.retrieval_depth,"number");
+  assert.equal("scope" in diag,false);
+  assert.equal("deep_retrieval" in diag,false);
+  assert.equal("source_refs" in diag,false);
+  assert.equal("messages" in diag,false);
+  assert.doesNotMatch(JSON.stringify(diag),new RegExp(marker));
+  const foreignSession=await rpc(local.port,local.authToken,
+    frame("aiverse.gateway.run.diagnostics",systemId,{
+      runId,sessionId:"another-session",
+    }));
+  assert.equal(foreignSession.ok,false);
+  assert.equal(foreignSession.error.code,"SESSION_BINDING_MISMATCH");
+
   // Real pinned canonical Gateway Store/RunEngine checkpoint lifecycle,
   // exercised through the admitted Dashboard host RPC, not synthetic HTTP.
   const canonicalSession=await canonical.store.createSession({
