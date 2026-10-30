@@ -257,7 +257,8 @@ describe("Personal Chat canonical run controller",()=>{
    const {client}=clientWith((_method,params)=>{
      if(params?.offset===50)return new Promise(resolve=>{release=resolve;});
      return {source:"canonical-gateway",workspaceId:"film",sessionId:"session-a",
-       data,has_more:true,next_offset:Number(params?.offset??0)+25};
+       data:data.map((row,i)=>({...row,run_id:"r-"+(Number(params?.offset??0)+i)})),
+       has_more:true,next_offset:Number(params?.offset??0)+25};
    });
    const chat=new PersonalChatRunController(client,testFeed().feed);
    // Return unique run identities on the second page in this separate fixture.
