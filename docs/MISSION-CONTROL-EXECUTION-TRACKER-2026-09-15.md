@@ -205,7 +205,11 @@ Sanitized evidence, exact refs, execution-path amendment, initial failures and r
 # MC2 - First-class AI-Verse adapter - 15 points
 
 ### MC2.1 - Adapter contract design - 2 points - A
-Status: PENDING
+Status: **FOCUSED DESIGN REVIEW PR #43 OPEN / NOT ACCEPTED (0/2 points)**
+
+28 October 2026: [MC2.1 design-only acceptance PR #43](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/43) is independently reviewable against main. The [Gateway client wire contract](MC2.1-AIVERSE-GATEWAY-CLIENT-CONTRACT-2026-10-26.md) and [source-pinned Personal-first review packet](MC2.1-ACCEPTANCE-REVIEW-2026-10-28.md) cover the actual Gateway routes, host/auth/system/workspace binding, SSE/cancel race, Connections credential ownership, typed app-action design, current owner-draft API status, missing routes and negative tests. This is **documentation/review**, not a deployed/approved interface; implementation PR #42, Gateway #80, Data #22 and Personal-first plan PR #41 remain separate drafts.
+
+**Acceptance step:** record independent review and merge of the exact design PR, then formally award the existing **2 points** (15 → **17/100**) in the canonical tracker with approval/merge evidence. No points awarded for opening the PR or for self-authored review. Revised scope totals need their own Personal-first amendment review before any future reweighting.
 
 Deliver:
 - exact Dashboard <-> AI-Verse Gateway client contract;
