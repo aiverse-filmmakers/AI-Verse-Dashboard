@@ -382,6 +382,24 @@ export class PersonalChatRunController {
         errorCode:undefined,contextLimited:this.contextLimited});
       if(next==="running")this.subscribe(epoch,scope,selection,runId);
     }catch(error){
+      // Stop can race with a run completing naturally. The canonical owner
+      // then rejects cancel as terminal. Reconcile the existing run instead
+      // of misleading the user that their completed answer is lost.
+      if((error as {code?:unknown})?.code==="RUN_NOT_CANCELABLE"){
+        try{
+          const response=await this.client.getGatewayRun(runId);
+          if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
+          const run=asRun(response.result,scope,runId);
+          if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
+          this.confirmCanonicalOutput(run);
+          const state=phase(run.status);
+          this.show({phase:state,canonicalStatus:run.status,
+            output:state==="completed"?run.output??"":"",
+            errorCode:undefined,contextLimited:this.contextLimited});
+          if(state==="running")this.subscribe(epoch,scope,selection,runId);
+          return this.snapshot();
+        }catch{ /* leave the known run unresolved for explicit GET reconnect */ }
+      }
       if(this.valid(epoch,scope,selection)&&this.view.runId===runId)
         this.show({phase:"interrupted",errorCode:
           typeof (error as {code?:unknown})?.code==="string"
