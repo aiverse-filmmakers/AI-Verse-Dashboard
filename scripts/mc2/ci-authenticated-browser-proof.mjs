@@ -146,7 +146,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       "diagnostics must stay in authenticated cookie scope without bearers");
     await page.getByRole("button",{name:"Refresh workspace status"}).click();
     await page.waitForFunction(()=>{
-      const sources=[...document.querySelectorAll(".personal-diagnostics-source")];
+      const sources=[...document.querySelectorAll(".personal-diagnostics-source:not(.personal-diagnostics-run-result)")];
       return sources.length===5&&sources.every(s=>
         s.getAttribute("data-state")!=="loading");
     },null,{timeout:20000});
