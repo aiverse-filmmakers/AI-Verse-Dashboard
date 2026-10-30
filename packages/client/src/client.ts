@@ -109,6 +109,23 @@ export class DashboardClient {
     });
   }
 
+  /** Independently owner-approved pause of the exact canonical run/session. */
+  async pauseGatewayRun(runId:string,sessionId:string,operationId:string):
+    Promise<{result:unknown;systemId?:string;observedAt:string}> {
+    if(!this.scope.workspaceId)throw new Error("Select a workspace first");
+    return this.query("aiverse.gateway.run.pause",{
+      noCache:true,params:{runId,sessionId,operationId},
+    });
+  }
+  /** Resume the same paused run; never issue a new model invocation from Chat. */
+  async resumeGatewayRun(runId:string,sessionId:string,operationId:string):
+    Promise<{result:unknown;systemId?:string;observedAt:string}> {
+    if(!this.scope.workspaceId)throw new Error("Select a workspace first");
+    return this.query("aiverse.gateway.run.resume",{
+      noCache:true,params:{runId,sessionId,operationId},
+    });
+  }
+
   async getGatewayRun(runId:string):Promise<{result:unknown;systemId?:string;observedAt:string}> {
     if(!this.scope.workspaceId)throw new Error("Select a workspace or operator scope first");
     return this.query("aiverse.gateway.run.get",{noCache:true,params:{runId}});
