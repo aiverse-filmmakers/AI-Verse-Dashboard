@@ -7,7 +7,7 @@ const base=()=>JSON.parse(readFileSync(file,"utf8"));
 test("GitHub score, formal roadmap and local release are separate",()=>{
  const r=validateGithubBrowserProgress(base());
  assert.deepEqual(r.remote,{earned:47,total:100,provisional:true});
- assert.deepEqual(r.formal,{earned:15,total:100});
+ assert.deepEqual(r.formal,{earned:17,total:100});
  assert.equal(r.local.numericalScore,null);
  assert.ok(r.local.blockers>=5);
 });
@@ -43,5 +43,18 @@ test("Chat provisional model discovery increment is backed by a verified source 
  assert.equal(chat.evidenceStatus,"source-and-ci");
  assert.equal(p.evidence.canonicalModelInventoryReconnect.sourceCommit,
   "e94b2fbb7c4d7494525c55e8711a43cc6d167956");
- assert.equal(p.formalRoadmap.accepted,15);
+ assert.equal(p.formalRoadmap.accepted,17);
+ assert.equal(p.evidence.mc2_1DesignAcceptance.formalBefore,15);
+ assert.equal(p.evidence.mc2_1DesignAcceptance.formalAfter,17);
+ assert.equal(p.evidence.mc2_1DesignAcceptance.mergedCommit,
+  "297f99b9380c9905fbe6c359668f504142c2ee89");
+});
+
+test("formal MC2.1 design acceptance cannot be silently rolled back or inflated",()=>{
+ const p=base();
+ const receipt=p.evidence.mc2_1DesignAcceptance;
+ assert.equal(receipt.scope.includes("Original MC2.1"),true);
+ assert.equal(receipt.formalAfter-receipt.formalBefore,2);
+ assert.equal(p.formalRoadmap.accepted,receipt.formalAfter);
+ assert.equal(p.formalRoadmap.nextPotentialAccepted,20);
 });
