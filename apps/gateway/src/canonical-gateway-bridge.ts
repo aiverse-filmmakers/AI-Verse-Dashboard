@@ -23,12 +23,22 @@ export interface ApprovedCanonicalGateway {
   allowRunCancel?:boolean;
   /** Independent interactive-owner grant for checkpointed Pause/Resume. */
   allowRunPauseResume?:boolean;
+  /** Trusted native owner admission on EVERY pending run approval decision.
+   * Never derive this from a browser bearer, request flag or preview session.
+   * Absent callback means approval is impossible, including "deny".
+   */
+  admitRunApproval?: (facts:{
+    dashboardSystemId:string;canonicalSystemId:string;workspaceId:string;
+    runId:string;sessionId:string;operationId:string;
+    decision:"approve"|"deny";pendingToolCallId:string;
+  }) => boolean|Promise<boolean>;
 }
 const methods = new Set([
   "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.create", "aiverse.gateway.run.get",
   "aiverse.gateway.run.diagnostics",
   "aiverse.gateway.session.list", "aiverse.gateway.session.runs",
   "aiverse.gateway.run.cancel", "aiverse.gateway.run.pause", "aiverse.gateway.run.resume",
+  "aiverse.gateway.run.approval",
 ]);
 const identifier = z.string().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/);
 const input = z.object({
@@ -46,6 +56,7 @@ const cancelInput=z.object({runId:identifier,sessionId:identifier,
 // Pause and Resume also require the exact canonical session and a unique
 // idempotent operation, never a browser-supplied action or principal.
 const checkpointInput=cancelInput;
+const approvalInput=cancelInput.extend({decision:z.enum(["approve","deny"])});
 const pageInput=z.object({limit:z.number().int().min(1).max(25).optional(),
   offset:z.number().int().min(0).max(10_000).optional()}).strict();
 const historyInput=pageInput.extend({sessionId:identifier}).strict();
@@ -61,7 +72,8 @@ const SAFE_CODES = new Set([
   "SESSION_NOT_FOUND", "INVALID_HISTORY_QUERY", "INVALID_HISTORY_SCOPE",
   "HISTORY_BINDING_MISMATCH", "HISTORY_INDEX_TOO_LARGE",
   "DIAGNOSTICS_INVALID",
-  "RUN_CONTROL_NOT_AUTHORIZED", "RUN_NOT_CANCELABLE",
+  "RUN_CONTROL_NOT_AUTHORIZED", "RUN_APPROVAL_NOT_AUTHORIZED",
+  "APPROVAL_NOT_PENDING", "RUN_NOT_CANCELABLE",
   "RUN_NOT_PAUSABLE", "RUN_NOT_RESUMABLE",
 ]);
 function failureCode(error: unknown): string {
@@ -383,6 +395,41 @@ export class CanonicalGatewayBridge {
               if(action==="resume"
                 &&!["paused","paused_recovery_required","paused_no_progress"].includes(run.status))
                 throw new GatewayTransportError("RUN_NOT_RESUMABLE");
+              if(this.registry.resolveRoot(system)!==configured.root
+                ||this.registry.bindingGeneration(system)!==configured.generation)
+                throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
+              if(workspace!=="operator")getWorkspace(this.registry,system,workspace);
+              if(signal?.aborted)throw new GatewayTransportError("ABORTED");
+            },
+          });
+          return respond(true,boundedRun(result));
+        }
+        if(frame.method==="aiverse.gateway.run.approval"){
+          // This method is intentionally not enabled by an authenticated
+          // Dashboard browser session alone. A trusted native owner must
+          // independently admit this exact decision immediately pre-effect.
+          const admit=configured.binding.admitRunApproval;
+          if(!admit)throw new GatewayTransportError("RUN_APPROVAL_NOT_AUTHORIZED");
+          const parsed=approvalInput.safeParse(frame.params);
+          if(!parsed.success)throw new GatewayTransportError("INVALID_ENVELOPE");
+          const {runId,sessionId,operationId,decision}=parsed.data;
+          const result=await client.controlRun({
+            runId,action:"approval",operationId,decision,signal,
+            validateBeforePost:async run=>{
+              if(run.session_id!==sessionId)
+                throw new GatewayTransportError("SESSION_BINDING_MISMATCH");
+              const pending=run.pending_approval;
+              if(run.status!=="awaiting_approval"||!pending
+                ||typeof pending!=="object"||Array.isArray(pending)
+                ||typeof (pending as Record<string,unknown>).tool_call_id!=="string")
+                throw new GatewayTransportError("APPROVAL_NOT_PENDING");
+              const accepted=await admit({
+                dashboardSystemId:system,canonicalSystemId:configured.binding.canonicalSystemId,
+                workspaceId:workspace,runId,sessionId,operationId,decision,
+                pendingToolCallId:(pending as {tool_call_id:string}).tool_call_id,
+              });
+              if(accepted!==true)
+                throw new GatewayTransportError("RUN_APPROVAL_NOT_AUTHORIZED");
               if(this.registry.resolveRoot(system)!==configured.root
                 ||this.registry.bindingGeneration(system)!==configured.generation)
                 throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
