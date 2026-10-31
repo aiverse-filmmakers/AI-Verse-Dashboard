@@ -1130,7 +1130,9 @@ test("Canvas: first Scratch edit persists through typed RPC and browser reload",
   await page.locator(".aiverse-canvas").waitFor();
   // The owner may restore the canonical current document automatically.
   // Reopen it through library only if another document was selected.
-  if(!(await page.locator(".canvas-current-title").getByText("Scratch Canvas").isVisible())){
+  // Fresh mount shows a NEW unsaved Scratch with the same title. Reopen the
+  // saved, owner-backed revision by id from the real Canvas library.
+  if(await page.locator(".canvas-current-meta").getByText("Unsaved workspace").isVisible()){
     await page.getByRole("button",{name:"Canvas library"}).click();
     await page.getByRole("button",{name:"Scratch Canvas",exact:true}).click();
   }
@@ -1259,7 +1261,7 @@ test("Canvas: verified history, two-step Undo, new version and persistence acros
   assert.equal(mutations.at(-1)?.params.toVersion,1);
   assert.equal(mutations.at(-1)?.params.expectedVersion,2);
   await page.reload({waitUntil:"networkidle"});
-  if(!(await canvas.locator(".canvas-current-title").getByText("Undo storyboard").isVisible())){
+  if(await canvas.locator(".canvas-current-meta").getByText("Unsaved workspace").isVisible()){
     await page.getByRole("button",{name:"Canvas library"}).click();
     await page.getByRole("button",{name:"Undo storyboard",exact:true}).click();
   }
