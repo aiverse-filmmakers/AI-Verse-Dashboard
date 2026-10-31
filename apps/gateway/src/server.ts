@@ -13,6 +13,7 @@ import {
 } from "./auth.js";
 import { SubscriptionHub } from "./subscriptions.js";
 import { CanonicalGatewayBridge } from "./canonical-gateway-bridge.js";
+import { LocalApplicationSession } from "./local-app-session.js";
 
 /**
  * Localhost HTTP + WebSocket server (Task 4).
@@ -57,7 +58,9 @@ export async function startGateway(
   hub: SubscriptionHub,
   opts?: { port?: number; host?: string; authToken?: string;
     /** Trusted native host may inject a pre-approved canonical Gateway mapping. */
-    canonicalBridge?:CanonicalGatewayBridge },
+    canonicalBridge?:CanonicalGatewayBridge;
+    /** Native-only opt-in: never create an app session from browser input. */
+    localApp?:LocalApplicationSession },
 ): Promise<GatewayServer> {
   const host = "127.0.0.1";
   const authToken = createGatewayAuthToken(opts?.authToken);
@@ -65,7 +68,7 @@ export async function startGateway(
     throw new Error("gateway binds loopback only; remote access must use a tunnel");
   }
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    void handleHttp(req, res, router, authToken,opts?.canonicalBridge);
+    void handleHttp(req, res, router, authToken,opts?.canonicalBridge,opts?.localApp);
   });
   const wss = new WebSocketServer({
     noServer: true,
@@ -75,7 +78,9 @@ export async function startGateway(
   });
 
   server.on("upgrade", (req, socket, head) => {
-    if (!hasWebSocketAuthorization(req.headers, authToken)) {
+    const bearerAuthorized=hasWebSocketAuthorization(req.headers,authToken);
+    const cookieAuthorized=opts?.localApp?.isAuthorizedBrowser(req)===true;
+    if(!bearerAuthorized&&!cookieAuthorized) {
       socket.write("HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Bearer\r\nConnection: close\r\n\r\n");
       socket.destroy();
       return;
@@ -99,8 +104,15 @@ export async function startGateway(
       socket.destroy();
       return;
     }
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      void handleSocket(ws, systemId, router, hub, opts?.canonicalBridge);
+    if(cookieAuthorized&&!bearerAuthorized
+      &&!opts?.localApp?.isAllowedSocketSystem(systemId)){
+      socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+      socket.destroy();return;
+    }
+    wss.handleUpgrade(req,socket,head,ws=>{
+      if(cookieAuthorized&&!bearerAuthorized)opts?.localApp?.trackBrowserSocket(ws);
+      void handleSocket(ws,systemId,router,hub,opts?.canonicalBridge,
+        cookieAuthorized&&!bearerAuthorized?opts?.localApp:undefined);
     });
   });
 
@@ -111,10 +123,12 @@ export async function startGateway(
       resolve(typeof addr === "object" && addr !== null ? addr.port : requested);
     });
   });
+  opts?.localApp?.setBoundPort(actual);
   return {
     port: actual,
     authToken,
     async close() {
+      opts?.localApp?.close();
       wss.close();
       await new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
@@ -141,10 +155,14 @@ async function handleHttp(
   router: QueryRouter,
   authToken: string,
   canonicalBridge?:CanonicalGatewayBridge,
+  localApp?:LocalApplicationSession,
 ): Promise<void> {
   try {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
-    if (!hasBearerAuthorization(req.headers, authToken)) {
+    if(localApp && await localApp.handle(req,res))return;
+    const bearerAuthorized=hasBearerAuthorization(req.headers,authToken);
+    const cookieAuthorized=localApp?.isAuthorizedBrowser(req)===true;
+    if(!bearerAuthorized&&!cookieAuthorized) {
       res.writeHead(401, {
         "content-type": "application/json",
         "www-authenticate": "Bearer",
@@ -170,6 +188,11 @@ async function handleHttp(
         return;
       }
       const frame = JSON.parse(await readBody(req)) as unknown;
+      if(cookieAuthorized&&!bearerAuthorized&&!localApp?.isAllowedFrame(frame)){
+        res.writeHead(403,{"content-type":"application/json","cache-control":"no-store"});
+        res.end(JSON.stringify({ok:false,error:{code:"LOCAL_APP_SCOPE_DENIED",message:"Scoped local app session required"}}));
+        return;
+      }
       // Only an explicitly installed host bridge can service canonical
       // Gateway methods. Browser input never constructs a native binding.
       const out = canonicalBridge && CanonicalGatewayBridge.recognizes(frame)
@@ -192,6 +215,7 @@ function handleSocket(
   router: QueryRouter,
   hub: SubscriptionHub,
   canonicalBridge?:CanonicalGatewayBridge,
+  localApp?:LocalApplicationSession,
 ): void {
   let canonicalCancel:(()=>void)|undefined;
   let canonicalEpoch=0;
@@ -215,13 +239,26 @@ function handleSocket(
       return;
     }
     const tagged=(frame as {type?:unknown}).type;
+    // Cookie-paired browser sockets are run streams only, never general RPC.
+    if(localApp && tagged!=="gateway-run-unsubscribe"
+      && (tagged!=="gateway-run-subscribe"
+        ||!localApp.isAllowedFrame({...frame,
+          method:"aiverse.gateway.run.get",systemId:boundSystem}))){
+      ws.send(JSON.stringify({type:"res",v:"1.0",id:"local-app-socket",
+        ok:false,systemId:boundSystem,
+        error:{code:"LOCAL_APP_SCOPE_DENIED",message:"Scoped chat events only"},
+        observedAt:new Date().toISOString()}));
+      return;
+    }
     if(tagged==="gateway-run-subscribe"){
       canonicalEpoch++;
       canonicalCancel?.();canonicalCancel=undefined;
       const request=frame as Record<string,unknown>;
       const fields=Object.keys(request);
       const workspace=request.workspaceId,runId=request.runId;
-      const invalid=!canonicalBridge||fields.length!==3
+      const invalid=!canonicalBridge
+        || (localApp!==undefined&&!localApp.isAllowedBrowserStream(typeof workspace==="string"?workspace:""))
+        ||fields.length!==3
         ||fields.some(x=>!["type","workspaceId","runId"].includes(x))
         ||typeof workspace!=="string"
         ||!/^(operator|[a-z0-9][a-z0-9-]{0,127})$/.test(workspace)
@@ -245,11 +282,13 @@ function handleSocket(
       canonicalCancel=canonicalBridge!.openEventStream(boundSystem,workspace as string,
         runId as string,
         projection=>{
-          if(epoch===canonicalEpoch&&ws.readyState===1)
+          if(epoch===canonicalEpoch&&ws.readyState===1
+            &&(!localApp||localApp.isAllowedBrowserStream(workspace as string)))
             ws.send(JSON.stringify(projection));
         },
         code=>{
-          if(epoch===canonicalEpoch&&ws.readyState===1)
+          if(epoch===canonicalEpoch&&ws.readyState===1
+            &&(!localApp||localApp.isAllowedBrowserStream(workspace as string)))
             ws.send(JSON.stringify({type:"res",v:"1.0",
               id:"gateway-run-subscribe",ok:false,systemId:boundSystem,
               error:{code,message:"Canonical Gateway "+code},
