@@ -113,14 +113,37 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       return sources.length===6&&sources.every(s=>
         s.getAttribute("data-state")!=="loading");
     },null,{timeout:20000});
-    assert.ok(await panel.locator('[data-state="available"]').count()>=3,
-      "Gateway, history and registered OS must be live");
+    // The pinned canonical owner may not have released the session-history
+    // API. Always check real owner capability, never simulate a library.
+    const ownerHistoryResponse=await fetch(origin+"/rpc",{
+      method:"POST",headers:{"content-type":"application/json",
+        authorization:"Bearer "+bearer},
+      body:JSON.stringify({type:"req",v:"1.0",id:"history-availability",
+        method:"aiverse.gateway.session.list",systemId,
+        workspaceId:"operator",params:{limit:5,offset:0}}),
+    });
+    const ownerHistory=await ownerHistoryResponse.json();
+    const ownerHistoryAvailable=ownerHistory.ok===true;
+    if(ownerHistoryAvailable){
+      assert.ok(Array.isArray(ownerHistory.result?.data));
+      assert.equal(ownerHistory.result.workspaceId,"operator");
+    }else{
+      assert.equal(typeof ownerHistory.error?.code,"string");
+      assert.equal(ownerHistory.result,undefined,
+        "unreleased history must not invent a canonical session list");
+    }
+    assert.ok(await panel.locator('[data-state="available"]').count()>=2,
+      "real Gateway and OS must be available: "+await panel.textContent());
     const canvasCard=panel.locator(".personal-diagnostics-source").filter({hasText:"Canvas Data owner"});
     assert.equal(await canvasCard.getAttribute("data-state"),"unavailable",
       "Canvas must not look available without an installed owner");
     assert.match(await panel.textContent(),/Canonical Gateway reachable/);
     assert.match(await panel.textContent(),/Canvas Data owner unavailable/);
-    assert.match(await panel.textContent(),/Conversation library reachable/);
+    if(ownerHistoryAvailable)
+      assert.match(await panel.textContent(),/Conversation library reachable/);
+    else
+      assert.doesNotMatch(await panel.textContent(),/Conversation library reachable/,
+        "unreleased canonical history must not look available");
     assert.match(await panel.textContent(),/Registered OS authorized/);
     assert.match(await panel.textContent(),/Registered OS systems/);
     assert.match(await panel.textContent(),/1 registered · 1 authorized/);
@@ -155,7 +178,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       return sources.length===6&&sources.every(s=>
         s.getAttribute("data-state")!=="loading");
     },null,{timeout:20000});
-    assert.ok(await panel.locator('[data-state="available"]').count()>=3);
+    assert.ok(await panel.locator('[data-state="available"]').count()>=2);
     assert.equal(await canvasCard.getAttribute("data-state"),"unavailable");
     await page.getByRole("button",{name:"Workspace status",exact:true}).click();
     assert.equal(await panel.isVisible(),false);
@@ -278,6 +301,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     await page.locator(".live-chat-pane").first().waitFor();
     assert.equal(await page.locator(".live-chat-message").count(),0,
       "a reload must not hydrate an invented browser-local transcript");
+    if(ownerHistoryAvailable){
     await page.getByRole("button",{name:"Previous chats"}).click();
     const selected=page.locator(".live-chat-history-item")
       .filter({hasText:continued.params.sessionId});
@@ -310,6 +334,13 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     assert.equal(finalCreate.params.messages[0].content,marker);
     assert.equal(finalCreate.params.messages[2].content,followup);
     assert.equal(finalCreate.params.messages[4].content,afterRestart);
+    }else{
+      await page.getByRole("button",{name:"Previous chats"}).click();
+      await page.getByText(/History unavailable/).waitFor();
+      assert.equal(await page.locator(".live-chat-history-item").count(),0,
+        "unreleased owner history never creates browser conversations");
+      await page.getByRole("button",{name:"Previous chats"}).click();
+    }
     assert.equal(await page.evaluate(()=>localStorage.length),0);
     assert.equal(await page.evaluate(()=>sessionStorage.length),0);
 
@@ -431,11 +462,18 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       return {status:response.status,body:await response.json()};
     });
     assert.equal(scopedHistory.status,200);
+    if(ownerHistoryAvailable){
     assert.equal(scopedHistory.body.ok,true);
     assert.equal(scopedHistory.body.result.workspaceId,"film");
     assert.ok(scopedHistory.body.result.data.length>=1);
     assert.ok(scopedHistory.body.result.data.every(x=>x.workspace_id==="film"),
       "canonical session list must contain no cross-workspace conversations");
+    }else{
+      assert.equal(scopedHistory.body.ok,false);
+      assert.equal(typeof scopedHistory.body.error?.code,"string");
+      assert.equal(scopedHistory.body.result,undefined,
+        "no synthesized film history while canonical owner API is unreleased");
+    }
     const filmRunId=(await filmChat.locator(".live-chat-status").textContent()).split(" · ")[1];
     assert.ok(filmRunId,"film response must preserve its canonical run identifier");
     const verifiedFilm=await page.evaluate(async runId=>{
@@ -448,12 +486,14 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
     },filmRunId);
     assert.equal(verifiedFilm.ok,true);
     assert.equal(verifiedFilm.result.workspaceId,"film");
+    if(ownerHistoryAvailable){
     assert.ok(scopedHistory.body.result.data.some(x=>
       x.session_id===verifiedFilm.result.sessionId),
       "the film Gateway history must contain the exact verified film session");
     assert.equal(scopedHistory.body.result.data.some(x=>
       x.session_id===continued.params.sessionId),false,
       "the earlier Personal session must not appear in the film library");
+    }
     assert.deepEqual(errors,[],"graphical owner approval must produce no browser runtime errors");
     // Normal Logout still revokes the newly paired browser.
     // Logout revokes session authorization and existing WS subscriptions.
@@ -474,12 +514,14 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       canonical_assistant_delta_to_chromium:true,
       canonical_terminal_get_verified:true,
       canonical_followup_same_session_and_confirmed_history:true,
-      canonical_history_reopened_after_browser_reload:true,
+      canonical_history_reopened_after_browser_reload:ownerHistoryAvailable,
+      history_owner_unavailable_is_explicit:!ownerHistoryAvailable,
       scoped_two_chat_panes:true,
       cookie_logout_revoked:true,
       owner_tty_host_rotate_revokes_browser_and_clears_private_turns:true,
       graphical_owner_approved_workspace_repair_verified:true,
-      owner_approved_film_canonical_run_and_workspace_history_isolated:true,
+      owner_approved_film_canonical_run_and_workspace_history_isolated:ownerHistoryAvailable,
+      owner_approved_film_run_scope_isolated:true,
       browser_catalog_owner_rejection_and_request_denial_verified:true,
       workspace_diagnostics_real_gateway_success:true,
       unavailable_canvas_owner_never_fabricated:true,
@@ -488,7 +530,7 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       paired_workspace_manifest_checked:true,
       future_browser_rpc_methods_default_denied:true,
       scoped_real_local_agent_activity_visible:true,
-      independent_canonical_gateway_history_projection:true,
+      independent_canonical_gateway_history_projection:ownerHistoryAvailable,
       member_provider_used:false,
       member_mac_verified:false,
     };
