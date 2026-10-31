@@ -2,7 +2,7 @@ import { SYSTEM_ID_PATTERN, WORKSPACE_ID_PATTERN } from "./ids.js";
 
 /** Dashboard protocol method registry. Queries are read-only. */
 export const QUERY_METHODS = [
-  "system.list", "system.get", "system.info", "workspace.list", "workspace.get",
+  "system.list", "system.registry.summary", "system.get", "system.info", "workspace.list", "workspace.get", "operator.activity",
   "workspace.health", "workspace.inbox.list", "purpose.get", "initiative.list",
   "initiative.get", "task.list", "task.get", "task.children", "run.list", "run.get",
   "run.logs", "cron.list", "cron.history", "agent.list", "agent.sessions",
@@ -38,7 +38,7 @@ export type DashboardMethod = (typeof ALL_METHODS)[number];
 
 const SYSTEM_OPTIONAL = new Set<string>(["protocol.handshake", "protocol.capabilities", "system.list"]);
 const WORKSPACE_SCOPED = new Set<string>([
-  "workspace.get", "workspace.health", "workspace.inbox.list", "purpose.get",
+  "workspace.get", "system.registry.summary", "operator.activity", "workspace.health", "workspace.inbox.list", "purpose.get",
   "initiative.list", "initiative.get", "task.list", "task.get", "task.children",
   "run.list", "run.get", "run.logs", "cron.list", "cron.history", "agent.list",
   "agent.sessions", "usage.summary", "graph.query", "graph.node", "source.preview",
