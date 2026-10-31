@@ -119,6 +119,19 @@ export class DashboardClient {
       params:{runId,sessionId,operationId}});
   }
 
+  /** Native Gateway owns all persistent session/run history. An unavailable
+   * owner must return a real error, never a fabricated Dashboard library. */
+  listGatewaySessions(limit=20,offset=0){
+    this.requireGatewayScope();
+    if(!Number.isSafeInteger(limit)||limit<1||limit>25
+      ||!Number.isSafeInteger(offset)||offset<0||offset>10000)
+      throw Object.assign(new Error("Invalid session catalog page"),
+        {code:"INVALID_HISTORY_QUERY"});
+    return this.query("aiverse.gateway.session.list",{
+      noCache:true,params:{limit,offset},
+    });
+  }
+
   /** Gateway-owned history only. Older pinned Gateway owners may return a
    * genuine unsupported/404 response; never manufacture previous turns. */
   listGatewaySessionRuns(sessionId:string,limit=25,offset=0){
