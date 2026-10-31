@@ -10,3 +10,7 @@ export type { PanelInstance, LayoutPreset } from "./layout.js";
 export * from "./tokens.js";
 export { renderShellModel, stateSurface } from "./shell.js";
 export type { ShellModel, PanelCard, PanelDatum, SwitcherOption } from "./shell.js";
+
+/** Display only authenticated canonical Gateway model and readiness facts. */
+export {PersonalModelStatus,inspectModelCatalog} from "./personal-model-status.js";
+export type {ModelCatalogView} from "./personal-model-status.js";
