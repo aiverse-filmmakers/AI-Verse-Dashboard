@@ -16,7 +16,9 @@
     "mc1:proof": "npm run build --silent && node dist/scripts/mc1/proof.js",
     "mc1:local": "bash scripts/mc1/run-local.sh",
     "mc1:eligibility": "node scripts/mc1/eligibility.mjs",
-    "mc1:local-model": "npm run build --silent && node scripts/mc1/local-model-proof.mjs"
+    "mc1:local-model": "npm run build --silent && node scripts/mc1/local-model-proof.mjs",
+    "mc2:bundle": "npx --yes esbuild@0.25.12 apps/web/src/personal-chat-ui.ts --bundle --platform=browser --format=esm --target=es2022 --outfile=dist/apps/web/personal-chat.bundle.js",
+    "test:personal-browser": "node --test test/live-personal-chat-ui.browser.mjs"
   },
   "engines": {
     "node": ">=22.0.0"
