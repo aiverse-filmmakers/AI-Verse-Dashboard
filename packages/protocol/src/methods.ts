@@ -10,6 +10,7 @@ export const QUERY_METHODS = [
   "aiverse.gateway.status", "aiverse.gateway.models", "aiverse.gateway.run.get",
   "aiverse.gateway.run.diagnostics", "aiverse.gateway.session.list",
   "aiverse.gateway.session.runs", "aiverse.canvas.list",
+  "aiverse.canvas.get", "aiverse.canvas.history",
 ] as const;
 
 export const PURPOSE_CONTROL_METHODS = [
@@ -25,6 +26,8 @@ export const COMMAND_METHODS = [
   "aiverse.gateway.run.create", "aiverse.gateway.run.cancel",
   "aiverse.gateway.run.pause", "aiverse.gateway.run.resume",
   "aiverse.gateway.run.approval",
+  "aiverse.canvas.create", "aiverse.canvas.rename", "aiverse.canvas.edit",
+  "aiverse.canvas.duplicate", "aiverse.canvas.revert", "aiverse.canvas.delete",
 ] as const;
 
 export const PROTOCOL_METHODS = ["protocol.handshake", "protocol.capabilities"] as const;
@@ -47,6 +50,9 @@ const WORKSPACE_SCOPED = new Set<string>([
   "aiverse.gateway.run.cancel", "aiverse.gateway.run.pause", "aiverse.gateway.run.resume",
   "aiverse.gateway.run.approval", "aiverse.gateway.session.list",
   "aiverse.gateway.session.runs", "aiverse.canvas.list",
+  "aiverse.canvas.get", "aiverse.canvas.history",
+  "aiverse.canvas.create", "aiverse.canvas.rename", "aiverse.canvas.edit",
+  "aiverse.canvas.duplicate", "aiverse.canvas.revert", "aiverse.canvas.delete",
   "chat.send", "chat.abort", "task.start", "task.cancel", "task.retry", "cron.create",
   "cron.pause", "cron.resume", "cron.runNow", "approval.resolve", "initiative.activate",
   "inbox.resolve", ...PURPOSE_CONTROL_METHODS,
