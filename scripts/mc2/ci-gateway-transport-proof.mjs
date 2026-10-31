@@ -16,6 +16,7 @@ import {CanonicalGatewayBridge,QueryRouter,SubscriptionHub,startGateway} from ".
 import {dashboardWsAuthProtocol,DASHBOARD_WS_PROTOCOL} from "../../dist/packages/protocol/src/index.js";
 import {DashboardClient,DashboardChatEventFeed,PersonalChatRunController}
   from "../../dist/packages/client/src/index.js";
+import {inspectModelCatalog} from "../../dist/apps/web/src/index.js";
 
 // Exact reviewed upstream owner SHA; changes require deliberate source review.
 const GATEWAY_REVISION="9748dd0d5473b65ad95ef92df62fe0a13575e378";
@@ -106,6 +107,11 @@ try {
   assert.equal(models.result.modelSelectionSupported,false);
   assert.equal(models.result.providerSelectionSupported,false);
   assert.equal(models.result.inferenceVerified,false);
+  const realModelView=inspectModelCatalog(models.result,{systemId,workspaceId:"operator"});
+  assert.deepEqual({id:realModelView.model,kind:realModelView.runtimeKind},
+    {id:"aiverse",kind:"deterministic"});
+  assert.equal(realModelView.selectionSupported,false);
+  assert.equal(realModelView.providerSelectionSupported,false);
   assert.doesNotMatch(JSON.stringify(models),/Bearer |actual-host-gateway-token|private_data/);
 
   const marker="mc2-ci-runtime-"+Date.now();
@@ -253,6 +259,7 @@ try {
     idempotent_run_replay:true,authenticated_ws_replay:true,
     typed_browser_event_feed_real_gateway:true,
     personal_chat_controller_real_gateway:true,
+    canonical_model_inventory_provenance_verified:true,
     browser_scoped_rpc:true,unauthenticated_http_denied:true,
     default_cancel_denied:true,default_approval_denied:true,
     completed_pause_denied:true,
