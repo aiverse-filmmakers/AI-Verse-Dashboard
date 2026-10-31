@@ -29,11 +29,13 @@ describe("MC2.2 browser facade for owner-authenticated canonical Gateway RPC",()
     await client.cancelGatewayRun("run-1","session-1","cancel-1");
     await client.pauseGatewayRun("run-1","session-1","pause-1");
     await client.resumeGatewayRun("run-1","session-1","resume-1");
+    await client.decideGatewayRunApproval("run-1","session-1","approval-1","deny");
     assert.deepEqual(calls.map(x=>x.body.method),[
       "aiverse.gateway.status","aiverse.gateway.models",
       "aiverse.gateway.run.create","aiverse.gateway.run.create",
       "aiverse.gateway.run.get","aiverse.gateway.run.cancel",
       "aiverse.gateway.run.pause","aiverse.gateway.run.resume",
+      "aiverse.gateway.run.approval",
     ]);
     assert.ok(calls.every(x=>x.url==="http://127.0.0.1:3100/rpc"
       &&x.method==="POST"&&x.auth==="Bearer "+auth
@@ -43,6 +45,9 @@ describe("MC2.2 browser facade for owner-authenticated canonical Gateway RPC",()
     });
     assert.deepEqual(calls[5].body.params,{
       runId:"run-1",sessionId:"session-1",operationId:"cancel-1",
+    });
+    assert.deepEqual(calls[8].body.params,{
+      runId:"run-1",sessionId:"session-1",operationId:"approval-1",decision:"deny",
     });
     assert.equal(client.cacheStats().entries,0);
   });
