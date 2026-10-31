@@ -195,8 +195,18 @@ async function handleHttp(
       }
       // Only an explicitly installed host bridge can service canonical
       // Gateway methods. Browser input never constructs a native binding.
-      const out = canonicalBridge && CanonicalGatewayBridge.recognizes(frame)
-        ? await canonicalBridge.handle(frame) : router.handle(frame);
+      // Known canonical methods must fail explicitly when the trusted native
+      // launcher did not install a Gateway mapping. Never route their commands
+      // into a generic read-only local QueryRouter as an UNKNOWN_METHOD.
+      const out = CanonicalGatewayBridge.recognizes(frame)
+        ? canonicalBridge
+          ? await canonicalBridge.handle(frame)
+          : {type:"res",v:"1.0",ok:false,
+            id:typeof (frame as {id?:unknown})?.id==="string"
+              ?(frame as {id:string}).id.slice(0,128):"unparseable",
+            error:{code:"GATEWAY_NOT_CONFIGURED",message:"Canonical Gateway not configured"},
+            observedAt:new Date().toISOString()}
+        : router.handle(frame);
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify(out));
       return;
