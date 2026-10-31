@@ -46,7 +46,10 @@ export class DashboardClient {
     private readonly gatewayBase: string,
     scope: ClientScope,
     private readonly authToken: string | {mode:"host-cookie"},
-    private readonly fetchFn: FetchFn = fetch as unknown as FetchFn,
+    // Browser-native fetch requires its global invocation receiver. Storing
+    // unbound window.fetch as an instance method throws Illegal invocation in
+    // Chromium before any authenticated RPC reaches Dashboard.
+    private readonly fetchFn: FetchFn = (url,init)=>fetch(url,init),
   ) {
     if(typeof authToken==="string")assertDashboardAuthToken(authToken);
     else if(authToken?.mode!=="host-cookie")
