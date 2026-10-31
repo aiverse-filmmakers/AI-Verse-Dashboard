@@ -1,0 +1,64 @@
+name: MC2.2 Real Canonical Gateway Transport
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mc2-gateway-transport.yml"
+      - "scripts/mc2/ci-gateway-transport-proof.mjs"
+      - "apps/gateway/src/canonical-gateway-bridge.ts"
+      - "apps/gateway/src/server.ts"
+      - "packages/client/src/canonical-gateway-client.ts"
+      - "packages/client/src/client.ts"
+      - "packages/registry/src/registry.ts"
+      - "packages/protocol/src/methods.ts"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/mc2-gateway-transport.yml"
+      - "scripts/mc2/ci-gateway-transport-proof.mjs"
+      - "apps/gateway/src/canonical-gateway-bridge.ts"
+      - "apps/gateway/src/server.ts"
+      - "packages/client/src/canonical-gateway-client.ts"
+      - "packages/client/src/client.ts"
+      - "packages/registry/src/registry.ts"
+      - "packages/protocol/src/methods.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-owner-transport:
+    name: Disposable real Gateway / Ubuntu Node 22
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Dashboard without stored credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout immutable accepted canonical Gateway source
+        uses: actions/checkout@v4
+        with:
+          repository: aiverse-filmmakers/AI-Verse-Gateway
+          ref: 9748dd0d5473b65ad95ef92df62fe0a13575e378
+          path: gateway-source
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build and run Dashboard regressions
+        run: |
+          npm ci
+          npm run check
+
+      - name: Prove real canonical Gateway through authenticated Dashboard host and browser RPC
+        env:
+          CI: "true"
+          AIVERSE_MC2_GATEWAY_SOURCE: gateway-source
+        run: node scripts/mc2/ci-gateway-transport-proof.mjs
