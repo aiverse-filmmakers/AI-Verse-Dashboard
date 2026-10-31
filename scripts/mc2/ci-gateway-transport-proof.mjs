@@ -14,7 +14,7 @@ import {SystemRegistry} from "../../dist/packages/registry/src/index.js";
 import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js";
 import {CanonicalGatewayBridge,QueryRouter,SubscriptionHub,startGateway} from "../../dist/apps/gateway/src/index.js";
 import {dashboardWsAuthProtocol,DASHBOARD_WS_PROTOCOL} from "../../dist/packages/protocol/src/index.js";
-import {DashboardClient} from "../../dist/packages/client/src/index.js";
+import {DashboardClient,DashboardChatEventFeed} from "../../dist/packages/client/src/index.js";
 
 // Exact reviewed upstream owner SHA; changes require deliberate source review.
 const GATEWAY_REVISION="9748dd0d5473b65ad95ef92df62fe0a13575e378";
@@ -206,11 +206,33 @@ try {
   assert.equal(terminalEvent.workspaceId,"operator");
   assert.ok(received.some(x=>x.type==="event"&&x.payload?.kind==="assistant.delta"));
   assert.doesNotMatch(JSON.stringify(received),/avg_|Bearer |private_data/);
+  // The exact typed stream adapter now used by Personal Chat must reach the
+  // running canonical Gateway through Dashboard's authenticated WebSocket.
+  const typedFeed=new DashboardChatEventFeed("http://127.0.0.1:"+local.port,
+    local.authToken,(endpoint,protocols)=>new WebSocket(endpoint,protocols));
+  const typedReceived=[];
+  let typedInterrupt;
+  const typedDone=new Promise((resolve,reject)=>{
+    const stop=typedFeed.subscribe({systemId,workspaceId:"operator"},runId,{
+      event:e=>{
+        typedReceived.push(e);
+        if(e.kind==="run.completed"){stop();resolve(true);}
+      },
+      interrupted:code=>{typedInterrupt=code;reject(new Error("Typed feed interrupted: "+code));},
+    });
+  });
+  await Promise.race([typedDone,pause(8000).then(()=>{throw Error("TYPED_FEED_TIMEOUT")})]);
+  assert.ok(typedReceived.some(x=>x.kind==="run.completed"));
+  assert.ok(typedReceived.every(x=>x.systemId===systemId
+    &&x.workspaceId==="operator"&&x.runId===runId));
+  assert.equal(typedInterrupt,undefined);
+
   console.log(JSON.stringify({ok:true,kind:"mc2-real-gateway-transport",
     canonical_gateway_revision:GATEWAY_REVISION,
     actual_gateway_server:true,deterministic_no_external_provider:true,
     actual_run_completed:true,stored_run_verified:true,
     idempotent_run_replay:true,authenticated_ws_replay:true,
+    typed_browser_event_feed_real_gateway:true,
     browser_scoped_rpc:true,unauthenticated_http_denied:true,
     default_cancel_denied:true,default_approval_denied:true,
     completed_pause_denied:true,
