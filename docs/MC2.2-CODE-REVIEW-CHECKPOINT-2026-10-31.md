@@ -56,3 +56,25 @@ These push results close the **remote source CI** check only, not real owner-ins
 - Historical original MC formal **17/100 accepted**, MC2.2 pending **0/3**, next possible **20/100**.
 - Provisional GitHub/browser engineering **47/100**, separately scored; Chat/Gateway **11/15** in last reviewed draft ledger, not recomputed to a larger number automatically.
 - Personal-first 10 chapters / 40 milestone count unchanged. No private production Mac percentage is known.
+
+## Follow-up checkpoint: real owner composition, approval and Personal Chat source
+
+The first six PRs listed above remain valid historical evidence. This supplement updates the previously open "real owner composition" task. No original 100-point rubric is reweighted.
+
+| New merged PR | Source work | Exact-head Dashboard CI | Exact-head real-Gateway CI | Main push verification |
+| --- | --- | --- | --- | --- |
+| [#55](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/55) `1fab108a` | Pinned actual Gateway lifecycle/server, durable deterministic run, idempotency, denied controls and scoped events | 41185008184 | 41185008100 | 41185086677 and 41185086649, both passed |
+| [#56](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/56) `91d8b292` | Native callback-only run approval; pending tool identity and recheck; default deny | 41185342720 | 41185342767 | 41185421748 and 41185421738, both passed |
+| [#57](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/57) `d8d3227f` | Typed authenticated browser WebSocket feed, scope checks, malformed-event rejection | 41185530484 | 41185530471 | 41185598022 and 41185598008, both passed |
+| [#58](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/58) `9338b8a8` | Personal Chat run controller, authoritative final GET, retry, multi-turn and recovery | 41185727707 | 41185727735 | 41185800069 and 41185800005, both passed |
+| [#59](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/59) `a0aa78f5` | Canonical virtual `aiverse` runtime source readout and false-provider detection | 41185902944 | 41185903079 | 41185975913 and 41185975971, both passed |
+
+All five had bounded, AI-assisted Code Review **COMMENT** receipts at immutable PR heads. The same implementing assistant performed those reviews. They are not independent human security approvals, native owner entitlements, or permission for paid inference.
+
+**Actual proof now available:** CI checks out canonical `AI-Verse-Gateway@9748dd0d5473b65ad95ef92df62fe0a13575e378`, validates the source SHA, provisions a temporary compatible OS and isolated deterministic Gateway home, starts the actual canonical service, and passes requests through the existing authenticated Dashboard HTTP/WS services. It verifies persisted real run/output, strict idempotency, Gateway-backed usage, WebSocket events, Personal Chat's actual canonical terminal reply, model inventory provenance, and default-denial for cancel/approval/foreign scope. No real provider spending, private user Mac, or persistent member credential is used.
+
+**Remaining before formal MC2.2 acceptance:** Explicit scoped acceptance evidence for the complete original client contract and independent owner/security review where required. Approval is **disabled by default**, even with an authenticated Dashboard browser, until a real trusted native actor authorizes each pending action. The Gateway's versioned pending-action atomicity is not proven from Dashboard's GET/POST transport alone; the canonical Gateway must continue to reauthorize final effects. Old Gateway session-history endpoints may still be unavailable, so the UI must surface this as unavailable rather than inventing history. The real mounted, authenticated Personal Chat UI and owner-local installation are still separate. No formal MC2.2 (3), MC2.3 (3) or MC2.5 (4) points have been awarded by these source merges.
+
+**Implementation next in line, Dashboard only:** Review and extract the real mounted Personal-first UI in bounded dependency units from draft #42, followed by exact-head browser and actual owner-composition tests; distinguish preview from local native host login. Do not merge the whole stale base draft #42 or count source-only classes as product acceptance.
+
+**Formal accepted score remains 17/100.** The last published provisional GitHub/browser 47/100 and Chat/Gateway 11/15 scores have not been remeasured under their separate rubric. Do not assert a new percentage from PR counts.

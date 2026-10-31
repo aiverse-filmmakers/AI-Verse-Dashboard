@@ -224,7 +224,7 @@ Acceptance:
 - design review against Gateway protocol and Dashboard invariants.
 
 ### MC2.2 - AI-Verse Gateway client package - 3 points - A
-Status: **SOURCE IMPLEMENTATION PARTIALLY MERGED, FULL ACCEPTANCE PENDING (0/3 points)**
+Status: **REAL GATEWAY COMPOSITION AND CLIENT SOURCE MERGED, FORMAL ACCEPTANCE PENDING (0/3 points)**
 
 **31 October 2026 review checkpoint:** The following bounded, AI-assisted Code Review-cleared implementation PRs have exact-head Linux/macOS/Windows Dashboard CI and are merged into `main` in sequence. This is actual source, not a simulated feature claim:
 
@@ -237,9 +237,15 @@ Status: **SOURCE IMPLEMENTATION PARTIALLY MERGED, FULL ACCEPTANCE PENDING (0/3 p
 | Scoped WebSocket run events | [#52](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/52) / `1c46933a57cfa7dbe5075a658d08ed7482ae6711` | 41140792051 | Event allowlist, workspace-switch epoch fence, malformed frames fail closed |
 | Typed browser RPC facade | [#53](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/53) / `728d8c6b3540a9752b29ca74a47e39754fabd0fc` | 41140987362 | No live effect cache, A→B→A response fencing, typed run operations |
 
-All six have documented scoped AI-assisted **COMMENT** reviews on their respective PRs. **These source reviews are not independent GitHub approval or permission to use an owner/private Mac.**
+| Real canonical Gateway owner CI | [#55](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/55) / `1fab108a8fceeb3d8ae16ac4ca19a29070e52789` | Dashboard 41185008184, real owner 41185008100 | Immutable pinned real canonical Gateway, durable run and usage, streamed event replay, idempotency, scope and missing-grant denials |
+| Native admitted approval path | [#56](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/56) / `91d8b292d23c6480ec9ce6b9ba2d517f770dfc1f` | Dashboard 41185342720, real owner 41185342767 | Default-deny approval, fresh native authorization and changed pending tool/rebind failure |
+| Typed browser event adapter | [#57](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/57) / `d8d3227f2ee7c54bb960adb99a39fe26cb04513f` | Dashboard 41185530484, real owner 41185530471 | Scoped WebSocket adapter, malformed-frame rejection, real Gateway run event proof |
+| Real Personal Chat run controller | [#58](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/58) / `9338b8a85b38297087ce000f756dfc0408d20c14` | Dashboard 41185727707, real owner 41185727735 | Reconnect/recovery, trusted terminal GET, multi-turn confirmation, owner-only sessions, actual Gateway completed chat run |
+| Canonical runtime/model status | [#59](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/59) / `a0aa78f590d762e9a6572c377adccec343a0e46a` | Dashboard 41185902944, real owner 41185903079 | Actual virtual `aiverse` owner identity; no fabricated physical models or paid provider selection |
 
-**Remaining original MC2.2 acceptance:** Integrate the above modules against the real pinned canonical Gateway owner and build its next exact-head disposable CI proof with actual run/stream/control and negative scope/permission checks; reconcile owner-supported approval actions, reliable timeout/idempotency and no direct canonical-domain writes. Do not assume the yet-unmerged Gateway conversation discovery PR #80 is a released session-history API. A working Personal Chat UI, browser app session/credential admission, paid provider choice and user Mac install are later or separate owner-gated requirements; do not infer their readiness. The historic formal roadmap remains **17/100 accepted** (MC2.2 still 0/3) and provisional GitHub/Browser **47/100** is not automatically increased by these source merges. See [review checkpoint](MC2.2-CODE-REVIEW-CHECKPOINT-2026-10-31.md) for the exact risks and next acceptance action.
+All eleven listed source slices have documented scoped AI-assisted **COMMENT** reviews on their respective PRs. **These source reviews are not independent GitHub approval or permission to use an owner/private Mac.**
+
+**Remaining original MC2.2 acceptance:** The next exact-head disposable CI proof **has passed** against pinned actual canonical Gateway source at PR #55 and was extended through #59; the Dashboard client/host/run/stream/approval surfaces are real source. To award the 3 original formal points, complete an acceptance decision against *all* original client criteria, owner authentication/security review and any pending native approval contract. In particular, the approval endpoint is default-denied until a separate native owner authorizes the exact action, and history read-only methods may fail if the pinned Gateway owner does not release them. Do not assume draft Gateway conversation discovery PR #80 is a released session-history API. A working Personal Chat UI, browser app session/credential admission, paid provider choice and user Mac install are later or separate owner-gated requirements; do not infer their readiness. The historic formal roadmap remains **17/100 accepted** (MC2.2 still 0/3) and provisional GitHub/Browser **47/100** is not automatically increased by these source merges. See [review checkpoint](MC2.2-CODE-REVIEW-CHECKPOINT-2026-10-31.md) for the exact risks and next acceptance action.
 
 Deliver:
 - typed client for models/chat/runs/events/cancel/pause/resume/approval;
@@ -252,7 +258,9 @@ Acceptance:
 - no direct canonical-domain writes.
 
 ### MC2.3 - Explicit AI-Verse runtime source - 3 points - A
-Status: PENDING
+Status: **SOURCE PROJECTION MERGED, PRODUCT ACCEPTANCE PENDING (0/3 points)**
+
+31 October source: [#59](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/59) merged actual authenticated `aiverse` model catalog UI helper and negative provider-claim tests, exercised against pinned canonical Gateway in CI. No live physical-provider selection or final mounted Personal UI acceptance.
 
 Deliver:
 - `aiverse` runtime identity;
@@ -275,7 +283,9 @@ Acceptance:
 - wrong-system requests fail closed.
 
 ### MC2.5 - Main Chat + Run/event controls - 4 points - A
-Status: PENDING
+Status: **RUN CONTROLLER AND TRANSPORT MERGED, MOUNTED MAIN CHAT ACCEPTANCE PENDING (0/4 points)**
+
+31 October source: [#58](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/58) merged the canonical run controller with continuity/recovery tests and actual completed owner Gateway chat proof; browser event adapter [#57](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/57) is merged. The real user-facing mounted Personal Chat, secure local app session, persistent history availability and advertised control UX still require bounded review. Source CI does not close this UI milestone.
 
 Deliver:
 - main Chat path through canonical Gateway;
