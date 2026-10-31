@@ -18,3 +18,8 @@ export type {ModelCatalogView} from "./personal-model-status.js";
 /** Scope-bound read-only activity, never a conversation database. */
 export {PersonalAgentActivity,inspectActivity,inspectCanonicalSessions,
   inspectCanonicalRuns,filterActivityEvents} from "./personal-agent-activity.js";
+
+/** Read-only, provenanced owner diagnostics. No native credentials in UI. */
+export {PersonalDiagnostics,inspectGateway,inspectCanvas,inspectHistory,
+  inspectSystem,inspectSystems,inspectWorkspace,inspectRunDiagnostics}
+  from "./personal-diagnostics.js";
