@@ -109,6 +109,19 @@ export class DashboardClient {
       params:{runId,sessionId,operationId}});
   }
 
+  /** Gateway-owned history only. Older pinned Gateway owners may return a
+   * genuine unsupported/404 response; never manufacture previous turns. */
+  listGatewaySessionRuns(sessionId:string,limit=25,offset=0){
+    this.requireGatewayScope();
+    if(!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(sessionId)
+      ||!Number.isSafeInteger(limit)||limit<1||limit>25
+      ||!Number.isSafeInteger(offset)||offset<0||offset>10000)
+      throw Object.assign(new Error("Invalid session history scope"),
+        {code:"INVALID_HISTORY_QUERY"});
+    return this.query("aiverse.gateway.session.runs",{noCache:true,
+      params:{sessionId,limit,offset}});
+  }
+
   /** Approval is never a browser-owned grant: host must freshly admit the
    * exact decision through its trusted native callback. Default denied. */
   decideGatewayRunApproval(runId:string,sessionId:string,operationId:string,
