@@ -9,9 +9,15 @@ on:
       - "apps/web/src/personal-chat.css"
       - "apps/gateway/src/local-app-session.ts"
       - "apps/gateway/src/server.ts"
+      - "packages/client/src/**"
+      - "packages/protocol/src/**"
+      - "packages/registry/src/**"
+      - "packages/os-read-adapter/src/**"
+      - "packages/live/src/**"
       - "scripts/mc2/ci-authenticated-browser-proof.mjs"
       - "scripts/mc2/ci-gateway-transport-proof.mjs"
       - "scripts/mc2/start-connected.ts"
+      - "scripts/mc2/start-personal.mjs"
   push:
     branches: [main]
     paths:
@@ -21,9 +27,15 @@ on:
       - "apps/web/src/personal-chat.css"
       - "apps/gateway/src/local-app-session.ts"
       - "apps/gateway/src/server.ts"
+      - "packages/client/src/**"
+      - "packages/protocol/src/**"
+      - "packages/registry/src/**"
+      - "packages/os-read-adapter/src/**"
+      - "packages/live/src/**"
       - "scripts/mc2/ci-authenticated-browser-proof.mjs"
       - "scripts/mc2/ci-gateway-transport-proof.mjs"
       - "scripts/mc2/start-connected.ts"
+      - "scripts/mc2/start-personal.mjs"
   workflow_dispatch:
 
 permissions:
