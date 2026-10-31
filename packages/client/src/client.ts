@@ -109,6 +109,15 @@ export class DashboardClient {
       params:{runId,sessionId,operationId}});
   }
 
+  /** Approval is never a browser-owned grant: host must freshly admit the
+   * exact decision through its trusted native callback. Default denied. */
+  decideGatewayRunApproval(runId:string,sessionId:string,operationId:string,
+    decision:"approve"|"deny"){
+    this.requireGatewayScope();
+    return this.query("aiverse.gateway.run.approval",{noCache:true,
+      params:{runId,sessionId,operationId,decision}});
+  }
+
   /** Query Dashboard /rpc. Canonical commands still require a native host opt-in. */
   async query(
     method: DashboardMethod,
