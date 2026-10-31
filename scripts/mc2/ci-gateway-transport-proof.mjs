@@ -14,7 +14,8 @@ import {SystemRegistry} from "../../dist/packages/registry/src/index.js";
 import {DisposableCache} from "../../dist/packages/os-read-adapter/src/index.js";
 import {CanonicalGatewayBridge,QueryRouter,SubscriptionHub,startGateway} from "../../dist/apps/gateway/src/index.js";
 import {dashboardWsAuthProtocol,DASHBOARD_WS_PROTOCOL} from "../../dist/packages/protocol/src/index.js";
-import {DashboardClient,DashboardChatEventFeed} from "../../dist/packages/client/src/index.js";
+import {DashboardClient,DashboardChatEventFeed,PersonalChatRunController}
+  from "../../dist/packages/client/src/index.js";
 
 // Exact reviewed upstream owner SHA; changes require deliberate source review.
 const GATEWAY_REVISION="9748dd0d5473b65ad95ef92df62fe0a13575e378";
@@ -226,6 +227,24 @@ try {
   assert.ok(typedReceived.every(x=>x.systemId===systemId
     &&x.workspaceId==="operator"&&x.runId===runId));
   assert.equal(typedInterrupt,undefined);
+  const chat=new PersonalChatRunController(browserClient,typedFeed);
+  const chatMarker="mc2-live-personal-chat-"+Date.now();
+  const started=await chat.send(chatMarker,"personal-chat-end-to-end-1");
+  assert.ok(started.runId,"UI controller must use actual canonical run ID");
+  let confirmed;
+  for(let i=0;i<100;i++){
+    const snapshot=chat.snapshot();
+    if(snapshot.phase==="completed"){confirmed=snapshot;break;}
+    if(snapshot.phase==="interrupted")
+      throw Error("Personal chat interrupted: "+snapshot.errorCode);
+    await pause(100);
+  }
+  assert.ok(confirmed,"actual canonical Chat run must terminate");
+  assert.ok(confirmed.output.includes(chatMarker),
+    "Chat displays authoritative Gateway GET result, never mock text");
+  assert.equal(confirmed.sessionId?.length>0,true);
+  chat.close();
+
 
   console.log(JSON.stringify({ok:true,kind:"mc2-real-gateway-transport",
     canonical_gateway_revision:GATEWAY_REVISION,
@@ -233,6 +252,7 @@ try {
     actual_run_completed:true,stored_run_verified:true,
     idempotent_run_replay:true,authenticated_ws_replay:true,
     typed_browser_event_feed_real_gateway:true,
+    personal_chat_controller_real_gateway:true,
     browser_scoped_rpc:true,unauthenticated_http_denied:true,
     default_cancel_denied:true,default_approval_denied:true,
     completed_pause_denied:true,
