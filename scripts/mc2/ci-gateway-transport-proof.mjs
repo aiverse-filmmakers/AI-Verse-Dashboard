@@ -48,16 +48,6 @@ async function rpc(port,auth,body) {
   return res.json();
 }
 const pause=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
-async function availableLocalPort(){
-  const server=createPortProbe();
-  await new Promise((resolve,reject)=>{server.once("error",reject);
-    server.listen(0,"127.0.0.1",resolve)});
-  const addr=server.address();
-  const port=addr&&typeof addr==="object"?addr.port:0;
-  await new Promise(resolve=>server.close(resolve));
-  assert.ok(port>0);
-  return port;
-}
 let primaryError;
 try {
   await mkdir(osRoot);
