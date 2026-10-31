@@ -118,5 +118,6 @@ export function checkNoRawRoots(params: unknown): NoRootsCheck {
 
 /** Byte size of a JSON-encodable value, for payload bounds. */
 export function jsonBytes(value: unknown): number {
-  return Buffer.byteLength(JSON.stringify(value ?? null), "utf8");
+  // Count exact UTF-8 in both browser and native Node environments.
+  return new TextEncoder().encode(JSON.stringify(value ?? null)).byteLength;
 }
