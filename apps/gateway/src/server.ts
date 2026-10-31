@@ -4,6 +4,7 @@ import {
   DASHBOARD_WS_PROTOCOL,
   subscriptionRequestSchema,
   systemIdSchema,
+  requestSchema,
 } from "../../../packages/protocol/src/index.js";
 import { QueryRouter } from "./query-router.js";
 import {
@@ -195,6 +196,22 @@ async function handleHttp(
       }
       // Only an explicitly installed host bridge can service canonical
       // Gateway methods. Browser input never constructs a native binding.
+      // Canvas truth belongs to the separate canonical Data owner. This
+      // Dashboard host has no admitted Canvas bridge, so even authenticated
+      // browser requests must never look successful or create local records.
+      if(frame&&typeof frame==="object"&&!Array.isArray(frame)
+        &&(frame as {method?:unknown}).method==="aiverse.canvas.list"){
+        const parsed=requestSchema.safeParse(frame);
+        const request=parsed.success?parsed.data:undefined;
+        res.writeHead(200,{"content-type":"application/json","cache-control":"no-store"});
+        res.end(JSON.stringify({type:"res",v:"1.0",ok:false,
+          id:request?.id??"unparseable",
+          ...(request?.systemId?{systemId:request.systemId}:{}),
+          error:{code:parsed.success?"CANVAS_OWNER_UNAVAILABLE":"INVALID_ENVELOPE",
+            message:parsed.success?"Canonical Data owner not connected":"Invalid Canvas request"},
+          observedAt:new Date().toISOString()}));
+        return;
+      }
       // Known canonical methods must fail explicitly when the trusted native
       // launcher did not install a Gateway mapping. Never route their commands
       // into a generic read-only local QueryRouter as an UNKNOWN_METHOD.
