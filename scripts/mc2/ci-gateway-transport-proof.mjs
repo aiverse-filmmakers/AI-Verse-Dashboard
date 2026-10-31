@@ -156,6 +156,12 @@ try {
       operationId:"ci-deny-default-cancel"}));
   assert.equal(cancelDenied.ok,false);
   assert.equal(cancelDenied.error.code,"RUN_CONTROL_NOT_AUTHORIZED");
+  const approvalDenied=await rpc(local.port,local.authToken,
+    frame("aiverse.gateway.run.approval",systemId,{runId,
+      sessionId:done.sessionId,operationId:"ci-deny-default-approval",
+      decision:"approve"}));
+  assert.equal(approvalDenied.ok,false);
+  assert.equal(approvalDenied.error.code,"RUN_APPROVAL_NOT_AUTHORIZED");
   const pauseDenied=await rpc(local.port,local.authToken,
     frame("aiverse.gateway.run.pause",systemId,{runId,sessionId:done.sessionId,
       operationId:"ci-deny-completed-pause"}));
@@ -206,7 +212,8 @@ try {
     actual_run_completed:true,stored_run_verified:true,
     idempotent_run_replay:true,authenticated_ws_replay:true,
     browser_scoped_rpc:true,unauthenticated_http_denied:true,
-    default_cancel_denied:true,completed_pause_denied:true,
+    default_cancel_denied:true,default_approval_denied:true,
+    completed_pause_denied:true,
     foreign_system_and_workspace_denied:true,owner_mac_verified:false,
     paid_provider_used:false},null,2));
 } catch(e) {
