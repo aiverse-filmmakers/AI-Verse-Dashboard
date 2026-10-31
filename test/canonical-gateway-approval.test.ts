@@ -119,10 +119,21 @@ describe("MC2.2 canonical Gateway approval owner boundary",()=>{
       const out=await f.bridge.handle(f.frame("deny"));
       assert.equal(out.ok,true);
       assert.equal((out.result as {status:string}).status,"resuming");
-      assert.deepEqual(f.calls.map(x=>x.method),["GET","POST"]);
-      assert.equal(f.calls[1].path,"/v1/runs/run-1/approval");
-      assert.deepEqual(f.calls[1].body,{operation_id:"decision-1",decision:"deny"});
+      assert.deepEqual(f.calls.map(x=>x.method),["GET","GET","POST"]);
+      assert.equal(f.calls[2].path,"/v1/runs/run-1/approval");
+      assert.deepEqual(f.calls[2].body,{operation_id:"decision-1",decision:"deny"});
       assert.doesNotMatch(JSON.stringify(out),/not-for-ui|privileged-principal|secret|host-private-token/);
+    }finally{f.cleanup();}
+  });
+  it("blocks stale owner consent if the pending tool changes during approval",async()=>{
+    const pending={tool_call_id:"tool-1"};
+    const f=fixture({pending,admit:()=>{pending.tool_call_id="tool-2";return true;}});
+    try{
+      const out=await f.bridge.handle(f.frame("approve"));
+      assert.equal(out.ok,false);
+      assert.equal(out.error?.code,"APPROVAL_CHANGED");
+      assert.deepEqual(f.calls.map(x=>x.method),["GET","GET"]);
+      assert.equal(f.getChecks(),1);
     }finally{f.cleanup();}
   });
   it("revoking the OS binding while native approval is being checked blocks the POST",async()=>{
