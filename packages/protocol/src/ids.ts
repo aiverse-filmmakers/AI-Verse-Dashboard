@@ -118,5 +118,7 @@ export function checkNoRawRoots(params: unknown): NoRootsCheck {
 
 /** Byte size of a JSON-encodable value, for payload bounds. */
 export function jsonBytes(value: unknown): number {
-  return Buffer.byteLength(JSON.stringify(value ?? null), "utf8");
+  // Browser UI and native Gateway must count the same UTF-8 bytes.
+  // Node Buffer is not available in an actual Chromium window.
+  return new TextEncoder().encode(JSON.stringify(value ?? null)).byteLength;
 }
