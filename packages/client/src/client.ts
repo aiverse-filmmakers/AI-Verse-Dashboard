@@ -165,6 +165,37 @@ export class DashboardClient {
     return this.query("aiverse.canvas.list",{noCache:true,params:{limit}});
   }
 
+  async canvasGet(id:string){return this.query("aiverse.canvas.get",{
+    noCache:true,params:{id},
+  });}
+  async canvasHistory(id:string,limit=20,beforeVersion?:number){return this.query("aiverse.canvas.history",{
+    noCache:true,params:{id,limit,...(beforeVersion===undefined?{}:{beforeVersion})},
+  });}
+  async canvasCreate(title:string,idempotencyKey:string){
+    return this.query("aiverse.canvas.create",{noCache:true,params:{title,idempotencyKey}});
+  }
+  async canvasRename(id:string,title:string,expectedVersion:number,idempotencyKey:string){
+    return this.query("aiverse.canvas.rename",{noCache:true,
+      params:{id,title,expectedVersion,idempotencyKey}});
+  }
+  async canvasEdit(id:string,edit:Record<string,unknown>,
+    expectedVersion:number,idempotencyKey:string){
+    return this.query("aiverse.canvas.edit",{noCache:true,
+      params:{id,edit,expectedVersion,idempotencyKey}});
+  }
+  async canvasDuplicate(id:string,expectedVersion:number,idempotencyKey:string,title?:string){
+    return this.query("aiverse.canvas.duplicate",{noCache:true,
+      params:{id,expectedVersion,idempotencyKey,...(title===undefined?{}:{title})}});
+  }
+  async canvasRevert(id:string,toVersion:number,expectedVersion:number,idempotencyKey:string){
+    return this.query("aiverse.canvas.revert",{noCache:true,
+      params:{id,toVersion,expectedVersion,idempotencyKey}});
+  }
+  async canvasDelete(id:string,expectedVersion:number,idempotencyKey:string){
+    return this.query("aiverse.canvas.delete",{noCache:true,
+      params:{id,expectedVersion,idempotencyKey}});
+  }
+
   /** Approval is never a browser-owned grant: host must freshly admit the
    * exact decision through its trusted native callback. Default denied. */
   decideGatewayRunApproval(runId:string,sessionId:string,operationId:string,
