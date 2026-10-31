@@ -21,7 +21,7 @@ export interface ClientScope {
 
 export type FetchFn = (
   url: string,
-  init: { method: string; headers: Record<string, string>; body: string },
+  init: { method: string; headers: Record<string, string>; body: string; credentials?: "same-origin" },
 ) => Promise<{ json(): Promise<unknown> }>;
 
 export interface QueryOptions {
@@ -45,10 +45,20 @@ export class DashboardClient {
   constructor(
     private readonly gatewayBase: string,
     scope: ClientScope,
-    private readonly authToken: string,
+    private readonly authToken: string | {mode:"host-cookie"},
     private readonly fetchFn: FetchFn = fetch as unknown as FetchFn,
   ) {
-    assertDashboardAuthToken(authToken);
+    if(typeof authToken==="string")assertDashboardAuthToken(authToken);
+    else if(authToken?.mode!=="host-cookie")
+      throw Object.assign(new Error("Unsupported native host authentication"),
+        {code:"LOCAL_APP_AUTH_MODE_INVALID"});
+    else {
+      const uri=new URL(gatewayBase);
+      if(uri.protocol!=="http:"||!["127.0.0.1","localhost","[::1]"].includes(uri.hostname)
+        ||uri.username||uri.password||uri.search||uri.hash||uri.pathname!=="/")
+        throw Object.assign(new Error("Cookie mode requires trusted loopback origin"),
+          {code:"LOCAL_APP_HOST_ORIGIN_INVALID"});
+    }
     this.scope = { ...scope };
   }
 
@@ -166,9 +176,10 @@ export class DashboardClient {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${this.authToken}`,
+        ...(typeof this.authToken==="string"?{authorization:`Bearer ${this.authToken}`}:{ }),
       },
       body: JSON.stringify(frame),
+      ...(typeof this.authToken==="string"?{}:{credentials:"same-origin" as const}),
     });
     const out = (await res.json()) as {
       ok: boolean;
