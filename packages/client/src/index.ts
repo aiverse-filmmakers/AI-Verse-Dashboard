@@ -10,3 +10,7 @@ export type { ClientScope, FetchFn, QueryOptions } from "./client.js";
 export {DashboardChatEventFeed} from "./gateway-event-feed.js";
 export type {ChatRunEvent,ChatEventFeed,ChatWebSocket,ChatWebSocketFactory}
   from "./gateway-event-feed.js";
+
+/** Personal Chat state is a scoped projection of actual Gateway Run truth. */
+export {PersonalChatRunController} from "./conversation-run.js";
+export type {ChatRunPhase,ChatRunView,ChatRunReceipt} from "./conversation-run.js";
