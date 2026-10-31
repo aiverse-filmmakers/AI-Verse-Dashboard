@@ -160,7 +160,7 @@ export class CanvasWorkspace {
     if(this.destroyed||this.busy)return;
     const epoch=this.epoch,scope={...this.selected};
     try{
-      const response=await this.client.canvasList(100);
+      const response=await this.client.canvasList(50);
       if(!this.alive(epoch))return;
       const docs=this.snapshot(response,scope);
       if(!Array.isArray(docs))throw Error("CANVAS_INVALID_PROJECTION");

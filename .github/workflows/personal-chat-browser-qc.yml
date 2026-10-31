@@ -1,0 +1,62 @@
+name: Personal Chat Real Browser QC
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/personal-chat-browser-qc.yml"
+      - "test/live-personal-chat-ui.browser.mjs"
+      - "apps/web/src/**"
+      - "packages/client/src/**"
+      - "apps/gateway/src/local-app-session.ts"
+      - "apps/gateway/src/server.ts"
+      - "package.json"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/personal-chat-browser-qc.yml"
+      - "test/live-personal-chat-ui.browser.mjs"
+      - "apps/web/src/**"
+      - "packages/client/src/**"
+      - "apps/gateway/src/local-app-session.ts"
+      - "apps/gateway/src/server.ts"
+      - "package.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    name: Real Chromium / disposable local Personal UI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Dashboard without stored credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Dashboard and run source tests
+        run: |
+          npm ci
+          npm run check
+
+      - name: Install exactly pinned disposable browser/bundler tooling
+        run: npm install --no-save --package-lock=false playwright@1.58.2 esbuild@0.25.12
+
+      - name: Install sandboxed headless Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build first-party Personal Chat browser bundle
+        run: npm run mc2:bundle
+
+      - name: Run real browser Personal Chat interactions and scope negatives
+        env:
+          CI: "true"
+        run: npm run test:personal-browser
