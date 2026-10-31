@@ -46,7 +46,8 @@ export class DashboardClient {
     private readonly gatewayBase: string,
     scope: ClientScope,
     private readonly authToken: string | {mode:"host-cookie"},
-    private readonly fetchFn: FetchFn = fetch as unknown as FetchFn,
+    // Actual Chromium requires the native fetch call to keep its receiver.
+    private readonly fetchFn: FetchFn = (url,init)=>fetch(url,init),
   ) {
     if(typeof authToken==="string")assertDashboardAuthToken(authToken);
     else if(authToken?.mode!=="host-cookie")
