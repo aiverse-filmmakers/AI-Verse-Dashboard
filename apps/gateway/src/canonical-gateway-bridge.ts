@@ -73,7 +73,7 @@ const SAFE_CODES = new Set([
   "HISTORY_BINDING_MISMATCH", "HISTORY_INDEX_TOO_LARGE",
   "DIAGNOSTICS_INVALID",
   "RUN_CONTROL_NOT_AUTHORIZED", "RUN_APPROVAL_NOT_AUTHORIZED",
-  "APPROVAL_NOT_PENDING", "RUN_NOT_CANCELABLE",
+  "APPROVAL_NOT_PENDING", "APPROVAL_CHANGED", "RUN_NOT_CANCELABLE",
   "RUN_NOT_PAUSABLE", "RUN_NOT_RESUMABLE",
 ]);
 function failureCode(error: unknown): string {
@@ -430,11 +430,27 @@ export class CanonicalGatewayBridge {
               });
               if(accepted!==true)
                 throw new GatewayTransportError("RUN_APPROVAL_NOT_AUTHORIZED");
-              if(this.registry.resolveRoot(system)!==configured.root
-                ||this.registry.bindingGeneration(system)!==configured.generation)
-                throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
-              if(workspace!=="operator")getWorkspace(this.registry,system,workspace);
-              if(signal?.aborted)throw new GatewayTransportError("ABORTED");
+              const checkLease=()=>{
+                if(this.registry.resolveRoot(system)!==configured.root
+                  ||this.registry.bindingGeneration(system)!==configured.generation)
+                  throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
+                if(workspace!=="operator")getWorkspace(this.registry,system,workspace);
+                if(signal?.aborted)throw new GatewayTransportError("ABORTED");
+              };
+              // A native authorization may have waited for a human decision.
+              // Refresh the actual pending Gateway action before sending it.
+              // Gateway itself still reauthorizes the effect at the final edge;
+              // this protects the host-to-Gateway handoff from a stale tool ID.
+              checkLease();
+              const current=await client.getRun(runId,signal);
+              const currentPending=current.pending_approval;
+              if(current.session_id!==sessionId
+                ||current.status!=="awaiting_approval"||!currentPending
+                ||typeof currentPending!=="object"||Array.isArray(currentPending)
+                ||(currentPending as {tool_call_id?:unknown}).tool_call_id
+                  !==(pending as {tool_call_id:string}).tool_call_id)
+                throw new GatewayTransportError("APPROVAL_CHANGED");
+              checkLease();
             },
           });
           return respond(true,boundedRun(result));
