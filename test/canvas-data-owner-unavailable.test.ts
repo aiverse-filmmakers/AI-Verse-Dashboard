@@ -41,7 +41,7 @@ describe("Canvas read/write must fail closed before canonical Data owner install
           idempotencyKey:"delete-1"}],
       ];
       for(const [method,params] of operations){
-        const res=await fetch(origin+"/rpc",{method:"POST",
+        const res:Response=await fetch(origin+"/rpc",{method:"POST",
           headers:{authorization:"Bearer "+gateway.authToken,
             "content-type":"application/json",origin},
           body:JSON.stringify({type:"req",v:"1.0",id:"owner-unavailable",
