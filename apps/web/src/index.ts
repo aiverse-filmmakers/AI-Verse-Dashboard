@@ -23,3 +23,6 @@ export {PersonalAgentActivity,inspectActivity,inspectCanonicalSessions,
 export {PersonalDiagnostics,inspectGateway,inspectCanvas,inspectHistory,
   inspectSystem,inspectSystems,inspectWorkspace,inspectRunDiagnostics}
   from "./personal-diagnostics.js";
+
+/** Scratch UI has no persistence until admitted canonical Data owner responds. */
+export {CanvasWorkspace} from "./canvas-workspace.js";

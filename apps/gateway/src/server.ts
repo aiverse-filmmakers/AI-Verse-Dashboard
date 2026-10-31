@@ -200,7 +200,8 @@ async function handleHttp(
       // Dashboard host has no admitted Canvas bridge, so even authenticated
       // browser requests must never look successful or create local records.
       if(frame&&typeof frame==="object"&&!Array.isArray(frame)
-        &&(frame as {method?:unknown}).method==="aiverse.canvas.list"){
+        &&typeof (frame as {method?:unknown}).method==="string"
+        &&(frame as {method:string}).method.startsWith("aiverse.canvas.")){
         const parsed=requestSchema.safeParse(frame);
         const request=parsed.success?parsed.data:undefined;
         res.writeHead(200,{"content-type":"application/json","cache-control":"no-store"});
