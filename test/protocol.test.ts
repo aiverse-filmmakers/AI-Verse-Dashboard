@@ -44,7 +44,7 @@ describe("protocol Task 1: versioned envelope + systemId/workspaceId rules", () 
     assert.throws(()=>assertQueryOnly("aiverse.gateway.run.approval"),/blocked/);
     // These host methods are registered for envelope validation, not exposed
     // by QueryRouter as a browser grant or a standalone owner.
-    assert.equal(COMMAND_METHODS.length, 20); assert.equal(QUERY_METHODS.length, 30); assert.equal(ALL_METHODS.length, 52);
+    assert.equal(COMMAND_METHODS.length, 20); assert.equal(QUERY_METHODS.length, 32); assert.equal(ALL_METHODS.length, 54);
   });
   it("responses and events round-trip with systemId provenance", () => {
     const res = responseSchema.parse({ type: "res", v: "1.0", id: "i", ok: true, systemId: "aiverse-01", result: { tasks: [] }, observedAt: new Date().toISOString() }); assert.equal(res.ok, true);
