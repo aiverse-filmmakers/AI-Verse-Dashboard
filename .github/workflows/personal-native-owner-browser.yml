@@ -1,0 +1,92 @@
+name: Personal Native Owner Browser Proof
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/personal-native-owner-browser.yml"
+      - "apps/web/local-app/**"
+      - "apps/web/src/**"
+      - "apps/gateway/src/local-app-session.ts"
+      - "apps/gateway/src/server.ts"
+      - "packages/client/src/**"
+      - "packages/protocol/src/**"
+      - "packages/registry/src/**"
+      - "packages/os-read-adapter/src/**"
+      - "packages/live/src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/mc2/ci-authenticated-browser-proof.mjs"
+      - "scripts/mc2/ci-native-launcher-proof.mjs"
+      - "scripts/mc2/ci-gateway-transport-proof.mjs"
+      - "scripts/mc2/start-connected.ts"
+      - "scripts/mc2/start-personal.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/personal-native-owner-browser.yml"
+      - "apps/web/local-app/**"
+      - "apps/web/src/**"
+      - "apps/gateway/src/local-app-session.ts"
+      - "apps/gateway/src/server.ts"
+      - "packages/client/src/**"
+      - "packages/protocol/src/**"
+      - "packages/registry/src/**"
+      - "packages/os-read-adapter/src/**"
+      - "packages/live/src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/mc2/ci-authenticated-browser-proof.mjs"
+      - "scripts/mc2/ci-native-launcher-proof.mjs"
+      - "scripts/mc2/ci-gateway-transport-proof.mjs"
+      - "scripts/mc2/start-connected.ts"
+      - "scripts/mc2/start-personal.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-browser:
+    name: Real pinned Gateway + native pairing + Chromium
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - name: Checkout Dashboard without stored credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout immutable canonical Gateway owner source
+        uses: actions/checkout@v4
+        with:
+          repository: aiverse-filmmakers/AI-Verse-Gateway
+          ref: 9748dd0d5473b65ad95ef92df62fe0a13575e378
+          path: gateway-source
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Build Dashboard and source tests
+        run: |
+          npm ci
+          npm run check
+
+      - name: Install exact disposable browser tools without lockfile changes
+        run: npm install --no-save --package-lock=false playwright@1.58.2 esbuild@0.25.12
+
+      - name: Install sandboxed Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build the same first-party native Personal Chat ESM entry
+        run: npx --yes esbuild@0.25.12 apps/web/src/personal-chat-ui.ts --bundle --platform=browser --format=esm --target=es2022 --outfile=dist/apps/web/personal-chat.bundle.js
+
+      - name: Verify exact Gateway owner and native one-time pairing through real Chromium
+        env:
+          CI: "true"
+          AIVERSE_MC2_GATEWAY_SOURCE: gateway-source
+          AIVERSE_MC2_BROWSER_PROOF: "true"
+        run: node scripts/mc2/ci-gateway-transport-proof.mjs

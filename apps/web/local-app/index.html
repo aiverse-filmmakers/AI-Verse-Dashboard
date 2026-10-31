@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>AI-Verse OS · Personal</title>
+<link rel="stylesheet" href="/local-app/chat.css">
+</head>
+<body>
+<main class="local-app-shell">
+<section id="pair-panel" class="local-pair" aria-label="Secure local app pairing">
+  <span class="local-pair-mark" aria-hidden="true">Λ</span>
+  <h1>AI-Verse OS</h1>
+  <p>Personal chat, connected to your local AI-Verse Gateway.</p>
+  <form id="pair-form" autocomplete="off">
+    <label for="pair-code">One-time pairing code from your trusted local terminal</label>
+    <input id="pair-code" name="pair-code" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" required maxlength="128" autofocus>
+    <button type="submit">Connect this browser</button>
+  </form>
+  <p id="pair-status" role="status" aria-live="polite">This app is available on your computer only.</p>
+</section>
+<section id="connected" hidden>
+  <header class="local-app-topbar">
+    <div class="local-app-logo">Λ <strong>AI-Verse OS</strong><span>Personal</span></div>
+    <div class="local-app-actions"><span id="local-scope">Local session</span><button id="open-workspace-chooser" type="button" aria-expanded="false" aria-controls="workspace-chooser">Workspaces</button><button id="logout" type="button">Disconnect</button></div>
+  </header>
+  <section id="workspace-chooser" class="local-workspace-chooser" aria-label="Change OS workspace" hidden>
+    <div class="local-workspace-heading"><strong>Switch workspace</strong><button id="close-workspace-chooser" type="button">Close</button></div>
+    <p>Request a workspace. Your trusted terminal must approve before access changes.</p>
+    <form id="workspace-request-form">
+      <label for="workspace-options">Available OS workspaces</label>
+      <select id="workspace-options" required></select>
+      <button id="workspace-submit" type="submit">Request access</button>
+    </form>
+    <p id="workspace-request-status" role="status" aria-live="polite">No request pending.</p>
+  </section>
+  <div id="chat-root"></div>
+</section>
+</main>
+<script type="module" src="/local-app/boot.js"></script>
+</body>
+</html>
