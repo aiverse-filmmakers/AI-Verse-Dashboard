@@ -145,6 +145,26 @@ export class DashboardClient {
       params:{sessionId,limit,offset}});
   }
 
+  /** Canonical owner diagnostics are run/session-bound and never cost truth. */
+  getGatewayRunDiagnostics(runId:string,sessionId:string){
+    this.requireGatewayScope();
+    const id=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+    if(!id.test(runId)||!id.test(sessionId))
+      throw Object.assign(new Error("Invalid run diagnostics scope"),
+        {code:"DIAGNOSTICS_INVALID"});
+    return this.query("aiverse.gateway.run.diagnostics",{noCache:true,
+      params:{runId,sessionId}});
+  }
+  /** Canvas can be read only if the separate canonical Data owner is installed;
+   * the Dashboard host must return CANVAS_OWNER_UNAVAILABLE otherwise. */
+  canvasList(limit=50){
+    this.requireGatewayScope();
+    if(!Number.isSafeInteger(limit)||limit<1||limit>50)
+      throw Object.assign(new Error("Invalid Canvas listing limit"),
+        {code:"CANVAS_QUERY_INVALID"});
+    return this.query("aiverse.canvas.list",{noCache:true,params:{limit}});
+  }
+
   /** Approval is never a browser-owned grant: host must freshly admit the
    * exact decision through its trusted native callback. Default denied. */
   decideGatewayRunApproval(runId:string,sessionId:string,operationId:string,
