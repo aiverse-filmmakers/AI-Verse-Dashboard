@@ -14,3 +14,7 @@ export type { ShellModel, PanelCard, PanelDatum, SwitcherOption } from "./shell.
 /** Display only authenticated canonical Gateway model and readiness facts. */
 export {PersonalModelStatus,inspectModelCatalog} from "./personal-model-status.js";
 export type {ModelCatalogView} from "./personal-model-status.js";
+
+/** Scope-bound read-only activity, never a conversation database. */
+export {PersonalAgentActivity,inspectActivity,inspectCanonicalSessions,
+  inspectCanonicalRuns,filterActivityEvents} from "./personal-agent-activity.js";
