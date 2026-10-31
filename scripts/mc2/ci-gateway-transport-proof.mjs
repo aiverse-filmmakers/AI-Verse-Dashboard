@@ -252,6 +252,20 @@ try {
   chat.close();
 
 
+  // Browser proof is opt-in CI only. The normal actual-Gateway transport job
+  // does not install Playwright or browser tools, and remains independent.
+  let browserOwnerProof;
+  if(process.env.AIVERSE_MC2_BROWSER_PROOF==="true"){
+    const {proveAuthenticatedBrowserWithCanonicalGateway}=await import(
+      "./ci-authenticated-browser-proof.mjs");
+    browserOwnerProof=await proveAuthenticatedBrowserWithCanonicalGateway({
+      registry,bridge,systemId,canonicalOrigin,
+    });
+    assert.equal(browserOwnerProof.actual_pinned_gateway_browser_run,true);
+    assert.equal(browserOwnerProof.local_pairing_http_only,true);
+    assert.equal(browserOwnerProof.member_provider_used,false);
+    assert.equal(browserOwnerProof.member_mac_verified,false);
+  }
   console.log(JSON.stringify({ok:true,kind:"mc2-real-gateway-transport",
     canonical_gateway_revision:GATEWAY_REVISION,
     actual_gateway_server:true,deterministic_no_external_provider:true,
@@ -264,7 +278,8 @@ try {
     default_cancel_denied:true,default_approval_denied:true,
     completed_pause_denied:true,
     foreign_system_and_workspace_denied:true,owner_mac_verified:false,
-    paid_provider_used:false},null,2));
+    paid_provider_used:false,
+    ...(browserOwnerProof??{})},null,2));
 } catch(e) {
   primaryError=e;
   throw e;
