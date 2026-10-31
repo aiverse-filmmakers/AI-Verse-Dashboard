@@ -5,3 +5,8 @@
  */
 export { DashboardClient } from "./client.js";
 export type { ClientScope, FetchFn, QueryOptions } from "./client.js";
+
+/** Authenticated browser projection of canonical Gateway run events. */
+export {DashboardChatEventFeed} from "./gateway-event-feed.js";
+export type {ChatRunEvent,ChatEventFeed,ChatWebSocket,ChatWebSocketFactory}
+  from "./gateway-event-feed.js";
