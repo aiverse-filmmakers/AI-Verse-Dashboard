@@ -26,3 +26,7 @@ export {PersonalDiagnostics,inspectGateway,inspectCanvas,inspectHistory,
 
 /** Scratch UI has no persistence until admitted canonical Data owner responds. */
 export {CanvasWorkspace} from "./canvas-workspace.js";
+
+// Native host must explicitly mount with an authorized session. Pages does not.
+export {PersonalChatApplication,mountAuthenticatedPersonalChat} from "./personal-chat-ui.js";
+export type {TrustedLocalChatSession} from "./personal-chat-ui.js";
