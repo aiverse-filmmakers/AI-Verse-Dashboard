@@ -495,6 +495,96 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       "the earlier Personal session must not appear in the film library");
     }
     assert.deepEqual(errors,[],"graphical owner approval must produce no browser runtime errors");
+
+    // MC2.4 A -> B -> A. The real trusted host switches from operator to
+    // film and BACK to operator, with a fresh browser lease each time.
+    // A same-system workspace return must never resurrect B's live UI turns,
+    // cookies, in-flight requests, or canonical Gateway history.
+    const filmCookie=(await context.cookies(origin)).find(c=>c.name==="aiverse_local_session");
+    assert.ok(filmCookie?.httpOnly&&filmCookie.value!==rePaired.value);
+    app.rotateWorkspaceFromHost("operator");
+    await page.locator("#pair-form").waitFor({state:"visible",timeout:12000});
+    assert.equal(await page.locator(".live-chat-pane").count(),0,
+      "film transcript must disappear when returning to operator");
+    const staleFilm=await page.evaluate(async()=>{
+      const response=await fetch("/local-app/session",{credentials:"same-origin",cache:"no-store"});
+      return response.status;
+    });
+    assert.equal(staleFilm,401,"film session must be revoked after A-B-A");
+    const returnCode=app.pairingCode();
+    assert.notEqual(returnCode,ownerCode);
+    assert.notEqual(returnCode,nextCode);
+    assert.equal((await page.content()).includes(returnCode),false);
+    await page.locator("#pair-code").fill(returnCode);
+    await page.getByRole("button",{name:"Connect this browser"}).click();
+    await page.locator(".live-chat-pane").first().waitFor();
+    assert.equal(await page.locator("#local-scope").textContent(),"operator");
+    assert.equal(await page.locator(".live-chat-message").count(),0,
+      "A-B-A must not silently reconstruct the film conversation in memory");
+    const finalCookie=(await context.cookies(origin)).find(c=>c.name==="aiverse_local_session");
+    assert.ok(finalCookie?.httpOnly&&finalCookie.value!==filmCookie.value);
+    const roundTrip=await page.evaluate(async runId=>{
+      const state=await(await fetch("/local-app/session",{credentials:"same-origin"})).json();
+      const reply=await fetch("/rpc",{
+        method:"POST",credentials:"same-origin",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({type:"req",v:"1.0",id:"return-deny-film-run",
+          method:"aiverse.gateway.run.get",...state.scope,params:{runId}})
+      });
+      return {status:reply.status,body:await reply.json(),scope:state.scope};
+    },filmRunId);
+    assert.equal(roundTrip.scope.workspaceId,"operator");
+    assert.equal(roundTrip.body.ok,false,
+      "operator workspace must not retrieve film's saved canonical run");
+    assert.equal(roundTrip.body.error?.code,"RUN_BINDING_MISMATCH");
+    const operatorHistory=await page.evaluate(async()=>{
+      const state=await(await fetch("/local-app/session",{credentials:"same-origin"})).json();
+      const response=await fetch("/rpc",{
+        method:"POST",credentials:"same-origin",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({type:"req",v:"1.0",id:"return-operator-history",
+          method:"aiverse.gateway.session.list",...state.scope,
+          params:{limit:25,offset:0}})
+      });
+      return response.json();
+    });
+    if(ownerHistoryAvailable){
+      assert.equal(operatorHistory.ok,true);
+      assert.equal(operatorHistory.result.workspaceId,"operator");
+      assert.ok(operatorHistory.result.data.every(x=>x.workspace_id==="operator"));
+      assert.ok(operatorHistory.result.data.some(x=>
+        x.session_id===continued.params.sessionId),
+        "Gateway must preserve A's canonical history after visiting B");
+      assert.equal(operatorHistory.result.data.some(x=>
+        x.session_id===verifiedFilm.result.sessionId),false,
+        "film history must never enter operator's canonical session list");
+    }else{
+      assert.equal(operatorHistory.ok,false);
+      assert.equal(typeof operatorHistory.error?.code,"string");
+      assert.equal(operatorHistory.result,undefined);
+    }
+    const operatorMarker="operator-return-"+Date.now();
+    const returnPane=page.locator(".live-chat-pane").first();
+    await returnPane.locator(".live-chat-input").fill(operatorMarker);
+    await returnPane.getByRole("button",{name:"Send",exact:true}).click();
+    await page.waitForFunction(expected=>{
+      const pane=document.querySelector(".live-chat-pane");
+      const status=pane?.querySelector(".live-chat-status")?.textContent??"";
+      const response=pane?.querySelector(".live-chat-message.assistant p")?.textContent??"";
+      return status.startsWith("completed")&&response.includes(expected);
+    },operatorMarker,{timeout:24000});
+    const returnRuns=trackedRequests.filter(req=>
+      req.frame?.method==="aiverse.gateway.run.create"
+      &&req.frame?.params?.messages?.some(m=>m.content===operatorMarker));
+    assert.equal(returnRuns.length,1);
+    assert.equal(returnRuns[0].frame.workspaceId,"operator");
+    assert.deepEqual(returnRuns[0].frame.params.messages,
+      [{role:"user",content:operatorMarker}],
+      "returning to A creates a fresh chat without inheriting B's turns");
+    assert.equal(await page.evaluate(()=>localStorage.length),0);
+    assert.equal(await page.evaluate(()=>sessionStorage.length),0);
+    assert.deepEqual(errors,[],"A-B-A must leave no Chromium runtime errors");
+
     // Normal Logout still revokes the newly paired browser.
     // Logout revokes session authorization and existing WS subscriptions.
     await page.getByRole("button",{name:"Disconnect"}).click();
@@ -522,6 +612,8 @@ export async function proveAuthenticatedBrowserWithCanonicalGateway({
       graphical_owner_approved_workspace_repair_verified:true,
       owner_approved_film_canonical_run_and_workspace_history_isolated:ownerHistoryAvailable,
       owner_approved_film_run_scope_isolated:true,
+      native_browser_workspace_A_B_A_isolated:true,
+      operator_gateway_history_restored_after_A_B_A:ownerHistoryAvailable,
       browser_catalog_owner_rejection_and_request_denial_verified:true,
       workspace_diagnostics_real_gateway_success:true,
       unavailable_canvas_owner_never_fabricated:true,

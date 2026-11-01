@@ -263,6 +263,7 @@ try {
     });
     assert.equal(browserOwnerProof.actual_pinned_gateway_browser_run,true);
     assert.equal(browserOwnerProof.local_pairing_http_only,true);
+    assert.equal(browserOwnerProof.native_browser_workspace_A_B_A_isolated,true);
     assert.equal(browserOwnerProof.member_provider_used,false);
     assert.equal(browserOwnerProof.member_mac_verified,false);
     const {proveRealPersonalLauncher}=await import("./ci-native-launcher-proof.mjs");
