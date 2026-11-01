@@ -173,12 +173,17 @@ export class CanonicalGatewayClient {
   }
   private async request(
     method: "GET" | "POST", path: string, body?: Record<string, unknown>,
-    key?: string, upstream?: AbortSignal,
+    key?: string, upstream?: AbortSignal, beforeDispatch?:()=>void,
   ): Promise<Record<string, unknown>> {
     const lease = this.signal(upstream);
     const deadline = setTimeout(() => lease.controller.abort(), this.timeoutMs);
     try {
       const bearer = await this.bearer();
+      // The owner may rebind while preflight or credential resolution is
+      // awaiting. Recheck the host-owned lease synchronously at dispatch,
+      // with no extra await between this guard and the outbound request.
+      beforeDispatch?.();
+      this.check();
       const response = await this.fetchFn(this.origin + path, {
         method, headers: { authorization: "Bearer " + bearer,
           ...(body ? { "content-type": "application/json" } : {}),
@@ -299,6 +304,8 @@ export class CanonicalGatewayClient {
     idempotencyKey: string;
     sessionId?: string;
     signal?: AbortSignal;
+    /** Host-owned synchronous authorization lease check before outbound POST. */
+    validateBeforeDispatch?:()=>void;
   }): Promise<GatewayRun> {
     if (!validMessages(args.messages)) throw new GatewayTransportError("MESSAGES_INVALID");
     safeId(args.idempotencyKey);
@@ -307,7 +314,7 @@ export class CanonicalGatewayClient {
     if (args.sessionId) metadata.session_id = args.sessionId;
     return this.run(await this.request("POST","/v1/runs",{
       model:"aiverse",messages:args.messages,metadata,
-    },args.idempotencyKey,args.signal));
+    },args.idempotencyKey,args.signal,args.validateBeforeDispatch));
   }
   async getRun(runId: string, signal?: AbortSignal): Promise<GatewayRun> {
     return this.run(await this.request("GET","/v1/runs/" + safeId(runId),undefined,undefined,signal),runId);
