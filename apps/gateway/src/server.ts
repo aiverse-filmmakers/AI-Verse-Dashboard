@@ -189,7 +189,13 @@ async function handleHttp(
         return;
       }
       const frame = JSON.parse(await readBody(req)) as unknown;
-      if(cookieAuthorized&&!bearerAuthorized&&!localApp?.isAllowedFrame(frame)){
+      // Body collection awaits. The trusted host may revoke the pairing or
+      // change workspaces before it completes. Bind this RPC to the *current*
+      // session lease so subsequent owner work is canceled on revocation.
+      const browserSignal=cookieAuthorized&&!bearerAuthorized
+        ?localApp?.activeBrowserSignal(req):undefined;
+      if(cookieAuthorized&&!bearerAuthorized
+        &&(!browserSignal||!localApp?.isAllowedFrame(frame))){
         res.writeHead(403,{"content-type":"application/json","cache-control":"no-store"});
         res.end(JSON.stringify({ok:false,error:{code:"LOCAL_APP_SCOPE_DENIED",message:"Scoped local app session required"}}));
         return;
@@ -218,7 +224,7 @@ async function handleHttp(
       // into a generic read-only local QueryRouter as an UNKNOWN_METHOD.
       const out = CanonicalGatewayBridge.recognizes(frame)
         ? canonicalBridge
-          ? await canonicalBridge.handle(frame)
+          ? await canonicalBridge.handle(frame,browserSignal)
           : {type:"res",v:"1.0",ok:false,
             id:typeof (frame as {id?:unknown})?.id==="string"
               ?(frame as {id:string}).id.slice(0,128):"unparseable",
