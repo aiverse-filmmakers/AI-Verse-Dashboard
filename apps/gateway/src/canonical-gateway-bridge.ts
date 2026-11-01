@@ -312,6 +312,22 @@ export class CanonicalGatewayBridge {
           if(frame.params!==undefined && !z.object({}).strict().safeParse(frame.params).success)
             throw new GatewayTransportError("INVALID_ENVELOPE");
           const value=await client.preflight(signal);
+          // Reachable status/models do not prove that a released owner
+          // supports read-only conversations. Probe the exact scoped API,
+          // not an inferred capability or a Dashboard-owned session store.
+          let conversationLibrary=false;
+          try{
+            await client.listSessions({limit:1,offset:0,signal});
+            conversationLibrary=true;
+          }catch(error){
+            // An unreleased, unavailable or malformed history API cannot be
+            // advertised. Scope/lease/auth revocations must instead fail the
+            // entire status request, never surface as partial green health.
+            if(!(error instanceof GatewayTransportError)
+              ||["STALE_BINDING","ABORTED","HISTORY_BINDING_MISMATCH",
+                "SYSTEM_BINDING_MISMATCH","GATEWAY_CREDENTIAL_UNAVAILABLE"]
+                .includes(error.code))throw error;
+          }
           return respond(true,{...value,workspaceId:workspace,
             runtimeSource:{id:"aiverse",owner:"canonical-gateway",model:"aiverse",
               runtimeKind:value.runtime,readinessEvidence:"authenticated-status-and-models",
@@ -319,7 +335,7 @@ export class CanonicalGatewayBridge {
             capabilities:{runCreate:true,runGet:true,events:true,
               controls:configured.binding.allowRunCancel===true
                 ||configured.binding.allowRunPauseResume===true,
-              conversationLibrary:true,providerSelection:false},
+              conversationLibrary,providerSelection:false},
             source:"canonical-gateway",runCancelSupported:configured.binding.allowRunCancel===true,
             runPauseResumeSupported:configured.binding.allowRunPauseResume===true});
         }
