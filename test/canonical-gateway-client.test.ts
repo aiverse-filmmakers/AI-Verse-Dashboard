@@ -168,6 +168,56 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
     await client.subscribeRun("run-1",e=>seen.push(e.event_id));
     assert.deepEqual(seen,["ev-2"]);
   });
+  it("does not start SSE after the scoped run was checked but credential wait expired",async()=>{
+    let bearerCalls=0;
+    const requests:string[]=[];
+    const fetchFn:typeof fetch=async url=>{
+      const path=new URL(String(url)).pathname;
+      requests.push(path);
+      return path.endsWith("/events")
+        ?new Response("event: run.started\\ndata: {}\\n\\n",{
+          headers:{"content-type":"text/event-stream"}})
+        :json(run());
+    };
+    const client=new CanonicalGatewayClient(binding({
+      resolveBearer:()=>{
+        bearerCalls++;
+        return bearerCalls===1?"host-token-123"
+          :new Promise<string>(resolve=>setTimeout(()=>resolve("host-token-123"),220));
+      },
+    }),{fetchFn,timeoutMs:100});
+    await errorCode(client.subscribeRun("run-1",()=>assert.fail("stale event leaked")),"ABORTED");
+    assert.equal(bearerCalls,2,"one scoped run read then the delayed event bearer");
+    assert.deepEqual(requests,["/v1/runs/run-1"],
+      "expired SSE connection must never contact the upstream events endpoint");
+  });
+  it("never opens SSE when the trusted host invalidates during event bearer resolution",async()=>{
+    let resolveSecond:((value:string)=>void)|undefined;
+    let notifySecond:()=>void=()=>{};
+    const secondStarted=new Promise<void>(resolve=>notifySecond=resolve);
+    let bearerCalls=0;
+    const requests:string[]=[];
+    const client=new CanonicalGatewayClient(binding({
+      resolveBearer:()=>{
+        bearerCalls++;
+        if(bearerCalls===1)return "host-token-123";
+        notifySecond();
+        return new Promise<string>(resolve=>resolveSecond=resolve);
+      },
+    }),{
+      fetchFn:async url=>{
+        const path=new URL(String(url)).pathname;requests.push(path);
+        return json(run());
+      },
+      timeoutMs:700,
+    });
+    const pending=client.subscribeRun("run-1",()=>assert.fail("revoked event leaked"));
+    await secondStarted;
+    client.invalidate();
+    resolveSecond?.("host-token-123");
+    await errorCode(pending,"STALE_BINDING");
+    assert.deepEqual(requests,["/v1/runs/run-1"]);
+  });
   it("invalidates an in-flight request on host binding change",async()=>{
     const {client}=fixture((_url,init)=>new Promise<Response>((_resolve,reject)=>{
       init.signal?.addEventListener("abort",()=>reject(new Error("aborted")),{once:true});
