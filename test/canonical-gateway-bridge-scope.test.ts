@@ -7,7 +7,8 @@ import {SystemRegistry} from "../packages/registry/src/index.js";
 import {CanonicalGatewayBridge} from "../apps/gateway/src/canonical-gateway-bridge.js";
 
 /** Scope-only host tests. These do NOT attach the bridge to public /rpc. */
-function fixture(allowRunCancel=false){
+function fixture(allowRunCancel=false,
+  onRequest?:(path:string)=>void,onCredential?:()=>void){
   const reg=new SystemRegistry();
   const root=mkdtempSync(join(tmpdir(),"aiverse-mc2-bridge-"));
   writeFileSync(join(root,"AI-VERSE.yaml"),
@@ -25,6 +26,7 @@ function fixture(allowRunCancel=false){
   const fetchFn:typeof fetch=async(url,init={})=>{
     const path=new URL(String(url)).pathname;
     calls.push({path,method:String(init.method),auth:String((init.headers as Record<string,string>)?.authorization)});
+    onRequest?.(path);
     const body=path==="/status"
       ?{component:"ai-verse-gateway",system_id:"canonical-a",state:"ready",
         runtime:"deterministic",at:"2026-10-31T00:00:00Z"}
@@ -36,7 +38,10 @@ function fixture(allowRunCancel=false){
   };
   const bridge=new CanonicalGatewayBridge(reg,[{
     dashboardSystemId:system,canonicalSystemId:"canonical-a",
-    origin:"http://127.0.0.1:8080",resolveBearer:()=> "native-bearer",
+    origin:"http://127.0.0.1:8080",resolveBearer:()=>{
+      onCredential?.();
+      return "native-bearer";
+    },
     allowRunCancel,
   }],{fetchFn,timeoutMs:800});
   const frame=(method:string,params:Record<string,unknown>={})=>({
@@ -87,6 +92,57 @@ describe("MC2.2 trusted canonical Gateway scope bridge",()=>{
       assert.equal(stale.ok,false);
       assert.equal(stale.error?.code,"GATEWAY_MAPPING_STALE");
       assert.equal(f.calls.length,count);
+    }finally{f.cleanup();}
+  });
+  it("does not dispatch a run if the OS owner rebinds during Gateway preflight",async()=>{
+    // A real request may finish two upstream readiness reads after the OS
+    // binding is revoked. An old client must not start billable work afterward.
+    const f=fixture(false,path=>{
+      if(path==="/v1/models")f.reg.rebind(f.system,f.root);
+    });
+    try{
+      const out=await f.bridge.handle(f.frame("aiverse.gateway.run.create",{
+        messages:[{role:"user",content:"Never send after owner rotation"}],
+        idempotencyKey:"owner-rotated-during-preflight",
+      }));
+      assert.equal(out.ok,false);
+      assert.equal(out.error?.code,"GATEWAY_MAPPING_STALE");
+      assert.deepEqual(f.calls.map(x=>x.path),["/status","/v1/models"]);
+      assert.equal(f.calls.some(x=>x.path==="/v1/runs"),false);
+    }finally{f.cleanup();}
+  });
+  it("does not dispatch a run if the owner changes during final credential resolution",async()=>{
+    let reads=0;
+    const f=fixture(false,undefined,()=>{
+      reads++;
+      if(reads===3)f.reg.rebind(f.system,f.root);
+    });
+    try{
+      const out=await f.bridge.handle(f.frame("aiverse.gateway.run.create",{
+        messages:[{role:"user",content:"No old owner run"}],
+        idempotencyKey:"owner-rotated-before-dispatch",
+      }));
+      assert.equal(out.ok,false);
+      assert.equal(out.error?.code,"GATEWAY_MAPPING_STALE");
+      assert.equal(reads,3);
+      assert.deepEqual(f.calls.map(x=>x.path),["/status","/v1/models"]);
+    }finally{f.cleanup();}
+  });
+  it("revokes Stop after a valid scoped GET but before control dispatch",async()=>{
+    let resolutions=0;
+    const f=fixture(true,undefined,()=>{
+      resolutions++;
+      if(resolutions===2)f.reg.rebind(f.system,f.root);
+    });
+    try{
+      const out=await f.bridge.handle(f.frame("aiverse.gateway.run.cancel",{
+        runId:"run-a",sessionId:"session-a",operationId:"owner-rotated-stop",
+      }));
+      assert.equal(out.ok,false);
+      assert.equal(out.error?.code,"GATEWAY_MAPPING_STALE");
+      assert.equal(resolutions,2);
+      assert.deepEqual(f.calls.map(x=>x.path),["/v1/runs/run-a"]);
+      assert.equal(f.calls.some(x=>x.method==="POST"),false);
     }finally{f.cleanup();}
   });
   it("requires the precise canonical run session before any owner-control POST",async()=>{

@@ -173,12 +173,21 @@ export class CanonicalGatewayClient {
   }
   private async request(
     method: "GET" | "POST", path: string, body?: Record<string, unknown>,
-    key?: string, upstream?: AbortSignal,
+    key?: string, upstream?: AbortSignal, beforeDispatch?:()=>void,
   ): Promise<Record<string, unknown>> {
     const lease = this.signal(upstream);
     const deadline = setTimeout(() => lease.controller.abort(), this.timeoutMs);
     try {
       const bearer = await this.bearer();
+      // The deadline may have elapsed while an asynchronous owner resolver
+      // was pending. Never dispatch with an already-aborted request lease.
+      if(lease.controller.signal.aborted)
+        throw new GatewayTransportError(this.invalidated?"STALE_BINDING":"ABORTED");
+      // The owner may rebind while preflight or credential resolution is
+      // awaiting. Recheck the host-owned lease synchronously at dispatch,
+      // with no extra await between this guard and the outbound request.
+      beforeDispatch?.();
+      this.check();
       const response = await this.fetchFn(this.origin + path, {
         method, headers: { authorization: "Bearer " + bearer,
           ...(body ? { "content-type": "application/json" } : {}),
@@ -299,6 +308,8 @@ export class CanonicalGatewayClient {
     idempotencyKey: string;
     sessionId?: string;
     signal?: AbortSignal;
+    /** Host-owned synchronous authorization lease check before outbound POST. */
+    validateBeforeDispatch?:()=>void;
   }): Promise<GatewayRun> {
     if (!validMessages(args.messages)) throw new GatewayTransportError("MESSAGES_INVALID");
     safeId(args.idempotencyKey);
@@ -307,7 +318,7 @@ export class CanonicalGatewayClient {
     if (args.sessionId) metadata.session_id = args.sessionId;
     return this.run(await this.request("POST","/v1/runs",{
       model:"aiverse",messages:args.messages,metadata,
-    },args.idempotencyKey,args.signal));
+    },args.idempotencyKey,args.signal,args.validateBeforeDispatch));
   }
   async getRun(runId: string, signal?: AbortSignal): Promise<GatewayRun> {
     return this.run(await this.request("GET","/v1/runs/" + safeId(runId),undefined,undefined,signal),runId);
@@ -322,6 +333,8 @@ export class CanonicalGatewayClient {
     reason?: string; decision?: GatewayDecision; signal?: AbortSignal;
     /** Trusted-host-only short-lease recheck after the canonical owner GET. */
     validateBeforePost?: (prechecked:GatewayRun)=>void | Promise<void>;
+    /** Synchronous host lease guard after resolving the bearer for the effect. */
+    validateBeforeDispatch?:()=>void;
   }): Promise<GatewayRun> {
     const id = safeId(args.runId);
     safeId(args.operationId);
@@ -334,7 +347,8 @@ export class CanonicalGatewayClient {
     const body: Record<string, unknown> = { operation_id:args.operationId };
     if (args.reason) body.reason = args.reason;
     if (args.action === "approval") body.decision = args.decision;
-    return this.run(await this.request("POST","/v1/runs/"+id+"/"+args.action,body,undefined,args.signal),args.runId);
+    return this.run(await this.request("POST","/v1/runs/"+id+"/"+args.action,
+      body,undefined,args.signal,args.validateBeforeDispatch),args.runId);
   }
   /**
    * Canonical run SSE, not the OpenAI chat/completions stream.
