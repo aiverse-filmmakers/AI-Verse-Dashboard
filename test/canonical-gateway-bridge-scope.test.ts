@@ -94,6 +94,17 @@ describe("MC2.2 trusted canonical Gateway scope bridge",()=>{
       assert.deepEqual(f.calls.map(x=>x.path),["/status","/v1/models","/v1/sessions"]);
     }finally{f.cleanup();}
   });
+  it("refuses a green runtime if its owner changes during the history capability read",async()=>{
+    const f=fixture(false,path=>{
+      if(path==="/v1/sessions")f.reg.rebind(f.system,f.root);
+    },undefined,"available");
+    try{
+      const out=await f.bridge.handle(f.frame("aiverse.gateway.status"));
+      assert.equal(out.ok,false);
+      assert.equal(out.error?.code,"GATEWAY_MAPPING_STALE");
+      assert.deepEqual(f.calls.map(x=>x.path),["/status","/v1/models","/v1/sessions"]);
+    }finally{f.cleanup();}
+  });
   it("projects only allowed run fields and refuses owner-less cancel",async()=>{
     const f=fixture();
     try{
