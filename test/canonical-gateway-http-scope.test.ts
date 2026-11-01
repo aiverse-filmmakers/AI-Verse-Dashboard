@@ -170,6 +170,56 @@ describe("MC2.2 authenticated native HTTP Gateway bridge",()=>{
       }
     }
   });
+  it("preserves trusted-host bearer reads while revoking a separate browser pairing",async()=>{
+    const f=fixture();
+    let entered!:()=>void,release!:()=>void;
+    const started=new Promise<void>(resolve=>entered=resolve);
+    const unblock=new Promise<void>(resolve=>release=resolve);
+    const calls:string[]=[];
+    const ownerFetch:typeof fetch=async url=>{
+      const path=new URL(String(url)).pathname;
+      calls.push(path);
+      if(path==="/status"){entered();await unblock;}
+      const value=path==="/status"
+        ?{component:"ai-verse-gateway",system_id:"canonical-a",
+          state:"ready",runtime:"deterministic"}
+        :{object:"list",data:[{id:"aiverse"}]};
+      return new Response(JSON.stringify(value),{
+        headers:{"content-type":"application/json"}});
+    };
+    const bridge=new CanonicalGatewayBridge(f.reg,[{
+      dashboardSystemId:f.systemId,canonicalSystemId:"canonical-a",
+      origin:"http://127.0.0.1:10001",resolveBearer:()=>"trusted-host-only",
+    }],{fetchFn:ownerFetch,timeoutMs:3000});
+    const app=new LocalApplicationSession({
+      systemId:f.systemId,workspaceId:"operator"},undefined,f.reg);
+    const server=await startGateway(f.router,f.hub,{
+      port:0,canonicalBridge:bridge,localApp:app});
+    try{
+      const origin="http://127.0.0.1:"+server.port;
+      const paired=await fetch(origin+"/local-app/pair",{
+        method:"POST",headers:{origin,"content-type":"application/json"},
+        body:JSON.stringify({code:app.pairingCode()})});
+      assert.equal(paired.status,200);
+      const pending=post(server.port,server.authToken,
+        f.frame("aiverse.gateway.status"));
+      await started;
+      app.rotateWorkspaceFromHost("film");
+      release();
+      const output=await pending;
+      assert.equal(output.status,200);
+      assert.equal(output.value.ok,true,
+        "browser session revocation must not cancel a distinct authorized host call");
+      assert.deepEqual(calls,["/status","/v1/models"]);
+      assert.equal((output.value.result as {workspaceId:string}).workspaceId,"operator",
+        "trusted host request keeps its explicitly bound original workspace");
+      assert.doesNotMatch(JSON.stringify(output.value),/trusted-host-only/);
+    }finally{
+      release();
+      await server.close();
+      f.cleanup();
+    }
+  });
   it("refuses a stale approved host binding after same-root rebind",async()=>{
     const f=fixture();
     const server=await startGateway(f.router,f.hub,{port:0,canonicalBridge:f.bridge});
