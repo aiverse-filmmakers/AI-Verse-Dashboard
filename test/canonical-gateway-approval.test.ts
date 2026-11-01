@@ -9,7 +9,7 @@ import {CanonicalGatewayBridge,type ApprovedCanonicalGateway}
 
 type Facts=Parameters<NonNullable<ApprovedCanonicalGateway["admitRunApproval"]>>[0];
 function fixture(args:{admit?:(facts:Facts)=>boolean|Promise<boolean>;
-  status?:string; pending?:unknown}={}){
+  status?:string; pending?:unknown;onCredential?:()=>void}={}){
   const registry=new SystemRegistry();
   const root=mkdtempSync(join(tmpdir(),"mc2-owner-approval-"));
   writeFileSync(join(root,"AI-VERSE.yaml"),
@@ -37,7 +37,10 @@ function fixture(args:{admit?:(facts:Facts)=>boolean|Promise<boolean>;
   };
   const bridge=new CanonicalGatewayBridge(registry,[{
     dashboardSystemId:systemId,canonicalSystemId:"canonical-owner",
-    origin:"http://127.0.0.1:8787",resolveBearer:()=>"host-private-token",
+    origin:"http://127.0.0.1:8787",resolveBearer:()=>{
+      args.onCredential?.();
+      return "host-private-token";
+    },
     ...(args.admit?{admitRunApproval:async facts=>{
       checked++;requestedFacts=facts;
       return args.admit!(facts);
@@ -134,6 +137,25 @@ describe("MC2.2 canonical Gateway approval owner boundary",()=>{
       assert.equal(out.error?.code,"APPROVAL_CHANGED");
       assert.deepEqual(f.calls.map(x=>x.method),["GET","GET"]);
       assert.equal(f.getChecks(),1);
+    }finally{f.cleanup();}
+  });
+  it("blocks an approved run action if owner lease changes while resolving the final bearer",async()=>{
+    let credentialReads=0;
+    let f:ReturnType<typeof fixture>;
+    f=fixture({admit:()=>true,onCredential:()=>{
+      credentialReads++;
+      // The first GET discovers the pending tool; second rechecks it after
+      // owner admission. The third resolver is the imminent privileged POST.
+      if(credentialReads===3)f.registry.rebind(f.systemId,f.root);
+    }});
+    try{
+      const out=await f.bridge.handle(f.frame("approve"));
+      assert.equal(out.ok,false);
+      assert.equal(out.error?.code,"GATEWAY_MAPPING_STALE");
+      assert.equal(f.getChecks(),1,"trusted owner consent was explicitly checked");
+      assert.equal(credentialReads,3);
+      assert.deepEqual(f.calls.map(x=>x.method),["GET","GET"],
+        "owner rebind must stop POST even after an earlier valid consent");
     }finally{f.cleanup();}
   });
   it("revoking the OS binding while native approval is being checked blocks the POST",async()=>{
