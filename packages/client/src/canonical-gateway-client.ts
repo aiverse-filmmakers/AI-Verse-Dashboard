@@ -179,6 +179,10 @@ export class CanonicalGatewayClient {
     const deadline = setTimeout(() => lease.controller.abort(), this.timeoutMs);
     try {
       const bearer = await this.bearer();
+      // The deadline may have elapsed while an asynchronous owner resolver
+      // was pending. Never dispatch with an already-aborted request lease.
+      if(lease.controller.signal.aborted)
+        throw new GatewayTransportError(this.invalidated?"STALE_BINDING":"ABORTED");
       // The owner may rebind while preflight or credential resolution is
       // awaiting. Recheck the host-owned lease synchronously at dispatch,
       // with no extra await between this guard and the outbound request.
