@@ -294,6 +294,16 @@ export class CanonicalGatewayBridge {
         resolveBearer:configured.binding.resolveBearer,
       };
       const client=new CanonicalGatewayClient(binding,this.transportOptions);
+      // The canonical preflight, owner consent and bearer resolver all await.
+      // Require the SAME OS identity and workspace immediately before any
+      // run-create/control POST; the final check itself never yields.
+      const validateEffectLease=()=>{
+        if(this.registry.resolveRoot(system)!==configured.root
+          ||this.registry.bindingGeneration(system)!==configured.generation)
+          throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
+        if(workspace!=="operator")getWorkspace(this.registry,system,workspace);
+        if(signal?.aborted)throw new GatewayTransportError("ABORTED");
+      };
       const onAbort=()=>client.invalidate();
       signal?.addEventListener("abort",onAbort,{once:true});
       try{
@@ -348,16 +358,7 @@ export class CanonicalGatewayBridge {
           // A real Gateway status/identity check, not an inferred browser state.
           await client.preflight(signal);
           return respond(true,boundedRun(await client.createRun({...args,signal,
-            validateBeforeDispatch:()=>{
-              // Preflight is asynchronous: the OS owner can be revoked or
-              // rebound while it runs or while resolving the Gateway bearer.
-              // Never submit a run under the old host lease afterward.
-              if(this.registry.resolveRoot(system)!==configured.root
-                ||this.registry.bindingGeneration(system)!==configured.generation)
-                throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
-              if(workspace!=="operator")getWorkspace(this.registry,system,workspace);
-              if(signal?.aborted)throw new GatewayTransportError("ABORTED");
-            },
+            validateBeforeDispatch:validateEffectLease,
           })));
         }
         if(frame.method==="aiverse.gateway.run.cancel"){
@@ -370,6 +371,7 @@ export class CanonicalGatewayBridge {
           const {runId,sessionId,operationId}=parsed.data;
           const canceled=await client.controlRun({runId,action:"cancel",operationId,
             reason:"dashboard_operator_stop",signal,
+            validateBeforeDispatch:validateEffectLease,
             validateBeforePost:(run)=>{
               if(run.session_id!==sessionId)
                 throw new GatewayTransportError("SESSION_BINDING_MISMATCH");
@@ -397,6 +399,7 @@ export class CanonicalGatewayBridge {
           const action=frame.method==="aiverse.gateway.run.pause"?"pause":"resume";
           const result=await client.controlRun({runId,action,operationId,
             ...(action==="pause"?{reason:"dashboard_operator_pause"}:{}),signal,
+            validateBeforeDispatch:validateEffectLease,
             validateBeforePost:run=>{
               if(run.session_id!==sessionId)
                 throw new GatewayTransportError("SESSION_BINDING_MISMATCH");
@@ -426,6 +429,7 @@ export class CanonicalGatewayBridge {
           const {runId,sessionId,operationId,decision}=parsed.data;
           const result=await client.controlRun({
             runId,action:"approval",operationId,decision,signal,
+            validateBeforeDispatch:validateEffectLease,
             validateBeforePost:async run=>{
               if(run.session_id!==sessionId)
                 throw new GatewayTransportError("SESSION_BINDING_MISMATCH");
