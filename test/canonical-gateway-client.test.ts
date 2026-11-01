@@ -204,4 +204,63 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
     // implementation-dependent exact number of pull() callbacks.
     assert.ok(reads>=2);
   });
+
+  it("times out a stalled canonical create without retrying a potentially billable run",async()=>{
+    let requests=0,aborts=0;
+    const fetchFn:typeof fetch=async (_url,init={})=>{
+      requests++;
+      return new Promise<Response>((_resolve,reject)=>{
+        const abort=()=>{aborts++;reject(new Error("aborted by deadline"));};
+        if(init.signal?.aborted)abort();
+        else init.signal?.addEventListener("abort",abort,{once:true});
+      });
+    };
+    const client=new CanonicalGatewayClient(binding(),{fetchFn,timeoutMs:100});
+    await errorCode(client.createRun({
+      messages:[{role:"user",content:"One controlled dispatch"}],
+      idempotencyKey:"timeout-same-run",
+    }),"ABORTED");
+    assert.equal(requests,1,
+      "a timed out canonical POST must not automatically submit a second run");
+    assert.equal(aborts,1,"deadline must abort the in-flight request");
+  });
+  it("keeps an uncertain upstream 503 as a single dispatch, retry only with same caller key",async()=>{
+    let attempts=0;
+    const identities:string[]=[];
+    const fetchFn:typeof fetch=async (_url,init={})=>{
+      attempts++;
+      identities.push((init.headers as Record<string,string>)["idempotency-key"]);
+      if(attempts===1)return json({error:{code:"GATEWAY_UNAVAILABLE"}},503);
+      return json(run(),202);
+    };
+    const client=new CanonicalGatewayClient(binding(),{fetchFn,timeoutMs:700});
+    const args={messages:[{role:"user" as const,content:"Keep the same run"}],
+      idempotencyKey:"explicit-retry-1"};
+    await errorCode(client.createRun(args),"GATEWAY_UNAVAILABLE");
+    assert.equal(attempts,1,"transport cannot assume a failed POST was not committed");
+    assert.equal((await client.createRun(args)).run_id,"run-1");
+    assert.deepEqual(identities,["explicit-retry-1","explicit-retry-1"],
+      "an explicit retry must reuse the original idempotency key");
+  });
+  it("blocks a delayed credential resolver after owner invalidation without sending anything",async()=>{
+    let release:((value:string)=>void)|undefined;
+    const credential=new Promise<string>(resolve=>{release=resolve;});
+    let networkCalls=0;
+    const fetchFn:typeof fetch=async()=>{
+      networkCalls++;
+      return json(run(),202);
+    };
+    const client=new CanonicalGatewayClient(binding({
+      resolveBearer:()=>credential,
+    }),{fetchFn,timeoutMs:700});
+    const pending=client.createRun({
+      messages:[{role:"user",content:"No dispatch after revocation"}],
+      idempotencyKey:"revoked-owner-run",
+    });
+    client.invalidate();
+    release?.("host-token-123");
+    await errorCode(pending,"STALE_BINDING");
+    assert.equal(networkCalls,0,
+      "a stale owner lease must stop dispatch even if the credential arrives later");
+  });
 });
