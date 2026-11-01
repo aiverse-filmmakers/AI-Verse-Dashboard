@@ -285,7 +285,7 @@ Acceptance:
 ### MC2.4 - System/workspace selection integration - 2 points - A
 Status: **NATIVE OWNER-SCOPED WORKSPACE SWITCHING SOURCE MERGED; FULL A -> B -> A ACCEPTANCE PENDING (0/2 points)**
 
-1 November: PR #67's real pinned-Gateway Chromium proof covers host-approved operator -> film selection, stale cookie revocation, no inherited film turns and scoped Gateway history. PR #68 adds explicit return to operator with renewed host pairing and full A -> B -> A negative checks. Until #68's exact-head review, merge and target CI are recorded, this is a pending test, not accepted evidence.
+1 November: PR #67's real pinned-Gateway Chromium proof covers host-approved operator -> film selection, stale cookie revocation, no inherited film turns and scoped Gateway history. [PR #68](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/68) is now **reviewed and merged** as `f3673ac70f8ad96b9353ac23f1b35155b629a854`. Its [real owner Chromium CI 41328083992](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41328083992), [Gateway CI 41328083928](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41328083928), and [Dashboard CI 41328084006](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41328084006) passed at the reviewed head. It proves operator -> film -> operator with renewed host pairing, revoked B cookie, denied B run read from A and preserved canonical A-only history. **Post-merge main runs and original MC2.4 owner acceptance are separate gates; formal MC2.4 remains 0/2.**
 
 Deliver:
 - explicit system/workspace selection;
