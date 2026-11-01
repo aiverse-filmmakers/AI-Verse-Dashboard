@@ -224,6 +224,26 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
       "a timed out canonical POST must not automatically submit a second run");
     assert.equal(aborts,1,"deadline must abort the in-flight request");
   });
+  it("does not send a run when credential resolution finishes after the request deadline",async()=>{
+    let networkCalls=0;
+    const client=new CanonicalGatewayClient(binding({
+      resolveBearer:()=>new Promise<string>(resolve=>{
+        setTimeout(()=>resolve("host-token-123"),200);
+      }),
+    }),{
+      fetchFn:async()=>{
+        networkCalls++;
+        return json(run(),202);
+      },
+      timeoutMs:100,
+    });
+    await errorCode(client.createRun({
+      messages:[{role:"user",content:"No request after lease deadline"}],
+      idempotencyKey:"expired-credential-dispatch",
+    }),"ABORTED");
+    assert.equal(networkCalls,0,
+      "an expired request must not be sent after late credentials arrive");
+  });
   it("keeps an uncertain upstream 503 as a single dispatch, retry only with same caller key",async()=>{
     let attempts=0;
     const identities:string[]=[];
