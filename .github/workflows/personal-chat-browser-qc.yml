@@ -10,6 +10,7 @@ on:
       - "packages/protocol/src/**"
       - "apps/gateway/src/local-app-session.ts"
       - "apps/gateway/src/server.ts"
+      - "apps/gateway/src/canonical-gateway-bridge.ts"
       - "package.json"
   push:
     branches: [main]
@@ -21,6 +22,7 @@ on:
       - "packages/protocol/src/**"
       - "apps/gateway/src/local-app-session.ts"
       - "apps/gateway/src/server.ts"
+      - "apps/gateway/src/canonical-gateway-bridge.ts"
       - "package.json"
   workflow_dispatch:
 

@@ -74,7 +74,11 @@ describe("MC2.2 authenticated native HTTP Gateway bridge",()=>{
       assert.equal(f.calls.length,0);
       const good=await post(server.port,server.authToken,f.frame("aiverse.gateway.status"));
       assert.equal(good.value.ok,true);
-      assert.equal(f.calls.length,2);
+      assert.equal(f.calls.length,3);
+      assert.deepEqual(f.calls.map(x=>x.path),["/status","/v1/models","/v1/sessions"]);
+      assert.equal((good.value.result as {capabilities:{conversationLibrary:boolean}})
+        .capabilities.conversationLibrary,false,
+        "missing upstream history must not be reported as supported");
       assert.ok(f.calls.every(x=>x.auth==="Bearer hidden-bearer"));
       assert.doesNotMatch(JSON.stringify(good.value),/hidden-bearer/);
     }finally{await server.close();f.cleanup();}
@@ -210,7 +214,8 @@ describe("MC2.2 authenticated native HTTP Gateway bridge",()=>{
       assert.equal(output.status,200);
       assert.equal(output.value.ok,true,
         "browser session revocation must not cancel a distinct authorized host call");
-      assert.deepEqual(calls,["/status","/v1/models"]);
+      assert.deepEqual(calls,["/status","/v1/models","/v1/sessions"],
+        "owner history support is checked separately from runtime readiness");
       assert.equal((output.value.result as {workspaceId:string}).workspaceId,"operator",
         "trusted host request keeps its explicitly bound original workspace");
       assert.doesNotMatch(JSON.stringify(output.value),/trusted-host-only/);
