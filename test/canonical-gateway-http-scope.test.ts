@@ -7,6 +7,7 @@ import {SystemRegistry} from "../packages/registry/src/index.js";
 import {DisposableCache} from "../packages/os-read-adapter/src/index.js";
 import {CanonicalGatewayBridge,QueryRouter,SubscriptionHub,startGateway}
   from "../apps/gateway/src/index.js";
+import {LocalApplicationSession} from "../apps/gateway/src/local-app-session.js";
 
 function fixture(){
   const reg=new SystemRegistry();
@@ -15,6 +16,9 @@ function fixture(){
     'schema_version: "2.0"\narchitecture: unified-workspace\n');
   writeFileSync(join(root,"AGENTS.md"),"# Test");
   for(const dir of ["operator","system","workspaces"])mkdirSync(join(root,dir));
+  const film=join(root,"workspaces","film");mkdirSync(film);
+  writeFileSync(join(film,"WORKSPACE.yaml"),
+    'schema_version: "2.0"\nid: "film"\nname: "Film"\nstatus: "active"\n');
   const systemId=reg.register(root,{label:"host"}).systemId;
   const calls:{method:string;path:string;auth:string}[]=[];
   const fetchFn:typeof fetch=async(url,init={})=>{
@@ -100,6 +104,71 @@ describe("MC2.2 authenticated native HTTP Gateway bridge",()=>{
         /hidden-credential|hidden-principal|hidden-prompt|hidden-bearer/);
       assert.equal(f.calls.filter(x=>x.path==="/v1/runs").length,1);
     }finally{await server.close();f.cleanup();}
+  });
+  it("cancels an already-admitted browser run on logout or trusted workspace rotation",async()=>{
+    for(const action of ["logout","workspace"] as const){
+      const f=fixture();
+      let entered!:()=>void,release!:()=>void;
+      const started=new Promise<void>(resolve=>entered=resolve);
+      const unblock=new Promise<void>(resolve=>release=resolve);
+      const forwarded:string[]=[];
+      const fetchFn:typeof fetch=async(url)=>{
+        const path=new URL(String(url)).pathname;
+        forwarded.push(path);
+        if(path==="/status"){entered();await unblock;}
+        const value=path==="/status"
+          ?{component:"ai-verse-gateway",system_id:"canonical-a",
+            state:"ready",runtime:"deterministic"}
+          :path==="/v1/models"?{data:[{id:"aiverse"}]}
+          :{run_id:"unsafe-run",session_id:"unsafe-session",system_id:"canonical-a",
+            workspace_id:"operator",status:"running"};
+        return new Response(JSON.stringify(value),{
+          headers:{"content-type":"application/json"}});
+      };
+      const bridge=new CanonicalGatewayBridge(f.reg,[{
+        dashboardSystemId:f.systemId,canonicalSystemId:"canonical-a",
+        origin:"http://127.0.0.1:10001",resolveBearer:()=>"host-private-bearer",
+      }],{fetchFn,timeoutMs:3000});
+      const app=new LocalApplicationSession({
+        systemId:f.systemId,workspaceId:"operator"},undefined,f.reg);
+      const server=await startGateway(f.router,f.hub,{
+        port:0,canonicalBridge:bridge,localApp:app});
+      try{
+        const origin="http://127.0.0.1:"+server.port;
+        const paired=await fetch(origin+"/local-app/pair",{
+          method:"POST",headers:{origin,"content-type":"application/json"},
+          body:JSON.stringify({code:app.pairingCode()})});
+        assert.equal(paired.status,200);
+        const cookie=(paired.headers.get("set-cookie")??"").split(";")[0];
+        const pending=fetch(origin+"/rpc",{
+          method:"POST",headers:{origin,cookie,"content-type":"application/json"},
+          body:JSON.stringify(f.frame("aiverse.gateway.run.create",{
+            messages:[{role:"user",content:"Do not dispatch after session revoke"}],
+            idempotencyKey:"browser-stale-lease-"+action,
+          })),
+        }).then(r=>r.json() as Promise<{ok:boolean;error?:{code:string}}>);
+        await started;
+        if(action==="workspace")app.rotateWorkspaceFromHost("film");
+        else{
+          const logout=await fetch(origin+"/local-app/logout",{
+            method:"POST",headers:{origin,cookie}});
+          assert.equal(logout.status,200);
+        }
+        release();
+        const response=await pending;
+        assert.equal(response.ok,false,
+          "revoked browser must never launch an old-scope Gateway run");
+        assert.equal(response.error?.code,"STALE_BINDING");
+        assert.deepEqual(forwarded,["/status"],
+          "preflight in flight may finish, but no model/read/run may follow");
+        const stale=await fetch(origin+"/local-app/session",{headers:{cookie}});
+        assert.equal(stale.status,401);
+      }finally{
+        release();
+        await server.close();
+        f.cleanup();
+      }
+    }
   });
   it("refuses a stale approved host binding after same-root rebind",async()=>{
     const f=fixture();
