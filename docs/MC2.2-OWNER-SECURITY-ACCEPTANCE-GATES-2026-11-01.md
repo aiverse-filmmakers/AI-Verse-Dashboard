@@ -17,6 +17,21 @@
 
 Reviews on #70, #71, #73, #74 and #76 were operator-delegated **AI-assisted self-review COMMENT** events, with actual CI verification. They cannot be described as independent non-author security signoff.
 
+## Reviewed Gateway owner revisions: current compatibility, not owner release approval
+
+A Dashboard-pinned owner test must not be treated as the currently integrated Gateway release. At the 1 November 2026 audit the following immutable Gateway source revisions differ:
+
+| Gateway owner source | Actual authenticated owner endpoints in `src/server.mjs` | Dashboard result |
+| --- | --- | --- |
+| Reviewed browser/transport pin `9748dd0d5473b65ad95ef92df62fe0a13575e378` | `/status`, `/v1/models`, scoped `GET /v1/sessions`, `GET /v1/sessions/:id/runs`, run create/read, controls and SSE | Authenticated scoped conversation-history probe passes and advertises `conversationLibrary:true` |
+| Gateway `main` snapshot `ceb8849ec062f0d3997ceb0207e42c25aedd20c6` | Core status/models/runs/controls/SSE exist; **both `/v1/sessions` discovery routes absent** from the server router | Readiness and actual run execution pass, while Dashboard truthfully reports `conversationLibrary:false` |
+
+Source pointers: [history-capable Gateway server source at reviewed commit](https://github.com/aiverse-filmmakers/AI-Verse-Gateway/blob/9748dd0d5473b65ad95ef92df62fe0a13575e378/src/server.mjs) and [current-owner-main snapshot source](https://github.com/aiverse-filmmakers/AI-Verse-Gateway/blob/ceb8849ec062f0d3997ceb0207e42c25aedd20c6/src/server.mjs). These references are fixed audits of source commits, **not** proof of a deployed binary or private owner's selected revision.
+
+[Dashboard PR #79](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/79) / `53f4f22d50bdde014f0afd53a0cb376e30c71530` made this mismatch an automated CI contract. [Exact-head dual-Gateway matrix 41348895516](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41348895516) passed **both** pinned real-owner jobs; [cross-platform Dashboard 41348895428](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41348895428) and [native owner Chromium 41348895403](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41348895403) also passed. [Dashboard PR #78](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/78) / `e8ef1fe7e1b4c5d6a1b445aa201c37bc9f9d9c41` separately hardened expired SSE bearer resolution; its four post-merge checks passed.
+
+**Actual acceptance blocker and next owner action:** Gateway/OS owner must determine whether its history-capable reviewed commit is approved for inclusion in a canonical Gateway release, subject that Gateway source to its own tests/security review and update the owner release reference intentionally. Dashboard must then recheck the explicitly released SHA against its same real run/history/isolation contracts. A browser CI pin is not authority to ship or to grant access; do not synthesize missing history on Dashboard. This comparison addresses owner-source compatibility only and cannot substitute for an independent owner-principal/final-effect review or private Mac verification. Formal MC2.2 remains **0/3** and program total **17/100**.
+
 ## MC2.2 acceptance checklist, not yet closed
 
 | Owner/contract acceptance item | Evidence and result | Remaining gate |
