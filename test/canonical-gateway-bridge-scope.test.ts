@@ -128,6 +128,23 @@ describe("MC2.2 trusted canonical Gateway scope bridge",()=>{
       assert.deepEqual(f.calls.map(x=>x.path),["/status","/v1/models"]);
     }finally{f.cleanup();}
   });
+  it("revokes Stop after a valid scoped GET but before control dispatch",async()=>{
+    let resolutions=0;
+    const f=fixture(true,undefined,()=>{
+      resolutions++;
+      if(resolutions===2)f.reg.rebind(f.system,f.root);
+    });
+    try{
+      const out=await f.bridge.handle(f.frame("aiverse.gateway.run.cancel",{
+        runId:"run-a",sessionId:"session-a",operationId:"owner-rotated-stop",
+      }));
+      assert.equal(out.ok,false);
+      assert.equal(out.error?.code,"GATEWAY_MAPPING_STALE");
+      assert.equal(resolutions,2);
+      assert.deepEqual(f.calls.map(x=>x.path),["/v1/runs/run-a"]);
+      assert.equal(f.calls.some(x=>x.method==="POST"),false);
+    }finally{f.cleanup();}
+  });
   it("requires the precise canonical run session before any owner-control POST",async()=>{
     const f=fixture(true);
     try{
