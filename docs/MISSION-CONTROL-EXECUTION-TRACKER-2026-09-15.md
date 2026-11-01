@@ -259,6 +259,8 @@ All eleven listed source slices have documented scoped AI-assisted **COMMENT** r
 
 **Review provenance:** #66 and #67 have recorded, scoped `change-review` COMMENT receipts (not GitHub APPROVE or independent human security audit). Head and main checks are green. No private user Mac install, paid inference, Data owner mounting or final owner security signoff is implied. Original MC2.2 acceptance remains **0/3**, with **17/100** formal total. Outstanding review is complete client-contract/owner authority acceptance, not repeating already proven source/Chromium construction.
 
+**1 November MC2.2 owner-effect hardening:** [PR #70](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/70) merged as `8b0b7253` after exact-head 3-platform CI and operator-delegated AI technical review. It proves timeout/uncertain response creates no implicit second run and revoked credentials cannot dispatch. [PR #71](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/71) merged as `6a6154fc` with exact-head green Dashboard, pinned real Gateway, native Chromium and browser QC. It corrected a stale-OS-lease window after awaited Gateway preflight or bearer resolution, adding final host lease checks for create, Stop, Pause, Resume and admitted approval. Source-level negative tests check owner rebind during preflight, resolution and post-consent control, with no outbound effect. The [MC2.2 owner-security acceptance matrix](MC2.2-OWNER-SECURITY-ACCEPTANCE-GATES-2026-11-01.md) records evidence and remaining independent release/owner checks. **This does not award MC2.2 formal points; 0/3 and total 17/100 remain.**
+
 Deliver:
 - typed client for models/chat/runs/events/cancel/pause/resume/approval;
 - auth redaction;
