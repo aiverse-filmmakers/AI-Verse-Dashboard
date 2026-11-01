@@ -18,8 +18,16 @@ import {DashboardClient,DashboardChatEventFeed,PersonalChatRunController}
   from "../../dist/packages/client/src/index.js";
 import {inspectModelCatalog} from "../../dist/apps/web/src/index.js";
 
-// Exact reviewed upstream owner SHA; changes require deliberate source review.
-const GATEWAY_REVISION="9748dd0d5473b65ad95ef92df62fe0a13575e378";
+// Explicit immutable owner revisions. The reviewed capability-bearing
+// Gateway is not the same tree as Gateway main. Test both, and fail closed
+// if the workflow ever checks out another revision without source review.
+const OWNER_REVISIONS={
+  "review-pinned":"9748dd0d5473b65ad95ef92df62fe0a13575e378",
+  "main-snapshot":"ceb8849ec062f0d3997ceb0207e42c25aedd20c6",
+};
+const ownerMode=process.env.AIVERSE_MC2_OWNER_MODE||"review-pinned";
+assert.ok(Object.hasOwn(OWNER_REVISIONS,ownerMode),"unreviewed Gateway owner mode");
+const GATEWAY_REVISION=OWNER_REVISIONS[ownerMode];
 const pinRoot=resolve(process.env.AIVERSE_MC2_GATEWAY_SOURCE||"gateway-source");
 const pin=execFileSync("git",["-C",pinRoot,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
 assert.equal(pin,GATEWAY_REVISION,"must not use an unreviewed Gateway source revision");
@@ -95,6 +103,9 @@ try {
   assert.equal(status.result.systemId,"ci-mc2");
   assert.equal(status.result.workspaceId,"operator");
   assert.equal(status.result.source,"canonical-gateway");
+  assert.equal(status.result.capabilities.conversationLibrary,
+    ownerMode==="review-pinned",
+    "only an actually released scoped history API may advertise a conversation library");
   assert.equal(status.result.runPauseResumeSupported,true);
   assert.equal(status.result.runCancelSupported,false);
   const models=await rpc(local.port,local.authToken,frame("aiverse.gateway.models",systemId));
