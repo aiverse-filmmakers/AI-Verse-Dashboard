@@ -328,6 +328,9 @@ export class CanonicalGatewayBridge {
                 "SYSTEM_BINDING_MISMATCH","GATEWAY_CREDENTIAL_UNAVAILABLE"]
                 .includes(error.code))throw error;
           }
+          // The scoped history read awaits as well. Never present a green
+          // runtime from a host registration revoked during that read.
+          validateEffectLease();
           return respond(true,{...value,workspaceId:workspace,
             runtimeSource:{id:"aiverse",owner:"canonical-gateway",model:"aiverse",
               runtimeKind:value.runtime,readinessEvidence:"authenticated-status-and-models",
