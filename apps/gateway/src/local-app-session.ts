@@ -69,6 +69,9 @@ export class LocalApplicationSession {
   private pairing=randomBytes(32).toString("base64url");
   private born=Date.now();
   private sessionToken=randomBytes(32).toString("base64url");
+  // Every successful browser pairing owns a cancelable effect lease.
+  // Host rotation, logout, OS revocation and expiry abort in-flight RPCs.
+  private sessionAbort=new AbortController();
   private readonly ownerRoot?:string;
   private readonly ownerGeneration?:number;
   private workspaceIdentity?:{root:string;dev:number;ino:number};
@@ -191,6 +194,7 @@ export class LocalApplicationSession {
     return this.port!==0&&Date.now()<this.sessionsUntil;
   }
   private revoke():void{
+    this.sessionAbort.abort();
     this.sessionsUntil=0;
     this.pendingRequest=undefined;
     if(this.expiryTimer)clearTimeout(this.expiryTimer);
@@ -221,6 +225,11 @@ export class LocalApplicationSession {
   /** Cookie auth is valid only for browser requests from the exact app origin. */
   isAuthorizedBrowser(req:IncomingMessage):boolean{
     return this.originIsExact(req)&&this.isSession(req);
+  }
+  /** Revalidate after the asynchronous HTTP body read, then bind a request
+   * to this exact pairing. This lease aborts on host-side revocation. */
+  activeBrowserSignal(req:IncomingMessage):AbortSignal|undefined{
+    return this.isAuthorizedBrowser(req)?this.sessionAbort.signal:undefined;
   }
   isAllowedSocketSystem(systemId:string):boolean{
     return this.ownerStillApproved()&&systemId===this.scope.systemId;
@@ -379,6 +388,7 @@ export class LocalApplicationSession {
         fail(res,403,"LOCAL_APP_PAIRING_DENIED");return true;
       }
       this.used=true;
+      this.sessionAbort=new AbortController();
       this.sessionsUntil=Date.now()+SESSION_TTL;
       this.expiryTimer=setTimeout(()=>this.revoke(),SESSION_TTL);
       this.expiryTimer.unref();
