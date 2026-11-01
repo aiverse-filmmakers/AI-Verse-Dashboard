@@ -247,6 +247,18 @@ All eleven listed source slices have documented scoped AI-assisted **COMMENT** r
 
 **Remaining original MC2.2 acceptance:** The next exact-head disposable CI proof **has passed** against pinned actual canonical Gateway source at PR #55 and was extended through #59; the Dashboard client/host/run/stream/approval surfaces are real source. To award the 3 original formal points, complete an acceptance decision against *all* original client criteria, owner authentication/security review and any pending native approval contract. In particular, the approval endpoint is default-denied until a separate native owner authorizes the exact action, and history read-only methods may fail if the pinned Gateway owner does not release them. Do not assume draft Gateway conversation discovery PR #80 is a released session-history API. A working Personal Chat UI, browser app session/credential admission, paid provider choice and user Mac install are later or separate owner-gated requirements; do not infer their readiness. The historic formal roadmap remains **17/100 accepted** (MC2.2 still 0/3) and provisional GitHub/Browser **47/100** is not automatically increased by these source merges. See [review checkpoint](MC2.2-CODE-REVIEW-CHECKPOINT-2026-10-31.md) for the exact risks and next acceptance action.
 
+**1 November 2026 source/CI follow-up:** The following additional slices have been merged and reviewed at their immutable heads. These supersede the older "controller-only" wording but **do not close the original 3-point MC2.2 gate**.
+
+| Bounded slice | Merged PR / main SHA | Exact-head / post-merge proof | Scope |
+| --- | --- | --- | --- |
+| Local host pairing, cookie and scope boundary | [#61](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/61) | Head CI and AI-assisted technical review on #61 | No browser bearer; native-owned session and workspace fences |
+| Read-only owner activity, diagnostics and Canvas seam | [#62](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/62), [#63](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/63), [#64](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/64) | Scoped source reviews and CI on merged PRs | Canonical owner or explicit unavailable; no invented Data persistence |
+| Real Personal Chat DOM source | [#65](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/65) / `7deca974` | [main CI 41191096302](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41191096302) passed | Actual mountable UI, not a production-installed application |
+| Real Chromium suite and browser compatibility | [#66](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/66) / `fa287d303ba1381f88b7c9299807424e5fb7e164` | [browser PR CI 41249308734](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41249308734) and [main CI 41249472465](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41249472465) passed | 36 fixture browser tests passed, one intentionally skipped static preview; protocol changes trigger browser QC |
+| Actual native terminal launcher and pinned real-Gateway Chromium | [#67](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/67) / `c5323cf83b9b182e28e500089c19509eafd44673` | [PR native CI 41249578528](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41249578528), [main native CI 41249681628](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41249681628), [main Dashboard CI 41249681489](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41249681489), [main Gateway CI 41249681594](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41249681594), all passed | Private one-time terminal pairing, real browser streaming/recovery, owner-approved workspace change, direct launcher executable smoke |
+
+**Review provenance:** #66 and #67 have recorded, scoped `change-review` COMMENT receipts (not GitHub APPROVE or independent human security audit). Head and main checks are green. No private user Mac install, paid inference, Data owner mounting or final owner security signoff is implied. Original MC2.2 acceptance remains **0/3**, with **17/100** formal total. Outstanding review is complete client-contract/owner authority acceptance, not repeating already proven source/Chromium construction.
+
 Deliver:
 - typed client for models/chat/runs/events/cancel/pause/resume/approval;
 - auth redaction;
@@ -271,7 +283,9 @@ Acceptance:
 - product can distinguish AI-Verse from generic OpenAI-compatible runtimes.
 
 ### MC2.4 - System/workspace selection integration - 2 points - A
-Status: PENDING
+Status: **NATIVE OWNER-SCOPED WORKSPACE SWITCHING SOURCE MERGED; FULL A -> B -> A ACCEPTANCE PENDING (0/2 points)**
+
+1 November: PR #67's real pinned-Gateway Chromium proof covers host-approved operator -> film selection, stale cookie revocation, no inherited film turns and scoped Gateway history. [PR #68](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/68) is now **reviewed and merged** as `f3673ac70f8ad96b9353ac23f1b35155b629a854`. Its [real owner Chromium CI 41328083992](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41328083992), [Gateway CI 41328083928](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41328083928), and [Dashboard CI 41328084006](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41328084006) passed at the reviewed head. It proves operator -> film -> operator with renewed host pairing, revoked B cookie, denied B run read from A and preserved canonical A-only history. **The exact post-merge main runs also passed:** [native Chromium 41328254549](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41328254549), [Gateway 41328254514](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41328254514), [Dashboard 41328254482](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/41328254482). Original MC2.4 formal owner acceptance is still separate, 0/2 points.
 
 Deliver:
 - explicit system/workspace selection;
@@ -286,6 +300,8 @@ Acceptance:
 Status: **RUN CONTROLLER AND TRANSPORT MERGED, MOUNTED MAIN CHAT ACCEPTANCE PENDING (0/4 points)**
 
 31 October source: [#58](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/58) merged the canonical run controller with continuity/recovery tests and actual completed owner Gateway chat proof; browser event adapter [#57](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/57) is merged. The real user-facing mounted Personal Chat, secure local app session, persistent history availability and advertised control UX still require bounded review. Source CI does not close this UI milestone.
+
+**1 November update:** [#65](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/65) merged the actual native-mountable Personal Chat DOM. [#66](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/66) merged the real Chromium fixture/interaction suite, and [#67](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/pull/67) merged the interactive localhost terminal launcher and separate *actual pinned Gateway* browser proof. All three latest #67 post-merge workflows passed at `c5323cf8`. Real history works only when the pinned owner API supplies it, and Canvas truth remains explicitly unavailable without a Data owner. This is verified source/browser engineering, **not MC2.5 acceptance**, private Mac security signoff or a signed desktop release.
 
 Deliver:
 - main Chat path through canonical Gateway;
