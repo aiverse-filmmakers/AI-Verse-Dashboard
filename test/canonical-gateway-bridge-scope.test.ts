@@ -8,7 +8,8 @@ import {CanonicalGatewayBridge} from "../apps/gateway/src/canonical-gateway-brid
 
 /** Scope-only host tests. These do NOT attach the bridge to public /rpc. */
 function fixture(allowRunCancel=false,
-  onRequest?:(path:string)=>void,onCredential?:()=>void){
+  onRequest?:(path:string)=>void,onCredential?:()=>void,
+  history:"unavailable"|"available"|"wrong-scope"="unavailable"){
   const reg=new SystemRegistry();
   const root=mkdtempSync(join(tmpdir(),"aiverse-mc2-bridge-"));
   writeFileSync(join(root,"AI-VERSE.yaml"),
@@ -31,6 +32,12 @@ function fixture(allowRunCancel=false,
       ?{component:"ai-verse-gateway",system_id:"canonical-a",state:"ready",
         runtime:"deterministic",at:"2026-10-31T00:00:00Z"}
       :path==="/v1/models"?{object:"list",data:[{id:"aiverse"}]}
+      :path==="/v1/sessions"&&history!=="unavailable"?
+        {object:"list",has_more:false,next_offset:null,
+          data:history==="wrong-scope"?[{
+            session_id:"session-outside",system_id:"canonical-a",
+            workspace_id:"film",status:"active",
+          }]:[]}
       :path==="/v1/runs"||path==="/v1/runs/run-a"?run
       :{error:{code:"NOT_FOUND"}};
     return new Response(JSON.stringify(body),{status:200,
@@ -60,8 +67,31 @@ describe("MC2.2 trusted canonical Gateway scope bridge",()=>{
       const body=JSON.stringify(out);
       assert.match(body,/canonical-gateway/);
       assert.doesNotMatch(body,/native-bearer|private-owner-id|private-provider-token/);
-      assert.equal(f.calls.length,2);
+      assert.equal(f.calls.length,3);
+      assert.deepEqual(f.calls.map(x=>x.path),["/status","/v1/models","/v1/sessions"]);
+      assert.equal((out.result as {capabilities:{conversationLibrary:boolean}})
+        .capabilities.conversationLibrary,false,
+        "reachable Gateway cannot invent an unsupported conversation library");
       assert.ok(f.calls.every(x=>x.auth==="Bearer native-bearer"));
+    }finally{f.cleanup();}
+  });
+  it("advertises owner conversation history only after a real scoped list validates",async()=>{
+    const f=fixture(false,undefined,undefined,"available");
+    try{
+      const out=await f.bridge.handle(f.frame("aiverse.gateway.status"));
+      assert.equal(out.ok,true);
+      assert.equal((out.result as {capabilities:{conversationLibrary:boolean}})
+        .capabilities.conversationLibrary,true);
+      assert.deepEqual(f.calls.map(x=>x.path),["/status","/v1/models","/v1/sessions"]);
+    }finally{f.cleanup();}
+  });
+  it("fails closed if the owner history probe returns another workspace",async()=>{
+    const f=fixture(false,undefined,undefined,"wrong-scope");
+    try{
+      const out=await f.bridge.handle(f.frame("aiverse.gateway.status"));
+      assert.equal(out.ok,false);
+      assert.equal(out.error?.code,"HISTORY_BINDING_MISMATCH");
+      assert.deepEqual(f.calls.map(x=>x.path),["/status","/v1/models","/v1/sessions"]);
     }finally{f.cleanup();}
   });
   it("projects only allowed run fields and refuses owner-less cancel",async()=>{
