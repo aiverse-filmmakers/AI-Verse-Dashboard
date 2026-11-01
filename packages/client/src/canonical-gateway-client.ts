@@ -329,6 +329,8 @@ export class CanonicalGatewayClient {
     reason?: string; decision?: GatewayDecision; signal?: AbortSignal;
     /** Trusted-host-only short-lease recheck after the canonical owner GET. */
     validateBeforePost?: (prechecked:GatewayRun)=>void | Promise<void>;
+    /** Synchronous host lease guard after resolving the bearer for the effect. */
+    validateBeforeDispatch?:()=>void;
   }): Promise<GatewayRun> {
     const id = safeId(args.runId);
     safeId(args.operationId);
@@ -341,7 +343,8 @@ export class CanonicalGatewayClient {
     const body: Record<string, unknown> = { operation_id:args.operationId };
     if (args.reason) body.reason = args.reason;
     if (args.action === "approval") body.decision = args.decision;
-    return this.run(await this.request("POST","/v1/runs/"+id+"/"+args.action,body,undefined,args.signal),args.runId);
+    return this.run(await this.request("POST","/v1/runs/"+id+"/"+args.action,
+      body,undefined,args.signal,args.validateBeforeDispatch),args.runId);
   }
   /**
    * Canonical run SSE, not the OpenAI chat/completions stream.
