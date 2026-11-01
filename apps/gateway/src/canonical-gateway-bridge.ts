@@ -254,7 +254,14 @@ export class CanonicalGatewayBridge {
             systemId,workspaceId,seq:++sequence,observedAt:new Date().toISOString(),
             payload:projection});
           if(terminal.has(event.type))cancel();
-        },abort.signal);
+        },abort.signal,()=>{
+          // Credentials resolve asynchronously; invalidate the old OS owner
+          // before even opening a read-only canonical event stream.
+          if(this.registry.resolveRoot(systemId)!==registered.root ||
+            this.registry.bindingGeneration(systemId)!==registered.generation)
+            throw new GatewayTransportError("GATEWAY_MAPPING_STALE");
+          if(workspaceId!=="operator")getWorkspace(this.registry,systemId,workspaceId);
+        });
         // Upstream EOF does not mean successful completion. Reconcile by GET.
         if(!finished)failed("EVENT_STREAM_INTERRUPTED");
       }catch(error){
