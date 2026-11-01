@@ -362,6 +362,12 @@ export class CanonicalGatewayClient {
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     try {
       const bearer=await this.bearer();
+      // A slow host credential resolver can outlive the SSE connection
+      // deadline. Fail closed even if the injected fetch ignores an already
+      // aborted signal, just like the canonical run-control transport.
+      if(lease.controller.signal.aborted)
+        throw new GatewayTransportError(this.invalidated?"STALE_BINDING":"ABORTED");
+      this.check();
       const res=await this.fetchFn(this.origin+"/v1/runs/"+safeId(runId)+"/events",{
         method:"GET",headers:{authorization:"Bearer "+bearer,accept:"text/event-stream"},signal:lease.controller.signal,
         redirect:"error",
