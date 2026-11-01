@@ -330,6 +330,19 @@ export class LocalApplicationSession {
           raw+=String(chunk);
         }
       }catch{fail(res,400,"LOCAL_APP_REQUEST_INVALID");return true;}
+      // Reading the browser body yields to other requests. Logout, host
+      // workspace rotation or a competing request may revoke the original
+      // pairing, consume the request slot or create a pending proposal.
+      if(!this.isAuthorizedBrowser(req)){
+        fail(res,403,"LOCAL_APP_ORIGIN_DENIED");return true;
+      }
+      if(this.requestCount>=MAX_WORKSPACE_REQUESTS){
+        fail(res,429,"LOCAL_APP_REQUEST_LIMIT");return true;
+      }
+      if(this.pendingRequest?.state==="pending"
+        &&Date.now()-this.pendingRequest.at<=WORKSPACE_REQUEST_TTL){
+        fail(res,409,"LOCAL_APP_REQUEST_PENDING");return true;
+      }
       let target:unknown;
       try{
         const payload=JSON.parse(raw) as unknown;
@@ -378,6 +391,15 @@ export class LocalApplicationSession {
           raw+=String(chunk);
         }
       }catch{fail(res,400,"LOCAL_APP_PAIRING_INVALID");return true;}
+      // A second pending body or delayed request may resume after another
+      // caller has redeemed the same single-use code or the owner rebinds.
+      // All final admission conditions must be rechecked after the await.
+      if(!this.originIsExact(req)||!this.ownerStillApproved()){
+        this.revoke();fail(res,403,"LOCAL_APP_OS_BINDING_STALE");return true;
+      }
+      if(this.used||this.attempts>=MAX_PAIR_ATTEMPTS||Date.now()-this.born>PAIR_TTL){
+        fail(res,403,"LOCAL_APP_PAIRING_EXPIRED");return true;
+      }
       let code:unknown;
       try{
         const o=JSON.parse(raw) as {code?:unknown};

@@ -4,6 +4,8 @@ import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {WebSocket} from "ws";
+import {Readable} from "node:stream";
+import type {IncomingMessage,ServerResponse} from "node:http";
 import {SystemRegistry} from "../packages/registry/src/index.js";
 import {DisposableCache,ADAPTER_ERRORS} from "../packages/os-read-adapter/src/index.js";
 import {QueryRouter,SubscriptionHub,startGateway} from "../apps/gateway/src/index.js";
@@ -47,6 +49,33 @@ async function expectWsStatus(url:string,code:number,headers:Record<string,strin
     ws.on("error",()=>{});
   });
 }
+/** Deterministic partial HTTP body, suspended after initial authorization.
+ * Exercises native session HTTP handlers without TCP/socket scheduling races. */
+function heldLocalPost(port:number,path:string,payload:unknown,cookie?:string){
+  let release:()=>void=()=>{},markEntered:()=>void=()=>{};
+  const gate=new Promise<void>(resolve=>release=resolve);
+  const entered=new Promise<void>(resolve=>markEntered=resolve);
+  const text=json(payload);
+  const stream=Readable.from((async function*(){
+    yield Buffer.from(text.slice(0,Math.max(1,Math.floor(text.length/2))));
+    markEntered();
+    await gate;
+    yield Buffer.from(text.slice(Math.max(1,Math.floor(text.length/2))));
+  })());
+  const req=Object.assign(stream,{
+    method:"POST",url:path,headers:{
+      host:"127.0.0.1:"+port,origin:"http://127.0.0.1:"+port,
+      "content-type":"application/json",...(cookie?{cookie}:{}),
+    },
+  }) as unknown as IncomingMessage;
+  const result={status:0,body:""};
+  const res={
+    writeHead(status:number){result.status=status;return this;},
+    end(value?:unknown){result.body=String(value??"");return this;},
+  } as unknown as ServerResponse;
+  return {req,res,result,entered,release};
+}
+
 describe("MC2 trusted local application pairing and HttpOnly session boundary",()=>{
   const roots:string[]=[];
   const closers:Array<()=>Promise<void>>=[];
@@ -588,6 +617,65 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     }
     assert.equal(requests.length,5);
     assert.equal((await send({workspaceId:"film"})).status,429);
+  });
+  it("honors a one-time pairing code if overlapping HTTP bodies complete out of order",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const srv=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>srv.close());
+    const base="http://127.0.0.1:"+srv.port;
+    const code=session.pairingCode();
+    const stalled=heldLocalPost(srv.port,"/local-app/pair",{code});
+    const pending=session.handle(stalled.req,stalled.res);
+    try{
+      await stalled.entered;
+      const first=await fetch(base+"/local-app/pair",{
+        method:"POST",headers:secureHeaders(srv.port),body:json({code}),
+      });
+      assert.equal(first.status,200,"the first complete redemption must succeed");
+      const cookie=(first.headers.get("set-cookie")??"").split(";")[0];
+      stalled.release();
+      assert.equal(await pending,true);
+      assert.equal(stalled.result.status,403,
+        "second previously admitted request must not redeem an already-used code");
+      assert.equal(JSON.parse(stalled.result.body).error.code,"LOCAL_APP_PAIRING_EXPIRED");
+      const active=await fetch(base+"/local-app/session",{headers:{cookie}});
+      assert.equal(active.status,200,
+        "denied duplicate request must not invalidate the first valid session");
+    }finally{stalled.release();}
+  });
+  it("cannot queue a workspace request after logout during its HTTP body read",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const received:Array<{id:string;workspaceId:string}>=[];
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    session.setWorkspaceRequestListener(x=>received.push(x));
+    const srv=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>srv.close());
+    const base="http://127.0.0.1:"+srv.port;
+    const paired=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(srv.port),
+      body:json({code:session.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    const cookie=(paired.headers.get("set-cookie")??"").split(";")[0];
+    const stalled=heldLocalPost(srv.port,"/local-app/workspace-request",
+      {workspaceId:"film"},cookie);
+    const pending=session.handle(stalled.req,stalled.res);
+    try{
+      await stalled.entered;
+      const logout=await fetch(base+"/local-app/logout",{
+        method:"POST",headers:secureHeaders(srv.port,undefined,cookie),
+      });
+      assert.equal(logout.status,200);
+      stalled.release();
+      assert.equal(await pending,true);
+      assert.equal(stalled.result.status,403);
+      assert.equal(received.length,0,
+        "revoked browser must not notify the trusted host about an old request");
+      assert.equal(session.pendingWorkspaceRequestForHost(),null);
+    }finally{stalled.release();}
   });
   it("locks pairing after five incorrect attempts without accepting the correct code",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
