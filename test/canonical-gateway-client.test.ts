@@ -174,10 +174,7 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
     const fetchFn:typeof fetch=async url=>{
       const path=new URL(String(url)).pathname;
       requests.push(path);
-      return path.endsWith("/events")
-        ?new Response("event: run.started\\ndata: {}\\n\\n",{
-          headers:{"content-type":"text/event-stream"}})
-        :json(run());
+      return json(run());
     };
     const client=new CanonicalGatewayClient(binding({
       resolveBearer:()=>{
