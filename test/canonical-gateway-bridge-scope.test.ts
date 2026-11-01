@@ -169,6 +169,30 @@ describe("MC2.2 trusted canonical Gateway scope bridge",()=>{
       assert.deepEqual(f.calls.map(x=>x.path),["/status","/v1/models"]);
     }finally{f.cleanup();}
   });
+  it("never opens SSE under an OS lease rotated during bearer resolution",async()=>{
+    let credentials=0;
+    const f=fixture(false,undefined,()=>{
+      credentials++;
+      // First bearer reads the scoped run. Second belongs to /events.
+      if(credentials===2)f.reg.rebind(f.system,f.root);
+    });
+    try{
+      let delivered=0;
+      let cancel:()=>void=()=>{};
+      const outcome=await new Promise<string>(resolve=>{
+        const deadline=setTimeout(()=>resolve("NO_RESPONSE"),1500);
+        cancel=f.bridge.openEventStream(f.system,"operator","run-a",
+          ()=>{delivered++;},
+          code=>{clearTimeout(deadline);resolve(code);});
+      });
+      cancel();
+      assert.equal(outcome,"GATEWAY_MAPPING_STALE");
+      assert.equal(credentials,2);
+      assert.equal(delivered,0);
+      assert.deepEqual(f.calls.map(x=>x.path),["/v1/runs/run-a"],
+        "revoked owner cannot open the upstream events stream");
+    }finally{f.cleanup();}
+  });
   it("revokes Stop after a valid scoped GET but before control dispatch",async()=>{
     let resolutions=0;
     const f=fixture(true,undefined,()=>{
