@@ -355,7 +355,8 @@ export class CanonicalGatewayClient {
    * Reconnect is caller-owned and replays from the start; no cursor supported.
    * Caller must deduplicate/rebuild the scoped presentation projection.
    */
-  async subscribeRun(runId: string, onEvent: (event: GatewayEvent) => void, signal?: AbortSignal): Promise<void> {
+  async subscribeRun(runId: string, onEvent: (event: GatewayEvent) => void,
+    signal?: AbortSignal, validateBeforeDispatch?:()=>void): Promise<void> {
     await this.getRun(runId,signal);
     const lease=this.signal(signal);
     const deadline=setTimeout(()=>lease.controller.abort(),this.timeoutMs);
@@ -368,6 +369,9 @@ export class CanonicalGatewayClient {
       if(lease.controller.signal.aborted)
         throw new GatewayTransportError(this.invalidated?"STALE_BINDING":"ABORTED");
       this.check();
+      // The OS owner can change while its credential resolver awaits. This
+      // host-owned synchronous lease check fences the outbound SSE read.
+      validateBeforeDispatch?.();
       const res=await this.fetchFn(this.origin+"/v1/runs/"+safeId(runId)+"/events",{
         method:"GET",headers:{authorization:"Bearer "+bearer,accept:"text/event-stream"},signal:lease.controller.signal,
         redirect:"error",
