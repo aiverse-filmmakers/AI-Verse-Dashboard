@@ -40,7 +40,8 @@ function fixture(allowRunCancel=false,
           }]:[]}
       :path==="/v1/sessions/session-a/runs"?
         {object:"list",has_more:false,next_offset:null,data:[]}
-      :path==="/v1/runs"||path==="/v1/runs/run-a"?run
+      :path==="/v1/runs"||path==="/v1/runs/run-a"
+        ||path==="/v1/runs/run-a/cancel"?run
       :{error:{code:"NOT_FOUND"}};
     return new Response(JSON.stringify(body),{status:200,
       headers:{"content-type":"application/json"}});
