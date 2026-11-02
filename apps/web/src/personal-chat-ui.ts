@@ -346,6 +346,7 @@ export class PersonalChatApplication {
     if(restored.view.phase==="interrupted")
       pane.status.textContent="History unavailable · "+(restored.view.errorCode??"CHAT_HISTORY_UNAVAILABLE");
     else pane.status.textContent=restored.view.phase+" · "+sessionId+
+      (restored.view.errorCode?" · "+restored.view.errorCode:"")+
       (restored.view.contextLimited?" · Earlier conversation context unavailable or trimmed":"");
     this.historyPanel.hidden=true;
     this.historyEpoch++;
