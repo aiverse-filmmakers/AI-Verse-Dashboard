@@ -355,6 +355,7 @@ export class CanonicalGatewayBridge {
           // The real canonical /v1/models currently advertises exactly one
           // virtual Gateway model. Never invent physical provider choices.
           const value=await client.preflight(signal);
+          validateEffectLease();
           const runtimeKind=/^[a-z][a-z0-9_-]{0,31}$/.test(value.runtime)
             ?value.runtime:"unavailable";
           return respond(true,{
@@ -368,13 +369,16 @@ export class CanonicalGatewayBridge {
         if(frame.method==="aiverse.gateway.session.list"){
           const parsed=pageInput.safeParse(frame.params??{});
           if(!parsed.success)throw new GatewayTransportError("INVALID_ENVELOPE");
-          return respond(true,{...await client.listSessions({...parsed.data,signal}),
-            source:"canonical-gateway",workspaceId:workspace});
+          const page=await client.listSessions({...parsed.data,signal});
+          validateEffectLease();
+          return respond(true,{...page,source:"canonical-gateway",workspaceId:workspace});
         }
         if(frame.method==="aiverse.gateway.session.runs"){
           const parsed=historyInput.safeParse(frame.params);
           if(!parsed.success)throw new GatewayTransportError("INVALID_ENVELOPE");
-          return respond(true,{...await client.listSessionRuns({...parsed.data,signal}),
+          const page=await client.listSessionRuns({...parsed.data,signal});
+          validateEffectLease();
+          return respond(true,{...page,
             source:"canonical-gateway",workspaceId:workspace,sessionId:parsed.data.sessionId});
         }
         if(frame.method==="aiverse.gateway.run.create"){
@@ -515,7 +519,9 @@ export class CanonicalGatewayBridge {
           const parse=getInput.safeParse(frame.params);
           if(!parse.success)throw new GatewayTransportError("INVALID_ENVELOPE");
           const args=parse.data;
-          return respond(true,boundedRun(await client.getRun(args.runId,signal)));
+          const run=await client.getRun(args.runId,signal);
+          validateEffectLease();
+          return respond(true,boundedRun(run));
         }
         return respond(false,undefined,"UNKNOWN_METHOD");
       }finally{

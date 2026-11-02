@@ -38,6 +38,8 @@ function fixture(allowRunCancel=false,
             session_id:"session-outside",system_id:"canonical-a",
             workspace_id:"film",status:"active",
           }]:[]}
+      :path==="/v1/sessions/session-a/runs"?
+        {object:"list",has_more:false,next_offset:null,data:[]}
       :path==="/v1/runs"||path==="/v1/runs/run-a"?run
       :{error:{code:"NOT_FOUND"}};
     return new Response(JSON.stringify(body),{status:200,
@@ -104,6 +106,29 @@ describe("MC2.2 trusted canonical Gateway scope bridge",()=>{
       assert.equal(out.error?.code,"GATEWAY_MAPPING_STALE");
       assert.deepEqual(f.calls.map(x=>x.path),["/status","/v1/models","/v1/sessions"]);
     }finally{f.cleanup();}
+  });
+  it("never projects completed owner reads if registry generation changes in flight",async()=>{
+    const methods=[
+      {method:"aiverse.gateway.models",path:"/v1/models",params:{}},
+      {method:"aiverse.gateway.session.list",path:"/v1/sessions",params:{}},
+      {method:"aiverse.gateway.session.runs",path:"/v1/sessions/session-a/runs",
+        params:{sessionId:"session-a"}},
+      {method:"aiverse.gateway.run.get",path:"/v1/runs/run-a",
+        params:{runId:"run-a"}},
+    ];
+    for(const {method,path,params} of methods){
+      const f=fixture(false,request=>{
+        if(request===path)f.reg.rebind(f.system,f.root);
+      },undefined,"available");
+      try{
+        const out=await f.bridge.handle(f.frame(method,params));
+        assert.equal(out.ok,false,method+" must deny old-owner read projection");
+        assert.equal(out.error?.code,"GATEWAY_MAPPING_STALE");
+        assert.equal(f.calls.at(-1)?.path,path);
+        assert.equal(JSON.stringify(out).includes("Visible answer"),false,
+          "denied read must not carry private run output");
+      }finally{f.cleanup();}
+    }
   });
   it("projects only allowed run fields and refuses owner-less cancel",async()=>{
     const f=fixture();
