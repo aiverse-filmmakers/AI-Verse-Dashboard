@@ -759,6 +759,94 @@ describe("Personal Chat canonical run controller",()=>{
    assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.cancel").length,1);
    assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.get").length,1);
  });
+ it("rejects inconsistent initial history pagination before admitting a conversation",async()=>{
+   const first={run_id:"history-1",session_id:"session-a",status:"completed",
+     user_text:"One prompt",output:"Verified answer",
+     user_text_truncated:false,output_truncated:false};
+   const malformed=[
+     {data:[first],has_more:false,next_offset:25},
+     {data:[],has_more:true,next_offset:25},
+     {data:[first],has_more:true,next_offset:0},
+     {data:[first],has_more:true,next_offset:10_001},
+     {data:[first],has_more:false,next_offset:0},
+   ];
+   for(const page of malformed){
+     const {client,calls}=clientWith(method=>{
+       assert.equal(method,"aiverse.gateway.session.runs");
+       return {source:"canonical-gateway",workspaceId:"film",sessionId:"session-a",
+         ...page};
+     });
+     const chat=new PersonalChatRunController(client,testFeed().feed);
+     const opened=await chat.openSession("session-a");
+     assert.equal(opened.view.phase,"interrupted");
+     assert.equal(opened.view.errorCode,"CHAT_HISTORY_INVALID");
+     assert.equal(opened.turns.length,0);
+     assert.equal(opened.view.output,"");
+     assert.equal(opened.view.runId,undefined);
+     assert.deepEqual(calls.map(c=>c.method),["aiverse.gateway.session.runs"]);
+     await assert.rejects(chat.send("Not an authenticated history","fresh-run"),
+       (e:unknown)=>(e as {code?:string}).code==="CHAT_PREVIOUS_RUN_UNRESOLVED");
+   }
+ });
+ it("duplicate runs across first two pages do not enter confirmed model context",async()=>{
+   const row=(n:number)=>({run_id:"history-"+n,session_id:"session-a",
+     status:"completed",user_text:"Prompt "+n,output:"Answer "+n,
+     user_text_truncated:false,output_truncated:false});
+   const {client,calls}=clientWith((method,params)=>{
+     assert.equal(method,"aiverse.gateway.session.runs");
+     const offset=Number(params?.offset??0);
+     return {source:"canonical-gateway",workspaceId:"film",sessionId:"session-a",
+       data:offset===0?Array.from({length:25},(_,i)=>row(50-i)):[row(50)],
+       has_more:offset===0,next_offset:offset===0?25:null};
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   const opened=await chat.openSession("session-a");
+   assert.equal(opened.view.phase,"interrupted");
+   assert.equal(opened.view.errorCode,"CHAT_HISTORY_DUPLICATE_RUN");
+   assert.deepEqual(opened.turns,[]);
+   assert.equal(opened.view.sessionId,undefined);
+   assert.deepEqual(calls.map(x=>x.params?.offset),[0,25]);
+ });
+ it("truncated newest canonical history remains recovery-required until verified owner GET",async()=>{
+   const older={run_id:"history-1",session_id:"session-a",
+     status:"completed",user_text:"Older user",output:"Older verified answer",
+     user_text_truncated:false,output_truncated:false};
+   const newest={run_id:"run-a",session_id:"session-a",
+     status:"completed",user_text:"Latest user",output:"Truncated owner reply",
+     user_text_truncated:false,output_truncated:true};
+   const {client,calls}=clientWith((method)=>{
+     if(method==="aiverse.gateway.session.runs")
+       return {source:"canonical-gateway",workspaceId:"film",sessionId:"session-a",
+         data:[newest,older],has_more:false,next_offset:null};
+     if(method==="aiverse.gateway.run.get")
+       return run("completed",{output:"Complete canonical owner answer"});
+     if(method==="aiverse.gateway.run.create")return run("running");
+     throw Error("Unexpected Gateway read "+method);
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   const opened=await chat.openSession("session-a");
+   assert.equal(opened.view.phase,"recovery-required");
+   assert.equal(opened.view.errorCode,"CHAT_HISTORY_FINAL_UNVERIFIED");
+   assert.equal(opened.view.output,"");
+   assert.equal(opened.view.runId,"run-a");
+   assert.equal(opened.view.contextLimited,true);
+   assert.ok(opened.turns.some(x=>x.content==="Truncated owner reply"),
+     "historical display is permitted but incomplete");
+   const checked=await chat.refreshStatus();
+   assert.equal(checked.phase,"completed");
+   assert.equal(checked.output,"Complete canonical owner answer");
+   await chat.send("Fresh follow-up","continued-once");
+   const submit=calls.find(x=>x.method==="aiverse.gateway.run.create");
+   assert.equal(submit?.params?.sessionId,"session-a");
+   assert.deepEqual(submit?.params?.messages,[
+     {role:"user",content:"Older user"},
+     {role:"assistant",content:"Older verified answer"},
+     {role:"user",content:"Fresh follow-up"},
+   ]);
+   assert.equal(chat.snapshot().contextLimited,true);
+   assert.doesNotMatch(JSON.stringify(submit?.params?.messages),/Truncated owner reply/);
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+ });
  it("opens canonical 50-run transcript then loads older 25+3 without changing model context",async()=>{
    const fixtureRows=Array.from({length:78},(_,index)=>{
      const number=78-index,id=String(number).padStart(3,"0");
