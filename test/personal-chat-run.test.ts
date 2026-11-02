@@ -437,6 +437,61 @@ describe("Personal Chat canonical run controller",()=>{
    assert.equal(chat.snapshot().runId,undefined);
    assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.pause").length,1);
  });
+ it("Check run cannot mark a missing final owner output completed",async()=>{
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.get")return run("completed");
+     throw Error("Unexpected method "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("One canonical action","create-once");
+   f.watchers[0].handlers.event(event("assistant.delta",1,"UNVERIFIED DRAFT"));
+   const status=await chat.refreshStatus();
+   assert.equal(status.phase,"interrupted");
+   assert.equal(status.errorCode,"CHAT_CANONICAL_OUTPUT_MISSING");
+   assert.equal(status.output,"");
+   assert.equal(status.runId,"run-a");
+   assert.equal(f.watchers[0].cancelled,true);
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+ });
+ it("Stop and Pause never promote a completed control response with missing owner output",async()=>{
+   for(const action of ["stop","pause"] as const){
+     const {client,calls}=clientWith(method=>{
+       if(method==="aiverse.gateway.run.create")return run("running");
+       if(method==="aiverse.gateway.run.cancel"||
+         method==="aiverse.gateway.run.pause")return run("completed");
+       throw Error("Unexpected method "+method);
+     });
+     const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+     await chat.send("Long task","one-start");
+     const view=action==="stop"
+       ?await chat.stop("stop-once"):await chat.checkpoint("pause","pause-once");
+     assert.equal(view.phase,"interrupted");
+     assert.equal(view.errorCode,"CHAT_CANONICAL_OUTPUT_MISSING");
+     assert.equal(view.runId,"run-a");
+     assert.equal(view.output,"");
+     assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+     assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.cancel"
+       ||x.method==="aiverse.gateway.run.pause").length,1);
+   }
+ });
+ it("Stop collision fallback does not accept completed history without owner output",async()=>{
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.cancel")
+       throw Object.assign(Error("terminal"),{code:"RUN_NOT_CANCELABLE"});
+     if(method==="aiverse.gateway.run.get")return run("completed");
+     throw Error("Unexpected method "+method);
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   await chat.send("One instruction","create-once");
+   const state=await chat.stop("stop-once");
+   assert.equal(state.phase,"interrupted");
+   assert.equal(state.runId,"run-a");
+   assert.notEqual(state.phase,"completed");
+   assert.deepEqual(calls.map(x=>x.method),[
+     "aiverse.gateway.run.create","aiverse.gateway.run.cancel","aiverse.gateway.run.get"]);
+ });
  it("Check run reflects another client's Pause and Resume via authenticated GET only",async()=>{
    let status="running";
    const {client,calls}=clientWith(method=>{

@@ -92,6 +92,12 @@ function asRun(result: unknown, expected: Required<ClientScope>, runId?: string)
     receipt,
     ...(typeof value.output==="string"?{output:value.output.slice(0,65_536)}:{})};
 }
+/** A completed run must carry a canonical final output, including an
+ * explicitly empty string. Missing output is never an approved assistant turn. */
+function requireVerifiedCompletion(run:{status:string;output?:string}):void {
+  if(run.status==="completed"&&run.output===undefined)
+    fail("CHAT_CANONICAL_OUTPUT_MISSING");
+}
 function phase(status:string):ChatRunPhase {
   switch(status){
     case "completed":return "completed";
@@ -328,6 +334,7 @@ export class PersonalChatRunController {
       if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
       const run=asRun(response.result,scope,runId);
       if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
+      requireVerifiedCompletion(run);
       this.confirmCanonicalOutput(run);
       const next=phase(run.status);
       this.show({phase:next,canonicalStatus:run.status,sessionId:run.sessionId,
@@ -345,6 +352,7 @@ export class PersonalChatRunController {
           if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
           const run=asRun(response.result,scope,runId);
           if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
+          requireVerifiedCompletion(run);
           this.confirmCanonicalOutput(run);
           const state=phase(run.status);
           this.show({phase:state,canonicalStatus:run.status,receipt:run.receipt,
@@ -375,6 +383,7 @@ export class PersonalChatRunController {
       if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
       const run=asRun(response.result,scope,runId);
       if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
+      requireVerifiedCompletion(run);
       const state=phase(run.status);
       // A delayed GET must not downgrade a locally verified terminal result.
       if(TERMINAL.has(this.view.phase)&&!TERMINAL.has(state))return this.snapshot();
@@ -396,9 +405,15 @@ export class PersonalChatRunController {
         errorCode:undefined,contextLimited:this.contextLimited});
       if(state==="running")this.subscribe(epoch,scope,selection,runId);
     }catch(error){
-      if(this.valid(epoch,scope,selection)&&this.view.runId===runId)
-        this.show({errorCode:typeof (error as {code?:unknown})?.code==="string"
-          ?(error as {code:string}).code:"CHAT_REFRESH_FAILED"});
+      if(this.valid(epoch,scope,selection)&&this.view.runId===runId){
+        const code=typeof (error as {code?:unknown})?.code==="string"
+          ?(error as {code:string}).code:"CHAT_REFRESH_FAILED";
+        if(code==="CHAT_CANONICAL_OUTPUT_MISSING"||code==="CHAT_SESSION_BINDING_MISMATCH"){
+          this.streamEpoch++;
+          this.unsubscribe?.();this.unsubscribe=undefined;
+          this.show({phase:"interrupted",output:"",errorCode:code});
+        }else this.show({errorCode:code});
+      }
     }
     return this.snapshot();
   }
@@ -427,6 +442,7 @@ export class PersonalChatRunController {
       if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
       const run=asRun(response.result,scope,runId);
       if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
+      requireVerifiedCompletion(run);
       this.confirmCanonicalOutput(run);
       const state=phase(run.status);
       if(action==="resume"&&state==="running")this.resumeMarkersRequired++;
@@ -444,6 +460,7 @@ export class PersonalChatRunController {
           if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
           const run=asRun(response.result,scope,runId);
           if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
+          requireVerifiedCompletion(run);
           this.confirmCanonicalOutput(run);
           const state=phase(run.status);
           this.show({phase:state,canonicalStatus:run.status,receipt:run.receipt,
