@@ -285,10 +285,14 @@ export class PersonalChatRunController {
       const response=await this.client.getGatewayRun(runId);
       if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
       const run=asRun(response.result,scope,runId);
-      if(this.activeRequest?.sessionId && run.sessionId!==this.activeRequest.sessionId)
+      // The current verified run/session identity, not merely a caller
+      // supplied continuation session, fences a reconnect after stream loss.
+      if(this.view.sessionId && run.sessionId!==this.view.sessionId)
         fail("CHAT_SESSION_BINDING_MISMATCH");
-      this.confirmCanonicalOutput(run);
       const nextPhase=phase(run.status);
+      if(nextPhase==="completed"&&run.output===undefined)
+        fail("CHAT_CANONICAL_OUTPUT_MISSING");
+      this.confirmCanonicalOutput(run);
       this.show({phase:nextPhase,canonicalStatus:run.status,sessionId:run.sessionId,
         receipt:run.receipt,
         output:nextPhase==="completed"?run.output??"":"",
