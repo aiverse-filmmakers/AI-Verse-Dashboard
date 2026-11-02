@@ -746,6 +746,9 @@ export class PersonalChatRunController {
       const response=await this.client.getGatewayRun(runId);
       if(!this.valid(epoch,scope,selection))return this.snapshot();
       const run=asRun(response.result,scope,runId);
+      // A manual run-ID lookup is not an exception to canonical output truth:
+      // never report a completed answer without the owner's final text.
+      requireVerifiedCompletion(run);
       this.contextLimited=true;
       // Recovered resuming runs may have unknown prior pause/resume cycles:
       // show canonical final GET, never project unverified replay as fresh.
