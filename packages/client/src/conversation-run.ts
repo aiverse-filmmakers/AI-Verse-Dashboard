@@ -534,7 +534,7 @@ export class PersonalChatRunController {
         errorCode:undefined,contextLimited:this.contextLimited});
     }catch(error){
       if(this.valid(epoch,scope,selection) && this.view.runId===runId)
-        this.show({phase:"interrupted",
+        this.show({phase:"interrupted",output:"",
           errorCode:typeof (error as {code?:unknown})?.code==="string"
             ? (error as {code:string}).code:"CHAT_RECONCILE_FAILED"});
     }
