@@ -290,6 +290,10 @@ export class PersonalChatRunController {
     try{
       const response=await this.client.getGatewayRun(runId);
       if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
+      // Another authenticated check may have completed this same run while
+      // this recovery GET was pending. Never replace that verified terminal
+      // state or start a second event stream from a stale snapshot.
+      if(TERMINAL.has(this.view.phase))return this.snapshot();
       const run=asRun(response.result,scope,runId);
       // The current verified run/session identity, not merely a caller
       // supplied continuation session, fences a reconnect after stream loss.
@@ -306,7 +310,8 @@ export class PersonalChatRunController {
       if(nextPhase==="running" || nextPhase==="submitting" || nextPhase==="interrupted")
         this.subscribe(epoch,scope,selection,runId);
     }catch(error){
-      if(this.valid(epoch,scope,selection) && this.view.runId===runId)
+      if(this.valid(epoch,scope,selection) && this.view.runId===runId
+        && !TERMINAL.has(this.view.phase))
         this.show({phase:"interrupted",errorCode:
           typeof (error as {code?:unknown})?.code==="string"
             ?(error as {code:string}).code:"CHAT_RECONNECT_FAILED"});
@@ -529,6 +534,10 @@ export class PersonalChatRunController {
     try{
       const response=await this.client.getGatewayRun(runId);
       if(!this.valid(epoch,scope,selection) || this.view.runId!==runId)return;
+      // Explicit Check run or another owner-backed path can resolve the run
+      // before this terminal-notification readback finishes. It wins over
+      // a stale GET, whether that GET returns data or later throws.
+      if(TERMINAL.has(this.view.phase))return;
       const run=asRun(response.result,scope,runId);
       // A terminal event is a hint, not a signed final result. If the owner
       // GET has not caught up, preserve the exact run for explicit GET-only
@@ -550,7 +559,8 @@ export class PersonalChatRunController {
         output:canonicalPhase==="completed"?run.output??"":"",
         errorCode:undefined,contextLimited:this.contextLimited});
     }catch(error){
-      if(this.valid(epoch,scope,selection) && this.view.runId===runId)
+      if(this.valid(epoch,scope,selection) && this.view.runId===runId
+        && !TERMINAL.has(this.view.phase))
         this.show({phase:"interrupted",output:"",
           errorCode:typeof (error as {code?:unknown})?.code==="string"
             ? (error as {code:string}).code:"CHAT_RECONCILE_FAILED"});
