@@ -387,9 +387,13 @@ export class CanonicalGatewayBridge {
           const args=parse.data;
           // A real Gateway status/identity check, not an inferred browser state.
           await client.preflight(signal);
-          return respond(true,boundedRun(await client.createRun({...args,signal,
+          const created=await client.createRun({...args,signal,
             validateBeforeDispatch:validateEffectLease,
-          })));
+          });
+          // A write may have committed upstream before an OS rebind. We
+          // cannot roll that back, but must not project stale owner success.
+          validateEffectLease();
+          return respond(true,boundedRun(created));
         }
         if(frame.method==="aiverse.gateway.run.cancel"){
           // The paired browser is not a native owner grant. Only a trusted
@@ -415,6 +419,7 @@ export class CanonicalGatewayBridge {
               if(signal?.aborted)throw new GatewayTransportError("ABORTED");
             },
           });
+          validateEffectLease();
           return respond(true,boundedRun(canceled));
         }
         if(frame.method==="aiverse.gateway.run.pause"
@@ -446,6 +451,7 @@ export class CanonicalGatewayBridge {
               if(signal?.aborted)throw new GatewayTransportError("ABORTED");
             },
           });
+          validateEffectLease();
           return respond(true,boundedRun(result));
         }
         if(frame.method==="aiverse.gateway.run.approval"){
@@ -498,6 +504,7 @@ export class CanonicalGatewayBridge {
               checkLease();
             },
           });
+          validateEffectLease();
           return respond(true,boundedRun(result));
         }
         if(frame.method==="aiverse.gateway.run.diagnostics"){
