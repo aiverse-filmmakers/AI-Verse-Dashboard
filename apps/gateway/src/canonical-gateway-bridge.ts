@@ -117,6 +117,9 @@ function boundedRun(run:GatewayRun):Record<string,unknown> {
     runId:run.run_id,sessionId:run.session_id,systemId:run.system_id,
     workspaceId:run.workspace_id,status:run.status,
     ...(typeof output==="string" ? {output:output.slice(0,65_536)} : {}),
+    // Explicitly mark clipped owner text. It must never be certified as a
+    // complete final assistant turn or silently reused for model context.
+    ...(typeof output==="string"&&output.length>65_536?{outputTruncated:true}:{}),
     ...safeRunReceipt(run),
     source:"canonical-gateway",
   };
