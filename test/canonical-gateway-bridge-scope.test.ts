@@ -9,7 +9,8 @@ import {CanonicalGatewayBridge} from "../apps/gateway/src/canonical-gateway-brid
 /** Scope-only host tests. These do NOT attach the bridge to public /rpc. */
 function fixture(allowRunCancel=false,
   onRequest?:(path:string)=>void,onCredential?:()=>void,
-  history:"unavailable"|"available"|"wrong-scope"="unavailable"){
+  history:"unavailable"|"available"|"wrong-scope"="unavailable",
+  ownerOutput="Visible answer"){
   const reg=new SystemRegistry();
   const root=mkdtempSync(join(tmpdir(),"aiverse-mc2-bridge-"));
   writeFileSync(join(root,"AI-VERSE.yaml"),
@@ -23,7 +24,7 @@ function fixture(allowRunCancel=false,
     principal:"private-owner-id",messages:[{role:"system",content:"secret"}],
     provider_token:"private-provider-token",
     usage:{input_tokens:1,output_tokens:2,actions:3,cost:987},
-    output:{content:"Visible answer"}};
+    output:{content:ownerOutput}};
   const fetchFn:typeof fetch=async(url,init={})=>{
     const path=new URL(String(url)).pathname;
     calls.push({path,method:String(init.method),auth:String((init.headers as Record<string,string>)?.authorization)});
@@ -151,6 +152,25 @@ describe("MC2.2 trusted canonical Gateway scope bridge",()=>{
         assert.deepEqual(f.calls.map(x=>x.path),[...expectedPreflight,path],
           "the upstream effect may already have been sent, but no stale success can escape");
         assert.equal(JSON.stringify(out).includes("Visible answer"),false);
+      }finally{f.cleanup();}
+    }
+  });
+  it("flags any clipped owner output without exposing content past the projection cap",async()=>{
+    for(const size of [65_536,65_537]){
+      const secret="NEVER_PROJECT_TAIL";
+      const raw="A".repeat(size)+(size>65_536?secret:"");
+      const f=fixture(false,undefined,undefined,"unavailable",raw);
+      try{
+        const response=await f.bridge.handle(f.frame("aiverse.gateway.run.get",{
+          runId:"run-a",
+        }));
+        assert.equal(response.ok,true);
+        const run=response.result as {output:string;outputTruncated?:boolean};
+        assert.equal(run.output.length,65_536);
+        assert.equal(run.outputTruncated,size>65_536);
+        assert.equal(JSON.stringify(response).includes(secret),false,
+          "all text beyond the bounded output must remain owner-only");
+        assert.equal(f.calls.filter(x=>x.path==="/v1/runs/run-a").length,1);
       }finally{f.cleanup();}
     }
   });
