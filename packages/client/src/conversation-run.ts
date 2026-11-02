@@ -43,6 +43,7 @@ function current(scope: Required<ClientScope>, other: ClientScope): boolean {
 }
 function asRun(result: unknown, expected: Required<ClientScope>, runId?: string): {
   runId: string; sessionId: string; status: string; output?: string;
+  outputTruncated?:boolean;
   receipt:ChatRunReceipt;
 } {
   if (!result || typeof result !== "object" || Array.isArray(result))
@@ -55,7 +56,8 @@ function asRun(result: unknown, expected: Required<ClientScope>, runId?: string)
     || (runId !== undefined && value.runId !== runId)
     || typeof value.systemId !== "string" || !value.systemId
     || value.source !== "canonical-gateway"
-    || (value.output !== undefined && typeof value.output !== "string"))
+    || (value.output !== undefined && typeof value.output !== "string")
+    || (value.outputTruncated !== undefined && typeof value.outputTruncated !== "boolean"))
     fail("INVALID_RUN_PROJECTION");
   // Exact, bounded fields only. All raw cost is intentionally omitted because
   // the Token owner, not Gateway counters, owns verifiable billed cost truth.
@@ -90,13 +92,19 @@ function asRun(result: unknown, expected: Required<ClientScope>, runId?: string)
   // host bridge verifies the latter against its admitted private mapping.
   return {runId:value.runId,sessionId:value.sessionId,status:value.status,
     receipt,
-    ...(typeof value.output==="string"?{output:value.output.slice(0,65_536)}:{})};
+    ...(typeof value.output==="string"?{output:value.output.slice(0,65_536)}:{}),
+    ...(value.outputTruncated===true
+      ||(typeof value.output==="string"&&value.output.length>65_536)
+        ?{outputTruncated:true}:{})};
 }
 /** A completed run must carry a canonical final output, including an
  * explicitly empty string. Missing output is never an approved assistant turn. */
-function requireVerifiedCompletion(run:{status:string;output?:string}):void {
-  if(run.status==="completed"&&run.output===undefined)
-    fail("CHAT_CANONICAL_OUTPUT_MISSING");
+function requireVerifiedCompletion(run:{
+  status:string;output?:string;outputTruncated?:boolean;
+}):void {
+  if(run.status!=="completed")return;
+  if(run.outputTruncated)fail("CHAT_CANONICAL_OUTPUT_TRUNCATED");
+  if(run.output===undefined)fail("CHAT_CANONICAL_OUTPUT_MISSING");
 }
 /** Surface a verified owner-readback contract failure rather than masking
  * it with the initial control-state refusal. Transport uncertainty remains
@@ -104,6 +112,7 @@ function requireVerifiedCompletion(run:{status:string;output?:string}):void {
 function canonicalReadbackError(error:unknown):string|undefined{
   const code=(error as {code?:unknown})?.code;
   return code==="CHAT_CANONICAL_OUTPUT_MISSING"
+    ||code==="CHAT_CANONICAL_OUTPUT_TRUNCATED"
     ||code==="CHAT_SESSION_BINDING_MISMATCH"?code:undefined;
 }
 function phase(status:string):ChatRunPhase {
@@ -208,8 +217,11 @@ export class PersonalChatRunController {
     }
     return kept.flat().map(x=>({...x}));
   }
-  private confirmCanonicalOutput(run:{runId:string;status:string;output?:string}):void{
-    if(run.status!=="completed"||run.output===undefined||!this.activeRequest
+  private confirmCanonicalOutput(run:{
+    runId:string;status:string;output?:string;outputTruncated?:boolean;
+  }):void{
+    if(run.status!=="completed"||run.output===undefined||run.outputTruncated
+      ||!this.activeRequest
       ||this.confirmedRunId===run.runId)return;
     // Future messages use only the canonical GET result, never speculative SSE.
     this.confirmedRunId=run.runId;
@@ -309,8 +321,7 @@ export class PersonalChatRunController {
       if(this.view.sessionId && run.sessionId!==this.view.sessionId)
         fail("CHAT_SESSION_BINDING_MISMATCH");
       const nextPhase=phase(run.status);
-      if(nextPhase==="completed"&&run.output===undefined)
-        fail("CHAT_CANONICAL_OUTPUT_MISSING");
+      requireVerifiedCompletion(run);
       this.confirmCanonicalOutput(run);
       this.show({phase:nextPhase,canonicalStatus:run.status,sessionId:run.sessionId,
         receipt:run.receipt,
@@ -432,7 +443,9 @@ export class PersonalChatRunController {
         && checkEpoch===this.statusRefreshEpoch){
         const code=typeof (error as {code?:unknown})?.code==="string"
           ?(error as {code:string}).code:"CHAT_REFRESH_FAILED";
-        if(code==="CHAT_CANONICAL_OUTPUT_MISSING"||code==="CHAT_SESSION_BINDING_MISMATCH"){
+        if(code==="CHAT_CANONICAL_OUTPUT_MISSING"
+          ||code==="CHAT_CANONICAL_OUTPUT_TRUNCATED"
+          ||code==="CHAT_SESSION_BINDING_MISMATCH"){
           this.streamEpoch++;
           this.unsubscribe?.();this.unsubscribe=undefined;
           this.show({phase:"interrupted",output:"",errorCode:code});
@@ -568,11 +581,14 @@ export class PersonalChatRunController {
         fail("CHAT_SESSION_BINDING_MISMATCH");
       const canonicalPhase=phase(run.status);
       if(!TERMINAL.has(canonicalPhase)
-        ||(canonicalPhase==="completed"&&run.output===undefined)){
+        ||(canonicalPhase==="completed"
+          &&(run.output===undefined||run.outputTruncated))){
         this.show({phase:"interrupted",canonicalStatus:run.status,
           receipt:run.receipt,output:"",
           errorCode:canonicalPhase==="completed"
-            ?"CHAT_CANONICAL_OUTPUT_MISSING":"CHAT_TERMINAL_UNCONFIRMED"});
+            ?run.outputTruncated?"CHAT_CANONICAL_OUTPUT_TRUNCATED"
+              :"CHAT_CANONICAL_OUTPUT_MISSING"
+            :"CHAT_TERMINAL_UNCONFIRMED"});
         return;
       }
       this.confirmCanonicalOutput(run);
