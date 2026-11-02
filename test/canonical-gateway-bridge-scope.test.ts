@@ -40,7 +40,8 @@ function fixture(allowRunCancel=false,
           }]:[]}
       :path==="/v1/sessions/session-a/runs"?
         {object:"list",has_more:false,next_offset:null,data:[]}
-      :path==="/v1/runs"||path==="/v1/runs/run-a"?run
+      :path==="/v1/runs"||path==="/v1/runs/run-a"
+        ||path==="/v1/runs/run-a/cancel"?run
       :{error:{code:"NOT_FOUND"}};
     return new Response(JSON.stringify(body),{status:200,
       headers:{"content-type":"application/json"}});
@@ -127,6 +128,29 @@ describe("MC2.2 trusted canonical Gateway scope bridge",()=>{
         assert.equal(f.calls.at(-1)?.path,path);
         assert.equal(JSON.stringify(out).includes("Visible answer"),false,
           "denied read must not carry private run output");
+      }finally{f.cleanup();}
+    }
+  });
+  it("does not return old-owner success when run POST completes after OS rebind",async()=>{
+    const cases=[
+      {method:"aiverse.gateway.run.create",path:"/v1/runs",
+        params:{messages:[{role:"user",content:"One submission"}],
+          idempotencyKey:"run-rebind-after-effect"},expectedPreflight:["/status","/v1/models"]},
+      {method:"aiverse.gateway.run.cancel",path:"/v1/runs/run-a/cancel",
+        params:{runId:"run-a",sessionId:"session-a",
+          operationId:"stop-rebind-after-effect"},expectedPreflight:["/v1/runs/run-a"]},
+    ];
+    for(const {method,path,params,expectedPreflight} of cases){
+      const f=fixture(true,request=>{
+        if(request===path)f.reg.rebind(f.system,f.root);
+      });
+      try{
+        const out=await f.bridge.handle(f.frame(method,params));
+        assert.equal(out.ok,false,method+" must not report success to revoked scope");
+        assert.equal(out.error?.code,"GATEWAY_MAPPING_STALE");
+        assert.deepEqual(f.calls.map(x=>x.path),[...expectedPreflight,path],
+          "the upstream effect may already have been sent, but no stale success can escape");
+        assert.equal(JSON.stringify(out).includes("Visible answer"),false);
       }finally{f.cleanup();}
     }
   });
