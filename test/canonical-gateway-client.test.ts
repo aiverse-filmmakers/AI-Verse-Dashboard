@@ -67,6 +67,36 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
     await errorCode(badCredential.client.preflight(),"GATEWAY_CREDENTIAL_UNAVAILABLE");
     assert.equal(badCredential.requests.length,0);
   });
+  it("marks locally clipped history fields incomplete even when owner flags them complete",async()=>{
+    for(const exceeds of [false,true]){
+      const user="u".repeat(exceeds?4097:4096);
+      const answer="a".repeat(exceeds?12001:12000);
+      const {client,requests}=fixture(()=>json({object:"list",
+        data:[{run_id:"run-1",session_id:"session-1",status:"completed",
+          user_text:user,output:answer,
+          user_text_truncated:false,output_truncated:false}],
+        has_more:false,next_offset:null}));
+      const page=await client.listSessionRuns({sessionId:"session-1",limit:25});
+      assert.equal(page.data.length,1);
+      assert.equal(page.data[0].user_text,(exceeds?user.slice(0,4096):user));
+      assert.equal(page.data[0].output,(exceeds?answer.slice(0,12000):answer));
+      assert.equal(page.data[0].user_text_truncated,exceeds);
+      assert.equal(page.data[0].output_truncated,exceeds);
+      assert.deepEqual(requests.map(x=>x.path),["/v1/sessions/session-1/runs"]);
+    }
+  });
+  it("preserves owner history truncation flags even for short projected fields",async()=>{
+    const {client}=fixture(()=>json({object:"list",
+      data:[{run_id:"run-1",session_id:"session-1",status:"completed",
+        user_text:"short user",output:"short reply",
+        user_text_truncated:true,output_truncated:true}],
+      has_more:false,next_offset:null}));
+    const page=await client.listSessionRuns({sessionId:"session-1"});
+    assert.equal(page.data[0].user_text_truncated,true);
+    assert.equal(page.data[0].output_truncated,true);
+    assert.equal(page.data[0].user_text,"short user");
+    assert.equal(page.data[0].output,"short reply");
+  });
   it("creates explicitly scoped runs with stable idempotency, no accidental second chat call",async()=>{
     const {client,requests}=fixture(url=>url.pathname==="/v1/runs"
       ?json(run(),202):json({error:{code:"NOT_FOUND"}} ,404));
