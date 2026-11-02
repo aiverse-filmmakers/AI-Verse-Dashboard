@@ -561,9 +561,61 @@ describe("Personal Chat canonical run controller",()=>{
    const state=await chat.stop("stop-once");
    assert.equal(state.phase,"interrupted");
    assert.equal(state.runId,"run-a");
+   assert.equal(state.errorCode,"CHAT_CANONICAL_OUTPUT_MISSING",
+     "owner's precise readback defect must not be masked by Stop conflict");
    assert.notEqual(state.phase,"completed");
    assert.deepEqual(calls.map(x=>x.method),[
      "aiverse.gateway.run.create","aiverse.gateway.run.cancel","aiverse.gateway.run.get"]);
+ });
+ it("Pause and Resume conflict expose an invalid owner final readback without repeating controls",async()=>{
+   for(const action of ["pause","resume"] as const){
+     let pauseCalls=0;
+     const {client,calls}=clientWith(method=>{
+       if(method==="aiverse.gateway.run.create")return run("running");
+       if(method==="aiverse.gateway.run.pause"){
+         pauseCalls++;
+         if(action==="resume")return run("paused");
+         throw Object.assign(Error("already terminal"),{code:"RUN_NOT_PAUSABLE"});
+       }
+       if(method==="aiverse.gateway.run.resume")
+         throw Object.assign(Error("cannot resume terminal"),{code:"RUN_NOT_RESUMABLE"});
+       if(method==="aiverse.gateway.run.get")return run("completed");
+       throw Error("Unexpected method "+method);
+     });
+     const chat=new PersonalChatRunController(client,testFeed().feed);
+     await chat.send("One run","create-once");
+     if(action==="resume"){
+       assert.equal((await chat.checkpoint("pause","pause-once")).phase,"paused");
+     }
+     const result=await chat.checkpoint(action,action+"-once");
+     assert.equal(result.phase,"interrupted");
+     assert.equal(result.runId,"run-a");
+     assert.equal(result.errorCode,"CHAT_CANONICAL_OUTPUT_MISSING");
+     assert.equal(result.output,"");
+     assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+     assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run."+action).length,1);
+     assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.get").length,1);
+     assert.equal(pauseCalls,1);
+   }
+ });
+ it("Stop control conflict reports owner session mismatch instead of stale refusal",async()=>{
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.cancel")
+       throw Object.assign(Error("cannot cancel"),{code:"RUN_NOT_CANCELABLE"});
+     if(method==="aiverse.gateway.run.get")return run("completed",{
+       sessionId:"other-session",output:"OTHER SESSION PRIVATE ANSWER",
+     });
+     throw Error("Unexpected method "+method);
+   });
+   const chat=new PersonalChatRunController(client,testFeed().feed);
+   await chat.send("One run","create-once");
+   const result=await chat.stop("stop-once");
+   assert.equal(result.phase,"interrupted");
+   assert.equal(result.errorCode,"CHAT_SESSION_BINDING_MISMATCH");
+   assert.equal(result.output,"");
+   assert.equal(result.sessionId,"session-a");
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.cancel").length,1);
  });
  it("latest Check run status wins even if an older owner GET resolves last",async()=>{
    for(const state of [
