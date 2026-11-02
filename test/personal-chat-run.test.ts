@@ -976,6 +976,36 @@ describe("Personal Chat canonical run controller",()=>{
    assert.equal(watchers.length,0,"do not fake or auto-resume a recovered Gateway run");
    assert.equal(calls.length,1);
  });
+ it("manual run ID recovery refuses a completed owner record with no final output",async()=>{
+   const {client,calls}=clientWith(method=>{
+     assert.equal(method,"aiverse.gateway.run.get");
+     return run("completed");
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   const recovered=await chat.recover("run-a");
+   assert.equal(recovered.phase,"interrupted");
+   assert.equal(recovered.errorCode,"CHAT_CANONICAL_OUTPUT_MISSING");
+   assert.equal(recovered.output,"");
+   assert.equal(recovered.runId,undefined,
+     "an invalid completion must not be admitted as a usable conversation");
+   assert.equal(f.watchers.length,0);
+   assert.deepEqual(calls.map(x=>x.method),["aiverse.gateway.run.get"]);
+ });
+ it("manual recovery accepts explicitly empty canonical final output",async()=>{
+   const {client,calls}=clientWith(method=>{
+     assert.equal(method,"aiverse.gateway.run.get");
+     return run("completed",{output:""});
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   const recovered=await chat.recover("run-a");
+   assert.equal(recovered.phase,"completed");
+   assert.equal(recovered.runId,"run-a");
+   assert.equal(recovered.sessionId,"session-a");
+   assert.equal(recovered.output,"");
+   assert.equal(recovered.contextLimited,true);
+   assert.equal(f.watchers.length,0);
+   assert.deepEqual(calls.map(x=>x.method),["aiverse.gateway.run.get"]);
+ });
  it("retries an uncertain create with the identical idempotency key",async()=>{
    let attempt=0;
    const {client,calls}=clientWith(method=>{
