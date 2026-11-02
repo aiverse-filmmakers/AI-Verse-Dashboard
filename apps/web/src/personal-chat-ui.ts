@@ -45,6 +45,9 @@ interface Pane {
   historyLoading?:boolean;
   historyError?:string;
   historyNotice?:string;
+  /** Only an exact owner-backed GET for this same run may replace its
+   * incomplete history excerpt. No speculative stream text is admitted. */
+  pendingHistoryFinal?:{runId:string;outputIndex?:number};
   min?:boolean;
 }
 const MAX_PANES=3;
@@ -174,6 +177,7 @@ export class PersonalChatApplication {
       pane.turns=[];pane.activeTurn=-1;
       pane.findQuery="";pane.findInput.value="";pane.findCursor=0;pane.findOpen=false;
       pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
+      pane.pendingHistoryFinal=undefined;
       pane.run.retarget(this.selected);
       const scopeLabel=pane.node.querySelector(".live-chat-scope");
       if(scopeLabel)scopeLabel.textContent="Workspace: "+next.workspaceId;
@@ -327,11 +331,15 @@ export class PersonalChatApplication {
     pane.turns=[];pane.activeTurn=-1;pane.busy=true;
     pane.findQuery="";pane.findInput.value="";pane.findCursor=0;pane.findOpen=false;
     pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
+    pane.pendingHistoryFinal=undefined;
     pane.status.textContent="Opening canonical conversation…";
     this.render(pane);
     const restored=await pane.run.openSession(sessionId);
     if(this.destroyed||this.panes.get(paneId)!==pane||generation!==pane.generation)return;
     pane.turns=restored.turns.map(turn=>({role:turn.role,text:turn.content}));
+    pane.pendingHistoryFinal=restored.view.errorCode==="CHAT_HISTORY_FINAL_UNVERIFIED"
+      &&restored.view.runId
+      ?{runId:restored.view.runId,outputIndex:restored.pendingFinalOutputIndex}:undefined;
     pane.historyHasOlder=restored.hasOlder;
     pane.activeTurn=-1;
     pane.busy=false;
@@ -546,6 +554,16 @@ export class PersonalChatApplication {
     if(!pane || this.destroyed)return;
     if(view.workspaceId!==this.selected.workspaceId ||
       view.systemId!==this.selected.systemId)return;
+    const pending=pane.pendingHistoryFinal;
+    if(pending && view.phase==="completed"&&view.runId===pending.runId){
+      // The canonical run GET has now verified the full final answer. Update
+      // only its exact historical output cell, never an older session turn.
+      const target=pending.outputIndex===undefined?undefined:
+        pane.turns[pending.outputIndex];
+      if(target?.role==="assistant")target.text=view.output;
+      else pane.turns.push({role:"assistant",text:view.output});
+      pane.pendingHistoryFinal=undefined;
+    }
     if(pane.activeTurn>=0){
       const turn=pane.turns[pane.activeTurn];
       if(turn?.role==="assistant"){
@@ -653,6 +671,7 @@ export class PersonalChatApplication {
     const payload=text.trim();
     if(!payload || payload.length>1200)return;
     const generation=++pane.generation;
+    pane.pendingHistoryFinal=undefined;
     pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
     pane.turns.push({role:"user",text:payload},{role:"assistant",text:""});
     pane.activeTurn=pane.turns.length-1;
@@ -901,6 +920,7 @@ export class PersonalChatApplication {
     pane.generation++;pane.run.close();
     pane.run=this.controller(view=>this.onChange(paneId,view));
     pane.turns=[];pane.activeTurn=-1;pane.busy=false;pane.input.value="";
+    pane.pendingHistoryFinal=undefined;
     pane.findQuery="";pane.findInput.value="";pane.findCursor=0;pane.findOpen=false;
     pane.historyHasOlder=false;pane.historyLoading=false;pane.historyError=undefined;pane.historyNotice=undefined;
     pane.status.textContent="New conversation. Previous runs remain in Gateway.";
