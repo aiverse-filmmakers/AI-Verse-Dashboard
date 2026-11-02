@@ -564,12 +564,18 @@ test("Checking truncated history replaces only that answer with owner-verified f
   assert.equal(await messages.last().locator("p").innerText(),"Historical AI 078 [truncated]");
   assert.match(await pane.locator(".live-chat-status").innerText(),/CHAT_HISTORY_FINAL_UNVERIFIED/);
   const olderReply=await messages.nth(97).locator("p").innerText();
+  // Load older messages before verifying the latest run. Their prepend shifts
+  // transcript indices, but must not shift the owner-run identity.
+  await pane.getByRole("button",{name:"Load older messages"}).click();
+  await messages.nth(149).waitFor();
+  assert.equal(await messages.count(),150);
+  assert.equal(await messages.nth(147).locator("p").innerText(),olderReply);
   await pane.getByRole("button",{name:"Check run"}).click();
   await pane.locator(".live-chat-status").getByText(/completed/).waitFor();
   assert.equal(await messages.last().locator("p").innerText(),"Full verified historical AI 078");
-  assert.equal(await messages.nth(97).locator("p").innerText(),olderReply,
+  assert.equal(await messages.nth(147).locator("p").innerText(),olderReply,
     "only the exact newest run's incomplete final answer may be replaced");
-  assert.equal(await messages.count(),100);
+  assert.equal(await messages.count(),150);
   const rpc=requests.slice(before);
   assert.equal(rpc.filter(x=>x.method==="aiverse.gateway.run.get").length,1);
   assert.equal(rpc.filter(x=>x.method==="aiverse.gateway.run.create").length,0);
