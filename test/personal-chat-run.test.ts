@@ -149,6 +149,79 @@ describe("Personal Chat canonical run controller",()=>{
      "an invalid final owner result must not preserve speculative streamed text");
    assert.equal(chat.snapshot().sessionId,"session-a");
  });
+ it("late terminal-event readbacks cannot overwrite a verified Check run result",async()=>{
+   for(const late of ["running","reject"] as const){
+     let finish:(v:unknown)=>void=()=>{},failLate:(error:Error)=>void=()=>{};
+     let reads=0;
+     const {client,calls}=clientWith(method=>{
+       if(method==="aiverse.gateway.run.create")return run("running");
+       if(method==="aiverse.gateway.run.get"){
+         reads++;
+         if(reads===1)return new Promise((resolve,reject)=>{
+           finish=resolve;failLate=reject;
+         });
+         return run("completed",{output:"Verified finished answer"});
+       }
+       throw Error("Unexpected RPC "+method);
+     });
+     const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+     await chat.send("Single paid inference","one-create");
+     f.watchers[0].handlers.event(event("assistant.delta",1,"PROVISIONAL ONLY"));
+     f.watchers[0].handlers.event(event("run.completed",2));
+     await nextTick();
+     const checked=await chat.refreshStatus();
+     assert.equal(checked.phase,"completed");
+     assert.equal(checked.output,"Verified finished answer");
+     if(late==="running")finish(run("running"));
+     else failLate(Object.assign(Error("late transport failure"),
+       {code:"TRANSPORT_UNAVAILABLE"}));
+     await nextTick();
+     assert.equal(chat.snapshot().phase,"completed");
+     assert.equal(chat.snapshot().output,"Verified finished answer");
+     assert.equal(chat.snapshot().errorCode,undefined);
+     assert.equal(f.watchers.length,1,"no spurious re-subscription after verified terminal");
+     assert.equal(f.watchers[0].cancelled,true);
+     assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+     assert.equal(reads,2);
+   }
+ });
+ it("late reconnect GET cannot downgrade another Check run's verified final answer",async()=>{
+   for(const late of ["running","reject"] as const){
+     let finish:(v:unknown)=>void=()=>{},failLate:(error:Error)=>void=()=>{};
+     let reads=0;
+     const {client,calls}=clientWith(method=>{
+       if(method==="aiverse.gateway.run.create")return run("running");
+       if(method==="aiverse.gateway.run.get"){
+         reads++;
+         if(reads===1)return new Promise((resolve,reject)=>{
+           finish=resolve;failLate=reject;
+         });
+         return run("completed",{output:"Owner-verified answer"});
+       }
+       throw Error("Unexpected RPC "+method);
+     });
+     const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+     await chat.send("One request","one-create");
+     f.watchers[0].handlers.interrupted("CHAT_STREAM_DISCONNECTED");
+     assert.equal(chat.snapshot().phase,"interrupted");
+     const pending=chat.reconnect();
+     await nextTick();
+     assert.equal(reads,1);
+     const checked=await chat.refreshStatus();
+     assert.equal(checked.phase,"completed");
+     assert.equal(checked.output,"Owner-verified answer");
+     if(late==="running")finish(run("running"));
+     else failLate(Object.assign(Error("late transport failure"),
+       {code:"TRANSPORT_UNAVAILABLE"}));
+     const recovered=await pending;
+     assert.equal(recovered.phase,"completed");
+     assert.equal(recovered.output,"Owner-verified answer");
+     assert.equal(recovered.errorCode,undefined);
+     assert.equal(f.watchers.length,1,"a stale reconnect must not subscribe again");
+     assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+     assert.equal(reads,2);
+   }
+ });
  it("canonical run receipts show only validated usage, timestamps, runtime kind and no billing",async()=>{
    const {client,calls}=clientWith(method=>{
      if(method==="aiverse.gateway.run.create")return run("running",{
