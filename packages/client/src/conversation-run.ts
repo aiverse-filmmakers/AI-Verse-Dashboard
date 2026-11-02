@@ -98,6 +98,14 @@ function requireVerifiedCompletion(run:{status:string;output?:string}):void {
   if(run.status==="completed"&&run.output===undefined)
     fail("CHAT_CANONICAL_OUTPUT_MISSING");
 }
+/** Surface a verified owner-readback contract failure rather than masking
+ * it with the initial control-state refusal. Transport uncertainty remains
+ * attributed to the original operation. */
+function canonicalReadbackError(error:unknown):string|undefined{
+  const code=(error as {code?:unknown})?.code;
+  return code==="CHAT_CANONICAL_OUTPUT_MISSING"
+    ||code==="CHAT_SESSION_BINDING_MISMATCH"?code:undefined;
+}
 function phase(status:string):ChatRunPhase {
   switch(status){
     case "completed":return "completed";
@@ -352,6 +360,7 @@ export class PersonalChatRunController {
       // Stop can race with a run completing naturally. The canonical owner
       // then rejects cancel as terminal. Reconcile the existing run instead
       // of misleading the user that their completed answer is lost.
+      let ownerReadbackIssue:string|undefined;
       if((error as {code?:unknown})?.code==="RUN_NOT_CANCELABLE"){
         try{
           const response=await this.client.getGatewayRun(runId);
@@ -366,12 +375,16 @@ export class PersonalChatRunController {
             errorCode:undefined,contextLimited:this.contextLimited});
           if(state==="running")this.subscribe(epoch,scope,selection,runId);
           return this.snapshot();
-        }catch{ /* leave the known run unresolved for explicit GET reconnect */ }
+        }catch(recoveryError){
+          // A conflicting run/session or absent final output from owner GET
+          // is more actionable than the original Stop refusal.
+          ownerReadbackIssue=canonicalReadbackError(recoveryError);
+        }
       }
       if(this.valid(epoch,scope,selection)&&this.view.runId===runId)
         this.show({phase:"interrupted",errorCode:
-          typeof (error as {code?:unknown})?.code==="string"
-            ?(error as {code:string}).code:"CHAT_STOP_UNCERTAIN"});
+          ownerReadbackIssue??(typeof (error as {code?:unknown})?.code==="string"
+            ?(error as {code:string}).code:"CHAT_STOP_UNCERTAIN")});
     }
     return this.snapshot();
   }
@@ -465,6 +478,7 @@ export class PersonalChatRunController {
       // A pause may race with a terminal run, or resume with another owner
       // control. Reconcile without ever reissuing the mutating operation.
       const code=(error as {code?:unknown})?.code;
+      let ownerReadbackIssue:string|undefined;
       if(code==="RUN_NOT_PAUSABLE"||code==="RUN_NOT_RESUMABLE"){
         try{
           const response=await this.client.getGatewayRun(runId);
@@ -479,11 +493,13 @@ export class PersonalChatRunController {
             errorCode:undefined,contextLimited:this.contextLimited});
           if(state==="running")this.subscribe(epoch,scope,selection,runId);
           return this.snapshot();
-        }catch{ /* preserve the known run for explicit GET-only recovery */ }
+        }catch(recoveryError){
+          ownerReadbackIssue=canonicalReadbackError(recoveryError);
+        }
       }
       if(this.valid(epoch,scope,selection)&&this.view.runId===runId)
         this.show({phase:"interrupted",errorCode:
-          typeof code==="string"?code:"CHAT_CONTROL_UNCERTAIN"});
+          ownerReadbackIssue??(typeof code==="string"?code:"CHAT_CONTROL_UNCERTAIN")});
     }
     return this.snapshot();
   }
