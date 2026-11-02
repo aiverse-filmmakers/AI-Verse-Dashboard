@@ -613,8 +613,11 @@ export class PersonalChatRunController {
           ||data.workspaceId!==scope.workspaceId || data.sessionId!==sessionId
           ||!Array.isArray(data.data) || data.data.length>25
           ||typeof data.has_more!=="boolean"
-          ||!(data.next_offset===null||(Number.isSafeInteger(data.next_offset)
-            && (data.next_offset as number)>=0)))
+          ||(data.has_more
+            ? data.data.length===0 ||!Number.isSafeInteger(data.next_offset)
+              ||(data.next_offset as number)<=offset
+              ||(data.next_offset as number)>10_000
+            :data.next_offset!==null))
           fail("CHAT_HISTORY_INVALID");
         for(const entry of data.data){
           if(!entry||typeof entry!=="object"||Array.isArray(entry))
@@ -636,6 +639,10 @@ export class PersonalChatRunController {
         offset=data.next_offset;
       }
       if(!this.valid(epoch,scope,selection))return {view:this.snapshot(),turns:[],hasOlder:false};
+      // Validate the entire owner-projected page set before admitting any
+      // turns into confirmed model context, even transiently.
+      const seen=new Set(all.map(row=>String(row.run_id)));
+      if(seen.size!==all.length)fail("CHAT_HISTORY_DUPLICATE_RUN");
       const ordered=all.reverse();
       const turns:Array<{role:"user"|"assistant";content:string}>=[];
       let limited=more;
@@ -656,13 +663,15 @@ export class PersonalChatRunController {
       }
       // 'all' was reversed in-place above; its final entry is newest.
       const newest=ordered.at(-1);
+      // A shortened history field is display evidence, not a verified final
+      // turn for continuation. The user can Check run against canonical GET.
       const canContinue=newest?.status==="completed"
-        && typeof newest.output==="string";
+        &&typeof newest.output==="string"&&!newest.output_truncated
+        &&typeof newest.user_text==="string"&&newest.user_text.length>0
+        &&!newest.user_text_truncated;
       const history=completed.slice(-12);
       this.confirmedTurns=history;
       if(completed.length>12)limited=true;
-      const seen=new Set(all.map(row=>String(row.run_id)));
-      if(seen.size!==all.length)fail("CHAT_HISTORY_DUPLICATE_RUN");
       this.historicalOlder=more?{sessionId,offset,total:all.length,seen}:undefined;
       this.contextLimited=limited;
       this.confirmedRunId=canContinue?String(newest.run_id):undefined;
@@ -670,7 +679,8 @@ export class PersonalChatRunController {
         sessionId,runId:typeof newest?.run_id==="string"?newest.run_id:undefined,
         output:canContinue?newest.output as string:"",
         canonicalStatus:typeof newest?.status==="string"?newest.status:undefined,
-        errorCode:undefined,contextLimited:limited});
+        errorCode:newest?.status==="completed"&&!canContinue
+          ?"CHAT_HISTORY_FINAL_UNVERIFIED":undefined,contextLimited:limited});
       return {view:this.snapshot(),turns,hasOlder:Boolean(this.historicalOlder)};
     }catch(error){
       if(this.valid(epoch,scope,selection)){
