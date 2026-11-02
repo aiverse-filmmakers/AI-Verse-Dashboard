@@ -197,6 +197,10 @@ export class CanonicalGatewayClient {
         redirect: "error",
       });
       const raw = await boundedJsonText(response);
+      // Some injected/native adapters or response streams may ignore AbortSignal.
+      // A response arriving after the deadline is not a successful readback.
+      if(lease.controller.signal.aborted)
+        throw new GatewayTransportError(this.invalidated?"STALE_BINDING":"ABORTED");
       let obj: unknown;
       try {obj = JSON.parse(raw);} catch {throw new GatewayTransportError("INVALID_RESPONSE");}
       this.check();
@@ -376,6 +380,10 @@ export class CanonicalGatewayClient {
         method:"GET",headers:{authorization:"Bearer "+bearer,accept:"text/event-stream"},signal:lease.controller.signal,
         redirect:"error",
       });
+      // Connection deadline covers the HTTP headers as well as credentials.
+      // Even an adapter that ignores abort must not initiate a stale stream.
+      if(lease.controller.signal.aborted)
+        throw new GatewayTransportError(this.invalidated?"STALE_BINDING":"ABORTED");
       clearTimeout(deadline);
       if (!res.ok) throw gatewayError(res.status);
       if (!res.headers.get("content-type")?.includes("text/event-stream") || !res.body)
