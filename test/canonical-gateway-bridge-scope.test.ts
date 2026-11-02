@@ -167,7 +167,7 @@ describe("MC2.2 trusted canonical Gateway scope bridge",()=>{
         assert.equal(response.ok,true);
         const run=response.result as {output:string;outputTruncated?:boolean};
         assert.equal(run.output.length,65_536);
-        assert.equal(run.outputTruncated,size>65_536);
+        assert.equal(run.outputTruncated,size>65_536?true:undefined);
         assert.equal(JSON.stringify(response).includes(secret),false,
           "all text beyond the bounded output must remain owner-only");
         assert.equal(f.calls.filter(x=>x.path==="/v1/runs/run-a").length,1);
