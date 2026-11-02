@@ -79,6 +79,69 @@ describe("Personal Chat canonical run controller",()=>{
    assert.deepEqual(calls.map(x=>x.method),
      ["aiverse.gateway.run.create","aiverse.gateway.run.get"]);
  });
+ it("terminal event with a lagging owner GET stays interrupted and recovers by the same run",async()=>{
+   let ownerStatus="running",gets=0;
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.get"){
+       gets++;
+       return ownerStatus==="completed"
+         ?run("completed",{output:"Verified final answer"}):run(ownerStatus);
+     }
+     throw Error("Unexpected Gateway operation "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("Run once","one-owner-create");
+   f.watchers[0].handlers.event(event("assistant.delta",1,"DRAFT UNVERIFIED"));
+   f.watchers[0].handlers.event(event("run.completed",2));
+   await nextTick();
+   assert.equal(chat.snapshot().phase,"interrupted");
+   assert.equal(chat.snapshot().errorCode,"CHAT_TERMINAL_UNCONFIRMED");
+   assert.equal(chat.snapshot().output,"");
+   assert.equal(chat.snapshot().runId,"run-a");
+   assert.equal(f.watchers[0].cancelled,true);
+   await assert.rejects(chat.send("Must not start new work","another-create"),
+     (error:unknown)=>(error as {code?:string}).code==="CHAT_PREVIOUS_RUN_UNRESOLVED");
+   ownerStatus="completed";
+   const recovered=await chat.reconnect();
+   assert.equal(recovered.phase,"completed");
+   assert.equal(recovered.output,"Verified final answer");
+   assert.equal(gets,2);
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+ });
+ it("terminal event never accepts draft output without a completed canonical response",async()=>{
+   const {client}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.get")return run("completed");
+     throw Error("Unexpected Gateway method "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("Once","no-false-completion");
+   f.watchers[0].handlers.event(event("assistant.delta",1,"UNVERIFIED OUTPUT"));
+   f.watchers[0].handlers.event(event("run.completed",2));
+   await nextTick();
+   assert.equal(chat.snapshot().phase,"interrupted");
+   assert.equal(chat.snapshot().errorCode,"CHAT_CANONICAL_OUTPUT_MISSING");
+   assert.equal(chat.snapshot().output,"");
+   assert.equal(chat.snapshot().runId,"run-a");
+ });
+ it("terminal readback rejects a different canonical session for the same run id",async()=>{
+   const {client}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.get")return run("completed",{
+       sessionId:"session-other",output:"OTHER SESSION PRIVATE TEXT",
+     });
+     throw Error("Unexpected method "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("First message","one-create");
+   f.watchers[0].handlers.event(event("run.completed",1));
+   await nextTick();
+   assert.equal(chat.snapshot().phase,"interrupted");
+   assert.equal(chat.snapshot().errorCode,"CHAT_SESSION_BINDING_MISMATCH");
+   assert.notEqual(chat.snapshot().output,"OTHER SESSION PRIVATE TEXT");
+   assert.equal(chat.snapshot().sessionId,"session-a");
+ });
  it("canonical run receipts show only validated usage, timestamps, runtime kind and no billing",async()=>{
    const {client,calls}=clientWith(method=>{
      if(method==="aiverse.gateway.run.create")return run("running",{
