@@ -597,6 +597,8 @@ export class PersonalChatRunController {
     view:ChatRunView;
     turns:Array<{role:"user"|"assistant";content:string}>;
     hasOlder:boolean;
+    /** Exact transcript index of newest, not-yet-verified final excerpt. */
+    pendingFinalOutputIndex?:number;
   }>{
     if(!SAFE_ID.test(sessionId))fail("CHAT_SESSION_ID_INVALID");
     const scope=requiredScope(this.client.getScope());
@@ -647,13 +649,15 @@ export class PersonalChatRunController {
       const turns:Array<{role:"user"|"assistant";content:string}>=[];
       let limited=more;
       const completed:Array<{role:"user"|"assistant";content:string}>=[];
-      for(const row of ordered){
+      let newestOutputIndex:number|undefined;
+      for(const [i,row] of ordered.entries()){
         if(row.user_text_truncated || row.output_truncated)limited=true;
         if(typeof row.user_text==="string"&&row.user_text.length)
           turns.push({role:"user",content:row.user_text});
         else limited=true;
         if(row.status==="completed"&&typeof row.output==="string"){
           turns.push({role:"assistant",content:row.output});
+          if(i===ordered.length-1)newestOutputIndex=turns.length-1;
           if(typeof row.user_text==="string"&&row.user_text.length
             && !row.user_text_truncated&&!row.output_truncated)
             completed.push({role:"user",content:row.user_text},
@@ -681,7 +685,10 @@ export class PersonalChatRunController {
         canonicalStatus:typeof newest?.status==="string"?newest.status:undefined,
         errorCode:newest?.status==="completed"&&!canContinue
           ?"CHAT_HISTORY_FINAL_UNVERIFIED":undefined,contextLimited:limited});
-      return {view:this.snapshot(),turns,hasOlder:Boolean(this.historicalOlder)};
+      return {view:this.snapshot(),turns,hasOlder:Boolean(this.historicalOlder),
+        ...(newest?.status==="completed"&&!canContinue
+          &&newestOutputIndex!==undefined
+          ?{pendingFinalOutputIndex:newestOutputIndex}:{})};
     }catch(error){
       if(this.valid(epoch,scope,selection)){
         this.show({phase:"interrupted",errorCode:
