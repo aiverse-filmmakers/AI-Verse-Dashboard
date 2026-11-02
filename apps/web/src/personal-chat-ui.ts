@@ -369,6 +369,10 @@ export class PersonalChatApplication {
         return;
       scrollAnchor={height:pane.log.scrollHeight,top:pane.log.scrollTop};
       pane.turns.unshift(...result.turns.map(turn=>({role:turn.role,text:turn.content})));
+      // Prepended history shifts the exact output cell of a still-unverified
+      // latest run. Keep the pointer tied to that run, not an older reply.
+      if(pane.pendingHistoryFinal?.outputIndex!==undefined)
+        pane.pendingHistoryFinal.outputIndex+=result.turns.length;
       pane.findCursor=0; // Older pages shift indices; search must recompute.
       pane.historyHasOlder=result.hasOlder;
       pane.historyNotice=result.limitedByView
