@@ -176,11 +176,23 @@ const server=createServer(async(req,res)=>{
       const total=78,sessionId=frame.params?.sessionId;
       const all=Array.from({length:total},(_,i)=>{
         const n=String(total-i).padStart(3,"0");
-        return {run_id:"history-run-"+n,session_id:sessionId,
+        const truncated=sessionId==="historical-003"&&i===0;
+        return {run_id:truncated?"history-verified-truncated-run":"history-run-"+n,
+          session_id:sessionId,
           status:sessionId==="historical-002"&&i===0?"awaiting_approval":"completed",
-          user_text:"Historical user "+n,output:"Historical AI "+n,
-          user_text_truncated:false,output_truncated:false};
+          user_text:"Historical user "+n,
+          output:truncated?"Historical AI 078 [truncated]":"Historical AI "+n,
+          user_text_truncated:false,output_truncated:truncated};
       });
+      if(sessionId==="historical-003"&&frame.workspaceId==="operator"){
+        // Owner fixture: this existing run has a full canonical GET result,
+        // even though the indexed history excerpt was truncated.
+        runs.set("history-verified-truncated-run",{
+          runId:"history-verified-truncated-run",sessionId,
+          systemId:"canonical-a",workspaceId:frame.workspaceId,
+          status:"completed",source:"canonical-gateway",
+          output:"Full verified historical AI 078"});
+      }
       const offset=frame.params?.offset??0,limit=frame.params?.limit??25;
       const has_more=offset+limit<all.length;
       result={source:"canonical-gateway",workspaceId:frame.workspaceId,
@@ -537,6 +549,36 @@ test("per-pane Run details shows only actual Gateway usage and never treats it a
   assert.equal(await receipt.isVisible(),false);
   await page.evaluate(()=>window.chatApp.retarget({systemId:"aiverse-01",workspaceId:"film"}));
   assert.equal(await details.isDisabled(),true);
+  assert.deepEqual(errors,[]);
+});
+test("Checking truncated history replaces only that answer with owner-verified full text",async t=>{
+  const {page,errors}=await pageFor(t);
+  const before=requests.length;
+  const pane=page.locator(".live-chat-pane").first();
+  await page.getByRole("button",{name:"Previous chats"}).click();
+  await page.locator(".live-chat-history-item").nth(2)
+    .getByRole("button",{name:"Open conversation"}).click();
+  await pane.locator(".live-chat-status").getByText(/recovery-required/).waitFor();
+  const messages=pane.locator(".live-chat-message");
+  assert.equal(await messages.count(),100);
+  assert.equal(await messages.last().locator("p").innerText(),"Historical AI 078 [truncated]");
+  assert.match(await pane.locator(".live-chat-status").innerText(),/CHAT_HISTORY_FINAL_UNVERIFIED/);
+  const olderReply=await messages.nth(97).locator("p").innerText();
+  // Load older messages before verifying the latest run. Their prepend shifts
+  // transcript indices, but must not shift the owner-run identity.
+  await pane.getByRole("button",{name:"Load older messages"}).click();
+  await messages.nth(149).waitFor();
+  assert.equal(await messages.count(),150);
+  assert.equal(await messages.nth(147).locator("p").innerText(),olderReply);
+  await pane.getByRole("button",{name:"Check run"}).click();
+  await pane.locator(".live-chat-status").getByText(/completed/).waitFor();
+  assert.equal(await messages.last().locator("p").innerText(),"Full verified historical AI 078");
+  assert.equal(await messages.nth(147).locator("p").innerText(),olderReply,
+    "only the exact newest run's incomplete final answer may be replaced");
+  assert.equal(await messages.count(),150);
+  const rpc=requests.slice(before);
+  assert.equal(rpc.filter(x=>x.method==="aiverse.gateway.run.get").length,1);
+  assert.equal(rpc.filter(x=>x.method==="aiverse.gateway.run.create").length,0);
   assert.deepEqual(errors,[]);
 });
 test("Find messages locates loaded canonical turns, pages older records and never persists search",async t=>{
