@@ -285,10 +285,14 @@ export class PersonalChatRunController {
       const response=await this.client.getGatewayRun(runId);
       if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
       const run=asRun(response.result,scope,runId);
-      if(this.activeRequest?.sessionId && run.sessionId!==this.activeRequest.sessionId)
+      // The current verified run/session identity, not merely a caller
+      // supplied continuation session, fences a reconnect after stream loss.
+      if(this.view.sessionId && run.sessionId!==this.view.sessionId)
         fail("CHAT_SESSION_BINDING_MISMATCH");
-      this.confirmCanonicalOutput(run);
       const nextPhase=phase(run.status);
+      if(nextPhase==="completed"&&run.output===undefined)
+        fail("CHAT_CANONICAL_OUTPUT_MISSING");
+      this.confirmCanonicalOutput(run);
       this.show({phase:nextPhase,canonicalStatus:run.status,sessionId:run.sessionId,
         receipt:run.receipt,
         output:nextPhase==="completed"?run.output??"":"",
@@ -509,14 +513,28 @@ export class PersonalChatRunController {
       const response=await this.client.getGatewayRun(runId);
       if(!this.valid(epoch,scope,selection) || this.view.runId!==runId)return;
       const run=asRun(response.result,scope,runId);
+      // A terminal event is a hint, not a signed final result. If the owner
+      // GET has not caught up, preserve the exact run for explicit GET-only
+      // recovery. Never leave a "running" view with its stream detached.
+      if(this.view.sessionId && run.sessionId!==this.view.sessionId)
+        fail("CHAT_SESSION_BINDING_MISMATCH");
+      const canonicalPhase=phase(run.status);
+      if(!TERMINAL.has(canonicalPhase)
+        ||(canonicalPhase==="completed"&&run.output===undefined)){
+        this.show({phase:"interrupted",canonicalStatus:run.status,
+          receipt:run.receipt,output:"",
+          errorCode:canonicalPhase==="completed"
+            ?"CHAT_CANONICAL_OUTPUT_MISSING":"CHAT_TERMINAL_UNCONFIRMED"});
+        return;
+      }
       this.confirmCanonicalOutput(run);
-      this.show({phase:phase(run.status),canonicalStatus:run.status,
+      this.show({phase:canonicalPhase,canonicalStatus:run.status,
         receipt:run.receipt,sessionId:run.sessionId,
-        ...(run.output!==undefined?{output:run.output}:{}),
+        output:canonicalPhase==="completed"?run.output??"":"",
         errorCode:undefined,contextLimited:this.contextLimited});
     }catch(error){
       if(this.valid(epoch,scope,selection) && this.view.runId===runId)
-        this.show({phase:"interrupted",
+        this.show({phase:"interrupted",output:"",
           errorCode:typeof (error as {code?:unknown})?.code==="string"
             ? (error as {code:string}).code:"CHAT_RECONCILE_FAILED"});
     }
