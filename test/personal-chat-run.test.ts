@@ -258,6 +258,71 @@ describe("Personal Chat canonical run controller",()=>{
    assert.equal(chat.snapshot().receipt,undefined);
    assert.equal(chat.snapshot().runId,undefined);
  });
+ it("truncated canonical terminal output never becomes a completed assistant turn",async()=>{
+   for(const truncated of [
+     {output:"PARTIAL OWNER ANSWER",outputTruncated:true},
+     {output:"X".repeat(65_537)},
+   ]){
+     let getCalls=0;
+     const {client,calls}=clientWith(method=>{
+       if(method==="aiverse.gateway.run.create")return run("running");
+       if(method==="aiverse.gateway.run.get"){
+         getCalls++;
+         return run("completed",truncated);
+       }
+       throw Error("Unexpected method "+method);
+     });
+     const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+     await chat.send("A single expensive turn","create-once");
+     f.watchers[0].handlers.event(event("assistant.delta",1,"STREAMED DRAFT"));
+     f.watchers[0].handlers.event(event("run.completed",2));
+     await nextTick();
+     const denied=chat.snapshot();
+     assert.equal(denied.phase,"interrupted");
+     assert.equal(denied.runId,"run-a");
+     assert.equal(denied.output,"");
+     assert.equal(denied.errorCode,"CHAT_CANONICAL_OUTPUT_TRUNCATED");
+     await assert.rejects(chat.send("No unverified follow-up","create-other"),
+       (err:unknown)=>(err as {code?:string}).code==="CHAT_PREVIOUS_RUN_UNRESOLVED");
+     const retried=await chat.reconnect();
+     assert.equal(retried.phase,"interrupted");
+     assert.equal(retried.errorCode,"CHAT_CANONICAL_OUTPUT_TRUNCATED");
+     assert.equal(retried.output,"");
+     assert.equal(getCalls,2);
+     assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+   }
+ });
+ it("explicit Check run refuses owner-truncated completion without leaking provisional text",async()=>{
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.get")
+       return run("completed",{output:"PARTIAL FINAL",outputTruncated:true});
+     throw Error("Unexpected method "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("One run","create-once");
+   f.watchers[0].handlers.event(event("assistant.delta",1,"draft text"));
+   const result=await chat.refreshStatus();
+   assert.equal(result.phase,"interrupted");
+   assert.equal(result.errorCode,"CHAT_CANONICAL_OUTPUT_TRUNCATED");
+   assert.equal(result.output,"");
+   assert.equal(result.runId,"run-a");
+   assert.equal(f.watchers[0].cancelled,true);
+   assert.equal(calls.filter(x=>x.method==="aiverse.gateway.run.create").length,1);
+ });
+ it("manual recovery refuses a clipped owner final without beginning a new run",async()=>{
+   const {client,calls}=clientWith(method=>{
+     assert.equal(method,"aiverse.gateway.run.get");
+     return run("completed",{output:"partial",outputTruncated:true});
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   const result=await chat.recover("run-a");
+   assert.equal(result.phase,"interrupted");
+   assert.equal(result.errorCode,"CHAT_CANONICAL_OUTPUT_TRUNCATED");
+   assert.equal(result.output,"");
+   assert.equal(f.watchers.length,0);
+   assert.deepEqual(calls.map(x=>x.method),["aiverse.gateway.run.get"]);
+ });
  it("tampered or malformed receipt is rejected, never promoted as a completed run",async()=>{
    for(const receipt of [
      {usage:{inputTokens:-1,outputTokens:1,actions:0}},
