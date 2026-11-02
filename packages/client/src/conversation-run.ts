@@ -118,6 +118,7 @@ const TERMINAL = new Set<ChatRunPhase>(["completed","failed","canceled","blocked
 export class PersonalChatRunController {
   private epoch=0;
   private streamEpoch=0;
+  private statusRefreshEpoch=0;
   /** A resumed SSE stream replays prior canceled/paused attempt deltas. */
   /** Number of canonical run.resumed events required before accepting
    * new partial output; old SSE replay can contain several prior cycles. */
@@ -383,9 +384,13 @@ export class PersonalChatRunController {
     if(!runId||!sessionId||!SAFE_ID.test(runId))fail("CHAT_REFRESH_UNAVAILABLE");
     const scope=requiredScope(this.client.getScope());
     const epoch=this.epoch,selection=this.client.selectionVersion();
+    // Repeated explicit Check run requests can complete out of order.
+    // Only the newest authenticated read may update this chat's status.
+    const checkEpoch=++this.statusRefreshEpoch;
     try{
       const response=await this.client.getGatewayRun(runId);
-      if(!this.valid(epoch,scope,selection)||this.view.runId!==runId)return this.snapshot();
+      if(!this.valid(epoch,scope,selection)||this.view.runId!==runId
+        ||checkEpoch!==this.statusRefreshEpoch)return this.snapshot();
       const run=asRun(response.result,scope,runId);
       if(run.sessionId!==sessionId)fail("CHAT_SESSION_BINDING_MISMATCH");
       requireVerifiedCompletion(run);
@@ -410,7 +415,8 @@ export class PersonalChatRunController {
         errorCode:undefined,contextLimited:this.contextLimited});
       if(state==="running")this.subscribe(epoch,scope,selection,runId);
     }catch(error){
-      if(this.valid(epoch,scope,selection)&&this.view.runId===runId){
+      if(this.valid(epoch,scope,selection)&&this.view.runId===runId
+        && checkEpoch===this.statusRefreshEpoch){
         const code=typeof (error as {code?:unknown})?.code==="string"
           ?(error as {code:string}).code:"CHAT_REFRESH_FAILED";
         if(code==="CHAT_CANONICAL_OUTPUT_MISSING"||code==="CHAT_SESSION_BINDING_MISMATCH"){
