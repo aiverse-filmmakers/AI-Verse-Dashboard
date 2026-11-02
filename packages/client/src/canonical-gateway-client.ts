@@ -301,8 +301,12 @@ export class CanonicalGatewayClient {
         completed_at:typeof item.completed_at==="string"?item.completed_at:null,
         user_text:typeof item.user_text==="string"?item.user_text.slice(0,4096):null,
         output:typeof item.output==="string"?item.output.slice(0,12000):null,
-        user_text_truncated:item.user_text_truncated,
-        output_truncated:item.output_truncated};
+        // The Gateway may report a complete field that's longer than our
+        // Dashboard projection cap. Preserve truth about either truncation.
+        user_text_truncated:item.user_text_truncated
+          ||(typeof item.user_text==="string"&&item.user_text.length>4096),
+        output_truncated:item.output_truncated
+          ||(typeof item.output==="string"&&item.output.length>12000)};
     });
     return {data,has_more:page.has_more,next_offset:page.next_offset as number|null};
   }
