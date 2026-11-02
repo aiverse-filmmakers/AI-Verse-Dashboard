@@ -830,6 +830,8 @@ describe("Personal Chat canonical run controller",()=>{
    assert.equal(opened.view.output,"");
    assert.equal(opened.view.runId,"run-a");
    assert.equal(opened.view.contextLimited,true);
+   assert.equal(opened.pendingFinalOutputIndex,3,
+     "the UI may replace only the latest incomplete assistant excerpt");
    assert.ok(opened.turns.some(x=>x.content==="Truncated owner reply"),
      "historical display is permitted but incomplete");
    const checked=await chat.refreshStatus();
