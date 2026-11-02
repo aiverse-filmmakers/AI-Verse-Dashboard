@@ -565,6 +565,68 @@ describe("Personal Chat canonical run controller",()=>{
    assert.deepEqual(calls.map(x=>x.method),[
      "aiverse.gateway.run.create","aiverse.gateway.run.cancel","aiverse.gateway.run.get"]);
  });
+ it("latest Check run status wins even if an older owner GET resolves last",async()=>{
+   for(const state of [
+     {old:"paused",latest:"running"},
+     {old:"running",latest:"paused"},
+   ]){
+     let finish:(value:unknown)=>void=()=>{};
+     let reads=0;
+     const {client,calls}=clientWith(method=>{
+       if(method==="aiverse.gateway.run.create")return run("running");
+       if(method==="aiverse.gateway.run.get"){
+         reads++;
+         if(reads===1)return new Promise(resolve=>{finish=resolve;});
+         return run(state.latest);
+       }
+       throw Error("Unexpected Gateway request "+method);
+     });
+     const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+     await chat.send("Only one paid action","create-once");
+     const first=chat.refreshStatus();
+     await nextTick();
+     assert.equal(reads,1);
+     const latest=await chat.refreshStatus();
+     assert.equal(latest.phase,state.latest);
+     finish(run(state.old));
+     await first;
+     assert.equal(chat.snapshot().phase,state.latest,
+       "an older GET cannot overwrite newer canonical status");
+     assert.equal(chat.snapshot().errorCode,undefined);
+     assert.equal(f.watchers[0].cancelled,state.latest==="paused");
+     assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.create").length,1);
+     assert.equal(reads,2);
+   }
+ });
+ it("an older failed Check run cannot corrupt a newer successful owner status",async()=>{
+   let rejectFirst:(error:Error)=>void=()=>{},reads=0;
+   const {client,calls}=clientWith(method=>{
+     if(method==="aiverse.gateway.run.create")return run("running");
+     if(method==="aiverse.gateway.run.get"){
+       reads++;
+       if(reads===1)return new Promise((_resolve,reject)=>{
+         rejectFirst=reject;
+       });
+       return run("running");
+     }
+     throw Error("Unexpected Gateway request "+method);
+   });
+   const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
+   await chat.send("One action","create-once");
+   const first=chat.refreshStatus();
+   await nextTick();
+   const latest=await chat.refreshStatus();
+   assert.equal(latest.phase,"running");
+   assert.equal(latest.errorCode,undefined);
+   rejectFirst(Object.assign(Error("stale failure"),{code:"TRANSPORT_UNAVAILABLE"}));
+   await first;
+   assert.equal(chat.snapshot().phase,"running");
+   assert.equal(chat.snapshot().errorCode,undefined);
+   assert.equal(f.watchers.length,1);
+   assert.equal(f.watchers[0].cancelled,false);
+   assert.equal(calls.filter(c=>c.method==="aiverse.gateway.run.create").length,1);
+   assert.equal(reads,2);
+ });
  it("Check run reflects another client's Pause and Resume via authenticated GET only",async()=>{
    let status="running";
    const {client,calls}=clientWith(method=>{
