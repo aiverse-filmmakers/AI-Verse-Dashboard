@@ -124,6 +124,11 @@ describe("Personal Chat canonical run controller",()=>{
    assert.equal(chat.snapshot().errorCode,"CHAT_CANONICAL_OUTPUT_MISSING");
    assert.equal(chat.snapshot().output,"");
    assert.equal(chat.snapshot().runId,"run-a");
+   const reconnect=await chat.reconnect();
+   assert.equal(reconnect.phase,"interrupted",
+     "reconnect cannot promote a completed run with no owner output");
+   assert.equal(reconnect.errorCode,"CHAT_CANONICAL_OUTPUT_MISSING");
+   assert.equal(reconnect.output,"");
  });
  it("terminal readback rejects a different canonical session for the same run id",async()=>{
    const {client}=clientWith(method=>{
