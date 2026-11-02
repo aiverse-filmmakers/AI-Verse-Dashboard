@@ -252,6 +252,52 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
     assert.ok(reads>=2);
   });
 
+  it("rejects a late create response even when the transport ignores abort",async()=>{
+    let networkCalls=0;
+    const client=new CanonicalGatewayClient(binding(),{
+      timeoutMs:100,
+      fetchFn:async ()=>{
+        networkCalls++;
+        await new Promise(resolve=>setTimeout(resolve,220));
+        return json(run(),202);
+      },
+    });
+    await errorCode(client.createRun({
+      messages:[{role:"user",content:"Do not accept stale success"}],
+      idempotencyKey:"one-late-result",
+    }),"ABORTED");
+    assert.equal(networkCalls,1,
+      "a delayed billable POST must not automatically retry after timeout");
+  });
+  it("rejects a late JSON body even when the response stream ignores abort",async()=>{
+    const encoder=new TextEncoder();
+    const fetchFn:typeof fetch=async()=>new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller){
+          setTimeout(()=>{
+            controller.enqueue(encoder.encode(JSON.stringify(run())));
+            controller.close();
+          },220);
+        },
+      }),{headers:{"content-type":"application/json"}});
+    const client=new CanonicalGatewayClient(binding(),{fetchFn,timeoutMs:100});
+    await errorCode(client.getRun("run-1"),"ABORTED");
+  });
+  it("does not consume an SSE stream when headers arrive after its deadline",async()=>{
+    const requests:string[]=[],seen:string[]=[];
+    const fetchFn:typeof fetch=async url=>{
+      const path=new URL(String(url)).pathname;
+      requests.push(path);
+      if(!path.endsWith("/events"))return json(run());
+      await new Promise(resolve=>setTimeout(resolve,220));
+      return new Response("event: run.started\\ndata: {}\\n\\n",{
+        headers:{"content-type":"text/event-stream"}});
+    };
+    const client=new CanonicalGatewayClient(binding(),{fetchFn,timeoutMs:100});
+    await errorCode(client.subscribeRun("run-1",e=>seen.push(e.event_id)),"ABORTED");
+    assert.deepEqual(requests,["/v1/runs/run-1","/v1/runs/run-1/events"]);
+    assert.deepEqual(seen,[],"late SSE headers may not produce trusted events");
+  });
   it("times out a stalled canonical create without retrying a potentially billable run",async()=>{
     let requests=0,aborts=0;
     const fetchFn:typeof fetch=async (_url,init={})=>{
