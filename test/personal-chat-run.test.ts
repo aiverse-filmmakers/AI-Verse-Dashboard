@@ -140,11 +140,13 @@ describe("Personal Chat canonical run controller",()=>{
    });
    const f=testFeed(),chat=new PersonalChatRunController(client,f.feed);
    await chat.send("First message","one-create");
-   f.watchers[0].handlers.event(event("run.completed",1));
+   f.watchers[0].handlers.event(event("assistant.delta",1,"UNVERIFIED PROVISIONAL"));
+   f.watchers[0].handlers.event(event("run.completed",2));
    await nextTick();
    assert.equal(chat.snapshot().phase,"interrupted");
    assert.equal(chat.snapshot().errorCode,"CHAT_SESSION_BINDING_MISMATCH");
-   assert.notEqual(chat.snapshot().output,"OTHER SESSION PRIVATE TEXT");
+   assert.equal(chat.snapshot().output,"",
+     "an invalid final owner result must not preserve speculative streamed text");
    assert.equal(chat.snapshot().sessionId,"session-a");
  });
  it("canonical run receipts show only validated usage, timestamps, runtime kind and no billing",async()=>{
