@@ -393,6 +393,14 @@ export class CanonicalGatewayClient {
       if (!res.headers.get("content-type")?.includes("text/event-stream") || !res.body)
         throw new GatewayTransportError("EVENT_STREAM_INVALID");
       reader=res.body.getReader();
+      // A noncooperative fetch/ReadableStream may ignore AbortSignal and
+      // resolve pending reads after owner revocation or caller cancellation.
+      // Recheck this specific SSE lease before processing or emitting data.
+      const checkEventLease=()=>{
+        if(lease.controller.signal.aborted)
+          throw new GatewayTransportError(this.invalidated?"STALE_BINDING":"ABORTED");
+        this.check();
+      };
       const decoder=new TextDecoder();
       let buffer="";
       const seen=new Set<string>();
@@ -415,11 +423,14 @@ export class CanonicalGatewayClient {
         if(seen.has(event.event_id))return;
         if(seen.size>4096)throw new GatewayTransportError("EVENT_REPLAY_TOO_LARGE");
         seen.add(event.event_id);
-        this.check();onEvent(event);
+        checkEventLease();onEvent(event);
       };
       while(true){
-        this.check();
+        checkEventLease();
         const next=await reader.read();
+        // The read may have resolved well after abort with a buffered event,
+        // including a terminal frame. It must not reach any subscriber.
+        checkEventLease();
         if(next.done)break;
         buffer=(buffer+decoder.decode(next.value,{stream:true})).replace(/\r\n/g,"\n");
         if(buffer.length>MAX_EVENT_BYTES)throw new GatewayTransportError("EVENT_TOO_LARGE");
@@ -429,7 +440,7 @@ export class CanonicalGatewayClient {
           consume(frame);
         }
       }
-      this.check();
+      checkEventLease();
       if(buffer.trim())throw new GatewayTransportError("EVENT_INCOMPLETE");
     } catch(error){
       if(error instanceof GatewayTransportError)throw error;
