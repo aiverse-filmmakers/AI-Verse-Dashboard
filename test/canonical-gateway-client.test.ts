@@ -184,6 +184,41 @@ describe("MC2.2 host-only canonical Gateway transport",()=>{
         {headers:{"content-type":"text/event-stream"}}):json(run()));
     await errorCode(wrong.client.subscribeRun("run-1",()=>{}),"EVENT_BINDING_MISMATCH");
   });
+  it("rejects SSE data arriving after caller abort or owner invalidation",async()=>{
+    for(const revoked of [false,true]){
+      const seen:string[]=[];
+      let release:(text:string)=>void=()=>{},streamReady:()=>void=()=>{};
+      const ready=new Promise<void>(resolve=>{streamReady=resolve;});
+      const {client,requests}=fixture(url=>{
+        if(!url.pathname.endsWith("/events"))return json(run());
+        const stream=new ReadableStream<Uint8Array>({
+          start(controller){
+            release=text=>{
+              controller.enqueue(new TextEncoder().encode(text));
+              controller.close();
+            };
+            streamReady();
+          },
+        });
+        // The injected response stream intentionally does not honor fetch
+        // cancellation. A late frame can still satisfy reader.read().
+        return new Response(stream,{headers:{"content-type":"text/event-stream"}});
+      });
+      const caller=new AbortController();
+      const pending=client.subscribeRun("run-1",event=>seen.push(event.event_id),caller.signal);
+      await ready;
+      await new Promise<void>(resolve=>setImmediate(resolve));
+      if(revoked)client.invalidate();
+      else caller.abort();
+      const event={event_id:"late-1",run_id:"run-1",type:"assistant.delta",
+        at:"2026-11-03T00:00:00Z",data:{text:"MUST NOT EMIT"}};
+      release("event: assistant.delta\ndata: "+JSON.stringify(event)+"\n\n");
+      await errorCode(pending,revoked?"STALE_BINDING":"ABORTED");
+      assert.deepEqual(seen,[],
+        "a late uncooperative stream chunk must not be delivered after cancellation");
+      assert.deepEqual(requests.map(x=>x.path),["/v1/runs/run-1","/v1/runs/run-1/events"]);
+    }
+  });
   it("parses CRLF SSE even when transport chunks divide the line ending",async()=>{
     const message={event_id:"ev-2",run_id:"run-1",type:"run.started",
       at:"2026-10-27T12:00:00Z",data:{phase:"running"}};
