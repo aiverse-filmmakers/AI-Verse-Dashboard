@@ -53,6 +53,7 @@ jobs:
           test -z "${AIVERSE_GATEWAY_TOKEN:-}"
           npm ci --ignore-scripts --no-audit --no-fund
           npm run build --silent
+          node --check scripts/mc2/ci-real-codex-native-session-proof.mjs
           test -f dist/apps/gateway/src/local-app-session.js
           test -f dist/packages/registry/src/index.js
 
