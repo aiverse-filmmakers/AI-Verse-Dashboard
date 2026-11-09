@@ -486,6 +486,56 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.doesNotThrow(()=>session.setProspectiveRecordingIntentFromHost(false),
       "host revocation must not depend on an approved live OS binding");
   });
+  it("prospective host intent generations cannot be resurrected by fast stop and restart",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>server.close());
+    const origin="http://127.0.0.1:"+server.port;
+    const paired=await fetch(origin+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:session.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    const initial=session.prospectiveRecordingIntentForHost();
+    assert.equal(initial.requested,false);
+    session.setProspectiveRecordingIntentFromHost(true);
+    const first=session.prospectiveRecordingIntentForHost();
+    assert.equal(first.requested,true);
+    assert.ok(first.intentGeneration>initial.intentGeneration);
+    session.setProspectiveRecordingIntentFromHost(false);
+    const stopped=session.prospectiveRecordingIntentForHost();
+    assert.equal(stopped.requested,false);
+    assert.ok(stopped.intentGeneration>first.intentGeneration);
+    session.setProspectiveRecordingIntentFromHost(true);
+    const restarted=session.prospectiveRecordingIntentForHost();
+    assert.equal(restarted.requested,true);
+    assert.ok(restarted.intentGeneration>stopped.intentGeneration,
+      "even same-millisecond restart requires an entirely new observation epoch");
+    // A public browser cannot derive the native host's current epoch.
+    const cookie=(paired.headers.get("set-cookie")??"").split(";")[0];
+    const response=await fetch(origin+"/local-app/session",{headers:{cookie}});
+    assert.equal(response.status,200);
+    assert.equal((await response.text()).includes("intentGeneration"),false);
+    session.rotateWorkspaceFromHost("film");
+    const afterSwitch=session.prospectiveRecordingIntentForHost();
+    assert.equal(afterSwitch.requested,false);
+    assert.ok(afterSwitch.intentGeneration>restarted.intentGeneration);
+    const newPair=await fetch(origin+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:session.pairingCode()}),
+    });
+    assert.equal(newPair.status,200);
+    session.setProspectiveRecordingIntentFromHost(true);
+    const newScope=session.prospectiveRecordingIntentForHost();
+    assert.equal(newScope.scope?.workspaceId,"film");
+    assert.ok(newScope.intentGeneration>afterSwitch.intentGeneration);
+    reg.rebind(systemId,root);
+    const invalid=session.prospectiveRecordingIntentForHost();
+    assert.equal(invalid.requested,false);
+    assert.ok(invalid.intentGeneration>newScope.intentGeneration);
+  });
   it("old owner-root grants cannot survive registry rebind or identity changes",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
     const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
