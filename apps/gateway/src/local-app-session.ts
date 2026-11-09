@@ -70,6 +70,8 @@ export interface LocalApplicationScope{
 /** Never an authorization credential, storage admission or consent issuer. */
 export interface ProspectiveRecordingIntentStatus{
   requested:boolean;
+  /** Testable local identity epoch. Never a bearer token or capture grant. */
+  intentGeneration:number;
   scope:LocalApplicationScope|null;
   expiresAtMs:number|null;
   purpose:"prospective-codex-text-only";
@@ -89,6 +91,7 @@ export class LocalApplicationSession {
   private sessionAbort=new AbortController();
   // Trusted-launcher process memory only. Browser cookies, RPC and
   // WebSockets have no route or method for setting/reading this state.
+  private prospectiveIntentGeneration=0;
   private prospectiveRecordingIntent?:{
     scope:LocalApplicationScope;
     expiresAtMs:number;
@@ -210,8 +213,13 @@ export class LocalApplicationSession {
     if(typeof enabled!=="boolean")throw Error("LOCAL_APP_RECORDING_INTENT_INVALID");
     // Owner-side stop is safe and idempotent even after pairing expires.
     // Never make revocation dependent on active browser authentication.
-    if(!enabled){this.prospectiveRecordingIntent=undefined;return;}
+    if(!enabled){
+      this.prospectiveIntentGeneration++;
+      this.prospectiveRecordingIntent=undefined;
+      return;
+    }
     if(!this.active())throw Error("LOCAL_APP_SESSION_INACTIVE");
+    this.prospectiveIntentGeneration++;
     this.prospectiveRecordingIntent={
       scope:{systemId:this.scope.systemId,workspaceId:this.scope.workspaceId},
       expiresAtMs:Date.now()+PROSPECTIVE_RECORDING_INTENT_TTL,
@@ -228,9 +236,13 @@ export class LocalApplicationSession {
       && !intent.pairedSignal.aborted
       && intent.scope.systemId===this.scope.systemId
       && intent.scope.workspaceId===this.scope.workspaceId;
-    if(!valid)this.prospectiveRecordingIntent=undefined;
+    if(!valid && intent!==undefined){
+      this.prospectiveIntentGeneration++;
+      this.prospectiveRecordingIntent=undefined;
+    }
     return {
       requested:valid,
+      intentGeneration:this.prospectiveIntentGeneration,
       scope:valid?{systemId:this.scope.systemId,workspaceId:this.scope.workspaceId}:null,
       expiresAtMs:valid?intent!.expiresAtMs:null,
       purpose:"prospective-codex-text-only",
@@ -258,6 +270,7 @@ export class LocalApplicationSession {
   private revoke():void{
     // Any logout, host workspace rotation, OS rebind or session expiry
     // irrevocably clears the previous prospective preference.
+    this.prospectiveIntentGeneration++;
     this.prospectiveRecordingIntent=undefined;
     this.sessionAbort.abort();
     this.sessionsUntil=0;
