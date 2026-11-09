@@ -155,13 +155,16 @@ class OwnedNoContentReader {
           const entry=this.waiting.get(row.id);
           this.waiting.delete(row.id);
           if(!Object.hasOwn(row,"result")||Object.hasOwn(row,"error"))deny();
+          clearTimeout(entry.timer);
           entry.resolve(row.result);
         }
       }catch{
         this.closed=true;
         this.buffer=Buffer.alloc(0);
-        for(const [,pending] of this.waiting)pending.reject(
-          Error("REAL_CODEX_DASHBOARD_OWNER_PROOF_REFUSED"));
+        for(const [,pending] of this.waiting){
+          clearTimeout(pending.timer);
+          pending.reject(Error("REAL_CODEX_DASHBOARD_OWNER_PROOF_REFUSED"));
+        }
         this.waiting.clear();
       }
     };
@@ -172,8 +175,15 @@ class OwnedNoContentReader {
     if(this.closed||this.waiting.size>0||this.frames>=MAX_FRAMES)deny();
     const line=JSON.stringify({id,method,params})+"\n";
     if(Buffer.byteLength(line)>4096)deny();
-    const response=new Promise((resolve,reject)=>
-      this.waiting.set(id,{resolve,reject}));
+    const response=new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>{
+        this.waiting.delete(id);
+        this.closed=true;
+        this.buffer=Buffer.alloc(0);
+        reject(Error("REAL_CODEX_DASHBOARD_OWNER_PROOF_REFUSED"));
+      },10000);
+      this.waiting.set(id,{resolve,reject,timer});
+    });
     this.child.stdin.write(line);
     return response;
   }
@@ -186,8 +196,10 @@ class OwnedNoContentReader {
     this.closed=true;
     this.buffer=Buffer.alloc(0);
     this.child.stdout.off("data",this.onChunk);
-    for(const [,pending] of this.waiting)pending.reject(
-      Error("REAL_CODEX_DASHBOARD_OWNER_PROOF_REFUSED"));
+    for(const [,pending] of this.waiting){
+      clearTimeout(pending.timer);
+      pending.reject(Error("REAL_CODEX_DASHBOARD_OWNER_PROOF_REFUSED"));
+    }
     this.waiting.clear();
   }
 }
