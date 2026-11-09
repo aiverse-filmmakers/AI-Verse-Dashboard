@@ -5,6 +5,7 @@ import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {WebSocket} from "ws";
 import {Readable} from "node:stream";
+import {spawn} from "node:child_process";
 import type {IncomingMessage,ServerResponse} from "node:http";
 import {SystemRegistry} from "../packages/registry/src/index.js";
 import {DisposableCache,ADAPTER_ERRORS} from "../packages/os-read-adapter/src/index.js";
@@ -535,6 +536,107 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     const invalid=session.prospectiveRecordingIntentForHost();
     assert.equal(invalid.requested,false);
     assert.ok(invalid.intentGeneration>newScope.intentGeneration);
+  });
+  it("real parent-owned synthetic child stdout cannot outlive a host intent epoch",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const owner=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:owner});
+    closers.push(()=>server.close());
+    const origin="http://127.0.0.1:"+server.port;
+    const paired=await fetch(origin+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:owner.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    const first=owner.prospectiveRecordingIntentForHost();
+    assert.equal(first.requested,true);
+    // Test-only fake child, never actual Codex or conversation content.
+    // Only its OS-owned, direct stdout pipe is observed.
+    const script=[
+      "process.stdin.setEncoding('utf8');",
+      "let pending='';",
+      "process.stdin.on('data',part=>{",
+      "pending+=part;",
+      "while(pending.includes('\\n')){",
+      "const index=pending.indexOf('\\n');",
+      "const word=pending.slice(0,index);pending=pending.slice(index+1);",
+      "if(word==='emit')process.stdout.write('SYNTHETIC_PIPE_ONLY\\n');",
+      "}",
+      "});",
+    ].join("");
+    const child=spawn(process.execPath,["-e",script],{
+      stdio:["pipe","pipe","ignore"],windowsHide:true,
+      env:{PATH:process.env.PATH??"",
+        ...(process.platform==="win32"?{SystemRoot:process.env.SystemRoot??""}:{})},
+    });
+    assert.ok(typeof child.pid==="number"&&child.pid>0);
+    let acceptedChunks=0,discardedChunks=0,totalBytes=0;
+    let bound=first;
+    const onChunk=(chunk:Buffer)=>{
+      const current=owner.prospectiveRecordingIntentForHost();
+      if(Buffer.isBuffer(chunk)
+        && current.requested && bound.requested
+        && current.intentGeneration===bound.intentGeneration
+        && current.scope?.systemId===bound.scope?.systemId
+        && current.scope?.workspaceId===bound.scope?.workspaceId
+        && totalBytes+chunk.length<=4096){
+        acceptedChunks++;totalBytes+=chunk.length;
+      }else discardedChunks++;
+      // Never retain, output, hash, decode or archive source bytes.
+    };
+    child.stdout.on("data",onChunk);
+    async function until(predicate:()=>boolean){
+      const beginning=Date.now();
+      while(!predicate()){
+        if(Date.now()-beginning>5000)
+          throw Error("SYNTHETIC_CHILD_PIPE_PROOF_TIMEOUT");
+        await new Promise(resolve=>setTimeout(resolve,15));
+      }
+    }
+    try{
+      child.stdin.write("emit\n");
+      await until(()=>acceptedChunks>0);
+      const originalCount=acceptedChunks;
+      assert.ok(totalBytes>0);
+      assert.equal(discardedChunks,0);
+      // A fast same-workspace stop/restart cannot reinstate an old observer.
+      owner.setProspectiveRecordingIntentFromHost(false);
+      owner.setProspectiveRecordingIntentFromHost(true);
+      const resumed=owner.prospectiveRecordingIntentForHost();
+      assert.ok(resumed.intentGeneration>first.intentGeneration);
+      child.stdin.write("emit\n");
+      await until(()=>discardedChunks>0);
+      assert.equal(acceptedChunks,originalCount);
+      // Only a newly bound preview observer can accept another chunk.
+      bound=resumed;
+      child.stdin.write("emit\n");
+      await until(()=>acceptedChunks>originalCount);
+      const newCount=acceptedChunks;
+      owner.rotateWorkspaceFromHost("film");
+      child.stdin.write("emit\n");
+      await until(()=>discardedChunks>1);
+      assert.equal(owner.prospectiveRecordingIntentForHost().requested,false);
+      const freshPair=await fetch(origin+"/local-app/pair",{
+        method:"POST",headers:secureHeaders(server.port),
+        body:json({code:owner.pairingCode()}),
+      });
+      assert.equal(freshPair.status,200);
+      owner.setProspectiveRecordingIntentFromHost(true);
+      assert.equal(owner.prospectiveRecordingIntentForHost().scope?.workspaceId,"film");
+      child.stdin.write("emit\n");
+      await until(()=>discardedChunks>2);
+      assert.equal(acceptedChunks,newCount,
+        "old subprocess observer must not inherit new workspace scope");
+      assert.equal(first.captureAuthorized,false);
+      assert.equal(resumed.hostOriginAttested,false);
+      assert.equal(owner.prospectiveRecordingIntentForHost().userRecordingConsentVerified,false);
+    }finally{
+      child.stdout.off("data",onChunk);
+      child.stdin.end();
+      child.kill();
+    }
   });
   it("old owner-root grants cannot survive registry rebind or identity changes",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
