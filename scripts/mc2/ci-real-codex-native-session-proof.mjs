@@ -126,6 +126,7 @@ class OwnedNoContentReader {
     this.buffer=Buffer.alloc(0);
     this.waiting=new Map();
     this.frames=0;
+    this.startupNotices=0;
     this.closed=false;
     this.onChunk=(chunk)=>{
       // Before *every* byte is interpreted, recheck current live host epoch,
@@ -147,9 +148,18 @@ class OwnedNoContentReader {
           const row=JSON.parse(line.toString("utf8"));
           if(!row||typeof row!=="object"||Array.isArray(row))deny();
           if(row.method) {
-            // No model, command, history, user or item notifications accepted.
-            // Only handle the narrow initialize/config/read response path.
-            deny();
+            // Mirrors the pinned Python Codex CI transport: allow only a
+            // small number of non-chat startup notices, with no logging,
+            // forwarding or content inspection. Any actual chat, command,
+            // approval, tool, item, thread or turn event fails closed.
+            if(typeof row.method!=="string"
+              || row.method.length>96
+              || /^(thread/|turn/|item/|serverRequest/)/.test(row.method)
+              || Object.hasOwn(row,"result")||Object.hasOwn(row,"error")
+              || !row.params||typeof row.params!=="object"
+              || Array.isArray(row.params)
+              || ++this.startupNotices>8)deny();
+            continue;
           }
           if(!Number.isInteger(row.id)||!this.waiting.has(row.id))deny();
           const entry=this.waiting.get(row.id);
@@ -216,10 +226,12 @@ async function verify(host,workspace,id){
         version:"0.0.0-test"},
     });
     assert.ok(init&&typeof init==="object");
+    console.log("PASS: real Codex child initialize under current Dashboard host epoch");
     reader.notify("initialized");
     const result=await reader.request(id+1,"config/read",{includeLayers:false});
     assert.ok(result&&typeof result.config==="object"
       &&typeof result.origins==="object");
+    console.log("PASS: real Codex sterile configuration read under current Dashboard host epoch");
     return {child,reader};
   }catch(e){reader.revoke();await shutdown(child);throw e;}
 }
@@ -240,9 +252,12 @@ async function main(){
     first=await verify(owner,original,1);
     // A still-running pinned Codex process cannot inherit a new host epoch.
     const pending=first.reader.request(3,"config/read",{includeLayers:false});
+    // Attach the refusal handler BEFORE revoking, so strict unhandled
+    // rejection handling cannot race an old child response.
+    const refused=assert.rejects(pending,/REAL_CODEX_DASHBOARD_OWNER_PROOF_REFUSED/);
     owner.setProspectiveRecordingIntentFromHost(false);
     first.reader.revoke();
-    await assert.rejects(pending,/REAL_CODEX_DASHBOARD_OWNER_PROOF_REFUSED/);
+    await refused;
     owner.setProspectiveRecordingIntentFromHost(true);
     assert.throws(()=>first.reader.require(),
       /REAL_CODEX_DASHBOARD_OWNER_PROOF_REFUSED/);
