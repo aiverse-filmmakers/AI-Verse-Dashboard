@@ -383,6 +383,102 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.equal(third.status,200);
     assert.equal(((await third.json()) as {scope:{workspaceId:string}}).scope.workspaceId,"operator");
   });
+  it("native-host prospective preference never grants capture and cannot be changed by a browser",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const legacy=new LocalApplicationSession({systemId,workspaceId:"operator"});
+    assert.throws(()=>legacy.setProspectiveRecordingIntentFromHost(true),
+      /LOCAL_APP_HOST_AUTHORITY_REQUIRED/);
+    assert.throws(()=>legacy.prospectiveRecordingIntentForHost(),
+      /LOCAL_APP_HOST_AUTHORITY_REQUIRED/);
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>server.close());
+    const base="http://127.0.0.1:"+server.port;
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    assert.throws(()=>session.setProspectiveRecordingIntentFromHost(true),
+      /LOCAL_APP_SESSION_INACTIVE/);
+    const login=async(code:string)=>fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),body:json({code}),
+    });
+    const paired=await login(session.pairingCode());
+    assert.equal(paired.status,200);
+    const cookie=(paired.headers.get("set-cookie")??"").split(";")[0];
+    assert.throws(()=>session.setProspectiveRecordingIntentFromHost(
+      "true" as unknown as boolean),/LOCAL_APP_RECORDING_INTENT_INVALID/);
+    session.setProspectiveRecordingIntentFromHost(true);
+    const request=session.prospectiveRecordingIntentForHost();
+    assert.equal(request.requested,true);
+    assert.deepEqual(request.scope,{systemId,workspaceId:"operator"});
+    assert.equal(request.purpose,"prospective-codex-text-only");
+    assert.equal(request.captureAuthorized,false);
+    assert.equal(request.hostOriginAttested,false);
+    assert.equal(request.userRecordingConsentVerified,false);
+    assert.equal(request.historyImportAuthorized,false);
+    assert.ok(typeof request.expiresAtMs==="number");
+    // In-process intent never appears on a paired browser API.
+    const browserSession=await fetch(base+"/local-app/session",{headers:{cookie}});
+    assert.equal(browserSession.status,200);
+    const exposed=await browserSession.text();
+    assert.equal(exposed.includes("prospective"),false);
+    assert.equal(exposed.includes("captureAuthorized"),false);
+    assert.equal((await fetch(base+"/local-app/recording-intent",{
+      method:"POST",headers:secureHeaders(server.port,undefined,cookie),
+      body:json({enabled:true}),
+    })).status,404);
+    assert.equal((await rpc(server.port,{
+      type:"req",v:"1.0",id:"forged-recording",
+      method:"aiverse.codex.capture",systemId,workspaceId:"operator",
+      enabled:true,
+    },{cookie,origin:base})).status,403);
+    session.setProspectiveRecordingIntentFromHost(false);
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    session.setProspectiveRecordingIntentFromHost(true);
+    // Simulate the preference's own short TTL without waiting or changing CI.
+    const originalNow=Date.now,deadline=session.prospectiveRecordingIntentForHost().expiresAtMs!;
+    try{
+      Date.now=()=>deadline;
+      assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    }finally{Date.now=originalNow;}
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false,
+      "expiration cannot be reversed by moving the clock backwards");
+    session.setProspectiveRecordingIntentFromHost(true);
+    session.rotateWorkspaceFromHost("film");
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false,
+      "workspace change clears even a previously requested preference");
+    const filmPair=await login(session.pairingCode());
+    assert.equal(filmPair.status,200);
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false,
+      "new browser pairing cannot recover an old preference");
+    session.setProspectiveRecordingIntentFromHost(true);
+    assert.deepEqual(session.prospectiveRecordingIntentForHost().scope,
+      {systemId,workspaceId:"film"});
+    const filmCookie=(filmPair.headers.get("set-cookie")??"").split(";")[0];
+    const logout=await fetch(base+"/local-app/logout",{
+      method:"POST",headers:secureHeaders(server.port,undefined,filmCookie),
+    });
+    assert.equal(logout.status,200);
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+  });
+  it("prospective host preference is revoked when the OS owner registry is rebound",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const session=new LocalApplicationSession({systemId,workspaceId:"film"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>server.close());
+    const base="http://127.0.0.1:"+server.port;
+    const paired=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:session.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    session.setProspectiveRecordingIntentFromHost(true);
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,true);
+    reg.rebind(systemId,root);
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    assert.throws(()=>session.setProspectiveRecordingIntentFromHost(true),
+      /LOCAL_APP_SESSION_INACTIVE/);
+  });
   it("old owner-root grants cannot survive registry rebind or identity changes",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
     const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
