@@ -118,7 +118,8 @@ if(localApp){
       "Run Stop is disabled. To opt in, set AIVERSE_DASHBOARD_ALLOW_RUN_CANCEL=1 before launch.\n")+
     (checkpointEnabled?"Run Pause/Resume is enabled by separate host opt-in.\n":
       "Run Pause/Resume is disabled. Set AIVERSE_DASHBOARD_ALLOW_RUN_PAUSE_RESUME=1 to opt in.\n")+
-    "Host commands: :workspaces, :use <workspace-id>, :use operator, :pending, :approve <id>, :deny <id>, :help\n\n");
+    "Host commands: :workspaces, :use <workspace-id>, :use operator, :pending, :approve <id>, :deny <id>, :chat-intent on|off|status, :help\n"+
+    "Chat intent is a short-lived request only; conversation capture remains disabled.\n\n");
   // Only the actual TTY-host controls scope. No browser workspace.list,
   // remote URL, machine path, env key, or unverified arbitrary workspace ID.
   const terminal=createInterface({input:process.stdin,output:process.stderr,
@@ -127,7 +128,34 @@ if(localApp){
     for await(const raw of terminal){
       const command=raw.trim();
       if(command===":help"){
-        process.stderr.write("Commands: :workspaces, :use <id>, :use operator, :pending, :approve <id>, :deny <id>, :help\n");
+        process.stderr.write("Commands: :workspaces, :use <id>, :use operator, :pending, :approve <id>, :deny <id>, :chat-intent on|off|status, :help\n");
+        continue;
+      }
+      // Only the real interactive TTY path can express or clear a request.
+      // The browser cannot call this branch, and this is NOT consent or
+      // recording admission. No request is saved, logged or sent to Gateway.
+      if(command===":chat-intent on"){
+        try{
+          localApp.setProspectiveRecordingIntentFromHost(true);
+          process.stderr.write(
+            "Prospective chat request noted for up to 2 minutes. Recording remains disabled.\n");
+        }catch{process.stderr.write("CHAT_INTENT_DENIED\n");}
+        continue;
+      }
+      if(command===":chat-intent off"){
+        try{
+          localApp.setProspectiveRecordingIntentFromHost(false);
+          process.stderr.write("Prospective chat request cleared. Recording remains disabled.\n");
+        }catch{process.stderr.write("CHAT_INTENT_DENIED\n");}
+        continue;
+      }
+      if(command===":chat-intent status"){
+        try{
+          const intent=localApp.prospectiveRecordingIntentForHost();
+          process.stderr.write(intent.requested
+            ?"Prospective chat request is active. Recording remains disabled.\n"
+            :"No active prospective chat request. Recording remains disabled.\n");
+        }catch{process.stderr.write("CHAT_INTENT_DENIED\n");}
         continue;
       }
       if(command===":pending"){
