@@ -1,0 +1,132 @@
+name: Persistent Chats real Codex child under native Dashboard host (offline)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/persistent-chats-real-codex-native-host.yml'
+      - 'scripts/mc2/ci-real-codex-native-session-proof.mjs'
+      - 'apps/gateway/src/local-app-session.ts'
+      - 'apps/gateway/src/server.ts'
+      - 'packages/registry/src/**'
+      - 'test/local-app-session.test.ts'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: persistent-chats-native-real-codex-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  no-network-native-host-boundary:
+    name: Pinned real Codex plus actual Dashboard session, no prompts or recording
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CODEX_RELEASE_TAG: rust-v0.167.0
+      CODEX_RELEASE_ASSET: codex-x86_64-unknown-linux-musl.tar.gz
+      CODEX_RELEASE_ARCHIVE_SHA256: 9d64836106d5b374e90ee4454c7ebcde7ca7106558bd7e41a34b9f26ebda251a
+      CODEX_RELEASE_ARCHIVE_SIZE: "122587028"
+      NODE_CI_IMAGE: node:22.23.4-bookworm-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
+
+    steps:
+      - name: Checkout source only, do not persist credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Prepare Node 22 and install locked packages without scripts
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Compile the real Dashboard session code
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "${OPENAI_API_KEY:-}"
+          test -z "${GITHUB_TOKEN:-}"
+          test -z "${AIVERSE_GATEWAY_TOKEN:-}"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run build --silent
+          test -f dist/apps/gateway/src/local-app-session.js
+          test -f dist/packages/registry/src/index.js
+
+      - name: Fetch immutable official Codex release and verify full archive checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          RELEASE_DIR="$(mktemp -d "$RUNNER_TEMP/aiverse-native-codex-3a25.XXXXXX")"
+          echo "RELEASE_DIR=$RELEASE_DIR" >> "$GITHUB_ENV"
+          mkdir -p "$RELEASE_DIR/bin"
+          ASSET="$RELEASE_DIR/codex-release.tar.gz"
+          curl --fail --silent --show-error --location \
+            --proto '=https' --proto-redir '=https' \
+            --retry 3 --connect-timeout 20 --max-time 240 \
+            --output "$ASSET" \
+            "https://github.com/openai/codex/releases/download/$CODEX_RELEASE_TAG/$CODEX_RELEASE_ASSET"
+          test "$(stat -c '%s' "$ASSET")" = "$CODEX_RELEASE_ARCHIVE_SIZE"
+          printf '%s  %s\n' "$CODEX_RELEASE_ARCHIVE_SHA256" "$ASSET" | sha256sum --check --status
+          CODEX_ASSET_FILE="$ASSET" CODEX_OUTPUT_BINARY="$RELEASE_DIR/bin/codex" python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import shutil
+          import tarfile
+
+          source = Path(os.environ["CODEX_ASSET_FILE"])
+          output = Path(os.environ["CODEX_OUTPUT_BINARY"])
+          with tarfile.open(source, "r:gz") as archive:
+              members = archive.getmembers()
+              if (len(members) != 1
+                      or members[0].name.removeprefix("./") != "codex-x86_64-unknown-linux-musl"
+                      or not members[0].isfile()
+                      or not 1 <= members[0].size <= 500_000_000):
+                  raise SystemExit("FAIL: unrecognized official Codex archive layout")
+              contents = archive.extractfile(members[0])
+              if contents is None:
+                  raise SystemExit("FAIL: official Codex archive missing executable")
+              with output.open("xb") as dest:
+                  shutil.copyfileobj(contents, dest, length=128 * 1024)
+          if output.stat().st_size != members[0].size:
+              raise SystemExit("FAIL: official Codex executable size mismatch")
+          output.chmod(0o500)
+          PY
+          rm -f "$ASSET"
+
+      - name: Run actual Dashboard host and real Codex in no-network container
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x "$RELEASE_DIR/bin/codex"
+          # Immutable Node manifest; no network, no secrets, no host HOME,
+          # private scratch, read-only root, zero model turns/history.
+          timeout --signal=TERM --kill-after=10s 180s \
+            docker run --rm \
+              --network none \
+              --read-only \
+              --cap-drop ALL \
+              --security-opt no-new-privileges \
+              --pids-limit 96 \
+              --memory 2048m \
+              --cpus 2 \
+              --user "$(id -u):$(id -g)" \
+              --tmpfs "/scratch:rw,nosuid,nodev,size=512m,mode=1777" \
+              --tmpfs "/tmp:rw,nosuid,nodev,size=64m,mode=1777" \
+              --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/app,readonly" \
+              --mount "type=bind,src=$RELEASE_DIR/bin,dst=/test,readonly" \
+              --env CI=true \
+              --env AIVERSE_CODEX_NATIVE_HOST_CI=1 \
+              --workdir /scratch \
+              "$NODE_CI_IMAGE" \
+              node /app/scripts/mc2/ci-real-codex-native-session-proof.mjs
+
+      - name: Confirm tracked repository files did not change
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain --untracked-files=no)"
