@@ -573,7 +573,7 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     });
     assert.ok(typeof child.pid==="number"&&child.pid>0);
     let acceptedChunks=0,discardedChunks=0,totalBytes=0;
-    let bound=first;
+    const bound=first;
     const onChunk=(chunk:Buffer)=>{
       const current=owner.prospectiveRecordingIntentForHost();
       if(Buffer.isBuffer(chunk)
@@ -609,14 +609,14 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       child.stdin.write("emit\n");
       await until(()=>discardedChunks>0);
       assert.equal(acceptedChunks,originalCount);
-      // Only a newly bound preview observer can accept another chunk.
-      bound=resumed;
-      child.stdin.write("emit\n");
-      await until(()=>acceptedChunks>originalCount);
-      const newCount=acceptedChunks;
-      owner.rotateWorkspaceFromHost("film");
+      // Rebinding to a newer status is NOT allowed to turn the same old
+      // child into a fresh owned process. Once revoked, it remains stale.
       child.stdin.write("emit\n");
       await until(()=>discardedChunks>1);
+      assert.equal(acceptedChunks,originalCount);
+      owner.rotateWorkspaceFromHost("film");
+      child.stdin.write("emit\n");
+      await until(()=>discardedChunks>2);
       assert.equal(owner.prospectiveRecordingIntentForHost().requested,false);
       const freshPair=await fetch(origin+"/local-app/pair",{
         method:"POST",headers:secureHeaders(server.port),
@@ -626,9 +626,9 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       owner.setProspectiveRecordingIntentFromHost(true);
       assert.equal(owner.prospectiveRecordingIntentForHost().scope?.workspaceId,"film");
       child.stdin.write("emit\n");
-      await until(()=>discardedChunks>2);
-      assert.equal(acceptedChunks,newCount,
-        "old subprocess observer must not inherit new workspace scope");
+      await until(()=>discardedChunks>3);
+      assert.equal(acceptedChunks,originalCount,
+        "old subprocess observer must not inherit new scope or restart epoch");
       assert.equal(first.captureAuthorized,false);
       assert.equal(resumed.hostOriginAttested,false);
       assert.equal(owner.prospectiveRecordingIntentForHost().userRecordingConsentVerified,false);
