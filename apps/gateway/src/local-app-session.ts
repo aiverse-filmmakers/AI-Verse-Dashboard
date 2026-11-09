@@ -208,12 +208,15 @@ export class LocalApplicationSession {
   setProspectiveRecordingIntentFromHost(enabled:boolean):void{
     if(!this.ownerRegistry)throw Error("LOCAL_APP_HOST_AUTHORITY_REQUIRED");
     if(typeof enabled!=="boolean")throw Error("LOCAL_APP_RECORDING_INTENT_INVALID");
+    // Owner-side stop is safe and idempotent even after pairing expires.
+    // Never make revocation dependent on active browser authentication.
+    if(!enabled){this.prospectiveRecordingIntent=undefined;return;}
     if(!this.active())throw Error("LOCAL_APP_SESSION_INACTIVE");
-    this.prospectiveRecordingIntent=enabled?{
+    this.prospectiveRecordingIntent={
       scope:{systemId:this.scope.systemId,workspaceId:this.scope.workspaceId},
       expiresAtMs:Date.now()+PROSPECTIVE_RECORDING_INTENT_TTL,
       pairedSignal:this.sessionAbort.signal,
-    }:undefined;
+    };
   }
   /** Recheck native pairing and current OS identity on every read. */
   prospectiveRecordingIntentForHost():ProspectiveRecordingIntentStatus{
