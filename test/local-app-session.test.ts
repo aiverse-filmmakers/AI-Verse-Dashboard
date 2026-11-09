@@ -459,6 +459,11 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     });
     assert.equal(logout.status,200);
     assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    assert.doesNotThrow(()=>session.setProspectiveRecordingIntentFromHost(false),
+      "host emergency STOP must be possible after browser logout");
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    assert.throws(()=>session.setProspectiveRecordingIntentFromHost(true),
+      /LOCAL_APP_SESSION_INACTIVE/);
   });
   it("prospective host preference is revoked when the OS owner registry is rebound",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
@@ -478,6 +483,8 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
     assert.throws(()=>session.setProspectiveRecordingIntentFromHost(true),
       /LOCAL_APP_SESSION_INACTIVE/);
+    assert.doesNotThrow(()=>session.setProspectiveRecordingIntentFromHost(false),
+      "host revocation must not depend on an approved live OS binding");
   });
   it("old owner-root grants cannot survive registry rebind or identity changes",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
