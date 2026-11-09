@@ -154,7 +154,8 @@ class OwnedNoContentReader {
             // approval, tool, item, thread or turn event fails closed.
             if(typeof row.method!=="string"
               || row.method.length>96
-              || /^(thread/|turn/|item/|serverRequest/)/.test(row.method)
+              || ["thread/","turn/","item/","serverRequest/"]
+                .some(prefix=>row.method.startsWith(prefix))
               || Object.hasOwn(row,"result")||Object.hasOwn(row,"error")
               || !row.params||typeof row.params!=="object"
               || Array.isArray(row.params)
