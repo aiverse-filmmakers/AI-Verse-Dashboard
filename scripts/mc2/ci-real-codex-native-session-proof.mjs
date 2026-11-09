@@ -253,7 +253,7 @@ async function main(){
     owner.close();
     if(first){first.reader.revoke();await shutdown(first.child);}
     if(second){second.reader.revoke();await shutdown(second.child);}
-    await new Promise(resolve=>gateway.close(resolve));
+    await gateway.close();
     rmSync(root,{force:true,recursive:true});
   }
 }
