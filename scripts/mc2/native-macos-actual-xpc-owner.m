@@ -140,11 +140,14 @@ static int revocationAndInterruption(void) {
     __block BOOL interrupted=NO;
     crashing.interruptionHandler=^{
         interrupted=YES;
-        [fence revoke];
+        // A late interruption must never invalidate a newer connection.
+        [fence revokeIfCurrent:crashEpoch workspace:@"operator"
+                     session:crashSession processPID:ownPID];
         dispatch_semaphore_signal(crashed);
     };
     crashing.invalidationHandler=^{
-        [fence revoke];
+        [fence revokeIfCurrent:crashEpoch workspace:@"operator"
+                     session:crashSession processPID:ownPID];
         dispatch_semaphore_signal(crashed);
     };
     id<AIVerseActualXPCDenial> crashProxy=
@@ -157,10 +160,19 @@ static int revocationAndInterruption(void) {
     BOOL invalidAfterCrash=![fence isCurrent:crashEpoch
                                 workspace:@"operator"
                                   session:crashSession processPID:ownPID];
-    [crashing invalidate];
+    // New lease must be immune to a second/stale old connection handler.
+    NSUUID *replacementSession=[NSUUID UUID];
+    uint64_t replacementEpoch=[fence beginForWorkspace:@"film"
+                       session:replacementSession processPID:ownPID];
+    if (!replacementEpoch || replacementEpoch==crashEpoch) return 45;
+    [crashing invalidate]; // old invalidation callback may still arrive
+    if ([fence revokeIfCurrent:crashEpoch workspace:@"operator"
+                   session:crashSession processPID:ownPID]) return 46;
+    if (![fence isCurrent:replacementEpoch workspace:@"film"
+                   session:replacementSession processPID:ownPID]) return 47;
     [fence revoke];
     if (!handlerObserved || !invalidAfterCrash || !interrupted)
-        return 45;
+        return 48;
     puts("PASS: 3A.36 real XPC delayed-reply revocation, fresh epoch and service interruption; no recording");
     return 0;
 }
