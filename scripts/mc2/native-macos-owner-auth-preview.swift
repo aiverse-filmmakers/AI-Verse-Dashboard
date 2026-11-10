@@ -62,37 +62,35 @@ struct NativeOwnerAuthenticationPreview {
             refuse(.unattended)
         }
 
-        // A new context for each operation. Never reuse a prior successful
-        // unlock as proof of approval for another workspace or purpose.
-        let context = LAContext()
-        context.touchIDAuthenticationAllowableReuseDuration = 0
-        context.interactionNotAllowed = false
-        defer { context.invalidate() }
-
-        var error: NSError?
-        guard context.canEvaluatePolicy(
-            .deviceOwnerAuthentication, error: &error
-        ) else {
-            refuse(.unavailable)
+        // The host session and child generation are deliberately synthetic
+        // here. This standalone preview is not connected to a trusted app
+        // identity, native launcher or actual Codex subprocess.
+        let binding = NativeReviewBinding(
+            workspaceID: args[2],
+            hostSessionID: UUID(),
+            childStartGeneration: 1
+        )
+        let review = NativeOwnerReviewState()
+        review.selectHostBinding(binding)
+        let succeeded = await review.manuallyReviewDeviceOwner(binding)
+        let current = review.observation(for: binding)
+        guard succeeded && current.reviewedCurrentBinding else {
+            review.revoke()
+            refuse(.cancelled)
         }
-
-        // This may show Touch ID, Apple Watch or a password on macOS.
-        // The prompt text names the exact scope and prospective-only action.
-        let reason = "Review future-only Codex text request for workspace " +
-            args[2] + ". Recording stays disabled."
-        let succeeded = await withCheckedContinuation {
-            (continuation: CheckedContinuation<Bool, Never>) in
-            context.evaluatePolicy(
-                .deviceOwnerAuthentication, localizedReason: reason
-            ) { result, _ in
-                continuation.resume(returning: result)
-            }
+        // Even an actual Apple device-owner authentication result cannot
+        // grant capture, authorize archive writes, or authenticate this
+        // helper process to a separate Node.js host.
+        guard review.authorizeConversationCapture() == false,
+            current.captureAuthorized == false,
+            current.recordingConsentIssued == false,
+            current.hostOriginAttested == false,
+            current.archiveWriteAdmitted == false,
+            current.historyImportAdmitted == false else {
+            review.revoke()
+            refuse(.invalid)
         }
-        guard succeeded else { refuse(.cancelled) }
-
-        // A local success is a device-owner check, NOT an OS-issued
-        // recording grant, event-source attestation or process credential.
-        // No token, signature, identity, workspace or secret is printed.
+        review.revoke()
         print("DEVICE_OWNER_PREVIEW_OK: recording remains disabled")
     }
 }
