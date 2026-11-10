@@ -47,10 +47,13 @@ clang -fobjc-arc -framework Foundation -I scripts/mc2 \
   scripts/mc2/native-macos-actual-xpc-service.m
 clang -fobjc-arc -framework Foundation -I scripts/mc2 \
   -o "$APP/Contents/MacOS/AIVerseActualXPCOwner" \
-  scripts/mc2/native-macos-actual-xpc-owner.m
+  scripts/mc2/native-macos-actual-xpc-owner.m \
+  scripts/mc2/native-macos-xpc-lease-fence.m
 codesign --force --sign - --identifier com.aiverse.ci-only.persistentchat.actual-xpc-service "$XPC"
 codesign --force --sign - --identifier com.aiverse.ci-only.persistentchat.actual-xpc-owner "$APP"
 codesign --verify --strict "$XPC"
 codesign --verify --deep --strict "$APP"
 "$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-probe
 echo 'PASS: real XPC 3A.35 packaged service, two OS processes, denial-only reply; still no user consent'
+"$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-revocation
+echo 'PASS: real XPC 3A.36 delayed reply, connection replacement and interruption cannot authorize capture'
