@@ -6,6 +6,7 @@
 #import "native-macos-actual-xpc-protocol.h"
 #import "native-macos-xpc-lease-fence.h"
 #import "native-macos-release-peer-deny.h"
+#import "native-macos-device-owner-host-review.h"
 #import <Foundation/Foundation.h>
 #import <dispatch/dispatch.h>
 #import <unistd.h>
@@ -163,6 +164,61 @@ static int revocationAndInterruption(void) {
     return 0;
 }
 
+/* 3A.38: test only. The actual native XPC host can never grant
+ * recording from a forged scope, session or an unattended CI invocation.
+ */
+static int deviceOwnerDenied(void) {
+    AIVerseXPCLeaseFence *fence=[AIVerseXPCLeaseFence new];
+    NSUUID *session=[NSUUID UUID];
+    pid_t owner=getpid();
+    uint64_t epoch=[fence beginForWorkspace:@"operator"
+                            session:session processPID:owner];
+    if (epoch==0) return 70;
+    NSXPCConnection *connection=newFixtureConnection();
+    dispatch_semaphore_t xpcDone=dispatch_semaphore_create(0);
+    __block BOOL xpcDenied=NO;
+    id<AIVerseActualXPCDenial> proxy =
+        [connection remoteObjectProxyWithErrorHandler:^(NSError *error){
+            (void)error;
+            dispatch_semaphore_signal(xpcDone);
+        }];
+    [proxy probeDenied:@"owner-auth-fake-approval" withReply:
+      ^(NSString *status, NSNumber *pid) {
+        xpcDenied=[status isEqualToString:@"CAPTURE_DISABLED"] &&
+                  pid.intValue>0 && pid.intValue!=owner;
+        dispatch_semaphore_signal(xpcDone);
+      }];
+    if (dispatch_semaphore_wait(xpcDone,
+            dispatch_time(DISPATCH_TIME_NOW,7*NSEC_PER_SEC))!=0 ||
+        !xpcDenied) {
+        [connection invalidate];
+        [fence revoke];
+        return 71;
+    }
+    AIVerseDeviceOwnerHostReview *review =
+       [[AIVerseDeviceOwnerHostReview alloc] initWithLeaseFence:fence];
+    __block int rejected=0;
+    [review attemptReviewForWorkspace:@"operator"
+         session:session processPID:owner generation:epoch
+         completion:^(BOOL reviewed){ if (!reviewed) rejected++; }];
+    [review attemptReviewForWorkspace:@"film"
+         session:session processPID:owner generation:epoch
+         completion:^(BOOL reviewed){ if (!reviewed) rejected++; }];
+    [review attemptReviewForWorkspace:@"operator"
+         session:[NSUUID UUID] processPID:owner generation:epoch
+         completion:^(BOOL reviewed){ if (!reviewed) rejected++; }];
+    [fence revoke];
+    [review revoke];
+    [review attemptReviewForWorkspace:@"operator"
+         session:session processPID:owner generation:epoch
+         completion:^(BOOL reviewed){ if (!reviewed) rejected++; }];
+    [connection invalidate];
+    if (rejected!=4 || review.recordingConsentIssued ||
+        review.archiveWriteAdmitted || fence.recordingAuthorized) return 72;
+    puts("PASS: 3A.38 real XPC owner refuses unattended LocalAuthentication and stale/replaced session; capture disabled");
+    return 0;
+}
+
 int main(int argc, const char *argv[]) {
     @autoreleasepool {
         if (!fixtureOwner() || argc!=2) {
@@ -174,6 +230,8 @@ int main(int argc, const char *argv[]) {
             return revocationAndInterruption();
         if (strcmp(argv[1], "--ci-release-peer-deny")==0)
             return AIVerseTestReleasePeerDenial();
+        if (strcmp(argv[1], "--ci-device-owner-deny")==0)
+            return deviceOwnerDenied();
         fprintf(stderr, "ACTUAL_XPC_CI_UNATTENDED_DENIED\n");
         return 64;
     }
