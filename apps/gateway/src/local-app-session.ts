@@ -21,6 +21,8 @@ const SESSION_TTL=8*60*60*1000;
 // An operator's prospective preference is not recording consent or a
 // capture grant. It is intentionally shorter-lived than browser pairing.
 const PROSPECTIVE_RECORDING_INTENT_TTL=2*60*1000;
+const PROSPECTIVE_TEXT_REVIEW_TTL=45*1000;
+const PROSPECTIVE_TEXT_REVIEW_PHRASE="future-text-only";
 const WORKSPACE_REQUEST_TTL=90*1000;
 const MAX_WORKSPACE_REQUESTS=5;
 const ID=/^[a-z0-9][a-z0-9-]{0,63}$/;
@@ -70,6 +72,8 @@ export interface LocalApplicationScope{
 /** Never an authorization credential, storage admission or consent issuer. */
 export interface ProspectiveRecordingIntentStatus{
   requested:boolean;
+  /** Optional recent host TTY acknowledgment, never authenticated consent. */
+  scopeReviewAcknowledged:boolean;
   /** Testable local identity epoch. Never a bearer token or capture grant. */
   intentGeneration:number;
   scope:LocalApplicationScope|null;
@@ -95,6 +99,14 @@ export class LocalApplicationSession {
   private prospectiveRecordingIntent?:{
     scope:LocalApplicationScope;
     expiresAtMs:number;
+    pairedSignal:AbortSignal;
+  };
+  // Deliberately not a user-consent grant. Requires a SECOND explicit
+  // terminal action within 45 seconds in the exact current OS workspace.
+  private prospectiveTextReview?:{
+    generation:number;
+    expiresAtMs:number;
+    scope:LocalApplicationScope;
     pairedSignal:AbortSignal;
   };
   private readonly ownerRoot?:string;
@@ -216,13 +228,43 @@ export class LocalApplicationSession {
     if(!enabled){
       this.prospectiveIntentGeneration++;
       this.prospectiveRecordingIntent=undefined;
+      this.prospectiveTextReview=undefined;
       return;
     }
     if(!this.active())throw Error("LOCAL_APP_SESSION_INACTIVE");
     this.prospectiveIntentGeneration++;
+    this.prospectiveTextReview=undefined;
     this.prospectiveRecordingIntent={
       scope:{systemId:this.scope.systemId,workspaceId:this.scope.workspaceId},
       expiresAtMs:Date.now()+PROSPECTIVE_RECORDING_INTENT_TTL,
+      pairedSignal:this.sessionAbort.signal,
+    };
+  }
+  /**
+   * A second explicit prospective *scope review* from the trusted terminal.
+   * This is NOT an authenticated recording consent issuer and cannot grant
+   * chat capture. Browser/RPC/WS handlers never call this method.
+   */
+  acknowledgeProspectiveTextScopeFromHost(
+    workspaceId:string,phrase:string,
+  ):void{
+    if(!this.ownerRegistry)throw Error("LOCAL_APP_HOST_AUTHORITY_REQUIRED");
+    if(typeof workspaceId!=="string"||typeof phrase!=="string"
+      ||workspaceId!==this.scope.workspaceId
+      ||phrase!==PROSPECTIVE_TEXT_REVIEW_PHRASE)
+      throw Error("LOCAL_APP_TEXT_REVIEW_INVALID");
+    const intent=this.prospectiveRecordingIntentForHost();
+    if(!intent.requested||!intent.scope||!this.prospectiveRecordingIntent)
+      throw Error("LOCAL_APP_TEXT_REVIEW_INACTIVE");
+    if(this.prospectiveTextReview
+      && this.prospectiveTextReview.generation===intent.intentGeneration)
+      throw Error("LOCAL_APP_TEXT_REVIEW_ALREADY_USED");
+    this.prospectiveTextReview={
+      generation:intent.intentGeneration,
+      expiresAtMs:Math.min(
+        Date.now()+PROSPECTIVE_TEXT_REVIEW_TTL,
+        this.prospectiveRecordingIntent.expiresAtMs),
+      scope:{systemId:this.scope.systemId,workspaceId:this.scope.workspaceId},
       pairedSignal:this.sessionAbort.signal,
     };
   }
@@ -239,9 +281,19 @@ export class LocalApplicationSession {
     if(!valid && intent!==undefined){
       this.prospectiveIntentGeneration++;
       this.prospectiveRecordingIntent=undefined;
+      this.prospectiveTextReview=undefined;
     }
+    const review=this.prospectiveTextReview;
+    const scopeReviewAcknowledged=valid && review!==undefined
+      && Date.now()<review.expiresAtMs
+      && review.generation===this.prospectiveIntentGeneration
+      && review.pairedSignal===this.sessionAbort.signal
+      && !review.pairedSignal.aborted
+      && review.scope.systemId===this.scope.systemId
+      && review.scope.workspaceId===this.scope.workspaceId;
     return {
       requested:valid,
+      scopeReviewAcknowledged,
       intentGeneration:this.prospectiveIntentGeneration,
       scope:valid?{systemId:this.scope.systemId,workspaceId:this.scope.workspaceId}:null,
       expiresAtMs:valid?intent!.expiresAtMs:null,
@@ -272,6 +324,7 @@ export class LocalApplicationSession {
     // irrevocably clears the previous prospective preference.
     this.prospectiveIntentGeneration++;
     this.prospectiveRecordingIntent=undefined;
+    this.prospectiveTextReview=undefined;
     this.sessionAbort.abort();
     this.sessionsUntil=0;
     this.pendingRequest=undefined;
