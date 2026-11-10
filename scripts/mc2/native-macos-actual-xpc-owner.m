@@ -213,8 +213,8 @@ static int deviceOwnerDenied(void) {
          session:session processPID:owner generation:epoch
          completion:^(BOOL reviewed){ if (!reviewed) rejected++; }];
     [connection invalidate];
-    if (rejected!=4 || review.recordingConsentIssued ||
-        review.archiveWriteAdmitted || fence.recordingAuthorized) return 72;
+    if (rejected!=4 || [review recordingConsentIssued] ||
+        [review archiveWriteAdmitted] || [fence recordingAuthorized]) return 72;
     puts("PASS: 3A.38 real XPC owner refuses unattended LocalAuthentication and stale/replaced session; capture disabled");
     return 0;
 }
