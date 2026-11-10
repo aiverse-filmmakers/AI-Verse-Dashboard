@@ -463,6 +463,48 @@ static int verifyOfflineOfficialCodexChild(void) {
     return result;
 }
 
+/*
+ * 3A.52: connection lifecycle leak regression. A live XPC service
+ * accepts dozens of sequential connections without retaining stale
+ * invalidated peers. Require the SAME service PID throughout, so a
+ * silent launchd process restart cannot disguise a leaked connection.
+ * Replies remain constant CAPTURE_DISABLED and never contain chat.
+ */
+static int verifyNoXPCConnectionLeak(void) {
+    pid_t servicePID=0;
+    for (int index=0;index<36;index++) {
+        NSXPCConnection *connection=newFixtureConnection();
+        dispatch_semaphore_t done=dispatch_semaphore_create(0);
+        __block BOOL errored=NO;
+        __block NSString *result=nil;
+        __block NSNumber *pid=nil;
+        id<AIVerseActualXPCDenial> proxy=
+          [connection remoteObjectProxyWithErrorHandler:^(NSError *error) {
+              (void)error;
+              errored=YES;
+              dispatch_semaphore_signal(done);
+          }];
+        [proxy probeDenied:@"connection-churn-only-no-capture" withReply:
+          ^(NSString *status, NSNumber *service) {
+              result=status; pid=service;
+              dispatch_semaphore_signal(done);
+          }];
+        BOOL finished=dispatch_semaphore_wait(done,
+                  dispatch_time(DISPATCH_TIME_NOW,7*NSEC_PER_SEC))==0;
+        [connection invalidate];
+        if (!finished || errored || ![result isEqualToString:@"CAPTURE_DISABLED"]
+                || pid.intValue<=0 || pid.intValue==getpid())
+            return 151;
+        if (servicePID==0) servicePID=pid.intValue;
+        else if (servicePID!=pid.intValue) return 152;
+        // Give the server's asynchronous invalidation handler time to
+        // remove the prior connection before admitting the next one.
+        usleep(70000);
+    }
+    puts("PASS: 3A.52 36 real XPC connections reused same service PID, invalidated peers released and capture denied");
+    return 0;
+}
+
 int main(int argc, const char *argv[]) {
     @autoreleasepool {
         if (!fixtureOwner() || argc!=2) {
@@ -482,6 +524,8 @@ int main(int argc, const char *argv[]) {
             return proveOwnedChildPhysicalScope();
         if (strcmp(argv[1], "--ci-offline-real-codex")==0)
             return verifyOfflineOfficialCodexChild();
+        if (strcmp(argv[1], "--ci-xpc-churn")==0)
+            return verifyNoXPCConnectionLeak();
         fprintf(stderr, "ACTUAL_XPC_CI_UNATTENDED_DENIED\n");
         return 64;
     }
