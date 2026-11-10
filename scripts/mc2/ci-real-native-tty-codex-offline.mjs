@@ -126,11 +126,38 @@ try{
     16000);
   await cmd(":chat-intent off",/Prospective chat request cleared/);
   await cmd(":codex-child-proof real-readonly",/CODEX_CHILD_PROOF_DENIED/);
+  const beforeSwitch=text.length;
   await cmd(":use film",/Selected workspace: film/);
+  await cmd(":codex-child-proof real-readonly",/CODEX_CHILD_PROOF_DENIED/);
+  const stale=(paired.headers.get("set-cookie")??"").split(";")[0];
+  const oldSession=await fetch(origin+"/local-app/session",{
+    headers:{cookie:stale},redirect:"error",
+    signal:AbortSignal.timeout(6000),
+  });
+  assert.equal(oldSession.status,401,"old browser session must stay revoked");
+  const secondCode=(await until(
+    /New one-time pairing code: ([A-Za-z0-9_-]{40,})/,
+    12000,beforeSwitch))[1];
+  assert.notEqual(secondCode,pairing,"workspace switch must rotate the pairing code");
+  const filmPair=await fetch(origin+"/local-app/pair",{
+    method:"POST",headers:{origin,"content-type":"application/json"},
+    body:JSON.stringify({code:secondCode}),redirect:"error",
+    signal:AbortSignal.timeout(6000),
+  });
+  assert.equal(filmPair.status,200);
+  await cmd(":codex-child-proof real-readonly",/CODEX_CHILD_PROOF_DENIED/);
+  await cmd(":chat-intent on",
+    /Prospective chat request noted for up to 2 minutes/);
+  await cmd(":chat-review confirm film future-text-only",
+    /Prospective text scope review acknowledged/);
+  await cmd(":codex-child-proof real-readonly",
+    /Native pinned Codex initialized and config-read only\. Recording remains disabled\./,
+    16000);
+  await cmd(":chat-intent off",/Prospective chat request cleared/);
   await cmd(":codex-child-proof real-readonly",/CODEX_CHILD_PROOF_DENIED/);
   // Do not print source bytes, host token, pairing code or terminal lines.
   console.log(
-    "PASS: actual interactive native launcher -> pinned real Codex app-server read-only handshake under no-network Docker, revoked across stop and workspace switch");
+    "PASS: actual native TTY spawned two separate pinned Codex children in operator and film workspaces; old cookie/epoch refused, no-network read-only handshakes");
   console.log("BLOCKED: user recording consent, prompts, messages, history, archive and Memory");
 }finally{
   if(terminal){
