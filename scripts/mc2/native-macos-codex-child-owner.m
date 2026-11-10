@@ -69,7 +69,7 @@ static BOOL hasKernelBoundWorkingDirectory(pid_t pid, dev_t dev, ino_t ino,
     struct proc_vnodepathinfo info={0};
     if (proc_pidinfo(pid,PROC_PIDVNODEPATHINFO,0,&info,sizeof(info))
           !=sizeof(info)) return NO;
-    const struct vnode_stat *st=&info.pvi_cdir.vip_vi.vi_stat;
+    const struct vinfo_stat *st=&info.pvi_cdir.vip_vi.vi_stat;
     return (dev_t)st->vst_dev==dev && (ino_t)st->vst_ino==ino &&
         strcmp(info.pvi_cdir.vip_path,path.fileSystemRepresentation)==0;
 }
