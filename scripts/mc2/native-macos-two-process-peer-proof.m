@@ -105,7 +105,12 @@ static BOOL kernelPeerMatches(int connected, Lease lease,
     if (reportedUID) *reportedUID = uid;
     return YES;
 }
-static BOOL checkLease(int connected, Lease lease, NSString *identity) {
+static BOOL checkLease(int connected, Lease lease, pid_t ownerPID,
+                       uint64_t ownerGeneration, NSString *identity) {
+    // The expected PID and generation are retained by the parent. A stale
+    // lease must fail even if a new child happens to reuse the old PID.
+    if (!lease.active || !ownerGeneration || lease.generation != ownerGeneration ||
+        lease.childPID != ownerPID || ownerPID <= 0) return NO;
     pid_t kernelPID = -1;
     if (!kernelPeerMatches(connected, lease, &kernelPID, NULL)) return NO;
     if (!validDynamicSigner(kernelPID, identity)) return NO;
@@ -153,22 +158,24 @@ static int parentRun(NSString *allowed, NSString *impostor) {
         if (!task || task.processIdentifier <= 0) return 25;
         connected = acceptBounded(listener);
         if (connected < 0) return 26;
-        Lease current = {.childPID = task.processIdentifier,
-                         .generation = 1, .active = YES};
-        if (!checkLease(connected, current,
+        pid_t ownerPID = task.processIdentifier;
+        uint64_t ownerGeneration = 1;
+        Lease current = {.childPID = ownerPID,
+                         .generation = ownerGeneration, .active = YES};
+        if (!checkLease(connected, current, ownerPID, ownerGeneration,
               @"com.aiverse.ci-only.persistentchat.peer.allowed")) return 27;
         Lease fakePID = current;
         fakePID.childPID = getpid();
-        if (checkLease(connected, fakePID,
+        if (checkLease(connected, fakePID, ownerPID, ownerGeneration,
               @"com.aiverse.ci-only.persistentchat.peer.allowed")) return 28;
         Lease fakeGeneration = current;
         fakeGeneration.generation = 0;
-        if (checkLease(connected, fakeGeneration,
+        if (checkLease(connected, fakeGeneration, ownerPID, ownerGeneration,
               @"com.aiverse.ci-only.persistentchat.peer.allowed")) return 29;
 
         // Revocation while a connected socket still exists invalidates it.
         current.active = NO;
-        if (checkLease(connected, current,
+        if (checkLease(connected, current, ownerPID, ownerGeneration,
               @"com.aiverse.ci-only.persistentchat.peer.allowed")) return 30;
         close(connected); connected = -1;
         stopChild(task); task = nil;
@@ -179,19 +186,22 @@ static int parentRun(NSString *allowed, NSString *impostor) {
         if (!task || task.processIdentifier <= 0) return 31;
         connected = acceptBounded(listener);
         if (connected < 0) return 32;
-        Lease replaced = {.childPID = task.processIdentifier,
-                          .generation = 2, .active = YES};
+        ownerPID = task.processIdentifier;
+        ownerGeneration = 2;
+        Lease replaced = {.childPID = ownerPID,
+                          .generation = ownerGeneration, .active = YES};
         if (!kernelPeerMatches(connected, replaced, NULL, NULL)) return 33;
-        if (checkLease(connected, replaced,
+        if (checkLease(connected, replaced, ownerPID, ownerGeneration,
               @"com.aiverse.ci-only.persistentchat.peer.allowed")) return 34;
-        if (!checkLease(connected, replaced,
+        if (!checkLease(connected, replaced, ownerPID, ownerGeneration,
               @"com.aiverse.ci-only.persistentchat.peer.impostor")) return 35;
         // Old PID + generation cannot be reused against the new socket.
-        Lease old = {.childPID = -1, .generation = 1, .active = YES};
-        if (checkLease(connected, old,
-              @"com.aiverse.ci-only.persistentchat.peer.allowed")) return 36;
+        Lease old = {.childPID = ownerPID, .generation = 1, .active = YES};
+        // Stale generations cannot borrow the currently valid new PID.
+        if (checkLease(connected, old, ownerPID, ownerGeneration,
+              @"com.aiverse.ci-only.persistentchat.peer.impostor")) return 36;
         replaced.active = NO;
-        if (checkLease(connected, replaced,
+        if (checkLease(connected, replaced, ownerPID, ownerGeneration,
               @"com.aiverse.ci-only.persistentchat.peer.impostor")) return 37;
         code = 0;
     } @finally {
