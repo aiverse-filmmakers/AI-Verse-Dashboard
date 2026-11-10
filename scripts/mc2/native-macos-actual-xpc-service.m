@@ -36,13 +36,15 @@ static BOOL fixtureService(void) {
 @end
 
 @interface AIVerseActualXPCLocalDelegate : NSObject<NSXPCListenerDelegate>
-@property(nonatomic,strong) NSMutableArray<NSXPCConnection *> *connections;
+@property(nonatomic,strong) NSMutableSet<NSXPCConnection *> *connections;
+@property(nonatomic,strong) NSLock *connectionsLock;
 @property(nonatomic,strong) AIVerseActualXPCHelper *helper;
 @end
 @implementation AIVerseActualXPCLocalDelegate
 - (instancetype)init {
     if ((self=[super init])) {
-        _connections=[NSMutableArray array];
+        _connections=[NSMutableSet set];
+        _connectionsLock=[NSLock new];
         _helper=[AIVerseActualXPCHelper new];
     }
     return self;
@@ -51,10 +53,30 @@ static BOOL fixtureService(void) {
     (void)listener;
     // The installed version must verify a Developer ID/Team identity
     // before connecting. CI ad-hoc signatures cannot prove that.
+    //
+    // A service-side connection is NOT immortal. Retaining each connection
+    // without an invalidation handler leaks a live XPC object forever,
+    // including when the client disconnects or a worker is restarted.
+    [self.connectionsLock lock];
+    if (self.connections.count>=12) {
+        [self.connectionsLock unlock];
+        return NO;
+    }
+    [self.connections addObject:connection];
+    [self.connectionsLock unlock];
+    __weak AIVerseActualXPCLocalDelegate *weakOwner=self;
+    __weak NSXPCConnection *weakConnection=connection;
+    connection.invalidationHandler=^{
+        AIVerseActualXPCLocalDelegate *owner=weakOwner;
+        NSXPCConnection *previous=weakConnection;
+        if (!owner || !previous) return;
+        [owner.connectionsLock lock];
+        [owner.connections removeObject:previous];
+        [owner.connectionsLock unlock];
+    };
     connection.exportedInterface=[NSXPCInterface interfaceWithProtocol:
                                     @protocol(AIVerseActualXPCDenial)];
     connection.exportedObject=self.helper;
-    [self.connections addObject:connection];
     [connection resume];
     return YES;
 }
