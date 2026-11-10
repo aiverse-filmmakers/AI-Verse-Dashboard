@@ -14,6 +14,8 @@ on:
       - "scripts/mc2/native-macos-packaged-owner-deny.swift"
       - "scripts/mc2/native-macos-packaged-xpc-deny.swift"
       - "scripts/mc2/ci-macos-packaged-xpc-signing-deny.sh"
+      - "scripts/mc2/native-macos-two-process-peer-proof.m"
+      - "scripts/mc2/ci-macos-two-process-peer-ownership.sh"
       - "scripts/mc2/start-connected.ts"
       - "apps/gateway/src/local-app-session.ts"
   workflow_dispatch:
@@ -103,6 +105,15 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/mc2/ci-macos-packaged-xpc-signing-deny.sh
+
+      - name: Verify 3A.34 real macOS two-process kernel peer and signer ownership
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_TWO_PROCESS_FIXTURE: "1"
+        run: |
+          set -euo pipefail
+          bash scripts/mc2/ci-macos-two-process-peer-ownership.sh
 
       - name: Refuse unattended auth and all mismatched scopes
         shell: bash
