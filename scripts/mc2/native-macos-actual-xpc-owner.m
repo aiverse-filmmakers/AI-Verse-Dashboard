@@ -5,6 +5,7 @@
  */
 #import "native-macos-actual-xpc-protocol.h"
 #import "native-macos-xpc-lease-fence.h"
+#import "native-macos-release-peer-deny.h"
 #import <Foundation/Foundation.h>
 #import <dispatch/dispatch.h>
 #import <unistd.h>
@@ -171,6 +172,8 @@ int main(int argc, const char *argv[]) {
         if (strcmp(argv[1], "--ci-probe")==0) return probe();
         if (strcmp(argv[1], "--ci-revocation")==0)
             return revocationAndInterruption();
+        if (strcmp(argv[1], "--ci-release-peer-deny")==0)
+            return AIVerseTestReleasePeerDenial();
         fprintf(stderr, "ACTUAL_XPC_CI_UNATTENDED_DENIED\n");
         return 64;
     }
