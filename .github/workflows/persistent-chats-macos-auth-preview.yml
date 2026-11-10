@@ -20,6 +20,9 @@ on:
       - "scripts/mc2/native-macos-actual-xpc-service.m"
       - "scripts/mc2/native-macos-actual-xpc-owner.m"
       - "scripts/mc2/ci-macos-actual-xpc-lifecycle.sh"
+      - "scripts/mc2/native-macos-xpc-lease-fence.h"
+      - "scripts/mc2/native-macos-xpc-lease-fence.m"
+      - "scripts/mc2/native-macos-xpc-lease-fence-tests.m"
       - "scripts/mc2/start-connected.ts"
       - "apps/gateway/src/local-app-session.ts"
   workflow_dispatch:
@@ -127,6 +130,20 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/mc2/ci-macos-actual-xpc-lifecycle.sh
+
+      - name: Verify Phase 3A.36 isolated XPC epoch, stale callbacks and revocation
+        shell: bash
+        env:
+          CI: "true"
+        run: |
+          set -euo pipefail
+          test -z "${OPENAI_API_KEY:-}"
+          test -z "${AIVERSE_GATEWAY_TOKEN:-}"
+          clang -fobjc-arc -framework Foundation -I scripts/mc2 \
+            -o "$RUNNER_TEMP/aiverse-xpc-lease-3a36" \
+            scripts/mc2/native-macos-xpc-lease-fence.m \
+            scripts/mc2/native-macos-xpc-lease-fence-tests.m
+          "$RUNNER_TEMP/aiverse-xpc-lease-3a36"
 
       - name: Refuse unattended auth and all mismatched scopes
         shell: bash
