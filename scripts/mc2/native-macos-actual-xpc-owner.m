@@ -8,6 +8,10 @@
 #import "native-macos-release-peer-deny.h"
 #import "native-macos-device-owner-host-review.h"
 #import "native-macos-inbound-xpc-deny-test.h"
+#import "native-macos-codex-child-owner.h"
+#import "native-macos-workspace-event-fence.h"
+#import <sys/stat.h>
+#import <limits.h>
 #import <Foundation/Foundation.h>
 #import <dispatch/dispatch.h>
 #import <unistd.h>
@@ -232,6 +236,121 @@ static int deviceOwnerDenied(void) {
     return 0;
 }
 
+
+/*
+ * Phase 3A.44 and 3A.45: actual XPC owner launches a SILENT real subprocess,
+ * checks its process handle, and observes only a dummy "CAPTURE_DISABLED"
+ * response through a physical-workspace-and-epoch fence.
+ */
+static int proveOwnedChildPhysicalScope(void) {
+    NSString *templatePath=[NSTemporaryDirectory()
+         stringByAppendingPathComponent:@"aiverse-native445.XXXXXXXX"];
+    char path[PATH_MAX]={0};
+    if (strlen(templatePath.fileSystemRepresentation)>=sizeof(path))
+        return 90;
+    strlcpy(path,templatePath.fileSystemRepresentation,sizeof(path));
+    char *created=mkdtemp(path);
+    if (!created) return 91;
+    char canonical[PATH_MAX]={0};
+    if (!realpath(created,canonical)) { rmdir(created); return 92; }
+    NSString *root=[NSString stringWithUTF8String:canonical];
+    NSString *workspace=[root stringByAppendingPathComponent:@"operator"];
+    NSString *moved=[root stringByAppendingPathComponent:@"saved"];
+    NSString *link=[root stringByAppendingPathComponent:@"alias"];
+    int result=93;
+    AIVerseOwnedSilentChild *child=[AIVerseOwnedSilentChild new];
+    AIVerseNativeScopeEventFence *fence=
+       [[AIVerseNativeScopeEventFence alloc] initWithChild:child];
+    NSXPCConnection *connection=nil;
+    @try {
+        if (mkdir(workspace.fileSystemRepresentation,0700)!=0) return 94;
+        if (symlink(workspace.fileSystemRepresentation,
+                    link.fileSystemRepresentation)!=0) return 95;
+        if ([child startInWorkspace:link]) return 96;
+        if (![child startInWorkspace:workspace]) return 97;
+        pid_t pid=child.pid;
+        uint64_t generation=child.generation;
+        if (pid<=0 || pid==getpid() ||
+            ![child stillOwnsWorkspace:workspace processPID:pid
+                           generation:generation]) return 98;
+        if ([child stillOwnsWorkspace:workspace processPID:getpid()
+                          generation:generation]) return 99;
+        NSUUID *session=[NSUUID UUID];
+        uint64_t epoch=[fence beginWithWorkspaceID:@"operator"
+                      directory:workspace session:session];
+        if (!epoch) return 100;
+        connection=newFixtureConnection();
+        dispatch_semaphore_t done=dispatch_semaphore_create(0);
+        __block BOOL returnedDenied=NO;
+        id<AIVerseActualXPCDenial> remote =
+           [connection remoteObjectProxyWithErrorHandler:^(NSError *error){
+               (void)error; dispatch_semaphore_signal(done);
+           }];
+        [remote probeDenied:@"ci-only-owner-process-observation" withReply:
+          ^(NSString *status, NSNumber *servicePID) {
+              returnedDenied=[status isEqualToString:@"CAPTURE_DISABLED"]
+                && servicePID.intValue>0 && servicePID.intValue!=getpid();
+              dispatch_semaphore_signal(done);
+          }];
+        if (dispatch_semaphore_wait(done,
+             dispatch_time(DISPATCH_TIME_NOW,7*NSEC_PER_SEC))!=0 ||
+            !returnedDenied || ![fence observeDeniedOnly:epoch
+                    workspaceID:@"operator" directory:workspace
+                    session:session processPID:pid] ||
+            fence.recordingAuthorized || fence.memoryAuthorized) return 101;
+
+        // 3A.45: permission mutation invalidates an otherwise live PID.
+        if (chmod(workspace.fileSystemRepresentation,0777)!=0) return 102;
+        if ([fence observeDeniedOnly:epoch workspaceID:@"operator"
+                directory:workspace session:session processPID:pid]) return 103;
+        if (chmod(workspace.fileSystemRepresentation,0700)!=0) return 104;
+        if ([fence observeDeniedOnly:epoch workspaceID:@"operator"
+                directory:workspace session:session processPID:pid]) return 105;
+        uint64_t replacement=[fence beginWithWorkspaceID:@"operator"
+                        directory:workspace session:[NSUUID UUID]];
+        if (!replacement) return 106;
+        // Scope rebinding must reject a different inode at the same path.
+        if (rename(workspace.fileSystemRepresentation,
+                   moved.fileSystemRepresentation)!=0) return 107;
+        if (mkdir(workspace.fileSystemRepresentation,0700)!=0) return 108;
+        if ([fence observeDeniedOnly:replacement workspaceID:@"operator"
+                    directory:workspace session:session processPID:pid]) return 109;
+        if (rmdir(workspace.fileSystemRepresentation)!=0) return 110;
+        if (rename(moved.fileSystemRepresentation,
+                   workspace.fileSystemRepresentation)!=0) return 111;
+        // Reinstating the old physical inode cannot revive an old epoch.
+        if ([fence observeDeniedOnly:epoch workspaceID:@"operator"
+                    directory:workspace session:session processPID:pid]) return 112;
+
+        [fence revoke];
+        [child stop];
+        if ([child stillOwnsWorkspace:workspace processPID:pid
+                          generation:generation]) return 113;
+        if (![child startInWorkspace:workspace]) return 114;
+        if ([child stillOwnsWorkspace:workspace processPID:pid
+                          generation:generation]) return 115;
+        NSUUID *newSession=[NSUUID UUID];
+        uint64_t newEpoch=[fence beginWithWorkspaceID:@"operator"
+                       directory:workspace session:newSession];
+        if (!newEpoch || ![fence observeDeniedOnly:newEpoch
+                  workspaceID:@"operator" directory:workspace
+                  session:newSession processPID:child.pid]) return 116;
+        [fence revoke];
+        result=0;
+    } @finally {
+        [connection invalidate];
+        [fence revoke];
+        [child stop];
+        unlink(link.fileSystemRepresentation);
+        rmdir(workspace.fileSystemRepresentation);
+        rmdir(moved.fileSystemRepresentation);
+        rmdir(root.fileSystemRepresentation);
+    }
+    if(result==0)
+        puts("PASS: 3A.44/45 real XPC owner retains physical child, detects workspace replacement, permissions, generation and revocation; no capture");
+    return result;
+}
+
 int main(int argc, const char *argv[]) {
     @autoreleasepool {
         if (!fixtureOwner() || argc!=2) {
@@ -247,6 +366,8 @@ int main(int argc, const char *argv[]) {
             return deviceOwnerDenied();
         if (strcmp(argv[1], "--ci-inbound-deny")==0)
             return AIVerseTestInboundXPCPeerDenial();
+        if (strcmp(argv[1], "--ci-owned-child-scope")==0)
+            return proveOwnedChildPhysicalScope();
         fprintf(stderr, "ACTUAL_XPC_CI_UNATTENDED_DENIED\n");
         return 64;
     }
