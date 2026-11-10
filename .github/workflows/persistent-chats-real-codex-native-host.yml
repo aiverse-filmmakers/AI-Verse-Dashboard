@@ -5,6 +5,9 @@ on:
     paths:
       - '.github/workflows/persistent-chats-real-codex-native-host.yml'
       - 'scripts/mc2/ci-real-codex-native-session-proof.mjs'
+      - 'scripts/mc2/native-codex-readonly-tty-proof.ts'
+      - 'scripts/mc2/ci-real-native-tty-codex-offline.mjs'
+      - 'scripts/mc2/start-connected.ts'
       - 'apps/gateway/src/local-app-session.ts'
       - 'apps/gateway/src/server.ts'
       - 'packages/registry/src/**'
@@ -38,6 +41,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Checkout pinned canonical Gateway deterministic fixture (no user install)
+        uses: actions/checkout@v4
+        with:
+          repository: aiverse-filmmakers/AI-Verse-Gateway
+          ref: 9748dd0d5473b65ad95ef92df62fe0a13575e378
+          path: gateway-source
+          persist-credentials: false
+
       - name: Prepare Node 22 and install locked packages without scripts
         uses: actions/setup-node@v4
         with:
@@ -53,7 +64,12 @@ jobs:
           test -z "${AIVERSE_GATEWAY_TOKEN:-}"
           npm ci --ignore-scripts --no-audit --no-fund
           npm run build --silent
+          # Native personal entrypoint requires the actual existing browser
+          # assets. Bundle first-party code in CI, no mock UI.
+          npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund esbuild@0.25.12
+          ./node_modules/.bin/esbuild apps/web/src/personal-chat-ui.ts --bundle --platform=browser --format=esm --target=es2022 --outfile=dist/apps/web/personal-chat.bundle.js
           node --check scripts/mc2/ci-real-codex-native-session-proof.mjs
+          node --check scripts/mc2/ci-real-native-tty-codex-offline.mjs
           test -f dist/apps/gateway/src/local-app-session.js
           test -f dist/packages/registry/src/index.js
 
@@ -125,6 +141,16 @@ jobs:
               --workdir /scratch \
               "$NODE_CI_IMAGE" \
               node /app/scripts/mc2/ci-real-codex-native-session-proof.mjs
+
+      - name: Exercise REAL first-party TTY launcher against pinned offline Codex
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A PTY is needed in the container: install only the test utility
+          # in a throwaway image based on the immutable official Node digest.
+          printf '%s\n'             "FROM $NODE_CI_IMAGE"             'RUN apt-get update && apt-get install -y --no-install-recommends bsdutils util-linux && rm -rf /var/lib/apt/lists/*'             | docker build --quiet -t aiverse-3a28-tty-fixture -f - .
+          test "$(git -C gateway-source rev-parse HEAD)" = "9748dd0d5473b65ad95ef92df62fe0a13575e378"
+          timeout --signal=TERM --kill-after=10s 180s             docker run --rm               --network none               --read-only               --cap-drop ALL               --security-opt no-new-privileges               --pids-limit 96               --memory 2048m               --cpus 2               --user "$(id -u):$(id -g)"               --tmpfs "/scratch:rw,nosuid,nodev,size=512m,mode=1777"               --tmpfs "/tmp:rw,nosuid,nodev,size=64m,mode=1777"               --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/app,readonly"               --mount "type=bind,src=$RELEASE_DIR/bin,dst=/test,readonly"               --env CI=true               --env AIVERSE_PERSISTENT_CHATS_REAL_CODEX_TTY_CI=1               --workdir /scratch               aiverse-3a28-tty-fixture               node /app/scripts/mc2/ci-real-native-tty-codex-offline.mjs
 
       - name: Confirm tracked repository files did not change
         shell: bash
