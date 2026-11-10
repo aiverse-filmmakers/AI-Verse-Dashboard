@@ -33,7 +33,8 @@ struct NativeReviewTests {
         precondition(!invalid.isWellFormed && !missingChild.isWellFormed)
         let gate = NativeOwnerReviewState()
         precondition(gate.fixtureBegin(alpha) == nil, "unselected review must deny")
-        precondition(await gate.manuallyReviewDeviceOwner(alpha) == false,
+        let unattendedResult = await gate.manuallyReviewDeviceOwner(alpha)
+        precondition(!unattendedResult,
                      "headless test cannot request real Apple authentication")
         gate.selectHostBinding(invalid)
         precondition(gate.fixtureBegin(invalid) == nil, "path-like scope must deny")
