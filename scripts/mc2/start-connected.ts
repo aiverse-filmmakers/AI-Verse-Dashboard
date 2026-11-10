@@ -118,7 +118,7 @@ if(localApp){
       "Run Stop is disabled. To opt in, set AIVERSE_DASHBOARD_ALLOW_RUN_CANCEL=1 before launch.\n")+
     (checkpointEnabled?"Run Pause/Resume is enabled by separate host opt-in.\n":
       "Run Pause/Resume is disabled. Set AIVERSE_DASHBOARD_ALLOW_RUN_PAUSE_RESUME=1 to opt in.\n")+
-    "Host commands: :workspaces, :use <workspace-id>, :use operator, :pending, :approve <id>, :deny <id>, :chat-intent on|off|status, :help\n"+
+    "Host commands: :workspaces, :use <workspace-id>, :use operator, :pending, :approve <id>, :deny <id>, :chat-intent on|off|status, :chat-review confirm <workspace-id> future-text-only, :chat-review status, :help\n"+
     "Chat intent is a short-lived request only; conversation capture remains disabled.\n\n");
   // Only the actual TTY-host controls scope. No browser workspace.list,
   // remote URL, machine path, env key, or unverified arbitrary workspace ID.
@@ -128,7 +128,7 @@ if(localApp){
     for await(const raw of terminal){
       const command=raw.trim();
       if(command===":help"){
-        process.stderr.write("Commands: :workspaces, :use <id>, :use operator, :pending, :approve <id>, :deny <id>, :chat-intent on|off|status, :help\n");
+        process.stderr.write("Commands: :workspaces, :use <id>, :use operator, :pending, :approve <id>, :deny <id>, :chat-intent on|off|status, :chat-review confirm <workspace-id> future-text-only, :chat-review status, :help\n");
         continue;
       }
       // Only the real interactive TTY path can express or clear a request.
@@ -139,6 +139,13 @@ if(localApp){
           localApp.setProspectiveRecordingIntentFromHost(true);
           process.stderr.write(
             "Prospective chat request noted for up to 2 minutes. Recording remains disabled.\n");
+          const prospective=localApp.prospectiveRecordingIntentForHost();
+          if(prospective.scope)process.stderr.write(
+            "Optional scope review: future Codex text only in workspace "+
+            prospective.scope.workspaceId+
+            ", never history. To acknowledge: :chat-review confirm "+
+            prospective.scope.workspaceId+" future-text-only\n"+
+            "This is NOT authenticated recording consent. Capture remains disabled.\n");
         }catch{process.stderr.write("CHAT_INTENT_DENIED\n");}
         continue;
       }
@@ -156,6 +163,28 @@ if(localApp){
             ?"Prospective chat request is active. Recording remains disabled.\n"
             :"No active prospective chat request. Recording remains disabled.\n");
         }catch{process.stderr.write("CHAT_INTENT_DENIED\n");}
+        continue;
+      }
+      // Second, explicit host-only review of the future-text-only purpose
+      // and current OS workspace. This NEVER creates recording permission.
+      if(command.startsWith(":chat-review confirm ")){
+        try{
+          const words=command.slice(":chat-review confirm ".length).split(" ");
+          if(words.length!==2||!words[0]||!words[1])
+            throw Error("LOCAL_APP_TEXT_REVIEW_INVALID");
+          localApp.acknowledgeProspectiveTextScopeFromHost(words[0],words[1]);
+          process.stderr.write(
+            "Prospective text scope review acknowledged. Recording remains disabled.\n");
+        }catch{process.stderr.write("CHAT_REVIEW_DENIED\n");}
+        continue;
+      }
+      if(command===":chat-review status"){
+        try{
+          const reviewed=localApp.prospectiveRecordingIntentForHost();
+          process.stderr.write(reviewed.scopeReviewAcknowledged
+            ?"Prospective text scope review is active. Recording remains disabled.\n"
+            :"No active prospective text scope review. Recording remains disabled.\n");
+        }catch{process.stderr.write("CHAT_REVIEW_DENIED\n");}
         continue;
       }
       if(command===":pending"){
