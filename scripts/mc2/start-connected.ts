@@ -4,6 +4,7 @@
  * Does not install/configure Gateway, authorize providers, edit OS or persist keys.
  */
 import {readFileSync,statSync} from "node:fs";
+import type {NativeNoContentChildProof} from "./native-codex-child-proof.js";
 import {createInterface} from "node:readline";
 import {LocalApplicationSession} from "../../apps/gateway/src/local-app-session.js";
 import {homedir} from "node:os";
@@ -67,6 +68,7 @@ const bridge=new CanonicalGatewayBridge(registry,[{
   allowRunPauseResume:checkpointEnabled,
 }]);
 let localApp:LocalApplicationSession|undefined;
+let nativeChildProof:NativeNoContentChildProof|undefined;
 if(uiEnabled){
   let html:string,boot:string,css:string,chat:string;
   try{
@@ -136,6 +138,7 @@ if(localApp){
       // recording admission. No request is saved, logged or sent to Gateway.
       if(command===":chat-intent on"){
         try{
+          nativeChildProof?.stop();
           localApp.setProspectiveRecordingIntentFromHost(true);
           process.stderr.write(
             "Prospective chat request noted for up to 2 minutes. Recording remains disabled.\n");
@@ -151,6 +154,7 @@ if(localApp){
       }
       if(command===":chat-intent off"){
         try{
+          nativeChildProof?.stop();
           localApp.setProspectiveRecordingIntentFromHost(false);
           process.stderr.write("Prospective chat request cleared. Recording remains disabled.\n");
         }catch{process.stderr.write("CHAT_INTENT_DENIED\n");}
@@ -185,6 +189,36 @@ if(localApp){
             ?"Prospective text scope review is active. Recording remains disabled.\n"
             :"No active prospective text scope review. Recording remains disabled.\n");
         }catch{process.stderr.write("CHAT_REVIEW_DENIED\n");}
+        continue;
+      }
+      // Test-only native ownership diagnostic. The *real* interactive
+      // launcher starts a disposable local Node child with NO stdio.
+      // Neither this command nor its child may read or record Codex data.
+      if(command.startsWith(":codex-child-proof ")){
+        try{
+          if(process.env.CI!=="true"
+            ||process.env.AIVERSE_PERSISTENT_CHATS_CHILD_PROOF!=="1")
+            throw Error("NATIVE_CODEX_CHILD_PROOF_DENIED");
+          const action=command.slice(":codex-child-proof ".length);
+          if(action==="start"){
+            if(!nativeChildProof){
+              const {NativeNoContentChildProof}=await import(
+                "./native-codex-child-proof.js");
+              nativeChildProof=new NativeNoContentChildProof(localApp,registry);
+            }
+            nativeChildProof.start();
+            process.stderr.write(
+              "Synthetic native child started. No stdout, recording or consent.\n");
+          }else if(action==="status"){
+            process.stderr.write(nativeChildProof?.active()
+              ?"Synthetic native child active. Recording remains disabled.\n"
+              :"No active synthetic native child. Recording remains disabled.\n");
+          }else if(action==="stop"){
+            nativeChildProof?.stop();
+            process.stderr.write(
+              "Synthetic native child stopped. Recording remains disabled.\n");
+          }else throw Error("NATIVE_CODEX_CHILD_PROOF_DENIED");
+        }catch{process.stderr.write("CODEX_CHILD_PROOF_DENIED\n");}
         continue;
       }
       if(command===":pending"){
@@ -224,6 +258,7 @@ if(localApp){
       if(command.startsWith(":use ")){
         const workspaceId=command.slice(5).trim();
         try{
+          nativeChildProof?.stop();
           localApp.rotateWorkspaceFromHost(workspaceId);
           process.stderr.write("Selected workspace: "+workspaceId+
             "\nOld browser session revoked. New one-time pairing code: "+
@@ -235,7 +270,10 @@ if(localApp){
     }
   })().catch(()=>{process.stderr.write("HOST_TERMINAL_UNAVAILABLE\n");});
 }
-const close=async()=>{try{await server.close();}finally{process.exitCode=0}};
+const close=async()=>{
+  nativeChildProof?.stop();
+  try{await server.close();}finally{process.exitCode=0}
+};
 for(const signal of ["SIGINT","SIGTERM"] as const){
   process.once(signal,()=>{void close()});
 }
