@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/persistent-chats-macos-auth-preview.yml"
       - "scripts/mc2/native-macos-owner-auth-preview.swift"
+      - "scripts/mc2/native-macos-owner-review-state.swift"
+      - "scripts/mc2/native-macos-owner-review-tests.swift"
       - "scripts/mc2/start-connected.ts"
       - "apps/gateway/src/local-app-session.ts"
   workflow_dispatch:
@@ -36,8 +38,20 @@ jobs:
           test -z "${AIVERSE_GATEWAY_TOKEN:-}"
           swiftc -parse-as-library \
             -o "$RUNNER_TEMP/aiverse-macos-owner-auth-preview" \
-            scripts/mc2/native-macos-owner-auth-preview.swift
+            scripts/mc2/native-macos-owner-auth-preview.swift \
+            scripts/mc2/native-macos-owner-review-state.swift
           test -x "$RUNNER_TEMP/aiverse-macos-owner-auth-preview"
+
+      - name: Run synthetic in-process review state-machine races on Apple Swift
+        shell: bash
+        run: |
+          set -euo pipefail
+          swiftc -parse-as-library -D AIVERSE_CI_AUTH_FIXTURE \
+            -o "$RUNNER_TEMP/aiverse-native-owner-review-fixture" \
+            scripts/mc2/native-macos-owner-review-state.swift \
+            scripts/mc2/native-macos-owner-review-tests.swift
+          test -x "$RUNNER_TEMP/aiverse-native-owner-review-fixture"
+          "$RUNNER_TEMP/aiverse-native-owner-review-fixture"
 
       - name: Refuse unattended auth and all mismatched scopes
         shell: bash
@@ -65,4 +79,4 @@ jobs:
           assert_exit 41 --manual-preview operator
           assert_exit 41 --unknown operator future-text-only
           test -z "$(git status --porcelain --untracked-files=no)"
-          echo 'PASS: macOS LocalAuthentication preview compiles; CI and malformed inputs refuse capture'
+          echo 'PASS: macOS LocalAuthentication and in-process review compile; all fixture replay/revoke/expiry and unattended inputs deny capture'
