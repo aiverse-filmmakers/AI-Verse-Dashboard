@@ -96,21 +96,46 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
     // The paired browser must never receive a host-only recording preference.
     assert.equal("prospectiveRecordingIntent" in scope,false);
     assert.equal("captureAuthorized" in scope,false);
+    assert.equal("scopeReviewAcknowledged" in scope,false);
     const onMark=transcript.length;
     child.stdin.write(":chat-intent on\n");
     await untilAfter(/Prospective chat request noted for up to 2 minutes\. Recording remains disabled\./,onMark);
+    const reviewBeforeMark=transcript.length;
+    child.stdin.write(":chat-review status\n");
+    await untilAfter(/No active prospective text scope review\. Recording remains disabled\./,reviewBeforeMark);
+    const wrongScopeMark=transcript.length;
+    child.stdin.write(":chat-review confirm film future-text-only\n");
+    await untilAfter(/CHAT_REVIEW_DENIED/,wrongScopeMark);
+    const wrongPurposeMark=transcript.length;
+    child.stdin.write(":chat-review confirm operator past-history\n");
+    await untilAfter(/CHAT_REVIEW_DENIED/,wrongPurposeMark);
+    const reviewMark=transcript.length;
+    child.stdin.write(":chat-review confirm operator future-text-only\n");
+    await untilAfter(/Prospective text scope review acknowledged\. Recording remains disabled\./,reviewMark);
+    const reviewedMark=transcript.length;
+    child.stdin.write(":chat-review status\n");
+    await untilAfter(/Prospective text scope review is active\. Recording remains disabled\./,reviewedMark);
+    const replayMark=transcript.length;
+    child.stdin.write(":chat-review confirm operator future-text-only\n");
+    await untilAfter(/CHAT_REVIEW_DENIED/,replayMark);
     const requestedMark=transcript.length;
     child.stdin.write(":chat-intent status\n");
     await untilAfter(/Prospective chat request is active\. Recording remains disabled\./,requestedMark);
     const offMark=transcript.length;
     child.stdin.write(":chat-intent off\n");
     await untilAfter(/Prospective chat request cleared\. Recording remains disabled\./,offMark);
+    const reviewAfterStopMark=transcript.length;
+    child.stdin.write(":chat-review status\n");
+    await untilAfter(/No active prospective text scope review\. Recording remains disabled\./,reviewAfterStopMark);
     const emptyMark=transcript.length;
     child.stdin.write(":chat-intent status\n");
     await untilAfter(/No active prospective chat request\. Recording remains disabled\./,emptyMark);
     const againMark=transcript.length;
     child.stdin.write(":chat-intent on\n");
     await untilAfter(/Prospective chat request noted for up to 2 minutes\. Recording remains disabled\./,againMark);
+    const reviewNotInheritedMark=transcript.length;
+    child.stdin.write(":chat-review status\n");
+    await untilAfter(/No active prospective text scope review\. Recording remains disabled\./,reviewNotInheritedMark);
     // A real host terminal command must rotate credentials and revoke the
     // browser session. This cannot be initiated by an HTTP route.
     child.stdin.write(":use film\n");
@@ -122,6 +147,9 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
     const afterRotateMark=transcript.length;
     child.stdin.write(":chat-intent status\n");
     await untilAfter(/No active prospective chat request\. Recording remains disabled\./,afterRotateMark);
+    const reviewAfterRotateMark=transcript.length;
+    child.stdin.write(":chat-review status\n");
+    await untilAfter(/No active prospective text scope review\. Recording remains disabled\./,reviewAfterRotateMark);
     // Stop stays fail-safe even if no browser is paired after rotation.
     const stopAfterRotateMark=transcript.length;
     child.stdin.write(":chat-intent off\n");
@@ -132,6 +160,7 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
     return {actual_interactive_entrypoint:true,local_http_pairing:true,
       host_tty_workspace_revocation:true,
       host_tty_chat_intent_only_no_capture:true,
+      host_tty_scoped_review_only_no_consent_grant:true,
       member_mac_verified:false};
   }finally{
     try{process.kill(-child.pid,"SIGTERM")}catch{}
