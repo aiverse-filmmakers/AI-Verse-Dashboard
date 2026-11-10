@@ -103,6 +103,7 @@ export class LocalApplicationSession {
   };
   // Deliberately not a user-consent grant. Requires a SECOND explicit
   // terminal action within 45 seconds in the exact current OS workspace.
+  private lastProspectiveTextReviewedGeneration=-1;
   private prospectiveTextReview?:{
     generation:number;
     expiresAtMs:number;
@@ -256,9 +257,9 @@ export class LocalApplicationSession {
     const intent=this.prospectiveRecordingIntentForHost();
     if(!intent.requested||!intent.scope||!this.prospectiveRecordingIntent)
       throw Error("LOCAL_APP_TEXT_REVIEW_INACTIVE");
-    if(this.prospectiveTextReview
-      && this.prospectiveTextReview.generation===intent.intentGeneration)
+    if(this.lastProspectiveTextReviewedGeneration===intent.intentGeneration)
       throw Error("LOCAL_APP_TEXT_REVIEW_ALREADY_USED");
+    this.lastProspectiveTextReviewedGeneration=intent.intentGeneration;
     this.prospectiveTextReview={
       generation:intent.intentGeneration,
       expiresAtMs:Math.min(
@@ -291,6 +292,10 @@ export class LocalApplicationSession {
       && !review.pairedSignal.aborted
       && review.scope.systemId===this.scope.systemId
       && review.scope.workspaceId===this.scope.workspaceId;
+    // Expiry or any failed recheck is terminal for this acknowledgment.
+    // Even a wall-clock rollback cannot resurrect the same generation.
+    if(review!==undefined&&!scopeReviewAcknowledged)
+      this.prospectiveTextReview=undefined;
     return {
       requested:valid,
       scopeReviewAcknowledged,
