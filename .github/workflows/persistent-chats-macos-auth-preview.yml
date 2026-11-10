@@ -1,0 +1,68 @@
+name: Persistent Chats macOS device-owner auth preview (no capture)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/persistent-chats-macos-auth-preview.yml"
+      - "scripts/mc2/native-macos-owner-auth-preview.swift"
+      - "scripts/mc2/start-connected.ts"
+      - "apps/gateway/src/local-app-session.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: persistent-chats-macos-owner-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos-compile-and-default-deny:
+    name: Compile Apple LocalAuthentication and prove unattended denial
+    runs-on: macos-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout without stored credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Compile preview against real Apple macOS SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          swiftc -version
+          test -z "${OPENAI_API_KEY:-}"
+          test -z "${AIVERSE_GATEWAY_TOKEN:-}"
+          swiftc -parse-as-library \
+            -o "$RUNNER_TEMP/aiverse-macos-owner-auth-preview" \
+            scripts/mc2/native-macos-owner-auth-preview.swift
+          test -x "$RUNNER_TEMP/aiverse-macos-owner-auth-preview"
+
+      - name: Refuse unattended auth and all mismatched scopes
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_OWNER_AUTH_PREVIEW: "1"
+        run: |
+          set -euo pipefail
+          PROBE="$RUNNER_TEMP/aiverse-macos-owner-auth-preview"
+          "$PROBE" --ci-deny | grep -qx 'BLOCKED: no Persistent Chats capture grant'
+          assert_exit() {
+            local expected="$1"; shift
+            local status=0
+            "$PROBE" "$@" > "$RUNNER_TEMP/probe-out" 2>&1 || status=$?
+            test "$status" -eq "$expected"
+            grep -qx 'BLOCKED: no Persistent Chats capture grant' "$RUNNER_TEMP/probe-out"
+          }
+          # Even the "valid" local preview command cannot prompt or grant
+          # permission from GitHub CI, even with the opt-in env supplied.
+          assert_exit 42 --manual-preview operator future-text-only
+          assert_exit 42 --manual-preview film future-text-only
+          # No caller paths, wrong purpose or missing input are accepted.
+          assert_exit 41 --manual-preview ../../private future-text-only
+          assert_exit 41 --manual-preview operator import-history
+          assert_exit 41 --manual-preview operator
+          assert_exit 41 --unknown operator future-text-only
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo 'PASS: macOS LocalAuthentication preview compiles; CI and malformed inputs refuse capture'
