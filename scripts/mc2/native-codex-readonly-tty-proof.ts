@@ -5,7 +5,7 @@
  * and all Codex messages are transiently parsed then discarded.
  */
 import {spawn,type ChildProcessWithoutNullStreams} from "node:child_process";
-import {realpathSync,statSync,mkdirSync} from "node:fs";
+import {realpathSync,statSync,mkdirSync,mkdtempSync,rmSync} from "node:fs";
 import {join} from "node:path";
 import {getWorkspace} from "../../packages/os-read-adapter/src/index.js";
 import type {SystemRegistry} from "../../packages/registry/src/index.js";
@@ -60,8 +60,8 @@ export async function probeRealCodexFromNativeTTY(
 ):Promise<void>{
   guardEnvironment();
   const initial=approvedWorkspace(host,registry);
-  const home=join(SCRATCH,"native-codex-readonly-home");
-  mkdirSync(home,{mode:0o700});
+  // Each separately spawned Codex child gets an entirely fresh home.
+  const home=mkdtempSync(join(SCRATCH,"native-codex-readonly-"));
   mkdirSync(join(home,".codex"),{mode:0o700});
   const child=spawn(PROOF_BIN,["app-server","--listen","stdio://"],{
     cwd:initial.path,shell:false,
@@ -181,5 +181,6 @@ export async function probeRealCodexFromNativeTTY(
       },1500)),
     ]);
     buffer=Buffer.alloc(0);
+    rmSync(home,{recursive:true,force:true,maxRetries:3,retryDelay:100});
   }
 }
