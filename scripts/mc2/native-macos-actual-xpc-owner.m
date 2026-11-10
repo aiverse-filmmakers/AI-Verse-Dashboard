@@ -297,7 +297,7 @@ static int proveOwnedChildPhysicalScope(void) {
             !returnedDenied || ![fence observeDeniedOnly:epoch
                     workspaceID:@"operator" directory:workspace
                     session:session processPID:pid] ||
-            fence.recordingAuthorized || fence.memoryAuthorized) return 101;
+            [fence recordingAuthorized] || [fence memoryAuthorized]) return 101;
 
         // 3A.45: permission mutation invalidates an otherwise live PID.
         if (chmod(workspace.fileSystemRepresentation,0777)!=0) return 102;
@@ -306,15 +306,16 @@ static int proveOwnedChildPhysicalScope(void) {
         if (chmod(workspace.fileSystemRepresentation,0700)!=0) return 104;
         if ([fence observeDeniedOnly:epoch workspaceID:@"operator"
                 directory:workspace session:session processPID:pid]) return 105;
+        NSUUID *replacementSession=[NSUUID UUID];
         uint64_t replacement=[fence beginWithWorkspaceID:@"operator"
-                        directory:workspace session:[NSUUID UUID]];
+                        directory:workspace session:replacementSession];
         if (!replacement) return 106;
         // Scope rebinding must reject a different inode at the same path.
         if (rename(workspace.fileSystemRepresentation,
                    moved.fileSystemRepresentation)!=0) return 107;
         if (mkdir(workspace.fileSystemRepresentation,0700)!=0) return 108;
         if ([fence observeDeniedOnly:replacement workspaceID:@"operator"
-                    directory:workspace session:session processPID:pid]) return 109;
+                    directory:workspace session:replacementSession processPID:pid]) return 109;
         if (rmdir(workspace.fileSystemRepresentation)!=0) return 110;
         if (rename(moved.fileSystemRepresentation,
                    workspace.fileSystemRepresentation)!=0) return 111;
