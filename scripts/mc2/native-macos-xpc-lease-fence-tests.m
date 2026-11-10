@@ -49,6 +49,24 @@ int main(void) {
                            session:other processPID:pid],@"stale epoch new PID");
         require([gate isCurrent:second workspace:@"film"
                            session:other processPID:pid],@"new scope valid");
+        // Phase 3A.41: an old connection's interruption must never
+        // revoke the newer connection, even when PID is reused.
+        require(![gate revokeIfCurrent:first workspace:@"film"
+                       session:other processPID:pid],
+                @"stale XPC callback cannot revoke newer connection");
+        require(![gate revokeIfCurrent:second workspace:@"operator"
+                       session:other processPID:pid],
+                @"wrong workspace cannot revoke current lease");
+        require(![gate revokeIfCurrent:second workspace:@"film"
+                       session:session processPID:pid],
+                @"wrong session cannot revoke current lease");
+        require(![gate revokeIfCurrent:second workspace:@"film"
+                       session:other processPID:pid+1],
+                @"wrong PID cannot revoke current lease");
+        require([gate isCurrent:second workspace:@"film"
+                       session:other processPID:pid],
+                @"new lease survives four stale interrupt callbacks");
+
         // Simulate callback scheduling and out-of-order completion:
         // an earlier request must be dropped even with current PID.
         uint64_t staleCallback=second;
