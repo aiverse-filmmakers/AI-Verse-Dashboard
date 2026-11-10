@@ -22,7 +22,10 @@ int AIVerseTestInboundXPCPeerDenial(void) {
     [connection resume];
     id<AIVerseActualXPCDenial> proxy =
       [connection remoteObjectProxyWithErrorHandler:^(NSError *error) {
-          rejected=(error!=nil);
+          // Require the OS's specific signing-requirement refusal;
+          // a generic launchd or transport failure does not count.
+          rejected=[error.domain isEqualToString:NSCocoaErrorDomain] &&
+              error.code==NSXPCConnectionCodeSigningRequirementFailure;
           dispatch_semaphore_signal(finished);
       }];
     [proxy probeDenied:@"forged:device-owner-approved" withReply:
