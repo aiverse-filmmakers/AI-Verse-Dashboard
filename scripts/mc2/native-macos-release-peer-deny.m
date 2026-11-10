@@ -22,9 +22,7 @@ int AIVerseTestReleasePeerDenial(void) {
     // Valid requirement grammar with a deliberately impossible Apple
     // Developer ID signing identity on this ad-hoc GitHub test runner.
     NSString *const req =
-        @"anchor apple generic and identifier "
-         "\"com.aiverse.ci-only.persistentchat.actual-xpc-service\""
-         " and certificate leaf[subject.OU] = \"AAAAAAAAAA\"";
+        @"anchor apple generic and identifier \"com.aiverse.ci-only.persistentchat.actual-xpc-service\" and certificate leaf[subject.OU] = \"AAAAAAAAAA\"";
     SecRequirementRef parsed=NULL;
     OSStatus parsedStatus=SecRequirementCreateWithString(
         (__bridge CFStringRef)req, kSecCSDefaultFlags, &parsed);
