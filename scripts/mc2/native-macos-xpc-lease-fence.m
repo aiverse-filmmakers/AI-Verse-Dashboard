@@ -67,6 +67,24 @@
     [_lock unlock];
     return ok;
 }
+- (BOOL)revokeIfCurrent:(uint64_t)generation
+             workspace:(NSString *)workspace
+               session:(NSUUID *)session
+            processPID:(pid_t)pid {
+    [_lock lock];
+    BOOL match=_open && generation!=0 && _generation==generation
+        && pid>0 && _pid==pid && [_workspace isEqualToString:workspace]
+        && [_session isEqual:session];
+    // Never clear a newer lease due to a delayed interruption from
+    // another XPC connection. The old epoch is irrevocably consumed.
+    if (match) {
+        _generation++;
+        _open=NO;
+        _workspace=nil; _session=nil; _pid=0; _expiresMonotonic=0;
+    }
+    [_lock unlock];
+    return match;
+}
 - (void)revoke {
     [_lock lock];
     _generation++;
