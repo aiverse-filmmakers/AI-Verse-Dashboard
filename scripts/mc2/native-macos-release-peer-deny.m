@@ -46,7 +46,11 @@ int AIVerseTestReleasePeerDenial(void) {
     [connection resume];
     id<AIVerseActualXPCDenial> remote =
         [connection remoteObjectProxyWithErrorHandler:^(NSError *error) {
-            if (error != nil) transportDenied=YES;
+            // A generic XPC error is not evidence of signature rejection.
+            // Require Apple's specific peer code-signing error (macOS 13+).
+            if ([error.domain isEqualToString:NSCocoaErrorDomain] &&
+                error.code == NSXPCConnectionCodeSigningRequirementFailure)
+                transportDenied=YES;
             dispatch_semaphore_signal(completed);
         }];
     [remote probeDenied:@"forge:operator-consented" withReply:
