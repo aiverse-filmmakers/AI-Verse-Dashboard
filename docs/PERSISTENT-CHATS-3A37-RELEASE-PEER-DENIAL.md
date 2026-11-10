@@ -16,9 +16,7 @@ test**. It is not a valid reviewed production identity or a configuration
 mechanism. The requirement is parsed by Apple's
 `SecRequirementCreateWithString`, applied with
 `NSXPCConnection.setCodeSigningRequirement` BEFORE resume, and a
-synthetic probe is sent. To pass, macOS must report a transport error
-instead of forwarding a successful reply. A timeout, malformed requirement
-or callback accepted by the ad-hoc peer is not counted as a pass.
+synthetic probe is sent. To pass, macOS must report **exactly** an `NSCocoaErrorDomain` error with code `NSXPCConnectionCodeSigningRequirementFailure`, instead of forwarding a successful reply. Any unrelated transport error, timeout, malformed requirement or callback accepted by the ad-hoc peer fails the test. This correction was added and reverified on the final tested code head.
 
 The embedded helper's **ad-hoc** signature cannot satisfy the Apple
 trust anchor and certificate requirement. This proves a negative
@@ -29,8 +27,8 @@ Developer ID-signed service has not been proved.
 **Apple references:** [XPC peer code-signing requirement](https://developer.apple.com/documentation/foundation/nsxpcconnection/setcodesigningrequirement(_:)),
 [Designated requirement syntax TN3127](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements/).
 
-**CI result:** [Apple macOS runner #42886142214](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/42886142214),
-PASS on code head `1cbe89ce48b3cca2e79e7281e6d022a892f3f0dd`.
+**CI result:** [Apple macOS runner #42886984563](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/42886984563),
+PASS on code head `50846f4c827a87681529b1800a6cc13b8b25a460`.
 This is the exact tested source commit; later documentation is not
 represented as the same tested head.
 
