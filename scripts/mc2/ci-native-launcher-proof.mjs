@@ -68,6 +68,9 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
     // Host-only request must fail until the trusted browser has paired.
     child.stdin.write(":chat-intent on\n");
     await until(/CHAT_INTENT_DENIED/);
+    const unpairedChildMark=transcript.length;
+    child.stdin.write(":codex-child-proof start\n");
+    await untilAfter(/CODEX_CHILD_PROOF_DENIED/,unpairedChildMark);
     assert.match(transcript,/"personalUIEnabled":true/);
     assert.match(transcript,/"privateBearerExported":false/);
     assert.equal(transcript.includes(token),false,
@@ -100,12 +103,21 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
     assert.equal("prospectiveRecordingIntent" in scope,false);
     assert.equal("captureAuthorized" in scope,false);
     assert.equal("scopeReviewAcknowledged" in scope,false);
+    const spoof=await fetch(origin+"/local-app/codex-child-proof",{
+      method:"POST",redirect:"error",
+      headers:{origin,"content-type":"application/json",cookie:sessionCookie},
+      body:JSON.stringify({action:"start"}),
+    });
+    assert.equal(spoof.status,404,"browser has no native child launch route");
     const onMark=transcript.length;
     child.stdin.write(":chat-intent on\n");
     await untilAfter(/Prospective chat request noted for up to 2 minutes\. Recording remains disabled\./,onMark);
     const reviewBeforeMark=transcript.length;
     child.stdin.write(":chat-review status\n");
     await untilAfter(/No active prospective text scope review\. Recording remains disabled\./,reviewBeforeMark);
+    const notReviewedChildMark=transcript.length;
+    child.stdin.write(":codex-child-proof start\n");
+    await untilAfter(/CODEX_CHILD_PROOF_DENIED/,notReviewedChildMark);
     const wrongScopeMark=transcript.length;
     child.stdin.write(":chat-review confirm film future-text-only\n");
     await untilAfter(/CHAT_REVIEW_DENIED/,wrongScopeMark);
