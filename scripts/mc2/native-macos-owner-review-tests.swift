@@ -33,6 +33,8 @@ struct NativeReviewTests {
         precondition(!invalid.isWellFormed && !missingChild.isWellFormed)
         let gate = NativeOwnerReviewState()
         precondition(gate.fixtureBegin(alpha) == nil, "unselected review must deny")
+        precondition(await gate.manuallyReviewDeviceOwner(alpha) == false,
+                     "headless test cannot request real Apple authentication")
         gate.selectHostBinding(invalid)
         precondition(gate.fixtureBegin(invalid) == nil, "path-like scope must deny")
         gate.selectHostBinding(alpha)
@@ -119,6 +121,8 @@ struct NativeReviewTests {
         try? await Task.sleep(for: .milliseconds(35))
         precondition(!short.observation(for: beta).reviewedCurrentBinding)
         precondition(!short.fixtureComplete(expiring, accepted: true))
+        precondition(short.fixtureBegin(beta) == nil,
+                     "expired approval cannot be restarted in same generation")
         precondition(!short.authorizeConversationCapture())
 
         // Even with a simulated local review, this state machine
