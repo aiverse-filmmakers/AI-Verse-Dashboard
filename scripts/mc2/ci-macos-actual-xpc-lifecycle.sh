@@ -2,12 +2,12 @@
 # 3A.35: real launchd-managed XPC service smoke, no transcripts or capture.
 set -euo pipefail
 test "$(uname -s)" = "Darwin"
-test "\${CI:-}" = "true"
-test "\${AIVERSE_MACOS_ACTUAL_XPC_CI:-}" = "1"
-test -z "\${OPENAI_API_KEY:-}"
-test -z "\${AIVERSE_GATEWAY_TOKEN:-}"
-test -z "\${AIVERSE_MACOS_OWNER_AUTH_PREVIEW:-}"
-test -n "\${RUNNER_TEMP:-}"
+test "${CI:-}" = "true"
+test "${AIVERSE_MACOS_ACTUAL_XPC_CI:-}" = "1"
+test -z "${OPENAI_API_KEY:-}"
+test -z "${AIVERSE_GATEWAY_TOKEN:-}"
+test -z "${AIVERSE_MACOS_OWNER_AUTH_PREVIEW:-}"
+test -n "${RUNNER_TEMP:-}"
 ROOT="$(mktemp -d "$RUNNER_TEMP/aiverse-realxpc35.XXXXXXXX")"
 trap 'rm -rf "$ROOT"' EXIT
 chmod 700 "$ROOT"
