@@ -36,3 +36,6 @@ jobs:
 
       - name: Build and test
         run: npm run check
+ 
+      - name: Refuse Persistent Chats release/browser/XPC capture activation (3A.43)
+        run: node scripts/mc2/ci-no-capture-release-contract.mjs
