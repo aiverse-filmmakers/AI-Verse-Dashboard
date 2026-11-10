@@ -72,6 +72,8 @@ clang -fobjc-arc -framework Foundation -I scripts/mc2 \
   scripts/mc2/native-macos-release-peer-deny.m \
   scripts/mc2/native-macos-inbound-xpc-deny-test.m \
   scripts/mc2/native-macos-device-owner-host-review.m \
+  scripts/mc2/native-macos-codex-child-owner.m \
+  scripts/mc2/native-macos-workspace-event-fence.m \
   -framework Security -framework LocalAuthentication
 codesign --force --sign - --identifier com.aiverse.ci-only.persistentchat.actual-xpc-service "$XPC"
 codesign --force --sign - --identifier com.aiverse.ci-only.persistentchat.inbound-deny "$INBOUND"
@@ -95,4 +97,5 @@ echo 'PASS: real XPC 3A.36 delayed reply, connection replacement and interruptio
 "$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-release-peer-deny
 "$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-device-owner-deny
 "$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-inbound-deny
+"$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-owned-child-scope
 
