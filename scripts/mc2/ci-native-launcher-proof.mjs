@@ -32,7 +32,8 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
     detached:true,stdio:["pipe","pipe","pipe"],
     env:{...process.env,AIVERSE_GATEWAY_HOME:home,
       AIVERSE_GATEWAY_TOKEN:token,AIVERSE_GATEWAY_URL:canonicalOrigin,
-      AIVERSE_DASHBOARD_PORT:String(port)}
+      AIVERSE_DASHBOARD_PORT:String(port),
+      AIVERSE_PERSISTENT_CHATS_CHILD_PROOF:"1"}
   });
   let transcript="",closed=false,reason="";
   const capture=data=>{transcript=(transcript+String(data)).slice(-18000)};
@@ -93,6 +94,8 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
     assert.equal(scope.scope.workspaceId,"operator");
     assert.equal(scope.authentication,"host-cookie");
     assert.equal(scope.privateBearerExported,false);
+    // Browser cannot invoke the native, CI-only child proof.
+    assert.equal("childProof" in scope,false);
     // The paired browser must never receive a host-only recording preference.
     assert.equal("prospectiveRecordingIntent" in scope,false);
     assert.equal("captureAuthorized" in scope,false);
@@ -115,6 +118,15 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
     const reviewedMark=transcript.length;
     child.stdin.write(":chat-review status\n");
     await untilAfter(/Prospective text scope review is active\. Recording remains disabled\./,reviewedMark);
+    const startChildMark=transcript.length;
+    child.stdin.write(":codex-child-proof start\n");
+    await untilAfter(/Synthetic native child started\. No stdout, recording or consent\./,startChildMark);
+    const duplicateChildMark=transcript.length;
+    child.stdin.write(":codex-child-proof start\n");
+    await untilAfter(/CODEX_CHILD_PROOF_DENIED/,duplicateChildMark);
+    const childStatusMark=transcript.length;
+    child.stdin.write(":codex-child-proof status\n");
+    await untilAfter(/Synthetic native child active\. Recording remains disabled\./,childStatusMark);
     const replayMark=transcript.length;
     child.stdin.write(":chat-review confirm operator future-text-only\n");
     await untilAfter(/CHAT_REVIEW_DENIED/,replayMark);
@@ -124,6 +136,9 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
     const offMark=transcript.length;
     child.stdin.write(":chat-intent off\n");
     await untilAfter(/Prospective chat request cleared\. Recording remains disabled\./,offMark);
+    const childAfterStopMark=transcript.length;
+    child.stdin.write(":codex-child-proof status\n");
+    await untilAfter(/No active synthetic native child\. Recording remains disabled\./,childAfterStopMark);
     const reviewAfterStopMark=transcript.length;
     child.stdin.write(":chat-review status\n");
     await untilAfter(/No active prospective text scope review\. Recording remains disabled\./,reviewAfterStopMark);
@@ -136,6 +151,9 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
     const reviewNotInheritedMark=transcript.length;
     child.stdin.write(":chat-review status\n");
     await untilAfter(/No active prospective text scope review\. Recording remains disabled\./,reviewNotInheritedMark);
+    const staleNewIntentMark=transcript.length;
+    child.stdin.write(":codex-child-proof start\n");
+    await untilAfter(/CODEX_CHILD_PROOF_DENIED/,staleNewIntentMark);
     // A real host terminal command must rotate credentials and revoke the
     // browser session. This cannot be initiated by an HTTP route.
     child.stdin.write(":use film\n");
@@ -150,6 +168,9 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
     const reviewAfterRotateMark=transcript.length;
     child.stdin.write(":chat-review status\n");
     await untilAfter(/No active prospective text scope review\. Recording remains disabled\./,reviewAfterRotateMark);
+    const childAfterRotateMark=transcript.length;
+    child.stdin.write(":codex-child-proof status\n");
+    await untilAfter(/No active synthetic native child\. Recording remains disabled\./,childAfterRotateMark);
     // Stop stays fail-safe even if no browser is paired after rotation.
     const stopAfterRotateMark=transcript.length;
     child.stdin.write(":chat-intent off\n");
@@ -161,6 +182,7 @@ export async function proveRealPersonalLauncher({home,token,canonicalOrigin}){
       host_tty_workspace_revocation:true,
       host_tty_chat_intent_only_no_capture:true,
       host_tty_scoped_review_only_no_consent_grant:true,
+      actual_native_launcher_synthetic_child_lifecycle_verified:true,
       member_mac_verified:false};
   }finally{
     try{process.kill(-child.pid,"SIGTERM")}catch{}
