@@ -352,6 +352,102 @@ static int proveOwnedChildPhysicalScope(void) {
     return result;
 }
 
+
+/*
+ * 3A.49: one real pinned OFFLINE Codex App Server child directly launched
+ * by the native XPC fixture host, in its private current working directory.
+ * Its stdin is kept open but receives no initialize request or model turns;
+ * its stdout is discarded and never parsed, sent to Gateway or archived.
+ */
+static int verifyOfflineOfficialCodexChild(void) {
+    NSDictionary *environment=NSProcessInfo.processInfo.environment;
+    if (![environment[@"CI"] isEqualToString:@"true"] ||
+        ![environment[@"AIVERSE_CODEX_OFFLINE_CHILD_CI"] isEqualToString:@"1"] ||
+        environment[@"OPENAI_API_KEY"] || environment[@"CODEX_API_KEY"] ||
+        environment[@"AIVERSE_GATEWAY_TOKEN"] || environment[@"GITHUB_TOKEN"])
+        return 117;
+    NSString *binary=environment[@"AIVERSE_CODEX_OFFLINE_BINARY"];
+    if (![binary isKindOfClass:NSString.class] || binary.length==0)
+        return 118;
+    NSString *pattern=[NSTemporaryDirectory() stringByAppendingPathComponent:
+                         @"aiverse-real-codex49.XXXXXXXX"];
+    char templatePath[PATH_MAX]={0};
+    if (strlen(pattern.fileSystemRepresentation)>=sizeof(templatePath))
+        return 119;
+    strlcpy(templatePath,pattern.fileSystemRepresentation,sizeof(templatePath));
+    char *made=mkdtemp(templatePath);
+    if (!made) return 120;
+    char real[PATH_MAX]={0};
+    if (!realpath(made,real)) { rmdir(made); return 121; }
+    NSString *root=[NSString stringWithUTF8String:real];
+    NSString *workspace=[root stringByAppendingPathComponent:@"operator"];
+    NSString *home=[root stringByAppendingPathComponent:@"home"];
+    NSString *codexHome=[home stringByAppendingPathComponent:@".codex"];
+    AIVerseOwnedSilentChild *child=[AIVerseOwnedSilentChild new];
+    AIVerseNativeScopeEventFence *fence=
+        [[AIVerseNativeScopeEventFence alloc] initWithChild:child];
+    NSXPCConnection *connection=nil;
+    int result=122;
+    @try {
+        if (mkdir(workspace.fileSystemRepresentation,0700)!=0 ||
+            mkdir(home.fileSystemRepresentation,0700)!=0 ||
+            mkdir(codexHome.fileSystemRepresentation,0700)!=0) return 123;
+        if (![child startOfflineCodexInWorkspace:workspace
+                           binary:binary home:home]) return 124;
+        const pid_t pid=child.pid;
+        const uint64_t generation=child.generation;
+        if (pid<=0 || pid==getpid()) return 125;
+        NSUUID *session=[NSUUID UUID];
+        uint64_t epoch=[fence beginWithWorkspaceID:@"operator"
+                       directory:workspace session:session];
+        if (!epoch) return 126;
+        // Ensure this exact, separately running Codex executable remains
+        // live and in the physical workspace beyond the launch instant.
+        usleep(500000);
+        if (![child stillOwnsWorkspace:workspace processPID:pid
+                           generation:generation]) return 127;
+
+        connection=newFixtureConnection();
+        dispatch_semaphore_t done=dispatch_semaphore_create(0);
+        __block BOOL denied=NO;
+        id<AIVerseActualXPCDenial> remote =
+          [connection remoteObjectProxyWithErrorHandler:^(NSError *error) {
+              (void)error;
+              dispatch_semaphore_signal(done);
+          }];
+        [remote probeDenied:@"real-codex-no-turns-no-capture" withReply:
+          ^(NSString *status, NSNumber *servicePID) {
+              denied=[status isEqualToString:@"CAPTURE_DISABLED"] &&
+                  servicePID.intValue>0 && servicePID.intValue!=getpid();
+              dispatch_semaphore_signal(done);
+          }];
+        if (dispatch_semaphore_wait(done,
+             dispatch_time(DISPATCH_TIME_NOW,7*NSEC_PER_SEC))!=0 ||
+            !denied || ![fence observeDeniedOnly:epoch
+               workspaceID:@"operator" directory:workspace
+               session:session processPID:pid] ||
+            [fence recordingAuthorized] || [fence memoryAuthorized]) return 128;
+
+        // Destroying the owner-controlled child must invalidate its
+        // original-event lease even if a later child reuses this PID.
+        [child stop];
+        if ([fence observeDeniedOnly:epoch workspaceID:@"operator"
+                  directory:workspace session:session processPID:pid]) return 129;
+        if ([fence recordingAuthorized] || [fence memoryAuthorized]) return 130;
+        result=0;
+    } @finally {
+        [connection invalidate];
+        [fence revoke];
+        [child stop];
+        // Only our disposable home and scope are ever removed; their
+        // contents are never read, logged, hashed, or persisted to OS.
+        [[NSFileManager defaultManager] removeItemAtPath:root error:nil];
+    }
+    if (result==0)
+        puts("PASS: 3A.49 pinned real offline Codex App Server is native-parent-owned, cwd verified, XPC denial only; no thread or capture");
+    return result;
+}
+
 int main(int argc, const char *argv[]) {
     @autoreleasepool {
         if (!fixtureOwner() || argc!=2) {
@@ -369,6 +465,8 @@ int main(int argc, const char *argv[]) {
             return AIVerseTestInboundXPCPeerDenial();
         if (strcmp(argv[1], "--ci-owned-child-scope")==0)
             return proveOwnedChildPhysicalScope();
+        if (strcmp(argv[1], "--ci-offline-real-codex")==0)
+            return verifyOfflineOfficialCodexChild();
         fprintf(stderr, "ACTUAL_XPC_CI_UNATTENDED_DENIED\n");
         return 64;
     }
