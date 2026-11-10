@@ -97,6 +97,7 @@ echo 'PASS: real XPC 3A.36 delayed reply, connection replacement and interruptio
 "$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-release-peer-deny
 "$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-device-owner-deny
 "$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-inbound-deny
+"$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-xpc-churn
 "$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-owned-child-scope
 if [ "${AIVERSE_CODEX_OFFLINE_CHILD_CI:-}" = "1" ]; then
   test -n "${AIVERSE_CODEX_OFFLINE_BINARY:-}"
