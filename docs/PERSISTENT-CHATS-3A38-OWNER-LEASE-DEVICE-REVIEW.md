@@ -30,9 +30,9 @@ no authenticated Codex child, no writer and no Memory integration.
 **Apple references:** [deviceOwnerAuthentication](https://developer.apple.com/documentation/localauthentication/lapolicy/deviceownerauthentication)
 and [LAContext](https://developer.apple.com/documentation/localauthentication/lacontext).
 
-**CI result:** [Apple macOS runner #42886142214](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/42886142214)
+**CI result:** [Apple macOS runner #42886984563](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/42886984563)
 PASS on exact tested source commit
-`1cbe89ce48b3cca2e79e7281e6d022a892f3f0dd`.
+`50846f4c827a87681529b1800a6cc13b8b25a460`.
 Documentation-only commits after that do not share the same run.
 
 Next: real device-owner approval in a signed installed host and a separate
