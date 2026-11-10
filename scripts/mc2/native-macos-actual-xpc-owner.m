@@ -7,6 +7,7 @@
 #import "native-macos-xpc-lease-fence.h"
 #import "native-macos-release-peer-deny.h"
 #import "native-macos-device-owner-host-review.h"
+#import "native-macos-inbound-xpc-deny-test.h"
 #import <Foundation/Foundation.h>
 #import <dispatch/dispatch.h>
 #import <unistd.h>
@@ -232,6 +233,8 @@ int main(int argc, const char *argv[]) {
             return AIVerseTestReleasePeerDenial();
         if (strcmp(argv[1], "--ci-device-owner-deny")==0)
             return deviceOwnerDenied();
+        if (strcmp(argv[1], "--ci-inbound-deny")==0)
+            return AIVerseTestInboundXPCPeerDenial();
         fprintf(stderr, "ACTUAL_XPC_CI_UNATTENDED_DENIED\n");
         return 64;
     }
