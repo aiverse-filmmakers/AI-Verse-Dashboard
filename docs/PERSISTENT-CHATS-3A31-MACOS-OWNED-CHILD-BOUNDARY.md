@@ -73,4 +73,17 @@ Reference: [Apple LAContext](https://developer.apple.com/documentation/localauth
 [Apple evaluatePolicy callback semantics](https://developer.apple.com/documentation/localauthentication/lacontext/evaluatepolicy%28_%3Alocalizedreason%3Areply%3A%29),
 [Apple code-signing guest services](https://developer.apple.com/documentation/security/seccodecopyguestwithattributes%28_%3A_%3A_%3A_%3A%29).
 
-CI status and exact head must be added only after the real runner finishes.
+## Completed GitHub acceptance
+
+**PASS** on exact Dashboard head `804ee00e3ca8961e39e9f8d554b262c96a9ea32a`.
+
+- [Apple Swift + real silent macOS child CI](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/42844471624): PASS. The runner compiled both fixture binaries and executed physical workspace/owner, session/child replacement, permission mutation, replay, revoke and unattended-denial tests.
+- [Cross-platform Dashboard CI](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/42844471509): PASS.
+- [Real pinned Codex under native TTY, offline](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/42844471544): PASS.
+- [Personal Native Owner Browser Proof](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/42844471493): PASS.
+- [Personal Chat Browser QC](https://github.com/aiverse-filmmakers/AI-Verse-Dashboard/actions/runs/42844471543): PASS.
+
+These are **automated CI proofs only**, NOT real Touch ID/password approval,
+installed native host attestation or per-event capture authorization. The
+Swift subprocess test uses `/bin/sleep` and only synthetic review success.
+Both primary draft PRs remain unmerged.
