@@ -121,8 +121,8 @@ static int revocationAndInterruption(void) {
       }];
     if (dispatch_semaphore_wait(freshDone,
            dispatch_time(DISPATCH_TIME_NOW, 7*NSEC_PER_SEC))!=0 ||
-        !deniedOnly || fence.recordingAuthorized ||
-        fence.archiveAuthorized || fence.memoryAuthorized) {
+        !deniedOnly || [fence recordingAuthorized] ||
+        [fence archiveAuthorized] || [fence memoryAuthorized]) {
         [fence revoke]; [fresh invalidate]; return 44;
     }
     [fence revoke]; [fresh invalidate];
