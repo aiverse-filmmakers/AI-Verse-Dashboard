@@ -30,6 +30,10 @@ on:
       - "scripts/mc2/native-macos-inbound-xpc-deny.m"
       - "scripts/mc2/native-macos-inbound-xpc-deny-test.h"
       - "scripts/mc2/native-macos-inbound-xpc-deny-test.m"
+      - "scripts/mc2/native-macos-codex-child-owner.h"
+      - "scripts/mc2/native-macos-codex-child-owner.m"
+      - "scripts/mc2/native-macos-workspace-event-fence.h"
+      - "scripts/mc2/native-macos-workspace-event-fence.m"
       - "scripts/mc2/start-connected.ts"
       - "apps/gateway/src/local-app-session.ts"
   workflow_dispatch:
@@ -129,7 +133,7 @@ jobs:
           set -euo pipefail
           bash scripts/mc2/ci-macos-two-process-peer-ownership.sh
 
-      - name: Verify real XPC, reverse signer denial and epoch-bound interruption (3A.35-41)
+      - name: Verify XPC, owner-owned child and physical workspace integrity (3A.35-45)
         shell: bash
         env:
           CI: "true"
