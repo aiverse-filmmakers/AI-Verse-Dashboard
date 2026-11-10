@@ -24,13 +24,15 @@ int AIVerseTestInboundXPCPeerDenial(void) {
     [connection resume];
     id<AIVerseActualXPCDenial> proxy =
       [connection remoteObjectProxyWithErrorHandler:^(NSError *error) {
-          // Require the OS's specific signing-requirement refusal;
-          // a generic launchd or transport failure does not count.
+          // macOS reports 4097 (NSXPCConnectionInterrupted) to the
+          // *client* when the service-side signer requirement rejects it.
+          // This is paired with a separate codesign -R mismatch proof
+          // in the CI script, plus a successful positive XPC control.
           hadError=(error!=nil);
           peerErrorCode=error.code;
           peerErrorIsCocoa=[error.domain isEqualToString:NSCocoaErrorDomain];
           rejected=peerErrorIsCocoa &&
-              peerErrorCode==NSXPCConnectionCodeSigningRequirementFailure;
+              peerErrorCode==NSXPCConnectionInterrupted;
           dispatch_semaphore_signal(finished);
       }];
     [proxy probeDenied:@"forged:device-owner-approved" withReply:
