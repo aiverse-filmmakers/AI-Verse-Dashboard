@@ -11,6 +11,9 @@ on:
       - "scripts/mc2/native-macos-owned-child-tests.swift"
       - "scripts/mc2/native-macos-xpc-peer-deny.swift"
       - "scripts/mc2/native-macos-xpc-peer-deny-tests.swift"
+      - "scripts/mc2/native-macos-packaged-owner-deny.swift"
+      - "scripts/mc2/native-macos-packaged-xpc-deny.swift"
+      - "scripts/mc2/ci-macos-packaged-xpc-signing-deny.sh"
       - "scripts/mc2/start-connected.ts"
       - "apps/gateway/src/local-app-session.ts"
   workflow_dispatch:
@@ -91,6 +94,15 @@ jobs:
             scripts/mc2/native-macos-xpc-peer-deny-tests.swift
           test -x "$RUNNER_TEMP/aiverse-macos-xpc-peer-deny"
           "$RUNNER_TEMP/aiverse-macos-xpc-peer-deny"
+
+      - name: Verify 3A.33 ad-hoc signed nested app and XPC packaging tamper denial
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_PACKAGED_DENY_FIXTURE: "1"
+        run: |
+          set -euo pipefail
+          bash scripts/mc2/ci-macos-packaged-xpc-signing-deny.sh
 
       - name: Refuse unattended auth and all mismatched scopes
         shell: bash
