@@ -23,6 +23,10 @@ on:
       - "scripts/mc2/native-macos-xpc-lease-fence.h"
       - "scripts/mc2/native-macos-xpc-lease-fence.m"
       - "scripts/mc2/native-macos-xpc-lease-fence-tests.m"
+      - "scripts/mc2/native-macos-release-peer-deny.h"
+      - "scripts/mc2/native-macos-release-peer-deny.m"
+      - "scripts/mc2/native-macos-device-owner-host-review.h"
+      - "scripts/mc2/native-macos-device-owner-host-review.m"
       - "scripts/mc2/start-connected.ts"
       - "apps/gateway/src/local-app-session.ts"
   workflow_dispatch:
@@ -122,7 +126,7 @@ jobs:
           set -euo pipefail
           bash scripts/mc2/ci-macos-two-process-peer-ownership.sh
 
-      - name: Verify Phase 3A.35 real launchd XPC service and denial-only IPC
+      - name: Verify real XPC, strict signer denial and lease-bound macOS owner review (3A.35-38)
         shell: bash
         env:
           CI: "true"
