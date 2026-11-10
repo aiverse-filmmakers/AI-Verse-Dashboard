@@ -55,6 +55,9 @@ final class NativeOwnerReviewState {
     private var selected: NativeReviewBinding?
     private var pending: Pending?
     private var reviewed: Reviewed?
+    // A successful device-owner review is consumed once per generation.
+    // Expiry or probing a different binding must not re-open the same one.
+    private var consumedReviewGeneration: UInt64?
     private var context: LAContext?
 
     init(lifetime: Duration = .seconds(30)) {
@@ -79,7 +82,9 @@ final class NativeOwnerReviewState {
 
     private func begin(_ binding: NativeReviewBinding) -> UUID? {
         guard binding.isWellFormed, selected == binding, pending == nil,
-            reviewed == nil else { return nil }
+            reviewed == nil, consumedReviewGeneration != generation else {
+            return nil
+        }
         let nonce = UUID()
         pending = Pending(nonce: nonce, generation: generation, binding: binding)
         return nonce
@@ -94,6 +99,7 @@ final class NativeOwnerReviewState {
         pending = nil
         guard accepted else { return false }
         // This is a bounded *local review*, not a recording permission.
+        consumedReviewGeneration = generation
         reviewed = Reviewed(
             binding: claim.binding, generation: claim.generation,
             until: clock.now.advanced(by: lifetime)
@@ -102,12 +108,18 @@ final class NativeOwnerReviewState {
     }
 
     func observation(for binding: NativeReviewBinding) -> NativeReviewObservation {
-        guard let held = reviewed, held.binding == binding,
-            selected == binding, held.generation == generation,
-            clock.now < held.until else {
-            // An expired review never becomes valid again even when
-            // another caller supplies an earlier wall-clock timestamp.
-            if reviewed != nil { reviewed = nil }
+        guard let held = reviewed else {
+            return NativeReviewObservation(reviewedCurrentBinding: false)
+        }
+        if held.generation != generation || clock.now >= held.until {
+            // Expiry is terminal for this generation. The monotonic
+            // clock cannot be rolled back using a caller timestamp.
+            reviewed = nil
+            return NativeReviewObservation(reviewedCurrentBinding: false)
+        }
+        guard held.binding == binding, selected == binding else {
+            // A query for the wrong workspace, process or host session
+            // must not clear or overwrite the legitimate current review.
             return NativeReviewObservation(reviewedCurrentBinding: false)
         }
         return NativeReviewObservation(reviewedCurrentBinding: true)
