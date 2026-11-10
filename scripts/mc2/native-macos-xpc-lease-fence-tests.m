@@ -5,6 +5,8 @@
  */
 #import "native-macos-xpc-lease-fence.h"
 #import <Foundation/Foundation.h>
+#import <unistd.h>
+#import <stdlib.h>
 static void require(BOOL condition, NSString *what) {
     if (!condition) {
         fprintf(stderr,"FAIL: %s\n",what.UTF8String);
