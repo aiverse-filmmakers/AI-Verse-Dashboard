@@ -16,6 +16,10 @@ on:
       - "scripts/mc2/ci-macos-packaged-xpc-signing-deny.sh"
       - "scripts/mc2/native-macos-two-process-peer-proof.m"
       - "scripts/mc2/ci-macos-two-process-peer-ownership.sh"
+      - "scripts/mc2/native-macos-actual-xpc-protocol.h"
+      - "scripts/mc2/native-macos-actual-xpc-service.m"
+      - "scripts/mc2/native-macos-actual-xpc-owner.m"
+      - "scripts/mc2/ci-macos-actual-xpc-lifecycle.sh"
       - "scripts/mc2/start-connected.ts"
       - "apps/gateway/src/local-app-session.ts"
   workflow_dispatch:
@@ -114,6 +118,15 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/mc2/ci-macos-two-process-peer-ownership.sh
+
+      - name: Verify Phase 3A.35 real launchd XPC service and denial-only IPC
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_ACTUAL_XPC_CI: "1"
+        run: |
+          set -euo pipefail
+          bash scripts/mc2/ci-macos-actual-xpc-lifecycle.sh
 
       - name: Refuse unattended auth and all mismatched scopes
         shell: bash
