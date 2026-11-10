@@ -79,6 +79,15 @@ codesign --force --sign - --identifier com.aiverse.ci-only.persistentchat.actual
 codesign --verify --strict "$XPC"
 codesign --verify --strict "$INBOUND"
 codesign --verify --deep --strict "$APP"
+# Prove the ad-hoc client cannot satisfy the *same* immutable incoming
+# requirement installed by the second actual NSXPCListener.
+# A generic XPC error alone is not evidence of signature rejection.
+INBOUND_OWNER_REQUIREMENT='anchor apple generic and identifier "com.aiverse.ci-only.persistentchat.actual-xpc-owner" and certificate leaf[subject.OU] = "AAAAAAAAAA"'
+if codesign --verify --strict -R "$INBOUND_OWNER_REQUIREMENT" "$APP" > "$ROOT/inbound-owner-signature-refusal" 2>&1; then
+  echo "FAIL: ad-hoc CI client unexpectedly satisfies Apple anchored owner signature" >&2
+  exit 1
+fi
+
 "$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-probe
 echo 'PASS: real XPC 3A.35 packaged service, two OS processes, denial-only reply; still no user consent'
 "$APP/Contents/MacOS/AIVerseActualXPCOwner" --ci-revocation
