@@ -85,7 +85,7 @@ export class NativeNoContentChildProof{
       stdio:["ignore","ignore","ignore"],
       env:{PATH:"/usr/local/bin:/usr/bin:/bin",NO_COLOR:"1"},
     });
-    if(!Number.isInteger(child.pid)||child.pid!<=0){
+    if(typeof child.pid!=="number"||!Number.isInteger(child.pid)||child.pid<=0){
       child.kill("SIGKILL");deny();
     }
     this.lease={
