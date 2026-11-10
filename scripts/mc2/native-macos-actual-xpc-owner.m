@@ -310,6 +310,13 @@ static int proveOwnedChildPhysicalScope(void) {
         uint64_t replacement=[fence beginWithWorkspaceID:@"operator"
                         directory:workspace session:replacementSession];
         if (!replacement) return 106;
+        // 3A.51 regression: a late callback from the former epoch must
+        // return denial WITHOUT revoking a valid, newer session.
+        if ([fence observeDeniedOnly:epoch workspaceID:@"operator"
+                    directory:workspace session:session processPID:pid]) return 131;
+        if (![fence observeDeniedOnly:replacement workspaceID:@"operator"
+                    directory:workspace session:replacementSession
+                    processPID:pid]) return 132;
         // Scope rebinding must reject a different inode at the same path.
         if (rename(workspace.fileSystemRepresentation,
                    moved.fileSystemRepresentation)!=0) return 107;
@@ -336,6 +343,14 @@ static int proveOwnedChildPhysicalScope(void) {
         if (!newEpoch || ![fence observeDeniedOnly:newEpoch
                   workspaceID:@"operator" directory:workspace
                   session:newSession processPID:child.pid]) return 116;
+        // Old XPC events cannot revoke the replacement child even if its
+        // PID was reused or the same physical scope was selected again.
+        if ([fence observeDeniedOnly:replacement workspaceID:@"operator"
+                    directory:workspace session:replacementSession
+                    processPID:pid]) return 133;
+        if (![fence observeDeniedOnly:newEpoch workspaceID:@"operator"
+                    directory:workspace session:newSession
+                    processPID:child.pid]) return 134;
         [fence revoke];
         result=0;
     } @finally {
@@ -348,7 +363,7 @@ static int proveOwnedChildPhysicalScope(void) {
         rmdir(root.fileSystemRepresentation);
     }
     if(result==0)
-        puts("PASS: 3A.44/45 real XPC owner retains physical child, detects workspace replacement, permissions, generation and revocation; no capture");
+        puts("PASS: 3A.44/45/51 native XPC owner rejects stale scope replies without revoking replacement, plus physical cwd/permission and child generation checks; no capture");
     return result;
 }
 
