@@ -236,6 +236,7 @@ if(localApp){
         const id=command.slice(approve?9:6).trim();
         try{
           if(approve){
+            nativeChildProof?.stop();
             const target=localApp.approveWorkspaceRequest(id);
             process.stderr.write("Approved workspace: "+target+
               "\nOld browser revoked. New pairing code: "+
