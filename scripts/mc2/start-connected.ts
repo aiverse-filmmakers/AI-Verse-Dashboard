@@ -200,7 +200,18 @@ if(localApp){
             ||process.env.AIVERSE_PERSISTENT_CHATS_CHILD_PROOF!=="1")
             throw Error("NATIVE_CODEX_CHILD_PROOF_DENIED");
           const action=command.slice(":codex-child-proof ".length);
-          if(action==="start"){
+          if(action==="real-readonly"){
+            // Only under pinned, network-isolated CI. Never a production
+            // Codex launch or conversation capture command.
+            if(process.env.AIVERSE_PERSISTENT_CHATS_REAL_CODEX_TTY_CI!=="1"
+              ||nativeChildProof?.active())
+              throw Error("NATIVE_CODEX_REAL_TTY_PROOF_DENIED");
+            const {probeRealCodexFromNativeTTY}=await import(
+              "./native-codex-readonly-tty-proof.js");
+            await probeRealCodexFromNativeTTY(localApp,registry);
+            process.stderr.write(
+              "Native pinned Codex initialized and config-read only. Recording remains disabled.\n");
+          }else if(action==="start"){
             if(!nativeChildProof){
               const {NativeNoContentChildProof}=await import(
                 "./native-codex-child-proof.js");
