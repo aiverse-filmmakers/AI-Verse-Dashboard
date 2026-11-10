@@ -1,0 +1,195 @@
+name: Persistent Chats macOS device-owner auth preview (no capture)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/persistent-chats-macos-auth-preview.yml"
+      - "scripts/mc2/native-macos-owner-auth-preview.swift"
+      - "scripts/mc2/native-macos-owner-review-state.swift"
+      - "scripts/mc2/native-macos-owner-review-tests.swift"
+      - "scripts/mc2/native-macos-owned-child-boundary.swift"
+      - "scripts/mc2/native-macos-owned-child-tests.swift"
+      - "scripts/mc2/native-macos-xpc-peer-deny.swift"
+      - "scripts/mc2/native-macos-xpc-peer-deny-tests.swift"
+      - "scripts/mc2/native-macos-packaged-owner-deny.swift"
+      - "scripts/mc2/native-macos-packaged-xpc-deny.swift"
+      - "scripts/mc2/ci-macos-packaged-xpc-signing-deny.sh"
+      - "scripts/mc2/native-macos-two-process-peer-proof.m"
+      - "scripts/mc2/ci-macos-two-process-peer-ownership.sh"
+      - "scripts/mc2/native-macos-actual-xpc-protocol.h"
+      - "scripts/mc2/native-macos-actual-xpc-service.m"
+      - "scripts/mc2/native-macos-actual-xpc-owner.m"
+      - "scripts/mc2/ci-macos-actual-xpc-lifecycle.sh"
+      - "scripts/mc2/native-macos-xpc-lease-fence.h"
+      - "scripts/mc2/native-macos-xpc-lease-fence.m"
+      - "scripts/mc2/native-macos-xpc-lease-fence-tests.m"
+      - "scripts/mc2/native-macos-release-peer-deny.h"
+      - "scripts/mc2/native-macos-release-peer-deny.m"
+      - "scripts/mc2/native-macos-device-owner-host-review.h"
+      - "scripts/mc2/native-macos-device-owner-host-review.m"
+      - "scripts/mc2/native-macos-inbound-xpc-deny.m"
+      - "scripts/mc2/native-macos-inbound-xpc-deny-test.h"
+      - "scripts/mc2/native-macos-inbound-xpc-deny-test.m"
+      - "scripts/mc2/native-macos-codex-child-owner.h"
+      - "scripts/mc2/native-macos-codex-child-owner.m"
+      - "scripts/mc2/native-macos-workspace-event-fence.h"
+      - "scripts/mc2/native-macos-workspace-event-fence.m"
+      - "scripts/mc2/ci-macos-pinned-codex-owner.sh"
+      - "scripts/mc2/start-connected.ts"
+      - "apps/gateway/src/local-app-session.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: persistent-chats-macos-owner-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos-compile-and-default-deny:
+    name: Compile Apple LocalAuthentication and prove unattended denial
+    runs-on: macos-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout without stored credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Compile preview against real Apple macOS SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          swiftc -version
+          test -z "${OPENAI_API_KEY:-}"
+          test -z "${AIVERSE_GATEWAY_TOKEN:-}"
+          swiftc -parse-as-library \
+            -o "$RUNNER_TEMP/aiverse-macos-owner-auth-preview" \
+            scripts/mc2/native-macos-owner-auth-preview.swift \
+            scripts/mc2/native-macos-owner-review-state.swift
+          test -x "$RUNNER_TEMP/aiverse-macos-owner-auth-preview"
+
+      - name: Run synthetic in-process review state-machine races on Apple Swift
+        shell: bash
+        run: |
+          set -euo pipefail
+          swiftc -parse-as-library -D AIVERSE_CI_AUTH_FIXTURE \
+            -o "$RUNNER_TEMP/aiverse-native-owner-review-fixture" \
+            scripts/mc2/native-macos-owner-review-state.swift \
+            scripts/mc2/native-macos-owner-review-tests.swift
+          test -x "$RUNNER_TEMP/aiverse-native-owner-review-fixture"
+          "$RUNNER_TEMP/aiverse-native-owner-review-fixture"
+
+      - name: Prove actual macOS parent-owned silent child and physical workspace revocation
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_CHILD_OWNER_FIXTURE: "1"
+        run: |
+          set -euo pipefail
+          test -z "${AIVERSE_MACOS_OWNER_AUTH_PREVIEW:-}"
+          test -z "${OPENAI_API_KEY:-}"
+          test -z "${AIVERSE_GATEWAY_TOKEN:-}"
+          swiftc -parse-as-library -D AIVERSE_CI_AUTH_FIXTURE \
+            -o "$RUNNER_TEMP/aiverse-native-owned-child-fixture" \
+            scripts/mc2/native-macos-owner-review-state.swift \
+            scripts/mc2/native-macos-owned-child-boundary.swift \
+            scripts/mc2/native-macos-owned-child-tests.swift
+          test -x "$RUNNER_TEMP/aiverse-native-owned-child-fixture"
+          "$RUNNER_TEMP/aiverse-native-owned-child-fixture"
+
+      - name: Compile and verify deny-only macOS NSXPC peer signing boundary
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_XPC_DENY_FIXTURE: "1"
+        run: |
+          set -euo pipefail
+          test -z "${AIVERSE_MACOS_OWNER_AUTH_PREVIEW:-}"
+          test -z "${OPENAI_API_KEY:-}"
+          test -z "${AIVERSE_GATEWAY_TOKEN:-}"
+          swiftc -parse-as-library -D AIVERSE_CI_AUTH_FIXTURE \
+            -o "$RUNNER_TEMP/aiverse-macos-xpc-peer-deny" \
+            scripts/mc2/native-macos-xpc-peer-deny.swift \
+            scripts/mc2/native-macos-xpc-peer-deny-tests.swift
+          test -x "$RUNNER_TEMP/aiverse-macos-xpc-peer-deny"
+          "$RUNNER_TEMP/aiverse-macos-xpc-peer-deny"
+
+      - name: Verify 3A.33 ad-hoc signed nested app and XPC packaging tamper denial
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_PACKAGED_DENY_FIXTURE: "1"
+        run: |
+          set -euo pipefail
+          bash scripts/mc2/ci-macos-packaged-xpc-signing-deny.sh
+
+      - name: Verify 3A.34 real macOS two-process kernel peer and signer ownership
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_TWO_PROCESS_FIXTURE: "1"
+        run: |
+          set -euo pipefail
+          bash scripts/mc2/ci-macos-two-process-peer-ownership.sh
+
+      - name: Verify XPC, owner-owned child and physical workspace integrity (3A.35-45)
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_ACTUAL_XPC_CI: "1"
+        run: |
+          set -euo pipefail
+          bash scripts/mc2/ci-macos-actual-xpc-lifecycle.sh
+
+      - name: Verify 3A.48-49 exact pinned REAL macOS Codex App Server under native XPC owner
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_ACTUAL_XPC_CI: "1"
+        run: |
+          set -euo pipefail
+          bash scripts/mc2/ci-macos-pinned-codex-owner.sh
+
+      - name: Verify Phase 3A.36 isolated XPC epoch, stale callbacks and revocation
+        shell: bash
+        env:
+          CI: "true"
+        run: |
+          set -euo pipefail
+          test -z "${OPENAI_API_KEY:-}"
+          test -z "${AIVERSE_GATEWAY_TOKEN:-}"
+          clang -fobjc-arc -framework Foundation -I scripts/mc2 \
+            -o "$RUNNER_TEMP/aiverse-xpc-lease-3a36" \
+            scripts/mc2/native-macos-xpc-lease-fence.m \
+            scripts/mc2/native-macos-xpc-lease-fence-tests.m
+          "$RUNNER_TEMP/aiverse-xpc-lease-3a36"
+
+      - name: Refuse unattended auth and all mismatched scopes
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_OWNER_AUTH_PREVIEW: "1"
+        run: |
+          set -euo pipefail
+          PROBE="$RUNNER_TEMP/aiverse-macos-owner-auth-preview"
+          "$PROBE" --ci-deny | grep -qx 'BLOCKED: no Persistent Chats capture grant'
+          assert_exit() {
+            local expected="$1"; shift
+            local status=0
+            "$PROBE" "$@" > "$RUNNER_TEMP/probe-out" 2>&1 || status=$?
+            test "$status" -eq "$expected"
+            grep -qx 'BLOCKED: no Persistent Chats capture grant' "$RUNNER_TEMP/probe-out"
+          }
+          # Even the "valid" local preview command cannot prompt or grant
+          # permission from GitHub CI, even with the opt-in env supplied.
+          assert_exit 42 --manual-preview operator future-text-only
+          assert_exit 42 --manual-preview film future-text-only
+          # No caller paths, wrong purpose or missing input are accepted.
+          assert_exit 41 --manual-preview ../../private future-text-only
+          assert_exit 41 --manual-preview operator import-history
+          assert_exit 41 --manual-preview operator
+          assert_exit 41 --unknown operator future-text-only
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo 'PASS: macOS LocalAuthentication and in-process review compile; all fixture replay/revoke/expiry and unattended inputs deny capture'

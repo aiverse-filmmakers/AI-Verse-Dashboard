@@ -5,6 +5,7 @@ import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {WebSocket} from "ws";
 import {Readable} from "node:stream";
+import {spawn} from "node:child_process";
 import type {IncomingMessage,ServerResponse} from "node:http";
 import {SystemRegistry} from "../packages/registry/src/index.js";
 import {DisposableCache,ADAPTER_ERRORS} from "../packages/os-read-adapter/src/index.js";
@@ -382,6 +383,364 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
     const third=await login(session.pairingCode());
     assert.equal(third.status,200);
     assert.equal(((await third.json()) as {scope:{workspaceId:string}}).scope.workspaceId,"operator");
+  });
+  it("native-host prospective preference never grants capture and cannot be changed by a browser",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const legacy=new LocalApplicationSession({systemId,workspaceId:"operator"});
+    assert.throws(()=>legacy.setProspectiveRecordingIntentFromHost(true),
+      /LOCAL_APP_HOST_AUTHORITY_REQUIRED/);
+    assert.throws(()=>legacy.prospectiveRecordingIntentForHost(),
+      /LOCAL_APP_HOST_AUTHORITY_REQUIRED/);
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>server.close());
+    const base="http://127.0.0.1:"+server.port;
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    assert.throws(()=>session.setProspectiveRecordingIntentFromHost(true),
+      /LOCAL_APP_SESSION_INACTIVE/);
+    const login=async(code:string)=>fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),body:json({code}),
+    });
+    const paired=await login(session.pairingCode());
+    assert.equal(paired.status,200);
+    const cookie=(paired.headers.get("set-cookie")??"").split(";")[0];
+    assert.throws(()=>session.setProspectiveRecordingIntentFromHost(
+      "true" as unknown as boolean),/LOCAL_APP_RECORDING_INTENT_INVALID/);
+    session.setProspectiveRecordingIntentFromHost(true);
+    const request=session.prospectiveRecordingIntentForHost();
+    assert.equal(request.requested,true);
+    assert.deepEqual(request.scope,{systemId,workspaceId:"operator"});
+    assert.equal(request.purpose,"prospective-codex-text-only");
+    assert.equal(request.captureAuthorized,false);
+    assert.equal(request.hostOriginAttested,false);
+    assert.equal(request.userRecordingConsentVerified,false);
+    assert.equal(request.historyImportAuthorized,false);
+    assert.ok(typeof request.expiresAtMs==="number");
+    // In-process intent never appears on a paired browser API.
+    const browserSession=await fetch(base+"/local-app/session",{headers:{cookie}});
+    assert.equal(browserSession.status,200);
+    const exposed=await browserSession.text();
+    assert.equal(exposed.includes("prospective"),false);
+    assert.equal(exposed.includes("captureAuthorized"),false);
+    assert.equal((await fetch(base+"/local-app/recording-intent",{
+      method:"POST",headers:secureHeaders(server.port,undefined,cookie),
+      body:json({enabled:true}),
+    })).status,404);
+    assert.equal((await rpc(server.port,{
+      type:"req",v:"1.0",id:"forged-recording",
+      method:"aiverse.codex.capture",systemId,workspaceId:"operator",
+      enabled:true,
+    },{cookie,origin:base})).status,403);
+    session.setProspectiveRecordingIntentFromHost(false);
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    session.setProspectiveRecordingIntentFromHost(true);
+    // Simulate the preference's own short TTL without waiting or changing CI.
+    const originalNow=Date.now,deadline=session.prospectiveRecordingIntentForHost().expiresAtMs!;
+    try{
+      Date.now=()=>deadline;
+      assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    }finally{Date.now=originalNow;}
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false,
+      "expiration cannot be reversed by moving the clock backwards");
+    session.setProspectiveRecordingIntentFromHost(true);
+    session.rotateWorkspaceFromHost("film");
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false,
+      "workspace change clears even a previously requested preference");
+    const filmPair=await login(session.pairingCode());
+    assert.equal(filmPair.status,200);
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false,
+      "new browser pairing cannot recover an old preference");
+    session.setProspectiveRecordingIntentFromHost(true);
+    assert.deepEqual(session.prospectiveRecordingIntentForHost().scope,
+      {systemId,workspaceId:"film"});
+    const filmCookie=(filmPair.headers.get("set-cookie")??"").split(";")[0];
+    const logout=await fetch(base+"/local-app/logout",{
+      method:"POST",headers:secureHeaders(server.port,undefined,filmCookie),
+    });
+    assert.equal(logout.status,200);
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    assert.doesNotThrow(()=>session.setProspectiveRecordingIntentFromHost(false),
+      "host emergency STOP must be possible after browser logout");
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    assert.throws(()=>session.setProspectiveRecordingIntentFromHost(true),
+      /LOCAL_APP_SESSION_INACTIVE/);
+  });
+  it("prospective host preference is revoked when the OS owner registry is rebound",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const session=new LocalApplicationSession({systemId,workspaceId:"film"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>server.close());
+    const base="http://127.0.0.1:"+server.port;
+    const paired=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:session.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    session.setProspectiveRecordingIntentFromHost(true);
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,true);
+    reg.rebind(systemId,root);
+    assert.equal(session.prospectiveRecordingIntentForHost().requested,false);
+    assert.throws(()=>session.setProspectiveRecordingIntentFromHost(true),
+      /LOCAL_APP_SESSION_INACTIVE/);
+    assert.doesNotThrow(()=>session.setProspectiveRecordingIntentFromHost(false),
+      "host revocation must not depend on an approved live OS binding");
+  });
+  it("prospective host intent generations cannot be resurrected by fast stop and restart",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:session});
+    closers.push(()=>server.close());
+    const origin="http://127.0.0.1:"+server.port;
+    const paired=await fetch(origin+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:session.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    const initial=session.prospectiveRecordingIntentForHost();
+    assert.equal(initial.requested,false);
+    session.setProspectiveRecordingIntentFromHost(true);
+    const first=session.prospectiveRecordingIntentForHost();
+    assert.equal(first.requested,true);
+    assert.ok(first.intentGeneration>initial.intentGeneration);
+    session.setProspectiveRecordingIntentFromHost(false);
+    const stopped=session.prospectiveRecordingIntentForHost();
+    assert.equal(stopped.requested,false);
+    assert.ok(stopped.intentGeneration>first.intentGeneration);
+    session.setProspectiveRecordingIntentFromHost(true);
+    const restarted=session.prospectiveRecordingIntentForHost();
+    assert.equal(restarted.requested,true);
+    assert.ok(restarted.intentGeneration>stopped.intentGeneration,
+      "even same-millisecond restart requires an entirely new observation epoch");
+    // A public browser cannot derive the native host's current epoch.
+    const cookie=(paired.headers.get("set-cookie")??"").split(";")[0];
+    const response=await fetch(origin+"/local-app/session",{headers:{cookie}});
+    assert.equal(response.status,200);
+    assert.equal((await response.text()).includes("intentGeneration"),false);
+    session.rotateWorkspaceFromHost("film");
+    const afterSwitch=session.prospectiveRecordingIntentForHost();
+    assert.equal(afterSwitch.requested,false);
+    assert.ok(afterSwitch.intentGeneration>restarted.intentGeneration);
+    const newPair=await fetch(origin+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:session.pairingCode()}),
+    });
+    assert.equal(newPair.status,200);
+    session.setProspectiveRecordingIntentFromHost(true);
+    const newScope=session.prospectiveRecordingIntentForHost();
+    assert.equal(newScope.scope?.workspaceId,"film");
+    assert.ok(newScope.intentGeneration>afterSwitch.intentGeneration);
+    reg.rebind(systemId,root);
+    const invalid=session.prospectiveRecordingIntentForHost();
+    assert.equal(invalid.requested,false);
+    assert.ok(invalid.intentGeneration>newScope.intentGeneration);
+  });
+  it("real parent-owned synthetic child stdout cannot outlive a host intent epoch",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const owner=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:owner});
+    closers.push(()=>server.close());
+    const origin="http://127.0.0.1:"+server.port;
+    const paired=await fetch(origin+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:owner.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    const first=owner.prospectiveRecordingIntentForHost();
+    assert.equal(first.requested,true);
+    // Test-only fake child, never actual Codex or conversation content.
+    // Only its OS-owned, direct stdout pipe is observed.
+    const script=[
+      "process.stdin.setEncoding('utf8');",
+      "let pending='';",
+      "process.stdin.on('data',part=>{",
+      "pending+=part;",
+      "while(pending.includes('\\n')){",
+      "const index=pending.indexOf('\\n');",
+      "const word=pending.slice(0,index);pending=pending.slice(index+1);",
+      "if(word==='emit')process.stdout.write('SYNTHETIC_PIPE_ONLY\\n');",
+      "}",
+      "});",
+    ].join("");
+    const child=spawn(process.execPath,["-e",script],{
+      stdio:["pipe","pipe","ignore"],windowsHide:true,
+      env:{PATH:process.env.PATH??"",
+        ...(process.platform==="win32"?{SystemRoot:process.env.SystemRoot??""}:{})},
+    });
+    assert.ok(typeof child.pid==="number"&&child.pid>0);
+    let acceptedChunks=0,discardedChunks=0,totalBytes=0;
+    const bound=first;
+    const onChunk=(chunk:Buffer)=>{
+      const current=owner.prospectiveRecordingIntentForHost();
+      if(Buffer.isBuffer(chunk)
+        && current.requested && bound.requested
+        && current.intentGeneration===bound.intentGeneration
+        && current.scope?.systemId===bound.scope?.systemId
+        && current.scope?.workspaceId===bound.scope?.workspaceId
+        && totalBytes+chunk.length<=4096){
+        acceptedChunks++;totalBytes+=chunk.length;
+      }else discardedChunks++;
+      // Never retain, output, hash, decode or archive source bytes.
+    };
+    child.stdout.on("data",onChunk);
+    async function until(predicate:()=>boolean){
+      const beginning=Date.now();
+      while(!predicate()){
+        if(Date.now()-beginning>5000)
+          throw Error("SYNTHETIC_CHILD_PIPE_PROOF_TIMEOUT");
+        await new Promise(resolve=>setTimeout(resolve,15));
+      }
+    }
+    try{
+      child.stdin.write("emit\n");
+      await until(()=>acceptedChunks>0);
+      const originalCount=acceptedChunks;
+      assert.ok(totalBytes>0);
+      assert.equal(discardedChunks,0);
+      // A fast same-workspace stop/restart cannot reinstate an old observer.
+      owner.setProspectiveRecordingIntentFromHost(false);
+      owner.setProspectiveRecordingIntentFromHost(true);
+      const resumed=owner.prospectiveRecordingIntentForHost();
+      assert.ok(resumed.intentGeneration>first.intentGeneration);
+      child.stdin.write("emit\n");
+      await until(()=>discardedChunks>0);
+      assert.equal(acceptedChunks,originalCount);
+      // Rebinding to a newer status is NOT allowed to turn the same old
+      // child into a fresh owned process. Once revoked, it remains stale.
+      child.stdin.write("emit\n");
+      await until(()=>discardedChunks>1);
+      assert.equal(acceptedChunks,originalCount);
+      owner.rotateWorkspaceFromHost("film");
+      child.stdin.write("emit\n");
+      await until(()=>discardedChunks>2);
+      assert.equal(owner.prospectiveRecordingIntentForHost().requested,false);
+      const freshPair=await fetch(origin+"/local-app/pair",{
+        method:"POST",headers:secureHeaders(server.port),
+        body:json({code:owner.pairingCode()}),
+      });
+      assert.equal(freshPair.status,200);
+      owner.setProspectiveRecordingIntentFromHost(true);
+      assert.equal(owner.prospectiveRecordingIntentForHost().scope?.workspaceId,"film");
+      child.stdin.write("emit\n");
+      await until(()=>discardedChunks>3);
+      assert.equal(acceptedChunks,originalCount,
+        "old subprocess observer must not inherit new scope or restart epoch");
+      assert.equal(first.captureAuthorized,false);
+      assert.equal(resumed.hostOriginAttested,false);
+      assert.equal(owner.prospectiveRecordingIntentForHost().userRecordingConsentVerified,false);
+    }finally{
+      child.stdout.off("data",onChunk);
+      child.stdin.end();
+      child.kill();
+    }
+  });
+  it("native-host scope text review is a separate short-lived acknowledgment, never recording consent",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const owner=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:owner});
+    closers.push(()=>server.close());
+    const base="http://127.0.0.1:"+server.port;
+    const before=owner.prospectiveRecordingIntentForHost();
+    assert.equal(before.requested,false);
+    assert.equal(before.scopeReviewAcknowledged,false);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator","future-text-only"),/LOCAL_APP_TEXT_REVIEW_INACTIVE/);
+    const paired=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:owner.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "film","future-text-only"),/LOCAL_APP_TEXT_REVIEW_INVALID/);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator","past-history"),/LOCAL_APP_TEXT_REVIEW_INVALID/);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator",true as unknown as string),/LOCAL_APP_TEXT_REVIEW_INVALID/);
+    const first=owner.prospectiveRecordingIntentForHost();
+    assert.equal(first.scopeReviewAcknowledged,false);
+    owner.acknowledgeProspectiveTextScopeFromHost("operator","future-text-only");
+    const reviewed=owner.prospectiveRecordingIntentForHost();
+    assert.equal(reviewed.scopeReviewAcknowledged,true);
+    assert.equal(reviewed.intentGeneration,first.intentGeneration);
+    assert.equal(reviewed.captureAuthorized,false);
+    assert.equal(reviewed.userRecordingConsentVerified,false);
+    assert.equal(reviewed.hostOriginAttested,false);
+    assert.equal(reviewed.historyImportAuthorized,false);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator","future-text-only"),/LOCAL_APP_TEXT_REVIEW_ALREADY_USED/);
+    const cookie=(paired.headers.get("set-cookie")??"").split(";")[0];
+    const session=await fetch(base+"/local-app/session",{headers:{cookie}});
+    assert.equal(session.status,200);
+    const text=await session.text();
+    assert.equal(text.includes("scopeReviewAcknowledged"),false);
+    assert.equal(text.includes("prospectiveTextReview"),false);
+    assert.equal(text.includes("intentGeneration"),false);
+    const forged=await fetch(base+"/local-app/chat-review",{
+      method:"POST",
+      headers:secureHeaders(server.port,undefined,cookie),
+      body:json({workspaceId:"operator",phrase:"future-text-only"}),
+    });
+    assert.equal(forged.status,404);
+    owner.setProspectiveRecordingIntentFromHost(false);
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false,
+      "old review cannot be carried to new intent generation");
+    owner.acknowledgeProspectiveTextScopeFromHost("operator","future-text-only");
+    owner.rotateWorkspaceFromHost("film");
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false);
+    const rep=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:owner.pairingCode()}),
+    });
+    assert.equal(rep.status,200);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator","future-text-only"),/LOCAL_APP_TEXT_REVIEW_INVALID/);
+    owner.acknowledgeProspectiveTextScopeFromHost("film","future-text-only");
+    reg.rebind(systemId,root);
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "film","future-text-only"),/LOCAL_APP_TEXT_REVIEW_INACTIVE/);
+  });
+  it("expired native-host scope review cannot revive after a clock rollback",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const owner=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:owner});
+    closers.push(()=>server.close());
+    const base="http://127.0.0.1:"+server.port;
+    const paired=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:owner.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    owner.acknowledgeProspectiveTextScopeFromHost("operator","future-text-only");
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,true);
+    const originalNow=Date.now,baseNow=Date.now();
+    try{
+      Date.now=()=>baseNow+46000;
+      const expired=owner.prospectiveRecordingIntentForHost();
+      assert.equal(expired.requested,true,"two-minute intent remains active");
+      assert.equal(expired.scopeReviewAcknowledged,false);
+    }finally{Date.now=originalNow;}
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false,
+      "wall-clock rollback cannot resurrect expired review");
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator","future-text-only"),/LOCAL_APP_TEXT_REVIEW_ALREADY_USED/);
+    owner.setProspectiveRecordingIntentFromHost(false);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    owner.acknowledgeProspectiveTextScopeFromHost("operator","future-text-only");
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,true);
+    owner.close();
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false);
   });
   it("old owner-root grants cannot survive registry rebind or identity changes",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);

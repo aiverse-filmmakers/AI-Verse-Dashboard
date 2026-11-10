@@ -18,6 +18,11 @@ const COOKIE="aiverse_local_session";
 const MAX_PAIR_ATTEMPTS=5;
 const PAIR_TTL=5*60*1000;
 const SESSION_TTL=8*60*60*1000;
+// An operator's prospective preference is not recording consent or a
+// capture grant. It is intentionally shorter-lived than browser pairing.
+const PROSPECTIVE_RECORDING_INTENT_TTL=2*60*1000;
+const PROSPECTIVE_TEXT_REVIEW_TTL=45*1000;
+const PROSPECTIVE_TEXT_REVIEW_PHRASE="future-text-only";
 const WORKSPACE_REQUEST_TTL=90*1000;
 const MAX_WORKSPACE_REQUESTS=5;
 const ID=/^[a-z0-9][a-z0-9-]{0,63}$/;
@@ -64,6 +69,22 @@ export interface LocalApplicationScope{
   systemId:string;
   workspaceId:string;
 }
+/** Never an authorization credential, storage admission or consent issuer. */
+export interface ProspectiveRecordingIntentStatus{
+  requested:boolean;
+  /** Optional recent host TTY acknowledgment, never authenticated consent. */
+  scopeReviewAcknowledged:boolean;
+  /** Testable local identity epoch. Never a bearer token or capture grant. */
+  intentGeneration:number;
+  scope:LocalApplicationScope|null;
+  expiresAtMs:number|null;
+  purpose:"prospective-codex-text-only";
+  captureAuthorized:false;
+  hostOriginAttested:false;
+  userRecordingConsentVerified:false;
+  historyImportAuthorized:false;
+}
+
 export class LocalApplicationSession {
   private port=0;
   private pairing=randomBytes(32).toString("base64url");
@@ -72,6 +93,23 @@ export class LocalApplicationSession {
   // Every successful browser pairing owns a cancelable effect lease.
   // Host rotation, logout, OS revocation and expiry abort in-flight RPCs.
   private sessionAbort=new AbortController();
+  // Trusted-launcher process memory only. Browser cookies, RPC and
+  // WebSockets have no route or method for setting/reading this state.
+  private prospectiveIntentGeneration=0;
+  private prospectiveRecordingIntent?:{
+    scope:LocalApplicationScope;
+    expiresAtMs:number;
+    pairedSignal:AbortSignal;
+  };
+  // Deliberately not a user-consent grant. Requires a SECOND explicit
+  // terminal action within 45 seconds in the exact current OS workspace.
+  private lastProspectiveTextReviewedGeneration=-1;
+  private prospectiveTextReview?:{
+    generation:number;
+    expiresAtMs:number;
+    scope:LocalApplicationScope;
+    pairedSignal:AbortSignal;
+  };
   private readonly ownerRoot?:string;
   private readonly ownerGeneration?:number;
   private workspaceIdentity?:{root:string;dev:number;ino:number};
@@ -178,6 +216,99 @@ export class LocalApplicationSession {
     this.pendingRequest=undefined;
     this.requestCount=0;
   }
+  /**
+   * Trusted native launcher only. This records a prospective *request*,
+   * NOT human identity, authenticated source, event consent or permission
+   * to capture, store or recall any conversation. No HTTP/RPC route calls it.
+   */
+  setProspectiveRecordingIntentFromHost(enabled:boolean):void{
+    if(!this.ownerRegistry)throw Error("LOCAL_APP_HOST_AUTHORITY_REQUIRED");
+    if(typeof enabled!=="boolean")throw Error("LOCAL_APP_RECORDING_INTENT_INVALID");
+    // Owner-side stop is safe and idempotent even after pairing expires.
+    // Never make revocation dependent on active browser authentication.
+    if(!enabled){
+      this.prospectiveIntentGeneration++;
+      this.prospectiveRecordingIntent=undefined;
+      this.prospectiveTextReview=undefined;
+      return;
+    }
+    if(!this.active())throw Error("LOCAL_APP_SESSION_INACTIVE");
+    this.prospectiveIntentGeneration++;
+    this.prospectiveTextReview=undefined;
+    this.prospectiveRecordingIntent={
+      scope:{systemId:this.scope.systemId,workspaceId:this.scope.workspaceId},
+      expiresAtMs:Date.now()+PROSPECTIVE_RECORDING_INTENT_TTL,
+      pairedSignal:this.sessionAbort.signal,
+    };
+  }
+  /**
+   * A second explicit prospective *scope review* from the trusted terminal.
+   * This is NOT an authenticated recording consent issuer and cannot grant
+   * chat capture. Browser/RPC/WS handlers never call this method.
+   */
+  acknowledgeProspectiveTextScopeFromHost(
+    workspaceId:string,phrase:string,
+  ):void{
+    if(!this.ownerRegistry)throw Error("LOCAL_APP_HOST_AUTHORITY_REQUIRED");
+    if(typeof workspaceId!=="string"||typeof phrase!=="string"
+      ||workspaceId!==this.scope.workspaceId
+      ||phrase!==PROSPECTIVE_TEXT_REVIEW_PHRASE)
+      throw Error("LOCAL_APP_TEXT_REVIEW_INVALID");
+    const intent=this.prospectiveRecordingIntentForHost();
+    if(!intent.requested||!intent.scope||!this.prospectiveRecordingIntent)
+      throw Error("LOCAL_APP_TEXT_REVIEW_INACTIVE");
+    if(this.lastProspectiveTextReviewedGeneration===intent.intentGeneration)
+      throw Error("LOCAL_APP_TEXT_REVIEW_ALREADY_USED");
+    this.lastProspectiveTextReviewedGeneration=intent.intentGeneration;
+    this.prospectiveTextReview={
+      generation:intent.intentGeneration,
+      expiresAtMs:Math.min(
+        Date.now()+PROSPECTIVE_TEXT_REVIEW_TTL,
+        this.prospectiveRecordingIntent.expiresAtMs),
+      scope:{systemId:this.scope.systemId,workspaceId:this.scope.workspaceId},
+      pairedSignal:this.sessionAbort.signal,
+    };
+  }
+  /** Recheck native pairing and current OS identity on every read. */
+  prospectiveRecordingIntentForHost():ProspectiveRecordingIntentStatus{
+    if(!this.ownerRegistry)throw Error("LOCAL_APP_HOST_AUTHORITY_REQUIRED");
+    const intent=this.prospectiveRecordingIntent;
+    const valid=this.active() && intent!==undefined
+      && Date.now()<intent.expiresAtMs
+      && intent.pairedSignal===this.sessionAbort.signal
+      && !intent.pairedSignal.aborted
+      && intent.scope.systemId===this.scope.systemId
+      && intent.scope.workspaceId===this.scope.workspaceId;
+    if(!valid && intent!==undefined){
+      this.prospectiveIntentGeneration++;
+      this.prospectiveRecordingIntent=undefined;
+      this.prospectiveTextReview=undefined;
+    }
+    const review=this.prospectiveTextReview;
+    const scopeReviewAcknowledged=valid && review!==undefined
+      && Date.now()<review.expiresAtMs
+      && review.generation===this.prospectiveIntentGeneration
+      && review.pairedSignal===this.sessionAbort.signal
+      && !review.pairedSignal.aborted
+      && review.scope.systemId===this.scope.systemId
+      && review.scope.workspaceId===this.scope.workspaceId;
+    // Expiry or any failed recheck is terminal for this acknowledgment.
+    // Even a wall-clock rollback cannot resurrect the same generation.
+    if(review!==undefined&&!scopeReviewAcknowledged)
+      this.prospectiveTextReview=undefined;
+    return {
+      requested:valid,
+      scopeReviewAcknowledged,
+      intentGeneration:this.prospectiveIntentGeneration,
+      scope:valid?{systemId:this.scope.systemId,workspaceId:this.scope.workspaceId}:null,
+      expiresAtMs:valid?intent!.expiresAtMs:null,
+      purpose:"prospective-codex-text-only",
+      captureAuthorized:false,
+      hostOriginAttested:false,
+      userRecordingConsentVerified:false,
+      historyImportAuthorized:false,
+    };
+  }
   setBoundPort(port:number):void{
     if(this.port!==0||!Number.isInteger(port)||port<=0||port>65535)
       throw Error("LOCAL_APP_PORT_INVALID");
@@ -194,6 +325,11 @@ export class LocalApplicationSession {
     return this.port!==0&&Date.now()<this.sessionsUntil;
   }
   private revoke():void{
+    // Any logout, host workspace rotation, OS rebind or session expiry
+    // irrevocably clears the previous prospective preference.
+    this.prospectiveIntentGeneration++;
+    this.prospectiveRecordingIntent=undefined;
+    this.prospectiveTextReview=undefined;
     this.sessionAbort.abort();
     this.sessionsUntil=0;
     this.pendingRequest=undefined;

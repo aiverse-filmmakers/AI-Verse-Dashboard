@@ -19,6 +19,7 @@ on:
       - "scripts/mc2/ci-authenticated-browser-proof.mjs"
       - "scripts/mc2/ci-native-launcher-proof.mjs"
       - "scripts/mc2/ci-gateway-transport-proof.mjs"
+      - "scripts/mc2/native-codex-child-proof.ts"
       - "scripts/mc2/start-connected.ts"
       - "scripts/mc2/start-personal.mjs"
   push:
@@ -40,6 +41,7 @@ on:
       - "scripts/mc2/ci-authenticated-browser-proof.mjs"
       - "scripts/mc2/ci-native-launcher-proof.mjs"
       - "scripts/mc2/ci-gateway-transport-proof.mjs"
+      - "scripts/mc2/native-codex-child-proof.ts"
       - "scripts/mc2/start-connected.ts"
       - "scripts/mc2/start-personal.mjs"
   workflow_dispatch:

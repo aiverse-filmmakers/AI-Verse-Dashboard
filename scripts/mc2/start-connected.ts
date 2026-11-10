@@ -4,6 +4,7 @@
  * Does not install/configure Gateway, authorize providers, edit OS or persist keys.
  */
 import {readFileSync,statSync} from "node:fs";
+import type {NativeNoContentChildProof} from "./native-codex-child-proof.js";
 import {createInterface} from "node:readline";
 import {LocalApplicationSession} from "../../apps/gateway/src/local-app-session.js";
 import {homedir} from "node:os";
@@ -67,6 +68,7 @@ const bridge=new CanonicalGatewayBridge(registry,[{
   allowRunPauseResume:checkpointEnabled,
 }]);
 let localApp:LocalApplicationSession|undefined;
+let nativeChildProof:NativeNoContentChildProof|undefined;
 if(uiEnabled){
   let html:string,boot:string,css:string,chat:string;
   try{
@@ -118,7 +120,8 @@ if(localApp){
       "Run Stop is disabled. To opt in, set AIVERSE_DASHBOARD_ALLOW_RUN_CANCEL=1 before launch.\n")+
     (checkpointEnabled?"Run Pause/Resume is enabled by separate host opt-in.\n":
       "Run Pause/Resume is disabled. Set AIVERSE_DASHBOARD_ALLOW_RUN_PAUSE_RESUME=1 to opt in.\n")+
-    "Host commands: :workspaces, :use <workspace-id>, :use operator, :pending, :approve <id>, :deny <id>, :help\n\n");
+    "Host commands: :workspaces, :use <workspace-id>, :use operator, :pending, :approve <id>, :deny <id>, :chat-intent on|off|status, :chat-review confirm <workspace-id> future-text-only, :chat-review status, :help\n"+
+    "Chat intent is a short-lived request only; conversation capture remains disabled.\n\n");
   // Only the actual TTY-host controls scope. No browser workspace.list,
   // remote URL, machine path, env key, or unverified arbitrary workspace ID.
   const terminal=createInterface({input:process.stdin,output:process.stderr,
@@ -127,7 +130,106 @@ if(localApp){
     for await(const raw of terminal){
       const command=raw.trim();
       if(command===":help"){
-        process.stderr.write("Commands: :workspaces, :use <id>, :use operator, :pending, :approve <id>, :deny <id>, :help\n");
+        process.stderr.write("Commands: :workspaces, :use <id>, :use operator, :pending, :approve <id>, :deny <id>, :chat-intent on|off|status, :chat-review confirm <workspace-id> future-text-only, :chat-review status, :help\n");
+        continue;
+      }
+      // Only the real interactive TTY path can express or clear a request.
+      // The browser cannot call this branch, and this is NOT consent or
+      // recording admission. No request is saved, logged or sent to Gateway.
+      if(command===":chat-intent on"){
+        try{
+          nativeChildProof?.stop();
+          localApp.setProspectiveRecordingIntentFromHost(true);
+          process.stderr.write(
+            "Prospective chat request noted for up to 2 minutes. Recording remains disabled.\n");
+          const prospective=localApp.prospectiveRecordingIntentForHost();
+          if(prospective.scope)process.stderr.write(
+            "Optional scope review: future Codex text only in workspace "+
+            prospective.scope.workspaceId+
+            ", never history. To acknowledge: :chat-review confirm "+
+            prospective.scope.workspaceId+" future-text-only\n"+
+            "This is NOT authenticated recording consent. Capture remains disabled.\n");
+        }catch{process.stderr.write("CHAT_INTENT_DENIED\n");}
+        continue;
+      }
+      if(command===":chat-intent off"){
+        try{
+          nativeChildProof?.stop();
+          localApp.setProspectiveRecordingIntentFromHost(false);
+          process.stderr.write("Prospective chat request cleared. Recording remains disabled.\n");
+        }catch{process.stderr.write("CHAT_INTENT_DENIED\n");}
+        continue;
+      }
+      if(command===":chat-intent status"){
+        try{
+          const intent=localApp.prospectiveRecordingIntentForHost();
+          process.stderr.write(intent.requested
+            ?"Prospective chat request is active. Recording remains disabled.\n"
+            :"No active prospective chat request. Recording remains disabled.\n");
+        }catch{process.stderr.write("CHAT_INTENT_DENIED\n");}
+        continue;
+      }
+      // Second, explicit host-only review of the future-text-only purpose
+      // and current OS workspace. This NEVER creates recording permission.
+      if(command.startsWith(":chat-review confirm ")){
+        try{
+          const words=command.slice(":chat-review confirm ".length).split(" ");
+          if(words.length!==2||!words[0]||!words[1])
+            throw Error("LOCAL_APP_TEXT_REVIEW_INVALID");
+          localApp.acknowledgeProspectiveTextScopeFromHost(words[0],words[1]);
+          process.stderr.write(
+            "Prospective text scope review acknowledged. Recording remains disabled.\n");
+        }catch{process.stderr.write("CHAT_REVIEW_DENIED\n");}
+        continue;
+      }
+      if(command===":chat-review status"){
+        try{
+          const reviewed=localApp.prospectiveRecordingIntentForHost();
+          process.stderr.write(reviewed.scopeReviewAcknowledged
+            ?"Prospective text scope review is active. Recording remains disabled.\n"
+            :"No active prospective text scope review. Recording remains disabled.\n");
+        }catch{process.stderr.write("CHAT_REVIEW_DENIED\n");}
+        continue;
+      }
+      // Test-only native ownership diagnostic. The *real* interactive
+      // launcher starts a disposable local Node child with NO stdio.
+      // Neither this command nor its child may read or record Codex data.
+      if(command.startsWith(":codex-child-proof ")){
+        try{
+          if(process.env.CI!=="true"
+            ||process.env.AIVERSE_PERSISTENT_CHATS_CHILD_PROOF!=="1")
+            throw Error("NATIVE_CODEX_CHILD_PROOF_DENIED");
+          const action=command.slice(":codex-child-proof ".length);
+          if(action==="real-readonly"){
+            // Only under pinned, network-isolated CI. Never a production
+            // Codex launch or conversation capture command.
+            if(process.env.AIVERSE_PERSISTENT_CHATS_REAL_CODEX_TTY_CI!=="1"
+              ||nativeChildProof?.active())
+              throw Error("NATIVE_CODEX_REAL_TTY_PROOF_DENIED");
+            const {probeRealCodexFromNativeTTY}=await import(
+              "./native-codex-readonly-tty-proof.js");
+            await probeRealCodexFromNativeTTY(localApp,registry);
+            process.stderr.write(
+              "Native pinned Codex initialized and config-read only. Recording remains disabled.\n");
+          }else if(action==="start"){
+            if(!nativeChildProof){
+              const {NativeNoContentChildProof}=await import(
+                "./native-codex-child-proof.js");
+              nativeChildProof=new NativeNoContentChildProof(localApp,registry);
+            }
+            nativeChildProof.start();
+            process.stderr.write(
+              "Synthetic native child started. No stdout, recording or consent.\n");
+          }else if(action==="status"){
+            process.stderr.write(nativeChildProof?.active()
+              ?"Synthetic native child active. Recording remains disabled.\n"
+              :"No active synthetic native child. Recording remains disabled.\n");
+          }else if(action==="stop"){
+            nativeChildProof?.stop();
+            process.stderr.write(
+              "Synthetic native child stopped. Recording remains disabled.\n");
+          }else throw Error("NATIVE_CODEX_CHILD_PROOF_DENIED");
+        }catch{process.stderr.write("CODEX_CHILD_PROOF_DENIED\n");}
         continue;
       }
       if(command===":pending"){
@@ -145,6 +247,7 @@ if(localApp){
         const id=command.slice(approve?9:6).trim();
         try{
           if(approve){
+            nativeChildProof?.stop();
             const target=localApp.approveWorkspaceRequest(id);
             process.stderr.write("Approved workspace: "+target+
               "\nOld browser revoked. New pairing code: "+
@@ -167,6 +270,7 @@ if(localApp){
       if(command.startsWith(":use ")){
         const workspaceId=command.slice(5).trim();
         try{
+          nativeChildProof?.stop();
           localApp.rotateWorkspaceFromHost(workspaceId);
           process.stderr.write("Selected workspace: "+workspaceId+
             "\nOld browser session revoked. New one-time pairing code: "+
@@ -178,7 +282,10 @@ if(localApp){
     }
   })().catch(()=>{process.stderr.write("HOST_TERMINAL_UNAVAILABLE\n");});
 }
-const close=async()=>{try{await server.close();}finally{process.exitCode=0}};
+const close=async()=>{
+  nativeChildProof?.stop();
+  try{await server.close();}finally{process.exitCode=0}
+};
 for(const signal of ["SIGINT","SIGTERM"] as const){
   process.once(signal,()=>{void close()});
 }
