@@ -89,9 +89,11 @@
         [self->_lock lock];
         BOOL same=self->_pending && self->_reviewEpoch==epoch
              && self->_pendingContext==context;
-        self->_pending=NO;
-        if (self->_pendingContext==context)
+        // A late callback must not clear a different, newer pending review.
+        if (same) {
+            self->_pending=NO;
             self->_pendingContext=nil;
+        }
         [self->_lock unlock];
         [context invalidate];
         BOOL current=[self->_fence isCurrent:generation workspace:workspace
