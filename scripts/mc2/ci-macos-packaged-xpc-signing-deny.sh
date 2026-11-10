@@ -103,4 +103,12 @@ if codesign --verify --deep --strict "$TAMPER" > "$PACKAGE_ROOT/tamper-log" 2>&1
   echo "FAIL: modified nested XPC bundle incorrectly verified" >&2; exit 1
 fi
 
+# Removal of the nested service must also invalidate the enclosing seal.
+rm -rf "$TAMPER"
+cp -R "$APP" "$TAMPER"
+rm -rf "$TAMPER/Contents/XPCServices/com.aiverse.ci-only.persistentchat.denied.xpc"
+if codesign --verify --deep --strict "$TAMPER" > "$PACKAGE_ROOT/missing-log" 2>&1; then
+  echo "FAIL: missing nested XPC service incorrectly verified" >&2; exit 1
+fi
+
 echo 'PASS: 3A.33 CI-only signed nested owner/XPC package, distinct IDs, deny-only entrypoints and tamper detection'
