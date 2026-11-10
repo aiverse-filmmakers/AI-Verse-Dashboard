@@ -638,6 +638,110 @@ describe("MC2 trusted local application pairing and HttpOnly session boundary",(
       child.kill();
     }
   });
+  it("native-host scope text review is a separate short-lived acknowledgment, never recording consent",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const owner=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:owner});
+    closers.push(()=>server.close());
+    const base="http://127.0.0.1:"+server.port;
+    const before=owner.prospectiveRecordingIntentForHost();
+    assert.equal(before.requested,false);
+    assert.equal(before.scopeReviewAcknowledged,false);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator","future-text-only"),/LOCAL_APP_TEXT_REVIEW_INACTIVE/);
+    const paired=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:owner.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "film","future-text-only"),/LOCAL_APP_TEXT_REVIEW_INVALID/);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator","past-history"),/LOCAL_APP_TEXT_REVIEW_INVALID/);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator",true as unknown as string),/LOCAL_APP_TEXT_REVIEW_INVALID/);
+    const first=owner.prospectiveRecordingIntentForHost();
+    assert.equal(first.scopeReviewAcknowledged,false);
+    owner.acknowledgeProspectiveTextScopeFromHost("operator","future-text-only");
+    const reviewed=owner.prospectiveRecordingIntentForHost();
+    assert.equal(reviewed.scopeReviewAcknowledged,true);
+    assert.equal(reviewed.intentGeneration,first.intentGeneration);
+    assert.equal(reviewed.captureAuthorized,false);
+    assert.equal(reviewed.userRecordingConsentVerified,false);
+    assert.equal(reviewed.hostOriginAttested,false);
+    assert.equal(reviewed.historyImportAuthorized,false);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator","future-text-only"),/LOCAL_APP_TEXT_REVIEW_ALREADY_USED/);
+    const cookie=(paired.headers.get("set-cookie")??"").split(";")[0];
+    const session=await fetch(base+"/local-app/session",{headers:{cookie}});
+    assert.equal(session.status,200);
+    const text=await session.text();
+    assert.equal(text.includes("scopeReviewAcknowledged"),false);
+    assert.equal(text.includes("prospectiveTextReview"),false);
+    assert.equal(text.includes("intentGeneration"),false);
+    const forged=await fetch(base+"/local-app/chat-review",{
+      method:"POST",
+      headers:secureHeaders(server.port,undefined,cookie),
+      body:json({workspaceId:"operator",phrase:"future-text-only"}),
+    });
+    assert.equal(forged.status,404);
+    owner.setProspectiveRecordingIntentFromHost(false);
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false,
+      "old review cannot be carried to new intent generation");
+    owner.acknowledgeProspectiveTextScopeFromHost("operator","future-text-only");
+    owner.rotateWorkspaceFromHost("film");
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false);
+    const rep=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:owner.pairingCode()}),
+    });
+    assert.equal(rep.status,200);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator","future-text-only"),/LOCAL_APP_TEXT_REVIEW_INVALID/);
+    owner.acknowledgeProspectiveTextScopeFromHost("film","future-text-only");
+    reg.rebind(systemId,root);
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false);
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "film","future-text-only"),/LOCAL_APP_TEXT_REVIEW_INACTIVE/);
+  });
+  it("expired native-host scope review cannot revive after a clock rollback",async()=>{
+    const {reg,root,systemId}=fixture();roots.push(root);
+    const owner=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
+    const server=await startGateway(new QueryRouter(reg,new DisposableCache()),
+      new SubscriptionHub(),{port:0,localApp:owner});
+    closers.push(()=>server.close());
+    const base="http://127.0.0.1:"+server.port;
+    const paired=await fetch(base+"/local-app/pair",{
+      method:"POST",headers:secureHeaders(server.port),
+      body:json({code:owner.pairingCode()}),
+    });
+    assert.equal(paired.status,200);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    owner.acknowledgeProspectiveTextScopeFromHost("operator","future-text-only");
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,true);
+    const originalNow=Date.now,baseNow=Date.now();
+    try{
+      Date.now=()=>baseNow+46000;
+      const expired=owner.prospectiveRecordingIntentForHost();
+      assert.equal(expired.requested,true,"two-minute intent remains active");
+      assert.equal(expired.scopeReviewAcknowledged,false);
+    }finally{Date.now=originalNow;}
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false,
+      "wall-clock rollback cannot resurrect expired review");
+    assert.throws(()=>owner.acknowledgeProspectiveTextScopeFromHost(
+      "operator","future-text-only"),/LOCAL_APP_TEXT_REVIEW_ALREADY_USED/);
+    owner.setProspectiveRecordingIntentFromHost(false);
+    owner.setProspectiveRecordingIntentFromHost(true);
+    owner.acknowledgeProspectiveTextScopeFromHost("operator","future-text-only");
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,true);
+    owner.close();
+    assert.equal(owner.prospectiveRecordingIntentForHost().scopeReviewAcknowledged,false);
+  });
   it("old owner-root grants cannot survive registry rebind or identity changes",async()=>{
     const {reg,root,systemId}=fixture();roots.push(root);
     const session=new LocalApplicationSession({systemId,workspaceId:"operator"},undefined,reg);
