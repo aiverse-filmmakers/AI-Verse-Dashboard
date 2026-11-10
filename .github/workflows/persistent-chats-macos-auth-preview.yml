@@ -7,6 +7,8 @@ on:
       - "scripts/mc2/native-macos-owner-auth-preview.swift"
       - "scripts/mc2/native-macos-owner-review-state.swift"
       - "scripts/mc2/native-macos-owner-review-tests.swift"
+      - "scripts/mc2/native-macos-owned-child-boundary.swift"
+      - "scripts/mc2/native-macos-owned-child-tests.swift"
       - "scripts/mc2/start-connected.ts"
       - "apps/gateway/src/local-app-session.ts"
   workflow_dispatch:
@@ -52,6 +54,24 @@ jobs:
             scripts/mc2/native-macos-owner-review-tests.swift
           test -x "$RUNNER_TEMP/aiverse-native-owner-review-fixture"
           "$RUNNER_TEMP/aiverse-native-owner-review-fixture"
+
+      - name: Prove actual macOS parent-owned silent child and physical workspace revocation
+        shell: bash
+        env:
+          CI: "true"
+          AIVERSE_MACOS_CHILD_OWNER_FIXTURE: "1"
+        run: |
+          set -euo pipefail
+          test -z "${AIVERSE_MACOS_OWNER_AUTH_PREVIEW:-}"
+          test -z "${OPENAI_API_KEY:-}"
+          test -z "${AIVERSE_GATEWAY_TOKEN:-}"
+          swiftc -parse-as-library -D AIVERSE_CI_AUTH_FIXTURE \
+            -o "$RUNNER_TEMP/aiverse-native-owned-child-fixture" \
+            scripts/mc2/native-macos-owner-review-state.swift \
+            scripts/mc2/native-macos-owned-child-boundary.swift \
+            scripts/mc2/native-macos-owned-child-tests.swift
+          test -x "$RUNNER_TEMP/aiverse-native-owned-child-fixture"
+          "$RUNNER_TEMP/aiverse-native-owned-child-fixture"
 
       - name: Refuse unattended auth and all mismatched scopes
         shell: bash
