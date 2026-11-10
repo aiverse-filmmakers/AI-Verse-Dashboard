@@ -11,6 +11,12 @@
         workspace:(NSString *)workspace
           session:(NSUUID *)session
        processPID:(pid_t)pid;
+/* Revoke ONLY the exact connection epoch whose callback fired.
+ * An old XPC interruption must not revoke a newer session. */
+- (BOOL)revokeIfCurrent:(uint64_t)generation
+             workspace:(NSString *)workspace
+               session:(NSUUID *)session
+            processPID:(pid_t)pid;
 - (void)revoke;
 - (BOOL)recordingAuthorized;
 - (BOOL)archiveAuthorized;
